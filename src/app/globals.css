@@ -134,7 +134,7 @@
   }
   /* Foco visível para inputs de auth (inline styles removem o outline padrão) */
   .auth-input:focus {
-    border-color: rgba(124, 111, 247, 0.6) !important;
-    box-shadow: 0 0 0 3px rgba(124, 111, 247, 0.15) !important;
+    border-color: rgba(14, 165, 233, 0.6) !important;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.12) !important;
   }
 }
