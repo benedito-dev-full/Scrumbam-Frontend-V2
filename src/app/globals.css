@@ -132,4 +132,9 @@
   html {
     @apply font-sans;
   }
+  /* Foco visível para inputs de auth (inline styles removem o outline padrão) */
+  .auth-input:focus {
+    border-color: rgba(124, 111, 247, 0.6) !important;
+    box-shadow: 0 0 0 3px rgba(124, 111, 247, 0.15) !important;
+  }
 }

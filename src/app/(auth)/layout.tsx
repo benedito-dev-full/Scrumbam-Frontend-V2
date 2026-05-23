@@ -1,5 +1,3 @@
-"use client";
-
 /**
  * Layout minimalista para as páginas de autenticação (/login, /register).
  *
