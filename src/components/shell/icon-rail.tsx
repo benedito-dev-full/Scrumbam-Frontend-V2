@@ -2,110 +2,251 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useTheme } from "next-themes";
-import {
-  Home,
-  Inbox,
-  ListTodo,
-  Zap,
-  Sparkles,
-  Users,
-  FileText,
-  MoreHorizontal,
-  UserPlus,
-  Moon,
-  Sun,
-  type LucideIcon,
-} from "lucide-react";
 
-import { cn } from "@/lib/utils";
+/* ─── Ícones SVG custom — pixel-perfect ClickUp ──────────────────────────── */
 
+/* Início — ativo: círculo gradiente com casinha branca / inativo: só casinha */
+function IcHome({ active }: { active?: boolean }) {
+  if (active) {
+    return (
+      <div style={{
+        width: 30, height: 30,
+        borderRadius: "50%",
+        background: "linear-gradient(135deg, #7c5cff 0%, #e040fb 100%)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        flexShrink: 0,
+      }}>
+        <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 12L12 3l9 9v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9z" />
+          <path d="M9 21V12h6v9" />
+        </svg>
+      </div>
+    );
+  }
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12L12 3l9 9v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9z" />
+      <path d="M9 21V12h6v9" />
+    </svg>
+  );
+}
+
+/* Planejador — calendário com número do dia */
+function IcPlanner() {
+  const day = new Date().getDate();
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+      <text
+        x="12" y="19"
+        textAnchor="middle"
+        fontSize="7"
+        fontWeight="700"
+        fill="currentColor"
+        stroke="none"
+        fontFamily="system-ui, sans-serif"
+      >
+        {day}
+      </text>
+    </svg>
+  );
+}
+
+/* IA — colmeia: 7 hexágonos (1 centro + 6 ao redor) */
+function IcAI() {
+  /* hexágono flat-top centrado em (cx, cy) com "raio" r */
+  const hex = (cx: number, cy: number, r: number) => {
+    const pts = Array.from({ length: 6 }, (_, i) => {
+      const a = (Math.PI / 180) * (60 * i - 30);
+      return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
+    }).join(" ");
+    return <polygon key={`${cx}-${cy}`} points={pts} fill="none" stroke="currentColor" strokeWidth={1.5} />;
+  };
+
+  const R = 4.2;   /* raio do hexágono */
+  const D = 7.5;   /* distância centro→centro */
+  const cx = 12, cy = 12;
+  const neighbors = [
+    [cx,       cy - D    ],
+    [cx + D * Math.cos(Math.PI/6), cy - D * 0.5],
+    [cx + D * Math.cos(Math.PI/6), cy + D * 0.5],
+    [cx,       cy + D    ],
+    [cx - D * Math.cos(Math.PI/6), cy + D * 0.5],
+    [cx - D * Math.cos(Math.PI/6), cy - D * 0.5],
+  ] as [number, number][];
+
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      {hex(cx, cy, R)}
+      {neighbors.map(([x, y]) => hex(x, y, R))}
+    </svg>
+  );
+}
+
+/* Equipes — duas silhuetas de pessoas */
+function IcTeams() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="7" r="3" />
+      <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      <path d="M21 21v-2a4 4 0 0 0-3-3.85" />
+    </svg>
+  );
+}
+
+/* Documentos — documento com dobra no canto superior direito */
+function IcDocs() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" />
+      <line x1="16" y1="17" x2="8" y2="17" />
+      <polyline points="10 9 9 9 8 9" />
+    </svg>
+  );
+}
+
+/* Formulário — quadrado com checkmark dentro, igual ClickUp */
+function IcForm() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="3" />
+      <path d="M8 12l3 3 5-5" />
+    </svg>
+  );
+}
+
+/* Mais — grid 3×3 de pontos preenchidos */
+function IcGrid() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor">
+      {([4, 12, 20] as number[]).flatMap((cx) =>
+        ([4, 12, 20] as number[]).map((cy) => (
+          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={1.8} />
+        ))
+      )}
+    </svg>
+  );
+}
+
+/* Convidar — silhueta com + */
+function IcInvite() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="7" r="4" />
+      <path d="M3 21v-2a4 4 0 0 1 4-4h4" />
+      <path d="M19 15v6M16 18h6" />
+    </svg>
+  );
+}
+
+/* Fazer upgrade — seta para cima com gradiente roxo */
+function IcUpgrade() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+      <defs>
+        <linearGradient id="rail-up-grad" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stopColor="#7c5cff" />
+          <stop offset="100%" stopColor="#e040fb" />
+        </linearGradient>
+      </defs>
+      <path d="M12 19V5M5 12l7-7 7 7" stroke="url(#rail-up-grad)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M5 20h14" stroke="url(#rail-up-grad)" strokeWidth={2} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/* ─── Definição dos itens do rail ─────────────────────────────────────────── */
 type RailItem = {
   href?: string;
   label: string;
-  icon: LucideIcon;
-  badge?: string;
+  renderIcon: (active: boolean) => React.ReactNode;
   onClick?: () => void;
 };
 
 const mainNav: RailItem[] = [
-  { href: "/", label: "Início", icon: Home },
-  { href: "/inbox", label: "Caixa", icon: Inbox },
-  { href: "/tasks", label: "Tarefas", icon: ListTodo },
-  { href: "/sprints", label: "Sprints", icon: Zap, badge: "S2" },
-  { href: "/ia", label: "IA", icon: Sparkles },
-  { href: "/teams", label: "Equipes", icon: Users },
-  { href: "/docs", label: "Documentos", icon: FileText },
-  { href: "/more", label: "Mais", icon: MoreHorizontal },
+  { href: "/",         label: "Início",     renderIcon: (a) => <IcHome active={a} /> },
+  { href: "/planner",  label: "Planejador", renderIcon: () => <IcPlanner /> },
+  { href: "/ia",       label: "IA",         renderIcon: () => <IcAI /> },
+  { href: "/teams",    label: "Equipes",    renderIcon: () => <IcTeams /> },
+  { href: "/docs",     label: "Documen...", renderIcon: () => <IcDocs /> },
+  { href: "/forms",    label: "Formulário", renderIcon: () => <IcForm /> },
+  { href: "/more",     label: "Mais",       renderIcon: () => <IcGrid /> },
 ];
 
-type RailButtonProps = {
-  item: RailItem;
-  active?: boolean;
-};
+/* ─── Botão do rail ───────────────────────────────────────────────────────── */
+function RailButton({ item, active }: { item: RailItem; active?: boolean }) {
+  const baseStyle: React.CSSProperties = {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    width: 56,
+    height: 54,
+    borderRadius: 10,
+    border: 0,
+    background: active
+      ? "radial-gradient(ellipse 70% 80% at 50% 35%, #7c3aed40 0%, #a21caf28 45%, transparent 72%)"
+      : "none",
+    cursor: "pointer",
+    color: active ? "#ffffff" : "#b0b0c4",
+    transition: "background .15s, color .15s",
+    textDecoration: "none",
+    flexShrink: 0,
+    position: "relative",
+  };
 
-function RailButton({ item, active }: RailButtonProps) {
-  const Icon = item.icon;
+  const labelStyle: React.CSSProperties = {
+    fontSize: 10,
+    fontWeight: 500,
+    lineHeight: 1,
+    color: active ? "#ffffff" : "#b0b0c4",
+    maxWidth: 52,
+    textAlign: "center",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  };
+
+  const onEnter = (e: React.MouseEvent<HTMLElement>) => {
+    if (!active) {
+      e.currentTarget.style.background = "#1e1e28";
+      e.currentTarget.style.color = "#d8d8e8";
+    }
+  };
+  const onLeave = (e: React.MouseEvent<HTMLElement>) => {
+    if (!active) {
+      e.currentTarget.style.background = "none";
+      e.currentTarget.style.color = "#7a7a90";
+    }
+  };
 
   const content = (
     <>
-      <div className="relative">
-        <Icon className="size-[18px]" strokeWidth={1.75} />
-        {item.badge && (
-          <span className="absolute -top-1 -right-2 grid h-3.5 min-w-3.5 place-items-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-none text-primary-foreground">
-            {item.badge}
-          </span>
-        )}
-      </div>
-      <span className="text-[10px] font-medium leading-none">{item.label}</span>
+      {item.renderIcon(!!active)}
+      <span style={labelStyle}>{item.label}</span>
     </>
-  );
-
-  const className = cn(
-    "group/rail flex h-14 w-14 flex-col items-center justify-center gap-1.5 rounded-md text-sidebar-foreground/70 transition-colors outline-none",
-    "hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
-    "focus-visible:bg-sidebar-accent focus-visible:text-sidebar-accent-foreground focus-visible:ring-2 focus-visible:ring-sidebar-ring",
-    active && "bg-sidebar-accent text-sidebar-accent-foreground",
   );
 
   if (item.href) {
     return (
-      <Link href={item.href} aria-label={item.label} className={className}>
+      <Link href={item.href} aria-label={item.label} style={baseStyle} onMouseEnter={onEnter} onMouseLeave={onLeave}>
         {content}
       </Link>
     );
   }
   return (
-    <button
-      type="button"
-      aria-label={item.label}
-      onClick={item.onClick}
-      className={className}
-    >
+    <button type="button" aria-label={item.label} onClick={item.onClick} style={baseStyle} onMouseEnter={onEnter} onMouseLeave={onLeave}>
       {content}
     </button>
   );
 }
 
-function ThemeToggleRail() {
-  const { resolvedTheme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
-  const isDark = mounted && resolvedTheme === "dark";
-
-  return (
-    <RailButton
-      item={{
-        label: isDark ? "Claro" : "Escuro",
-        icon: isDark ? Sun : Moon,
-        onClick: () => setTheme(isDark ? "light" : "dark"),
-      }}
-    />
-  );
-}
-
+/* ─── Rail principal ──────────────────────────────────────────────────────── */
 export function IconRail() {
   const pathname = usePathname();
   const isActive = (href?: string) =>
@@ -114,23 +255,28 @@ export function IconRail() {
   return (
     <nav
       aria-label="Navegação principal"
-      className="flex h-full w-[60px] shrink-0 flex-col items-center justify-between bg-sidebar py-2"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "space-between",
+        width: 60,
+        flexShrink: 0,
+        height: "100%",
+        background: "#0f0f12",
+        borderRight: "1px solid #1e1e24",
+        padding: "6px 0",
+      }}
     >
-      <div className="flex flex-col items-center gap-0.5">
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
         {mainNav.map((item) => (
-          <RailButton
-            key={item.label}
-            item={item}
-            active={isActive(item.href)}
-          />
+          <RailButton key={item.label} item={item} active={isActive(item.href)} />
         ))}
       </div>
 
-      <div className="flex flex-col items-center gap-0.5">
-        <RailButton
-          item={{ label: "Convidar", icon: UserPlus, onClick: () => {} }}
-        />
-        <ThemeToggleRail />
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+        <RailButton item={{ label: "Convidar",   renderIcon: () => <IcInvite />,  onClick: () => {} }} />
+        <RailButton item={{ label: "Fazer up...", renderIcon: () => <IcUpgrade />, onClick: () => {} }} />
       </div>
     </nav>
   );

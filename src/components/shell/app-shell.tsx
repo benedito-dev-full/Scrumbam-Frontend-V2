@@ -12,13 +12,17 @@ type AppShellProps = {
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
-      <IconRail />
-      <WorkspacePanel />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <AppTopbar />
+    <div className="flex h-screen w-full flex-col overflow-hidden bg-background text-foreground">
+      {/* Topbar cobre 100% da largura */}
+      <AppTopbar />
+
+      {/* Abaixo da topbar: rail + sidebar + conteúdo */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <IconRail />
+        <WorkspacePanel />
         <main className="min-h-0 flex-1 overflow-auto">{children}</main>
       </div>
+
       <CommandPalette />
       <ShortcutsHelpDialog />
       <NewSpaceDialog />
