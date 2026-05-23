@@ -1,0 +1,95 @@
+{
+  "hooks": {
+    "SubagentStop": [
+      {
+        "matcher": "strategist",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/update-status-after-agent.sh strategist",
+            "timeout": 30,
+            "statusMessage": "Registrando conclusao do Strategist..."
+          }
+        ]
+      },
+      {
+        "matcher": "implementer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/validate-implementer-build.sh",
+            "timeout": 180,
+            "statusMessage": "Double-check: validando build do Implementer..."
+          },
+          {
+            "type": "command",
+            "command": "./.claude/scripts/update-status-after-agent.sh implementer",
+            "timeout": 30,
+            "statusMessage": "Registrando conclusao do Implementer..."
+          }
+        ]
+      },
+      {
+        "matcher": "reviewer",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/update-status-after-agent.sh reviewer",
+            "timeout": 30,
+            "statusMessage": "Registrando conclusao do Reviewer..."
+          }
+        ]
+      },
+      {
+        "matcher": "documenter",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/update-status-after-agent.sh documenter",
+            "timeout": 30,
+            "statusMessage": "Registrando conclusao do Documenter..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/block-destructive-commands.sh",
+            "timeout": 10,
+            "statusMessage": "Verificando comandos destrutivos..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | { read file_path; if echo \"$file_path\" | grep -qE '\\.(js|jsx|ts|tsx)$'; then dir=\"$(dirname \"$file_path\")\"; while [ \"$dir\" != \"/\" ] && [ ! -f \"$dir/package.json\" ]; do dir=\"$(dirname \"$dir\")\"; done; if [ -f \"$dir/package.json\" ] && [ -f \"$dir/node_modules/.bin/prettier\" ]; then cd \"$dir\" && npx prettier --write \"$file_path\" 2>/dev/null || true; fi; fi; }",
+            "async": true,
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/scripts/session-setup.sh",
+            "timeout": 30,
+            "statusMessage": "Verificando ambiente do projeto..."
+          }
+        ]
+      }
+    ]
+  }
+}

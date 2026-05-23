@@ -39,3 +39,16 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Personal Agents — politica hibrida
+# Commitar: STATUS.md, agent-memory, settings.json, agents/, rules/, scripts/
+# Ignorar: artifacts verbose (plans, implementations, reviews)
+workspace/plans/*.md
+workspace/implementations/*.md
+workspace/reviews/*.md
+!workspace/plans/.gitkeep
+!workspace/implementations/.gitkeep
+!workspace/reviews/.gitkeep
+
+# settings.local.json e local de cada dev
+.claude/settings.local.json
