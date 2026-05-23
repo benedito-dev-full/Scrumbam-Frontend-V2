@@ -5,7 +5,7 @@ import { ChevronRight, Plus, Flag, Users, Search, PanelLeftClose } from "lucide-
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 function Divider() {
-  return <div style={{ height: 1, background: "#1e1e24", margin: "4px 0" }} />;
+  return <div style={{ height: 1, background: "#1c1c1f", margin: "4px 0" }} />;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -31,7 +31,7 @@ function CollapsibleRow({ label }: { label: string }) {
         border: 0, background: "none", cursor: "pointer",
         fontSize: 13, fontWeight: 600, color: "#c4c4cc", textAlign: "left",
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = "#16161f"; }}
+      onMouseEnter={e => { e.currentTarget.style.background = "#191919"; }}
       onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
     >
       <ChevronRight
@@ -49,7 +49,7 @@ export function PlannerPanel() {
       {/* header */}
       <header style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 12px", height: 44, borderBottom: "1px solid #1e1e24", flexShrink: 0,
+        padding: "0 12px", height: 44, borderBottom: "1px solid #1c1c1f", flexShrink: 0,
       }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: "#e6e6ea" }}>Planejador</span>
         <div style={{ display: "flex", gap: 2 }}>
@@ -59,7 +59,7 @@ export function PlannerPanel() {
               background: "none", cursor: "pointer", color: "#7a7a90",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#1e1e28"; e.currentTarget.style.color = "#c4c4cc"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#1e1e20"; e.currentTarget.style.color = "#c4c4cc"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#7a7a90"; }}
             >
               <Icon size={14} strokeWidth={1.7} />
@@ -76,7 +76,7 @@ export function PlannerPanel() {
             <SectionLabel>Prioridades</SectionLabel>
             <div style={{
               margin: "6px 12px 8px", padding: "18px 12px", borderRadius: 8,
-              border: "1px dashed #2a2a35", textAlign: "center",
+              border: "1px dashed #2a2a2a", textAlign: "center",
             }}>
               <Flag size={16} style={{ color: "#ef4444", margin: "0 auto 8px", display: "block" }} />
               <p style={{ fontSize: 12, color: "#7a7a90", lineHeight: 1.6 }}>
@@ -89,7 +89,7 @@ export function PlannerPanel() {
               padding: "5px 8px", borderRadius: 6, border: 0,
               background: "none", cursor: "pointer", color: "#7a7a90", fontSize: 13,
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#1a1a22"; e.currentTarget.style.color = "#c4c4cc"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#222222"; e.currentTarget.style.color = "#c4c4cc"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#7a7a90"; }}
             >
               <Plus size={13} strokeWidth={2} />
@@ -105,7 +105,7 @@ export function PlannerPanel() {
             <div style={{
               display: "flex", alignItems: "center", gap: 6,
               margin: "6px 12px 0", padding: "7px 10px",
-              borderRadius: 6, border: "1px solid #26262d", background: "#0c0c0f",
+              borderRadius: 6, border: "1px solid rgba(255,255,255,0.10)", background: "#111111",
             }}>
               <Users size={13} style={{ color: "#5a5a64", flexShrink: 0 }} />
               <span style={{ fontSize: 12, color: "#5a5a64" }}>Pesquisar pessoas...</span>
@@ -133,7 +133,7 @@ export function PlannerPanel() {
             <SectionLabel>Lista de pendências</SectionLabel>
             <div style={{
               margin: "6px 12px 0", padding: "16px 12px", borderRadius: 8,
-              background: "#13131a", textAlign: "center",
+              background: "#1a1a1a", textAlign: "center",
             }}>
               <p style={{ fontSize: 12, color: "#7a7a90", lineHeight: 1.6 }}>
                 Nenhuma tarefa corresponde a esses filtros

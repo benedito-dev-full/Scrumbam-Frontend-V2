@@ -214,7 +214,7 @@ function RailButton({ item, active }: { item: RailItem; active?: boolean }) {
 
   const onEnter = (e: React.MouseEvent<HTMLElement>) => {
     if (!active) {
-      e.currentTarget.style.background = "#1e1e28";
+      e.currentTarget.style.background = "#1e1e20";
       e.currentTarget.style.color = "#d8d8e8";
     }
   };
@@ -263,8 +263,8 @@ export function IconRail() {
         width: 60,
         flexShrink: 0,
         height: "100%",
-        background: "#0f0f12",
-        borderRight: "1px solid #1e1e24",
+        background: "#111111",
+        borderRight: "1px solid rgba(255,255,255,0.07)",
         padding: "6px 0",
       }}
     >

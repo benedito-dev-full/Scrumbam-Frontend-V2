@@ -246,7 +246,7 @@ function EntidadeNode({
               top: 0,
               bottom: 0,
               width: 1,
-              background: "#2a2a35",
+              background: "#2a2a2a",
               borderRadius: 1,
               pointerEvents: "none",
             }}

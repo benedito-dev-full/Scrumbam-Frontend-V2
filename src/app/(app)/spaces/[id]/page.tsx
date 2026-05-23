@@ -281,7 +281,7 @@ export default function SpacePage({
   );
 
   return (
-    <div className="flex h-full flex-col overflow-hidden" style={{ background: "#0f0f12" }}>
+    <div className="flex h-full flex-col overflow-hidden" style={{ background: "#111111" }}>
       {/* Page header */}
       <PageHeader
         nome={entidade.nome}
@@ -299,7 +299,7 @@ export default function SpacePage({
       {/* Conteúdo scrollável */}
       <div
         className="flex-1 overflow-y-auto overflow-x-auto"
-        style={{ background: "#0f0f12" }}
+        style={{ background: "#111111" }}
       >
         <div style={{ minWidth: 860, padding: "0 22px 60px" }}>
           {grupos.length === 0 ? (
@@ -350,7 +350,7 @@ function PageHeader({
   return (
     <header
       className="flex h-11 shrink-0 items-center justify-between gap-4 px-5"
-      style={{ borderBottom: "1px solid #26262d", background: "#0f0f12" }}
+      style={{ borderBottom: "1px solid #26262d", background: "#111111" }}
     >
       <div className="flex min-w-0 items-center gap-1.5">
         <SpaceChip iniciais={iniciais} cor={cor} iconName={iconName} size="sm" />
@@ -446,7 +446,7 @@ function Toolbar({ tarefasCount }: { tarefasCount: number }) {
         padding: "0 22px",
         height: 44,
         borderBottom: "1px solid #26262d",
-        background: "#0f0f12",
+        background: "#111111",
         flexShrink: 0,
       }}
     >

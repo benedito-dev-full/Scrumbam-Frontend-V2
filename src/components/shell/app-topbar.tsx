@@ -21,7 +21,7 @@ import {
 import { useCommandPaletteStore } from "@/lib/stores/command-palette";
 
 /* ─── Topbar global — idêntica ao ClickUp ─────────────────────────────────
- * bg: #141418  (levemente mais claro que o fundo #0f0f12)
+ * bg: #1a1a1a  (levemente mais claro que o fundo #0d0d0f)
  * altura: 38px compacto
  * esquerda: logo F + "Fortalshop" + chevron + ícone calendário
  * centro: search bar com Pesquisar + Ctrl K + ícone sparkles colorido
@@ -38,8 +38,8 @@ export function AppTopbar() {
         alignItems: "center",
         height: 40,
         flexShrink: 0,
-        background: "#141418",
-        borderBottom: "1px solid #1e1e24",
+        background: "#1a1a1a",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
         padding: "0 10px 0 8px",
         gap: 8,
         position: "relative",
@@ -66,8 +66,8 @@ export function AppTopbar() {
             width: "100%",
             maxWidth: 480,
             height: 28,
-            background: "#0f0f12",
-            border: "1px solid #26262d",
+            background: "#0d0d0f",
+            border: "1px solid rgba(255,255,255,0.10)",
             borderRadius: 8,
             padding: "0 10px",
             cursor: "pointer",
@@ -79,8 +79,8 @@ export function AppTopbar() {
             e.currentTarget.style.background = "#121216";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "#26262d";
-            e.currentTarget.style.background = "#0f0f12";
+            e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)";
+            e.currentTarget.style.background = "#0d0d0f";
           }}
         >
           <Search size={14} strokeWidth={1.8} style={{ color: "#5a5a64", flexShrink: 0 }} />
@@ -294,7 +294,7 @@ function TopbarIconBtn({
         transition: "background .12s, color .12s",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = "#1e1e26";
+        e.currentTarget.style.background = "#1e1e20";
         e.currentTarget.style.color = "#e6e6ea";
       }}
       onMouseLeave={(e) => {

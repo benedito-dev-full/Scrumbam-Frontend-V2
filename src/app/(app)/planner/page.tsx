@@ -68,12 +68,12 @@ function WeekCalendar() {
   };
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#0f0f12" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#111111" }}>
 
       {/* toolbar do calendário */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 16px", height: 44, borderBottom: "1px solid #1e1e24", flexShrink: 0,
+        padding: "0 16px", height: 44, borderBottom: "1px solid #1c1c1f", flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button type="button" onClick={prevWeek} style={navBtnStyle}>
@@ -91,7 +91,7 @@ function WeekCalendar() {
           {/* Anotações com IA */}
           <button type="button" style={{
             display: "flex", alignItems: "center", gap: 6, padding: "4px 10px",
-            borderRadius: 6, border: "1px solid #26262d", background: "none",
+            borderRadius: 6, border: "1px solid rgba(255,255,255,0.10)", background: "none",
             cursor: "pointer", color: "#b0b0c4", fontSize: 12,
           }}>
             <Sparkles size={13} strokeWidth={1.7} style={{ color: "#a78bfa" }} />
@@ -104,7 +104,7 @@ function WeekCalendar() {
           {/* seletor Semana */}
           <button type="button" style={{
             display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
-            borderRadius: 6, border: "1px solid #26262d", background: "none",
+            borderRadius: 6, border: "1px solid rgba(255,255,255,0.10)", background: "none",
             cursor: "pointer", color: "#b0b0c4", fontSize: 12,
           }}>
             Semana
@@ -120,15 +120,15 @@ function WeekCalendar() {
         <div style={{
           display: "grid",
           gridTemplateColumns: "60px repeat(7, 1fr)",
-          borderBottom: "1px solid #1e1e24",
+          borderBottom: "1px solid #1c1c1f",
           flexShrink: 0,
-          background: "#0f0f12",
+          background: "#111111",
           position: "sticky", top: 0, zIndex: 2,
         }}>
           {/* coluna GMT */}
           <div style={{
             padding: "8px 0", textAlign: "center",
-            fontSize: 10, color: "#5a5a64", borderRight: "1px solid #1e1e24",
+            fontSize: 10, color: "#5a5a64", borderRight: "1px solid #1c1c1f",
           }}>
             GMT-3
           </div>
@@ -137,8 +137,8 @@ function WeekCalendar() {
             return (
               <div key={i} style={{
                 padding: "6px 0", textAlign: "center",
-                borderRight: i < 6 ? "1px solid #1e1e24" : "none",
-                background: today ? "#13131a" : "transparent",
+                borderRight: i < 6 ? "1px solid #1c1c1f" : "none",
+                background: today ? "#1a1a1a" : "transparent",
               }}>
                 <div style={{ fontSize: 11, color: "#7a7a90", marginBottom: 2 }}>
                   {WEEK_DAYS[date.getDay()]}
@@ -164,14 +164,14 @@ function WeekCalendar() {
               display: "grid",
               gridTemplateColumns: "60px repeat(7, 1fr)",
               height: hi < 2 ? 28 : 60,
-              borderBottom: "1px solid #1e1e24",
+              borderBottom: "1px solid #1c1c1f",
             }}>
               {/* label da hora */}
               <div style={{
                 display: "flex", alignItems: "flex-start", justifyContent: "flex-end",
                 paddingRight: 8, paddingTop: 6,
                 fontSize: 10, color: "#5a5a64",
-                borderRight: "1px solid #1e1e24", flexShrink: 0,
+                borderRight: "1px solid #1c1c1f", flexShrink: 0,
               }}>
                 {hi === 0 ? "O dia" : hi === 1 ? "todo" : hour}
               </div>
@@ -181,12 +181,12 @@ function WeekCalendar() {
                 const today = isToday(weekDates[di]);
                 return (
                   <div key={di} style={{
-                    borderRight: di < 6 ? "1px solid #1e1e24" : "none",
+                    borderRight: di < 6 ? "1px solid #1c1c1f" : "none",
                     background: today ? "#11111a" : "transparent",
                     cursor: "pointer",
                     transition: "background .1s",
                   }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#16161f"; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#1e1e1e"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = today ? "#11111a" : "transparent"; }}
                   />
                 );
@@ -222,13 +222,13 @@ function WeekCalendar() {
 
       {/* barra de busca no rodapé */}
       <div style={{
-        borderTop: "1px solid #1e1e24", padding: "10px 16px", flexShrink: 0,
+        borderTop: "1px solid #1c1c1f", padding: "10px 16px", flexShrink: 0,
         display: "flex", justifyContent: "center",
       }}>
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           width: "100%", maxWidth: 520, height: 34,
-          background: "#0c0c0f", border: "1px solid #26262d",
+          background: "#111111", border: "1px solid rgba(255,255,255,0.10)",
           borderRadius: 8, padding: "0 12px",
         }}>
           <Search size={13} style={{ color: "#5a5a64", flexShrink: 0 }} />
@@ -245,7 +245,7 @@ function WeekCalendar() {
 }
 
 const navBtnStyle: React.CSSProperties = {
-  width: 28, height: 28, borderRadius: 6, border: "1px solid #26262d",
+  width: 28, height: 28, borderRadius: 6, border: "1px solid rgba(255,255,255,0.10)",
   background: "none", cursor: "pointer", color: "#b0b0c4",
   display: "flex", alignItems: "center", justifyContent: "center",
 };
@@ -257,7 +257,7 @@ function ToolbarIconBtn({ children }: { children: React.ReactNode }) {
       background: "none", cursor: "pointer", color: "#7a7a90",
       display: "flex", alignItems: "center", justifyContent: "center",
     }}
-      onMouseEnter={e => { e.currentTarget.style.background = "#1e1e28"; e.currentTarget.style.color = "#c4c4cc"; }}
+      onMouseEnter={e => { e.currentTarget.style.background = "#222222"; e.currentTarget.style.color = "#c4c4cc"; }}
       onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#7a7a90"; }}
     >
       {children}

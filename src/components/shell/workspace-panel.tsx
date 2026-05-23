@@ -16,6 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { SpaceTree } from "./space-tree";
 import { PlannerPanel } from "./planner-panel";
+import { FormsPanel } from "./forms-panel";
 
 /* ─── Ícones SVG custom — pixel-perfect ClickUp ──────────────────────────── */
 
@@ -302,6 +303,22 @@ export function WorkspacePanel() {
         <PlannerPanel />
       </aside>
     );
+  }
+
+  if (pathname.startsWith("/forms")) {
+    return (
+      <aside aria-label="Painel de formulários" className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar border-r border-border">
+        <FormsPanel />
+      </aside>
+    );
+  }
+
+  if (pathname.startsWith("/ia")) {
+    return null;
+  }
+
+  if (pathname.startsWith("/teams")) {
+    return null;
   }
 
   return (
