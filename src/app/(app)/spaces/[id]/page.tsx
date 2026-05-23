@@ -1,1101 +1,493 @@
 "use client";
 
-import React, { use, useState } from "react";
+import { use, useState } from "react";
 import {
-  ChevronDown,
-  ChevronRight,
-  Star,
-  Share2,
-  Bot,
-  Sparkles,
+  Star, Share2, Bot, Sparkles, Plus, Filter,
+  RefreshCw, LayoutGrid, Maximize2, Settings2,
 } from "lucide-react";
-
-import { ViewSwitcher } from "@/components/shell/view-switcher";
 import { SpaceChip } from "@/components/shell/space-chip";
-import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useEntidadesStore } from "@/lib/stores/entidades";
-import { mockMembros } from "@/lib/mocks/entidades";
-import {
-  agruparPorStatus,
-  diasUntil,
-  tarefasPorEspaco,
-} from "@/lib/mocks/tarefas";
-import {
-  type Prioridade,
-  type StatusTarefa,
-  type Tarefa,
-} from "@/lib/types/tarefa";
+import { useFilhosDe } from "@/lib/stores/entidades";
 import { isEspaco } from "@/lib/types/entidade";
-import { cn } from "@/lib/utils";
+import { mockEntidades } from "@/lib/mocks/entidades";
+import Link from "next/link";
 
-/* ─── Ícones SVG customizados (idênticos ao HTML de referência) ─────────── */
-
-function IcProgress({ size = 13 }: { size?: number }) {
+/* ─── Ícones ──────────────────────────────────────────────────────────────── */
+function IcList() {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.2" opacity="0.4" />
-      <path d="M12 3a9 9 0 0 1 9 9" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
-      <circle cx="12" cy="12" r="3.2" fill="currentColor" />
+    <svg width={13} height={13} viewBox="0 0 18 18" fill="none">
+      <path d="M2 5 L4.5 7.5 L7 3.5" stroke="#7c6ff7" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 11 L4.5 13.5 L7 9.5" stroke="#7c6ff7" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="9" y1="5.5" x2="16" y2="5.5" stroke="#7c6ff7" strokeWidth={1.6} strokeLinecap="round" />
+      <line x1="9" y1="11.5" x2="16" y2="11.5" stroke="#7c6ff7" strokeWidth={1.6} strokeLinecap="round" />
     </svg>
   );
 }
 
-function IcPending({ size = 13 }: { size?: number }) {
+function IcFolder({ color = "#9ca3af" }: { color?: string }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" strokeDasharray="3 2.6" />
+    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
 
-function IcBlocked({ size = 13 }: { size?: number }) {
+function IcDoc() {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.2" />
-      <path d="M8 12h8" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6M16 13H8M16 17H8" />
     </svg>
   );
 }
 
-function IcLate({ size = 13 }: { size?: number }) {
+function IcCaret() {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.2" />
-      <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IcDone({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2.2" />
-      <path d="m8.5 12.5 2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function IcGitFork({ size = 11 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="18" r="2" /><circle cx="6" cy="6" r="2" /><circle cx="18" cy="6" r="2" />
-      <path d="M6 8v2a4 4 0 0 0 4 4h4a4 4 0 0 0 4-4V8" /><path d="M12 12v4" />
-    </svg>
-  );
-}
-
-function IcFilter({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 5h18l-7 8v6l-4-2v-4L3 5z" />
-    </svg>
-  );
-}
-
-function IcCheck({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="9" /><path d="m8.5 12.5 2.5 2.5 4.5-5" />
-    </svg>
-  );
-}
-
-function IcUser({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="8" r="4" /><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
-    </svg>
-  );
-}
-
-function IcSearch({ size = 15 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
-    </svg>
-  );
-}
-
-function IcSettings({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="3" />
-      <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9c.2.6.8 1 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
-    </svg>
-  );
-}
-
-function IcPlus({ size = 13 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 5v14M5 12h14" />
-    </svg>
-  );
-}
-
-function IcCaret({ size = 12 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
       <path d="m6 9 6 6 6-6" />
     </svg>
   );
 }
 
-function IcCaretR({ size = 12 }: { size?: number }) {
+function IcMenu() {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="m9 6 6 6-6 6" />
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
     </svg>
   );
 }
 
-function IcUserPlus({ size = 14 }: { size?: number }) {
+function IcVoice() {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="10" cy="8" r="4" /><path d="M2 21c1.3-3.5 4-5.5 8-5.5" /><path d="M18 14v6M15 17h6" />
+    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
     </svg>
   );
 }
 
-function IcCalPlus({ size = 14 }: { size?: number }) {
+function IcBookmark() {
   return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4M12 14v4M10 16h4" />
+    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
 
-function IcFlag({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M5 21V4" /><path d="M5 4h13l-2 4 2 4H5" />
-    </svg>
-  );
-}
+/* ─── Tabs ────────────────────────────────────────────────────────────────── */
+type TabId = "overview" | "lista" | "quadro" | "calendario" | "gantt" | "tabela";
 
-function IcChat({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.8A8 8 0 1 1 21 12z" />
-    </svg>
-  );
-}
+const TABS: { id: TabId; label: string; icon?: React.ReactNode }[] = [
+  { id: "overview",   label: "Overview" },
+  { id: "lista",      label: "Lista",      icon: <svg width={12} height={12} viewBox="0 0 18 18" fill="none"><path d="M2 4.5 L4.5 7 L7 3" stroke="#e879f9" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"/><line x1="9" y1="5" x2="16" y2="5" stroke="#e879f9" strokeWidth={1.6} strokeLinecap="round"/><path d="M2 10.5 L4.5 13 L7 9" stroke="#e879f9" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"/><line x1="9" y1="11" x2="16" y2="11" stroke="#e879f9" strokeWidth={1.6} strokeLinecap="round"/></svg> },
+  { id: "quadro",     label: "Quadro",     icon: <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#60a5fa" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="15" rx="1"/></svg> },
+  { id: "calendario", label: "Calendário", icon: <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg> },
+  { id: "gantt",      label: "Gantt",      icon: <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="14" y2="6"/><line x1="7" y1="12" x2="20" y2="12"/><line x1="3" y1="18" x2="16" y2="18"/></svg> },
+  { id: "tabela",     label: "Tabela",     icon: <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg> },
+];
 
-function IcLayers({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 3 2 8l10 5 10-5-10-5z" /><path d="M2 16l10 5 10-5" /><path d="M2 12l10 5 10-5" />
-    </svg>
-  );
-}
-
-function IcColumns({ size = 14 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16M15 4v16" />
-    </svg>
-  );
-}
-
-/* ─── Metadados de status (alinhados com o HTML de referência) ───────────── */
-type StatusConfig = {
-  label: string;
-  iconColor: string;
-  pillClass: string;
-  Icon: (p: { size?: number }) => React.ReactElement;
-  order: number;
-};
-
-const STATUS_CONFIG: Record<StatusTarefa, StatusConfig> = {
-  "em-progresso": {
-    label: "EM PROGRESSO",
-    iconColor: "#7c5cff",
-    pillClass: "pill-progress",
-    Icon: IcProgress,
-    order: 1,
-  },
-  pendente: {
-    label: "PENDENTE",
-    iconColor: "#8a8a93",
-    pillClass: "pill-pending",
-    Icon: IcPending,
-    order: 2,
-  },
-  bloqueado: {
-    label: "BLOQUEADO",
-    iconColor: "#ef4444",
-    pillClass: "pill-blocked",
-    Icon: IcBlocked,
-    order: 3,
-  },
-  atrasado: {
-    label: "ATRASADO",
-    iconColor: "#f59e0b",
-    pillClass: "pill-late",
-    Icon: IcLate,
-    order: 4,
-  },
-  concluido: {
-    label: "CONCLUÍDO",
-    iconColor: "#10b981",
-    pillClass: "pill-done",
-    Icon: IcDone,
-    order: 5,
-  },
-};
-
-const PRIO_CONFIG: Record<
-  NonNullable<Prioridade>,
-  { label: string; color: string }
-> = {
-  urgente: { label: "Urgente", color: "#ef4444" },
-  alta:    { label: "Alta",    color: "#f59e0b" },
-  media:   { label: "Média",   color: "#60a5fa" },
-  baixa:   { label: "Baixa",   color: "#71717a" },
-};
-
-/* ─── Página ─────────────────────────────────────────────────────────────── */
-export default function SpacePage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+/* ─── Página ──────────────────────────────────────────────────────────────── */
+export default function SpacePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const entidade = useEntidadesStore(
-    (s) => s.entidades.find((e) => e.id === id) ?? null,
-  );
+  const [activeTab, setActiveTab] = useState<TabId>("overview");
+
+  const entidade = useEntidadesStore((s) => s.entidades.find((e) => e.id === id) ?? null);
+  const filhos = useFilhosDe(id);
 
   if (!entidade || !isEspaco(entidade)) {
-    return (
-      <div className="grid h-full place-items-center p-8 text-sm" style={{ color: "#7a7a85" }}>
-        Espaço não encontrado.
-      </div>
-    );
+    return <div style={{ color: "#7a7a85", padding: 40 }}>Espaço não encontrado.</div>;
   }
 
-  const tarefas = tarefasPorEspaco(id);
-  const grupos = agruparPorStatus(tarefas).sort(
-    (a, b) => STATUS_CONFIG[a.status].order - STATUS_CONFIG[b.status].order,
+  const pastas = filhos.filter((f) => f.idClasse === "pasta");
+  const listas = filhos.filter((f) => f.idClasse === "backlog" || f.idClasse === "board");
+  const docs   = filhos.filter((f) => f.idClasse === "doc");
+
+  /* recent — todos os filhos diretos + filhos das pastas */
+  const filhosDasPastas = pastas.flatMap((p) =>
+    mockEntidades.filter((e) => e.idPai === p.id)
   );
+  const recentes = [...filhos, ...filhosDasPastas].slice(0, 6);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden" style={{ background: "#111111" }}>
-      {/* Page header */}
-      <PageHeader
-        nome={entidade.nome}
-        iniciais={entidade.meta.iniciais}
-        cor={entidade.meta.cor}
-        iconName={entidade.meta.iconName}
-      />
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#111111", overflow: "hidden" }}>
 
-      {/* View tabs */}
-      <ViewSwitcher defaultValue="list" />
-
-      {/* Toolbar */}
-      <Toolbar tarefasCount={tarefas.length} />
-
-      {/* Conteúdo scrollável */}
-      <div
-        className="flex-1 overflow-y-auto overflow-x-auto"
-        style={{ background: "#111111" }}
-      >
-        <div style={{ minWidth: 860, padding: "0 22px 60px" }}>
-          {grupos.length === 0 ? (
-            <EmptyState />
-          ) : (
-            grupos.map((g) => (
-              <GroupBlock key={g.status} status={g.status} tarefas={g.tarefas} />
-            ))
-          )}
-          {/* novo status */}
-          <button
-            type="button"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 7,
-              color: "#5a5a64",
-              padding: "14px 4px 0 4px",
-              fontSize: 13,
-              cursor: "pointer",
-              background: "none",
-              border: 0,
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#e6e6ea")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#5a5a64")}
+      {/* ── Topbar do espaço ── */}
+      <header style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 16px", height: 44, flexShrink: 0,
+        borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
+      }}>
+        {/* esquerda: chip + nome + estrela + menu */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <SpaceChip iniciais={entidade.meta.iniciais} cor={entidade.meta.cor} iconName={entidade.meta.iconName} size="sm" />
+          <button type="button" style={{ display: "flex", alignItems: "center", gap: 4, border: 0, background: "none", cursor: "pointer", color: "#e4e4e4", fontSize: 14, fontWeight: 600 }}>
+            {entidade.nome}
+            <IcCaret />
+          </button>
+          <button type="button" style={{ display: "grid", width: 24, height: 24, placeItems: "center", borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "#606068" }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#f59e0b"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "#606068"; }}
           >
-            <IcPlus size={13} />
-            Novo status
+            <Star size={14} />
+          </button>
+          <button type="button" style={{ display: "grid", width: 24, height: 24, placeItems: "center", borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "#606068" }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#c4c4c4"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "#606068"; }}
+          >
+            <IcMenu />
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
 
-/* ─── Page header ─────────────────────────────────────────────────────────── */
-function PageHeader({
-  nome,
-  iniciais,
-  cor,
-  iconName,
-}: {
-  nome: string;
-  iniciais: string;
-  cor: string;
-  iconName?: string | null;
-}) {
-  return (
-    <header
-      className="flex h-11 shrink-0 items-center justify-between gap-4 px-5"
-      style={{ borderBottom: "1px solid #26262d", background: "#111111" }}
-    >
-      <div className="flex min-w-0 items-center gap-1.5">
-        <SpaceChip iniciais={iniciais} cor={cor} iconName={iconName} size="sm" />
-        <h1 className="truncate text-sm font-semibold" style={{ color: "#e6e6ea" }}>
-          {nome}
-        </h1>
-        <button
-          type="button"
-          aria-label="Mudar espaço"
-          style={{
-            display: "grid",
-            width: 20,
-            height: 20,
-            placeItems: "center",
-            borderRadius: 4,
-            color: "#7a7a85",
-            background: "none",
-            border: 0,
+        {/* direita: ações */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <TopBtn icon={<IcVoice />} />
+          <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)", margin: "0 4px" }} />
+          <TopBtn icon={<Bot size={14} />} label="Agentes" />
+          <TopBtn icon={<Sparkles size={14} />} />
+          <TopBtn icon={<span style={{ fontSize: 13 }}>✦</span>} label="Pergunte à IA" />
+          <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)", margin: "0 4px" }} />
+          <button type="button" style={{
+            display: "flex", alignItems: "center", gap: 5,
+            height: 28, padding: "0 12px", borderRadius: 6,
+            border: "1px solid rgba(255,255,255,0.12)", background: "none",
+            cursor: "pointer", color: "#c4c4c4", fontSize: 12,
           }}
-        >
-          <IcCaret size={12} />
-        </button>
-        <button
-          type="button"
-          aria-label="Favoritar"
-          style={{
-            display: "grid",
-            width: 24,
-            height: 24,
-            placeItems: "center",
-            borderRadius: 4,
-            color: "#7a7a85",
-            background: "none",
-            border: 0,
-          }}
-        >
-          <Star className="size-3.5" />
-        </button>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <TbBtn icon={<Bot className="size-3.5" />} label="Agentes" />
-        <TbBtn icon={<Sparkles className="size-3.5" />} label="Pergunte à IA" />
-        <div style={{ width: 1, height: 16, background: "#26262d", margin: "0 4px" }} />
-        <TbBtn icon={<Share2 className="size-3.5" />} label="Compartilhar" bordered />
-      </div>
-    </header>
-  );
-}
-
-function TbBtn({
-  icon,
-  label,
-  bordered,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  bordered?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        height: 28,
-        padding: "0 10px",
-        borderRadius: 6,
-        border: bordered ? "1px solid #2a2a32" : "none",
-        background: bordered ? "#1c1c22" : "none",
-        color: "#b6b6bf",
-        fontSize: 13,
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.color = "#e6e6ea")}
-      onMouseLeave={(e) => (e.currentTarget.style.color = "#b6b6bf")}
-    >
-      {icon}
-      {label}
-    </button>
-  );
-}
-
-/* ─── Toolbar ────────────────────────────────────────────────────────────── */
-function Toolbar({ tarefasCount }: { tarefasCount: number }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 12,
-        padding: "0 22px",
-        height: 44,
-        borderBottom: "1px solid #26262d",
-        background: "#111111",
-        flexShrink: 0,
-      }}
-    >
-      {/* esquerda — tabs com estilo do HTML de referência */}
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <TabBtn active icon={<IcLayers size={14} />} label="Grupo: Status" />
-        <TabBtn icon={<IcGitFork size={14} />} label="Subtarefas" />
-        <TabBtn icon={<IcColumns size={14} />} label="Colunas" />
-      </div>
-      {/* direita */}
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <SmallBtn icon={<IcFilter size={13} />} label="Filtro" />
-        <SmallBtn icon={<IcCheck size={13} />} label="Fechado" />
-        <SmallBtn icon={<IcUser size={13} />} label="Responsável" />
-        <button
-          type="button"
-          style={{
-            width: 28,
-            height: 28,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 6,
-            color: "#b6b6bf",
-            background: "none",
-            border: 0,
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "#17171c"; e.currentTarget.style.color = "#e6e6ea"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#b6b6bf"; }}
-        >
-          <IcSearch size={15} />
-        </button>
-        <span style={{ color: "#7a7a85", fontSize: 12, padding: "0 4px" }}>
-          {tarefasCount} tarefas
-        </span>
-        {/* split button Add Tarefa */}
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "stretch",
-            height: 28,
-            border: "1px solid #2a2a32",
-            background: "#1c1c22",
-            borderRadius: 6,
-            overflow: "hidden",
-          }}
-        >
-          <button
-            type="button"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "0 12px",
-              fontSize: 13,
-              color: "#e6e6ea",
-              background: "none",
-              border: 0,
-              cursor: "pointer",
-            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
           >
-            Add Tarefa
-          </button>
-          <div style={{ width: 1, background: "#2a2a32" }} />
-          <button
-            type="button"
-            style={{
-              width: 26,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#b6b6bf",
-              background: "none",
-              border: 0,
-              cursor: "pointer",
-            }}
-          >
-            <IcCaret size={11} />
+            <Share2 size={13} />
+            Compartilhar
           </button>
         </div>
-      </div>
-    </div>
-  );
-}
+      </header>
 
-function TabBtn({
-  icon,
-  label,
-  active,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        height: 28,
-        padding: "0 10px",
-        borderRadius: 6,
-        background: active ? "rgba(124,92,255,0.16)" : "none",
-        border: 0,
-        color: active ? "#cfc1ff" : "#b6b6bf",
-        fontSize: 13,
-        fontWeight: 500,
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => {
-        if (!active) { e.currentTarget.style.background = "#17171c"; e.currentTarget.style.color = "#e6e6ea"; }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#b6b6bf"; }
-      }}
-    >
-      {icon} {label}
-    </button>
-  );
-}
-
-function SmallBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <button
-      type="button"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        height: 28,
-        padding: "0 10px",
-        border: "1px solid #2a2a32",
-        background: "#1c1c22",
-        borderRadius: 6,
-        color: "#b6b6bf",
-        fontSize: 13,
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "#e6e6ea"; e.currentTarget.style.borderColor = "#34343d"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = "#b6b6bf"; e.currentTarget.style.borderColor = "#2a2a32"; }}
-    >
-      {icon} {label}
-    </button>
-  );
-}
-
-/* ─── Grupo de status ─────────────────────────────────────────────────────── */
-function GroupBlock({
-  status,
-  tarefas,
-}: {
-  status: StatusTarefa;
-  tarefas: Tarefa[];
-}) {
-  const [open, setOpen] = useState(true);
-  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
-  const cfg = STATUS_CONFIG[status];
-  const StatusIcon = cfg.Icon;
-
-  function toggleRow(id: string) {
-    setExpandedRows((s) => ({ ...s, [id]: !s[id] }));
-  }
-
-  return (
-    <div style={{ marginBottom: 8, marginTop: 16 }}>
-      {/* cabeçalho do grupo */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "6px 0 8px",
+      {/* ── Tabs ── */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 2,
+        padding: "0 16px", height: 38, flexShrink: 0,
+        borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
+        overflowX: "auto",
+      }}>
+        {/* Adicionar canal */}
+        <button type="button" style={{
+          display: "flex", alignItems: "center", gap: 5, height: 36, padding: "0 10px",
+          border: 0, background: "none", cursor: "pointer", color: "#606068", fontSize: 12, whiteSpace: "nowrap",
         }}
-      >
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          style={{
-            width: 18,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#7a7a85",
-            background: "none",
-            border: 0,
-            cursor: "pointer",
-            transform: open ? "rotate(0deg)" : "rotate(-90deg)",
-            transition: "transform .15s",
-          }}
+          onMouseEnter={e => { e.currentTarget.style.color = "#c4c4c4"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "#606068"; }}
         >
-          <IcCaret size={12} />
+          <Plus size={12} />
+          Adicionar canal
         </button>
 
-        {/* pill do grupo */}
-        <GroupPill status={status} />
+        <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.07)", margin: "0 2px" }} />
 
-        <span style={{ color: "#7a7a85", fontSize: 12, marginLeft: 2 }}>
-          {tarefas.length}
-        </span>
+        {TABS.map((tab) => (
+          <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} style={{
+            display: "flex", alignItems: "center", gap: 5,
+            height: 36, padding: "0 10px", borderRadius: 0,
+            border: 0, background: "none", cursor: "pointer",
+            color: activeTab === tab.id ? "#e4e4e4" : "#888892",
+            fontSize: 12, fontWeight: activeTab === tab.id ? 600 : 400,
+            borderBottom: activeTab === tab.id ? "2px solid #7c3aed" : "2px solid transparent",
+            whiteSpace: "nowrap",
+          }}
+            onMouseEnter={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "#c4c4c4"; }}
+            onMouseLeave={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "#888892"; }}
+          >
+            {tab.icon && <span>{tab.icon}</span>}
+            {tab.label}
+          </button>
+        ))}
+
+        <button type="button" style={{
+          display: "flex", alignItems: "center", gap: 4, height: 36, padding: "0 10px",
+          border: 0, background: "none", cursor: "pointer", color: "#606068", fontSize: 12, whiteSpace: "nowrap",
+        }}
+          onMouseEnter={e => { e.currentTarget.style.color = "#c4c4c4"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "#606068"; }}
+        >
+          <Plus size={12} />
+          Visualização
+        </button>
       </div>
 
-      {open && (
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            tableLayout: "fixed",
-          }}
-        >
-          <colgroup>
-            <col style={{ width: "auto" }} />
-            <col style={{ width: 170 }} />
-            <col style={{ width: 200 }} />
-            <col style={{ width: 130 }} />
-            <col style={{ width: 200 }} />
-            <col style={{ width: 48 }} />
-            <col style={{ width: 36 }} />
-          </colgroup>
-          <thead>
-            <HeadRow />
-          </thead>
-          <tbody>
-            {tarefas.map((t) => (
-              <TaskRow
-                key={t.id}
-                tarefa={t}
-                status={status}
-                expanded={!!expandedRows[t.id]}
-                onToggle={() => toggleRow(t.id)}
-              />
-            ))}
-            <AddRow />
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
+      {/* ── Conteúdo scrollável ── */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 40px" }}>
 
-/* pill do grupo — cores exatas do HTML de referência */
-const GROUP_PILL_STYLE: Record<StatusTarefa, { bg: string; color: string }> = {
-  "em-progresso": { bg: "#7c5cff",   color: "#fff" },
-  pendente:       { bg: "#2a2a31",   color: "#d4d4dc" },
-  bloqueado:      { bg: "#3d1212",   color: "#fca5a5" },
-  atrasado:       { bg: "#3a2800",   color: "#fcd34d" },
-  concluido:      { bg: "#0d2e1e",   color: "#6ee7b7" },
-};
+        {/* Toolbar */}
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          height: 44, borderBottom: "1px solid rgba(255,255,255,0.05)",
+        }}>
+          <button type="button" style={{ display: "flex", alignItems: "center", gap: 5, height: 28, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.09)", background: "none", cursor: "pointer", color: "#888892", fontSize: 12 }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+          >
+            <Filter size={11} />
+            Filtros
+          </button>
 
-function GroupPill({ status }: { status: StatusTarefa }) {
-  const cfg = STATUS_CONFIG[status];
-  const style = GROUP_PILL_STYLE[status];
-  const StatusIcon = cfg.Icon;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "3px 9px",
-        borderRadius: 5,
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: ".7px",
-        textTransform: "uppercase",
-        background: style.bg,
-        color: style.color,
-      }}
-    >
-      <StatusIcon size={11} />
-      {cfg.label}
-    </span>
-  );
-}
-
-/* ─── Header de colunas ───────────────────────────────────────────────────── */
-function HeadRow() {
-  const thStyle: React.CSSProperties = {
-    fontWeight: 500,
-    color: "#7a7a85",
-    fontSize: 12,
-    textAlign: "left",
-    padding: "6px 10px",
-    borderTop: "1px solid #1f1f25",
-    borderBottom: "1px solid #1f1f25",
-    background: "transparent",
-  };
-  return (
-    <tr>
-      <th style={{ ...thStyle, paddingLeft: 30 }}>Nome</th>
-      <th style={thStyle}>Responsável</th>
-      <th style={thStyle}>Data de vencimento</th>
-      <th style={thStyle}>Prioridade</th>
-      <th style={thStyle}>Status</th>
-      <th style={{ ...thStyle, textAlign: "center" }}>
-        <IcChat size={13} />
-      </th>
-      <th style={{ ...thStyle, textAlign: "center" }}>
-        <span
-          style={{
-            display: "inline-flex",
-            width: 18,
-            height: 18,
-            borderRadius: "50%",
-            background: "#2a2a32",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#cfcfd6",
-          }}
-        >
-          <IcPlus size={11} />
-        </span>
-      </th>
-    </tr>
-  );
-}
-
-/* ─── Linha de tarefa ─────────────────────────────────────────────────────── */
-function TaskRow({
-  tarefa,
-  status,
-  expanded,
-  onToggle,
-}: {
-  tarefa: Tarefa;
-  status: StatusTarefa;
-  expanded: boolean;
-  onToggle: () => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  const cfg = STATUS_CONFIG[status];
-  const StatusIcon = cfg.Icon;
-  const membro = tarefa.responsavelId
-    ? mockMembros.find((m) => m.id === tarefa.responsavelId)
-    : null;
-  const prio = tarefa.prioridade ? PRIO_CONFIG[tarefa.prioridade] : null;
-  const dias = diasUntil(tarefa.dataVencimento);
-
-  let dateText = "";
-  let dateColor = "#b6b6bf";
-  let dateSub = "";
-  if (tarefa.dataVencimento) {
-    const d = new Date(tarefa.dataVencimento + "T00:00:00.000Z");
-    dateText = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-    if (dias != null) {
-      if (dias < 0) { dateColor = "#fbbf24"; dateSub = `ATRASADO ${Math.abs(dias)}D`; }
-      else if (dias === 0) { dateColor = "#7c5cff"; dateSub = "HOJE"; }
-    }
-  }
-
-  const tdStyle: React.CSSProperties = {
-    padding: 0,
-    borderBottom: "1px solid #1f1f25",
-    height: 38,
-    verticalAlign: "middle",
-    color: "#b6b6bf",
-    background: hovered ? "#15151a" : "transparent",
-  };
-
-  const cellStyle: React.CSSProperties = {
-    padding: "0 10px",
-    height: 38,
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-  };
-
-  return (
-    <>
-      <tr
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-      >
-        {/* nome */}
-        <td style={tdStyle}>
-          <div style={{ ...cellStyle, paddingLeft: 14, gap: 10 }}>
-            {tarefa.subtarefas > 0 ? (
-              <button
-                type="button"
-                onClick={onToggle}
-                style={{
-                  width: 14,
-                  color: "#7a7a85",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  cursor: "pointer",
-                  opacity: 0.7,
-                  background: "none",
-                  border: 0,
-                  transform: expanded ? "rotate(90deg)" : "none",
-                  transition: "transform .15s",
-                }}
-              >
-                <IcCaretR size={12} />
-              </button>
-            ) : (
-              <span style={{ width: 14, visibility: "hidden", display: "inline-flex" }}>
-                <IcCaretR size={12} />
-              </span>
-            )}
-            {/* ícone de status colorido */}
-            <span style={{ display: "inline-flex", color: cfg.iconColor }}>
-              <StatusIcon size={13} />
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555" }}>
+              <RefreshCw size={11} />
+              Atualização: 10 minutos atrás
             </span>
-            <span style={{ color: "#e6e6ea", fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {tarefa.nome}
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555" }}>
+              <RefreshCw size={11} style={{ color: "#22c55e" }} />
+              Atualização automática: Ligado
             </span>
-            {tarefa.subtarefas > 0 && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "#7a7a85", fontSize: 11, marginLeft: 2 }}>
-                <IcGitFork size={11} /> {tarefa.subtarefas}
-              </span>
-            )}
+            <button type="button" style={{ fontSize: 12, color: "#888892", border: 0, background: "none", cursor: "pointer", padding: "0 6px" }}>Personalizar</button>
+            <button type="button" style={{
+              height: 28, padding: "0 12px", borderRadius: 6,
+              border: 0, background: "#e4e4e4", cursor: "pointer",
+              color: "#111", fontSize: 12, fontWeight: 600,
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#fff"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#e4e4e4"; }}
+            >
+              Adicionar cartão
+            </button>
           </div>
-        </td>
-        {/* responsável */}
-        <td style={tdStyle}>
-          <div style={cellStyle}>
-            {membro ? (
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: "50%",
-                    background: "#3d2a6b",
-                    color: "#d8ccff",
-                    fontSize: 10,
-                    fontWeight: 600,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  {membro.iniciais}
+        </div>
+
+        {/* ── Cards: Recent | Docs | Bookmarks ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 16, marginBottom: 16 }}>
+
+          {/* Recent */}
+          <div style={{ background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#888892", marginBottom: 12 }}>Recent</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {recentes.map((item) => {
+                const pai = item.idPai ? mockEntidades.find(e => e.id === item.idPai) : null;
+                const href = item.idClasse === "backlog" || item.idClasse === "board"
+                  ? `/lists/${item.id}`
+                  : item.idClasse === "pasta"
+                  ? `/folders/${item.id}`
+                  : `/docs/${item.id}`;
+                return (
+                  <Link key={item.id} href={href} style={{
+                    display: "flex", alignItems: "center", gap: 7,
+                    padding: "5px 0", textDecoration: "none",
+                  }}>
+                    <span style={{ flexShrink: 0 }}>
+                      {item.idClasse === "pasta" ? <IcFolder /> :
+                       item.idClasse === "doc"   ? <IcDoc /> : <IcList />}
+                    </span>
+                    <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{item.nome}</span>
+                    {pai && <span style={{ fontSize: 12, color: "#505058" }}>• em {pai.nome}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Docs */}
+          <div style={{ background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#888892", marginBottom: 12 }}>Docs</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {docs.length > 0 ? docs.map((doc) => {
+                const pai = doc.idPai ? mockEntidades.find(e => e.id === doc.idPai) : null;
+                return (
+                  <Link key={doc.id} href={`/docs/${doc.id}`} style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 0", textDecoration: "none" }}>
+                    <IcDoc />
+                    <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{doc.nome}</span>
+                    {pai && <span style={{ fontSize: 12, color: "#505058" }}>• em {pai.nome}</span>}
+                  </Link>
+                );
+              }) : (
+                <p style={{ fontSize: 12, color: "#404048" }}>Nenhum documento ainda</p>
+              )}
+            </div>
+          </div>
+
+          {/* Bookmarks */}
+          <div style={{ background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#888892", marginBottom: 12 }}>Bookmarks</p>
+            {docs.length > 0 ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", borderRadius: 8, background: "#222", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <div style={{ width: 32, height: 32, borderRadius: 7, background: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <IcDoc />
                 </div>
-                <span style={{ fontSize: 12, color: "#b6b6bf" }}>{membro.iniciais}</span>
+                <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{docs[0].nome}</span>
               </div>
             ) : (
-              <span style={{ color: "#4a4a54", opacity: hovered ? 1 : 0, transition: "opacity .15s" }}>
-                <IcUserPlus size={14} />
-              </span>
+              <p style={{ fontSize: 12, color: "#404048" }}>Nenhum favorito ainda</p>
             )}
           </div>
-        </td>
-        {/* data */}
-        <td style={tdStyle}>
-          <div style={{ ...cellStyle, flexDirection: "column", alignItems: "flex-start", gap: 1, justifyContent: "center" }}>
-            {dateText ? (
-              <>
-                <span style={{ fontSize: 13, color: dateColor }}>{dateText}</span>
-                {dateSub && (
-                  <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase", color: "#7a7a85" }}>
-                    {dateSub}
-                  </span>
-                )}
-              </>
-            ) : (
-              <span style={{ color: "#4a4a54", opacity: hovered ? 1 : 0, transition: "opacity .15s" }}>
-                <IcCalPlus size={14} />
-              </span>
-            )}
-          </div>
-        </td>
-        {/* prioridade */}
-        <td style={tdStyle}>
-          <div style={cellStyle}>
-            {prio ? (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: prio.color }}>
-                <IcFlag size={13} />
-                {prio.label}
-              </span>
-            ) : (
-              <span style={{ color: "#4a4a54", opacity: hovered ? 1 : 0, transition: "opacity .15s" }}>
-                <IcFlag size={14} />
-              </span>
-            )}
-          </div>
-        </td>
-        {/* status pill */}
-        <td style={tdStyle}>
-          <div style={cellStyle}>
-            <StatusInlinePill status={tarefa.status} />
-          </div>
-        </td>
-        {/* comentários */}
-        <td style={tdStyle}>
-          <div style={{ ...cellStyle, justifyContent: "center", padding: "0 6px" }}>
-            <span style={{ color: "#4a4a54", opacity: hovered ? 1 : 0, transition: "opacity .15s" }}>
-              <IcChat size={14} />
-            </span>
-          </div>
-        </td>
-        {/* plus */}
-        <td style={tdStyle} />
-      </tr>
-
-      {/* subtarefas expandidas */}
-      {expanded && tarefa.subtarefas > 0 && (
-        <SubRow hovered={false} />
-      )}
-    </>
-  );
-}
-
-/* pill inline nas linhas */
-const INLINE_PILL_STYLE: Record<StatusTarefa, { bg: string; color: string }> = {
-  "em-progresso": { bg: "#7c5cff",   color: "#fff" },
-  pendente:       { bg: "#2a2a31",   color: "#cfcfd6" },
-  bloqueado:      { bg: "#3d1212",   color: "#fca5a5" },
-  atrasado:       { bg: "#3a2800",   color: "#fcd34d" },
-  concluido:      { bg: "#0d2e1e",   color: "#6ee7b7" },
-};
-
-function StatusInlinePill({ status }: { status: StatusTarefa }) {
-  const cfg = STATUS_CONFIG[status];
-  const style = INLINE_PILL_STYLE[status];
-  const StatusIcon = cfg.Icon;
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        padding: "3px 9px",
-        borderRadius: 5,
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: ".7px",
-        textTransform: "uppercase",
-        background: style.bg,
-        color: style.color,
-        whiteSpace: "nowrap",
-      }}
-    >
-      <StatusIcon size={11} />
-      {cfg.label}
-    </span>
-  );
-}
-
-/* ─── Linha de subtarefa ──────────────────────────────────────────────────── */
-function SubRow({ hovered }: { hovered: boolean }) {
-  return (
-    <tr>
-      <td
-        colSpan={7}
-        style={{
-          padding: 0,
-          borderBottom: "1px solid #1f1f25",
-          height: 34,
-          background: "#101015",
-        }}
-      >
-        <div
-          style={{
-            paddingLeft: 54,
-            height: 34,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <span style={{ width: 14, visibility: "hidden", display: "inline-flex" }}>
-            <IcCaretR size={12} />
-          </span>
-          <span style={{ display: "inline-flex", color: "#8a8a93" }}>
-            <IcPending size={13} />
-          </span>
-          <span style={{ color: "#b6b6bf", fontWeight: 500, fontSize: 13 }}>Subtarefa</span>
         </div>
-      </td>
-    </tr>
+
+        {/* ── Folders — container próprio com borda ── */}
+        {pastas.length > 0 && (
+          <section style={{ marginBottom: 12, border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, overflow: "hidden" }}>
+            {/* header do container */}
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)",
+              background: "#1a1a1a",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <LayoutGrid size={13} style={{ color: "#606068" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#c4c4c4" }}>Folders</span>
+              </div>
+              <div style={{ display: "flex", gap: 4 }}>
+                <button type="button" style={{ width: 24, height: 24, display: "grid", placeItems: "center", border: 0, background: "none", cursor: "pointer", color: "#606068", borderRadius: 5 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.color = "#c4c4c4"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+                >
+                  <Maximize2 size={12} />
+                </button>
+                <button type="button" style={{ width: 24, height: 24, display: "grid", placeItems: "center", border: 0, background: "none", cursor: "pointer", color: "#606068", borderRadius: 5 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.color = "#c4c4c4"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+                >
+                  <Plus size={13} />
+                </button>
+              </div>
+            </div>
+            {/* cards de pasta dentro do container */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, padding: "14px 16px", background: "#111111", minHeight: "28vh", maxHeight: "33vh", overflowY: "auto", alignContent: "flex-start" }}>
+              {pastas.map((pasta) => (
+                <Link key={pasta.id} href={`/folders/${pasta.id}`} style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  width: 200, padding: "10px 14px", borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.07)", background: "#1a1a1a",
+                  textDecoration: "none",
+                }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#1e1e1e"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "#1a1a1a"; }}
+                >
+                  <IcFolder color="#9ca3af" />
+                  <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{pasta.nome}</span>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── Lists — container próprio com borda ── */}
+        <section style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, overflow: "hidden" }}>
+          {/* header do container */}
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)",
+            background: "#1a1a1a",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <LayoutGrid size={13} style={{ color: "#606068" }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#c4c4c4" }}>Lists</span>
+            </div>
+          </div>
+
+          {/* tabela dentro do container */}
+          <div style={{ background: "#111111", minHeight: "28vh", maxHeight: "33vh", overflowY: "auto" }}>
+            {/* cabeçalho da tabela */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
+              height: 34, borderBottom: "1px solid rgba(255,255,255,0.06)",
+              padding: "0 16px", background: "#1a1a1a",
+            }}>
+              {["Nome","Cor","Progresso","Início","Término","Prioridade","Proprietário",""].map((col, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", fontSize: 11, color: "#505058", fontWeight: 500 }}>{col}</div>
+              ))}
+            </div>
+
+            {listas.length > 0 ? listas.map((lista) => (
+              <ListRow key={lista.id} id={lista.id} nome={lista.nome} />
+            )) : (
+              <div style={{ padding: "20px 16px", fontSize: 12, color: "#404048" }}>Nenhuma lista ainda</div>
+            )}
+
+            <AddListRow espacoId={id} />
+          </div>
+        </section>
+      </div>
+    </div>
   );
 }
 
-/* ─── Add row ─────────────────────────────────────────────────────────────── */
-function AddRow() {
+/* ─── Linha de lista ──────────────────────────────────────────────────────── */
+function ListRow({ id, nome }: { id: string; nome: string }) {
   const [hovered, setHovered] = useState(false);
   return (
-    <tr
+    <Link href={`/lists/${id}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
+        height: 40, padding: "0 16px", textDecoration: "none",
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        background: hovered ? "rgba(255,255,255,0.025)" : "transparent",
+        alignItems: "center",
+      }}
     >
-      <td
-        colSpan={7}
-        style={{
-          height: 34,
-          borderBottom: "1px solid #1f1f25",
-          background: hovered ? "#15151a" : "transparent",
-          cursor: "pointer",
-        }}
-      >
-        <div
-          style={{
-            paddingLeft: 30,
-            height: 34,
-            display: "flex",
-            alignItems: "center",
-            gap: 7,
-            color: hovered ? "#e6e6ea" : "#7a7a85",
-            fontSize: 13,
-          }}
-        >
-          <IcPlus size={13} />
-          Adicionar Tarefa
+      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+        <IcList />
+        <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{nome}</span>
+      </div>
+      {/* cor */}
+      <div style={{ fontSize: 12, color: "#404048" }}>-</div>
+      {/* progresso */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ flex: 1, height: 4, borderRadius: 2, background: "#2a2a2a" }}>
+          <div style={{ width: "0%", height: "100%", borderRadius: 2, background: "#7c3aed" }} />
         </div>
-      </td>
-    </tr>
+        <span style={{ fontSize: 11, color: "#505058", whiteSpace: "nowrap" }}>0/0</span>
+      </div>
+      {/* início */}
+      <div style={{ fontSize: 12, color: "#404048", display: "flex", alignItems: "center" }}>
+        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      </div>
+      {/* término */}
+      <div style={{ fontSize: 12, color: "#404048", display: "flex", alignItems: "center" }}>
+        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      </div>
+      {/* prioridade */}
+      <div>
+        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V4"/><path d="M5 4h13l-2 4 2 4H5"/></svg>
+      </div>
+      {/* proprietário */}
+      <div>
+        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+      </div>
+      <div />
+    </Link>
   );
 }
 
-/* ─── Empty state ─────────────────────────────────────────────────────────── */
-function EmptyState() {
+function AddListRow({ espacoId }: { espacoId: string }) {
+  const [hovered, setHovered] = useState(false);
   return (
-    <div
+    <button type="button"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
-        marginTop: 40,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        gap: 8,
-        padding: 40,
-        border: "1px dashed #26262d",
-        borderRadius: 8,
-        textAlign: "center",
+        display: "flex", alignItems: "center", gap: 7,
+        width: "100%", height: 36, padding: "0 16px",
+        border: 0, background: hovered ? "rgba(255,255,255,0.025)" : "transparent",
+        cursor: "pointer", color: hovered ? "#888892" : "#505058", fontSize: 13,
       }}
     >
-      <div
-        style={{
-          width: 40,
-          height: 40,
-          borderRadius: "50%",
-          background: "#1f1f25",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#7a7a85",
-        }}
-      >
-        <IcPlus size={18} />
-      </div>
-      <p style={{ color: "#e6e6ea", fontSize: 14, fontWeight: 500, margin: 0 }}>
-        Nenhuma tarefa neste espaço ainda
-      </p>
-      <p style={{ color: "#7a7a85", fontSize: 12, margin: 0 }}>
-        Crie a primeira tarefa para começar.
-      </p>
-    </div>
+      <Plus size={13} />
+      Nova lista
+    </button>
+  );
+}
+
+/* ─── Botão topo ──────────────────────────────────────────────────────────── */
+function TopBtn({ icon, label }: { icon: React.ReactNode; label?: string }) {
+  return (
+    <button type="button" style={{
+      display: "flex", alignItems: "center", gap: 5,
+      height: 28, padding: label ? "0 10px" : "0 7px", borderRadius: 6,
+      border: 0, background: "none", cursor: "pointer", color: "#888892", fontSize: 12,
+    }}
+      onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.color = "#c4c4c4"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#888892"; }}
+    >
+      {icon}{label}
+    </button>
   );
 }

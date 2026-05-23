@@ -13,7 +13,7 @@ function IcHome({ active }: { active?: boolean }) {
       <div style={{
         width: 30, height: 30,
         borderRadius: "50%",
-        background: "linear-gradient(135deg, #7c5cff 0%, #e040fb 100%)",
+        background: "linear-gradient(135deg, #3b5bdb 0%, #4c6ef5 100%)",
         display: "flex", alignItems: "center", justifyContent: "center",
         flexShrink: 0,
       }}>
@@ -150,8 +150,8 @@ function IcUpgrade() {
     <svg width={20} height={20} viewBox="0 0 24 24" fill="none">
       <defs>
         <linearGradient id="rail-up-grad" x1="0" y1="1" x2="0" y2="0">
-          <stop offset="0%" stopColor="#7c5cff" />
-          <stop offset="100%" stopColor="#e040fb" />
+          <stop offset="0%" stopColor="#3b5bdb" />
+          <stop offset="100%" stopColor="#4c6ef5" />
         </linearGradient>
       </defs>
       <path d="M12 19V5M5 12l7-7 7 7" stroke="url(#rail-up-grad)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
@@ -190,7 +190,7 @@ function RailButton({ item, active }: { item: RailItem; active?: boolean }) {
     borderRadius: 10,
     border: 0,
     background: active
-      ? "radial-gradient(ellipse 70% 80% at 50% 35%, #7c3aed40 0%, #a21caf28 45%, transparent 72%)"
+      ? "radial-gradient(ellipse 70% 80% at 50% 35%, #3b5bdb40 0%, #4c6ef528 45%, transparent 72%)"
       : "none",
     cursor: "pointer",
     color: active ? "#ffffff" : "#b0b0c4",

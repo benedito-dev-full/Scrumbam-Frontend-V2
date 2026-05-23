@@ -83,8 +83,8 @@ function hrefFor(entidade: Entidade): string {
   switch (entidade.idClasse) {
     case "espaco":  return `/spaces/${entidade.id}`;
     case "pasta":   return `/folders/${entidade.id}`;
-    case "board":   return `/boards/${entidade.id}`;
-    case "backlog": return `/backlogs/${entidade.id}`;
+    case "board":   return `/lists/${entidade.id}`;
+    case "backlog": return `/lists/${entidade.id}`;
     case "doc":     return `/docs/${entidade.id}`;
   }
 }
