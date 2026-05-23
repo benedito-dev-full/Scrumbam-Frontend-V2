@@ -1,300 +1,390 @@
 "use client";
 
 import { useState } from "react";
-import {
-  FileText,
-  Plus,
-  Search,
-  MoreHorizontal,
-  Star,
-  Clock,
-  Lock,
-  Globe,
-  BookOpen,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Filter, ArrowUpDown, Search, MoreHorizontal, ChevronDown, Download, Info } from "lucide-react";
 import { SpaceChip } from "@/components/shell/space-chip";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
 import { mockEntidades } from "@/lib/mocks/entidades";
 import { isEspaco } from "@/lib/types/entidade";
 
-type TabId = "todos" | "recentes" | "favoritos" | "meus";
+/* ─── Ícone de documento — quadrado azul com dobra (estilo ClickUp) ───────── */
+function IcDocBlue() {
+  return (
+    <svg width={18} height={18} viewBox="0 0 20 20" fill="none">
+      {/* corpo do documento */}
+      <rect x="2" y="1" width="13" height="17" rx="2" fill="#3b82f6" />
+      {/* dobra no canto superior direito */}
+      <path d="M11 1 L15 5 L11 5 Z" fill="#1d4ed8" />
+      {/* linhas de texto */}
+      <line x1="5" y1="9"  x2="12" y2="9"  stroke="rgba(255,255,255,0.5)" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="5" y1="12" x2="12" y2="12" stroke="rgba(255,255,255,0.5)" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="5" y1="15" x2="9"  y2="15" stroke="rgba(255,255,255,0.5)" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
 
-const tabs: { id: TabId; label: string }[] = [
-  { id: "todos", label: "Todos" },
-  { id: "recentes", label: "Recentes" },
-  { id: "favoritos", label: "Favoritos" },
-  { id: "meus", label: "Criados por mim" },
+/* ─── Ícone de pasta (localização "Documentos" — sem espaço associado) ────── */
+function IcFolderOutline({ color = "#6b7280" }: { color?: string }) {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
+/* ─── Resolve espaço ancestral de um doc ──────────────────────────────────── */
+function resolveEspaco(idPai: string | null) {
+  if (!idPai) return null;
+  let cursor = mockEntidades.find(e => e.id === idPai) ?? null;
+  while (cursor) {
+    if (isEspaco(cursor)) return cursor;
+    const pai = cursor.idPai;
+    cursor = pai ? (mockEntidades.find(e => e.id === pai) ?? null) : null;
+  }
+  return null;
+}
+
+/* ─── Modelos ─────────────────────────────────────────────────────────────── */
+const TEMPLATES = [
+  {
+    icon: (
+      <div style={{ width: 36, height: 36, borderRadius: 8, background: "linear-gradient(135deg,#f97316,#dc2626)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      </div>
+    ),
+    title: "Visão geral do projeto",
+    desc: "Resuma metas, escopo e marcos",
+  },
+  {
+    icon: (
+      <div style={{ width: 36, height: 36, borderRadius: 8, background: "linear-gradient(135deg,#f59e0b,#d97706)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+      </div>
+    ),
+    title: "Atas da reunião",
+    desc: "Colete uma pauta, anotações e itens de ação",
+  },
+  {
+    icon: (
+      <div style={{ width: 36, height: 36, borderRadius: 8, background: "linear-gradient(135deg,#3b82f6,#1d4ed8)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+        </svg>
+      </div>
+    ),
+    title: "Wiki",
+    desc: "Organize as informações em um só lugar",
+    verified: true,
+  },
 ];
 
+/* ─── Docs mock — ligados ao mockEntidades ────────────────────────────────── */
 type Doc = {
-  id: string;
-  titulo: string;
-  espacoId: string;
-  autor: string;
-  autorIniciais: string;
-  editadoEm: string;
-  favorito: boolean;
-  privado: boolean;
-  tags: string[];
+  nome: string;
+  idPai: string | null;
+  localizacaoLabel: string;
+  semEspaco?: boolean; // localização "Documentos" — pasta genérica
+  atualizadoEm: string;
+  visualizadoEm: string;
+  autorCor: string;
+  autorLetra: string;
 };
 
-const mockDocs: Doc[] = [
+const DOCS: Doc[] = [
   {
-    id: "doc-roadmap",
-    titulo: "Roadmap 2026",
-    espacoId: "esp-produto",
-    autor: "Robério",
-    autorIniciais: "RB",
-    editadoEm: "hoje",
-    favorito: true,
-    privado: false,
-    tags: ["estratégia", "produto"],
+    nome: "Documento",
+    idPai: null,
+    localizacaoLabel: "Documentos",
+    semEspaco: true,
+    atualizadoEm: "Yesterday",
+    visualizadoEm: "Yesterday",
+    autorCor: "#22c55e",
+    autorLetra: "F",
   },
   {
-    id: "doc-changelog",
-    titulo: "Changelog Q2",
-    espacoId: "esp-produto",
-    autor: "Ana Costa",
-    autorIniciais: "AC",
-    editadoEm: "ontem",
-    favorito: false,
-    privado: false,
-    tags: ["releases"],
+    nome: "Documento",
+    idPai: "esp-marketing",
+    localizacaoLabel: "Marketing",
+    atualizadoEm: "Yesterday",
+    visualizadoEm: "Yesterday",
+    autorCor: "#22c55e",
+    autorLetra: "F",
   },
   {
-    id: "doc-arquitetura",
-    titulo: "Decisões de arquitetura",
-    espacoId: "esp-produto",
-    autor: "Ana Costa",
-    autorIniciais: "AC",
-    editadoEm: "há 3 dias",
-    favorito: true,
-    privado: false,
-    tags: ["engenharia", "arquitetura"],
-  },
-  {
-    id: "doc-briefing-junho",
-    titulo: "Briefing campanha junho",
-    espacoId: "esp-marketing",
-    autor: "Pedro Silva",
-    autorIniciais: "PS",
-    editadoEm: "há 2 dias",
-    favorito: false,
-    privado: false,
-    tags: ["marketing", "campanha"],
-  },
-  {
-    id: "doc-onboarding",
-    titulo: "Guia de onboarding",
-    espacoId: "esp-rh",
-    autor: "Robério",
-    autorIniciais: "RB",
-    editadoEm: "há 1 semana",
-    favorito: false,
-    privado: true,
-    tags: ["rh", "onboarding"],
-  },
-  {
-    id: "doc-runbook",
-    titulo: "Runbook on-call",
-    espacoId: "esp-produto",
-    autor: "Júlia Mendes",
-    autorIniciais: "JM",
-    editadoEm: "há 1 semana",
-    favorito: false,
-    privado: false,
-    tags: ["engenharia", "operações"],
+    nome: "Documento teste",
+    idPai: "esp-marketing",
+    localizacaoLabel: "Marketing",
+    atualizadoEm: "Yesterday",
+    visualizadoEm: "Yesterday",
+    autorCor: "#22c55e",
+    autorLetra: "F",
   },
 ];
 
-function getEspaco(id: string) {
-  return mockEntidades.find((e) => isEspaco(e) && e.id === id) ?? null;
-}
-
-export default function DocsPage() {
-  const [tab, setTab] = useState<TabId>("todos");
-  const [busca, setBusca] = useState("");
-
-  const filtradosPorTab = mockDocs.filter((d) => {
-    if (tab === "recentes") return ["hoje", "ontem", "há 2 dias", "há 3 dias"].includes(d.editadoEm);
-    if (tab === "favoritos") return d.favorito;
-    if (tab === "meus") return d.autorIniciais === "RB";
-    return true;
-  });
-
-  const docs = busca
-    ? filtradosPorTab.filter((d) =>
-        d.titulo.toLowerCase().includes(busca.toLowerCase()) ||
-        d.tags.some((t) => t.includes(busca.toLowerCase())),
-      )
-    : filtradosPorTab;
+/* ─── Linha da tabela ─────────────────────────────────────────────────────── */
+function DocRow({ doc }: { doc: Doc }) {
+  const [hovered, setHovered] = useState(false);
+  const espaco = doc.idPai ? resolveEspaco(doc.idPai) : null;
 
   return (
-    <>
-      <PageHeader busca={busca} onBusca={setBusca} />
-
-      <div className="flex h-10 items-center gap-px border-b border-border bg-background px-4">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "relative flex h-10 items-center gap-1.5 px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground",
-              tab === t.id &&
-                "text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-t-sm after:bg-primary",
-            )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="mx-auto w-full max-w-5xl px-4 py-5">
-        {docs.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
-            <div className="grid grid-cols-[minmax(0,1fr)_140px_140px_120px_40px] items-center bg-muted/30 px-4 text-[11px] uppercase tracking-wider text-muted-foreground">
-              <div className="py-2.5">Título</div>
-              <div className="py-2.5">Espaço</div>
-              <div className="py-2.5">Autor</div>
-              <div className="py-2.5">Editado</div>
-              <div />
-            </div>
-            {docs.map((doc, i) => (
-              <DocRow key={doc.id} doc={doc} isLast={i === docs.length - 1} />
-            ))}
-          </div>
-        )}
-
-        <button
-          type="button"
-          className="mt-4 inline-flex h-8 items-center gap-2 rounded-md border border-dashed border-border px-3 text-[13px] text-muted-foreground transition-colors hover:border-border hover:bg-muted/40 hover:text-foreground"
-        >
-          <Plus className="size-3.5" />
-          Novo documento
-        </button>
-      </div>
-    </>
-  );
-}
-
-function PageHeader({
-  busca,
-  onBusca,
-}: {
-  busca: string;
-  onBusca: (v: string) => void;
-}) {
-  return (
-    <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-4">
-      <div className="flex items-center gap-2">
-        <BookOpen className="size-4 text-muted-foreground" />
-        <h1 className="text-sm font-semibold text-foreground">Documentos</h1>
-      </div>
-      <div className="flex items-center gap-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Buscar documento..."
-            value={busca}
-            onChange={(e) => onBusca(e.target.value)}
-            className="h-7 w-52 rounded-md border border-border bg-muted/40 pl-8 pr-3 text-[13px] text-foreground placeholder:text-muted-foreground focus:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary/30"
-          />
-        </div>
-        <Button size="sm" className="gap-1.5">
-          <Plus className="size-3.5" />
-          Novo doc
-        </Button>
-      </div>
-    </header>
-  );
-}
-
-function DocRow({ doc, isLast }: { doc: Doc; isLast: boolean }) {
-  const espaco = getEspaco(doc.espacoId);
-
-  return (
-    <button
-      type="button"
-      className={cn(
-        "group grid w-full grid-cols-[minmax(0,1fr)_140px_140px_120px_40px] items-center bg-card px-4 text-left transition-colors hover:bg-muted/30",
-        !isLast && "border-b border-border",
-      )}
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(0,1fr) 200px 120px 160px 160px 72px 32px",
+        alignItems: "center",
+        height: 44,
+        borderBottom: "1px solid rgba(255,255,255,0.05)",
+        background: hovered ? "rgba(255,255,255,0.025)" : "transparent",
+        cursor: "pointer",
+        paddingLeft: 16,
+        paddingRight: 8,
+      }}
     >
-      <div className="flex h-12 items-center gap-2.5 min-w-0">
-        <FileText className="size-4 shrink-0 text-muted-foreground" />
-        <span className="truncate text-[13px] font-medium text-foreground">{doc.titulo}</span>
-        {doc.privado ? (
-          <Lock className="size-3 shrink-0 text-muted-foreground/60" />
+      {/* nome */}
+      <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
+        <IcDocBlue />
+        <span style={{ fontSize: 13, color: "#e4e4e4", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {doc.nome}
+        </span>
+      </div>
+
+      {/* localização — SpaceChip do espaço real, ou pasta genérica */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        {doc.semEspaco || !espaco ? (
+          <IcFolderOutline color="#6b7280" />
         ) : (
-          <Globe className="size-3 shrink-0 text-muted-foreground/30 opacity-0 group-hover:opacity-100" />
+          <SpaceChip
+            iniciais={espaco.meta.iniciais}
+            cor={espaco.meta.cor}
+            iconName={espaco.meta.iconName}
+            size="xs"
+          />
         )}
-        {doc.favorito && (
-          <Star className="size-3 shrink-0 fill-amber-400 text-amber-400" />
+        <span style={{ fontSize: 12, color: "#888892" }}>{doc.localizacaoLabel}</span>
+      </div>
+
+      {/* etiquetas */}
+      <div style={{ fontSize: 12, color: "#3a3a3a" }}>–</div>
+
+      {/* data de atualização */}
+      <div style={{ fontSize: 12, color: "#888892" }}>{doc.atualizadoEm}</div>
+
+      {/* data de visualização */}
+      <div style={{ fontSize: 12, color: "#888892" }}>{doc.visualizadoEm}</div>
+
+      {/* compartilhamento — avatar */}
+      <div>
+        <div style={{
+          width: 22, height: 22, borderRadius: "50%",
+          background: doc.autorCor,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 10, fontWeight: 700, color: "#fff",
+        }}>{doc.autorLetra}</div>
+      </div>
+
+      {/* ações */}
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        {hovered && (
+          <button type="button" style={{
+            width: 24, height: 24, borderRadius: 5, border: 0,
+            background: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "#606068",
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.color = "#c4c4c4"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+          >
+            <MoreHorizontal size={14} />
+          </button>
         )}
       </div>
-
-      <div className="flex h-12 items-center gap-2">
-        {espaco && isEspaco(espaco) && (
-          <>
-            <SpaceChip
-              iniciais={espaco.meta.iniciais}
-              cor={espaco.meta.cor}
-              iconName={espaco.meta.iconName}
-              size="xs"
-            />
-            <span className="text-[12px] text-muted-foreground">{espaco.nome}</span>
-          </>
-        )}
-      </div>
-
-      <div className="flex h-12 items-center gap-2">
-        <Avatar size="sm">
-          <AvatarFallback>{doc.autorIniciais}</AvatarFallback>
-        </Avatar>
-        <span className="text-[12px] text-muted-foreground">{doc.autor}</span>
-      </div>
-
-      <div className="flex h-12 items-center gap-1 text-[12px] text-muted-foreground">
-        <Clock className="size-3" />
-        {doc.editadoEm}
-      </div>
-
-      <div className="grid h-12 place-items-center">
-        <button
-          type="button"
-          aria-label="Mais ações"
-          onClick={(e) => e.stopPropagation()}
-          className="grid size-6 place-items-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
-        >
-          <MoreHorizontal className="size-3.5" />
-        </button>
-      </div>
-    </button>
+    </div>
   );
 }
 
-function EmptyState() {
+/* ─── Cabeçalho da tabela ─────────────────────────────────────────────────── */
+function TableHead() {
+  const cols = [
+    { label: "Nome",                  accent: false },
+    { label: "Localização",           accent: true  },
+    { label: "Etiquetas",             accent: false },
+    { label: "Data de atualização",   accent: false },
+    { label: "Data de visual...",     accent: false, icon: true },
+    { label: "Compartilha...",        accent: false },
+    { label: "",                      accent: false, info: true },
+  ];
+
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border p-14 text-center">
-      <div className="grid size-10 place-items-center rounded-full bg-muted text-muted-foreground">
-        <FileText className="size-5" />
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "minmax(0,1fr) 200px 120px 160px 160px 72px 32px",
+      alignItems: "center",
+      height: 36,
+      borderBottom: "1px solid rgba(255,255,255,0.06)",
+      paddingLeft: 16,
+      paddingRight: 8,
+    }}>
+      {cols.map((col, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ fontSize: 11, color: col.accent ? "#7c9dca" : "#555", fontWeight: 500 }}>
+            {col.label}
+          </span>
+          {col.icon && <ArrowUpDown size={10} color="#555" />}
+          {col.info && <Info size={11} color="#444" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Página ──────────────────────────────────────────────────────────────── */
+export default function DocsPage() {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#111111", overflow: "hidden" }}>
+
+      {/* topbar */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 20px", height: 52,
+        borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0,
+      }}>
+        <h1 style={{ fontSize: 15, fontWeight: 700, color: "#e4e4e4" }}>Todos os documentos</h1>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button type="button" style={{
+            display: "flex", alignItems: "center", gap: 6,
+            height: 32, padding: "0 12px", borderRadius: 7,
+            border: "1px solid rgba(255,255,255,0.10)", background: "none",
+            cursor: "pointer", color: "#888892", fontSize: 13,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.color = "#e4e4e4"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#888892"; }}
+          >
+            <Download size={13} strokeWidth={1.7} />
+            Importar
+          </button>
+          <button type="button" style={{
+            display: "flex", alignItems: "center", gap: 6,
+            height: 32, padding: "0 14px", borderRadius: 7,
+            border: "none", background: "#e4e4e4",
+            cursor: "pointer", color: "#111", fontSize: 13, fontWeight: 700,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#fff"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#e4e4e4"; }}
+          >
+            Novo documento
+            <ChevronDown size={12} strokeWidth={2.5} />
+          </button>
+        </div>
       </div>
-      <div>
-        <h3 className="text-sm font-medium text-foreground">Nenhum documento encontrado</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Crie um documento para começar.
-        </p>
+
+      {/* conteúdo scrollável */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+
+        {/* Modelos */}
+        <p style={{ fontSize: 12, fontWeight: 600, color: "#606068", marginBottom: 10 }}>Modelos</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
+          {TEMPLATES.map((tpl) => (
+            <button key={tpl.title} type="button" style={{
+              display: "flex", alignItems: "center", gap: 12,
+              padding: "14px 16px", borderRadius: 10,
+              border: "1px solid rgba(255,255,255,0.07)",
+              background: "#1a1a1a", cursor: "pointer", textAlign: "left",
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "#1a1a1a"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
+            >
+              {tpl.icon}
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4" }}>{tpl.title}</p>
+                  {tpl.verified && (
+                    <svg width={13} height={13} viewBox="0 0 24 24" fill="#3b82f6">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                      <polyline points="22 4 12 14.01 9 11.01" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+                <p style={{ fontSize: 11, color: "#606068", marginTop: 2 }}>{tpl.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* Toolbar */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <button type="button" style={{
+              display: "flex", alignItems: "center", gap: 5,
+              height: 30, padding: "0 10px", borderRadius: 6,
+              border: "1px solid rgba(255,255,255,0.09)", background: "none",
+              cursor: "pointer", color: "#888892", fontSize: 12,
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+            >
+              <Filter size={11} strokeWidth={2} />
+              filtros
+            </button>
+            <button type="button" style={{
+              display: "flex", alignItems: "center", gap: 5,
+              height: 30, padding: "0 10px", borderRadius: 6,
+              border: "none", background: "none",
+              cursor: "pointer", color: "#888892", fontSize: 12,
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+            >
+              <ArrowUpDown size={11} strokeWidth={2} />
+              Classificar
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
+              <span style={{ fontSize: 12, color: "#505058" }}>Etiquetas:</span>
+              <button type="button" style={{
+                height: 28, padding: "0 10px", borderRadius: 6,
+                border: "none", background: "none",
+                cursor: "pointer", color: "#888892", fontSize: 12,
+              }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+              >
+                Visualizar tudo
+              </button>
+            </div>
+          </div>
+          <button type="button" style={{
+            display: "flex", alignItems: "center", gap: 5,
+            height: 30, padding: "0 10px", borderRadius: 6,
+            border: "none", background: "none",
+            cursor: "pointer", color: "#888892", fontSize: 12,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+          >
+            <Search size={12} strokeWidth={2} />
+            Pesquisar
+          </button>
+        </div>
+
+        {/* Tabela */}
+        <div style={{
+          borderRadius: 8,
+          border: "1px solid rgba(255,255,255,0.06)",
+          overflow: "hidden",
+          background: "#1a1a1a",
+        }}>
+          <TableHead />
+          {DOCS.map((doc, i) => (
+            <DocRow key={i} doc={doc} />
+          ))}
+        </div>
+
       </div>
-      <Button size="sm" className="mt-1 gap-1.5">
-        <Plus className="size-3.5" />
-        Novo documento
-      </Button>
     </div>
   );
 }

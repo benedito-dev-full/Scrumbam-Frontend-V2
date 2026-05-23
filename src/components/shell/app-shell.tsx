@@ -5,6 +5,7 @@ import { CommandPalette } from "./command-palette";
 import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { ShortcutsHelpDialog } from "./shortcuts-help-dialog";
 import { NewSpaceDialog } from "./new-space-dialog";
+import { InviteDialog } from "./invite-dialog";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -26,6 +27,7 @@ export function AppShell({ children }: AppShellProps) {
       <CommandPalette />
       <ShortcutsHelpDialog />
       <NewSpaceDialog />
+      <InviteDialog />
       <KeyboardShortcuts />
     </div>
   );

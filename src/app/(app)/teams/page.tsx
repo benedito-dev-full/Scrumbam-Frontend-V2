@@ -283,7 +283,7 @@ export default function TeamsPage() {
         <div style={{ flex: 1, display: "flex", alignItems: "center", overflow: "hidden", padding: "0 0 0 48px" }}>
 
           {/* texto fixo à esquerda */}
-          <div style={{ flexShrink: 0, width: 340, paddingRight: 40 }}>
+          <div style={{ flexShrink: 0, width: 408, paddingRight: 40 }}>
             <h2 style={{ fontSize: 42, fontWeight: 900, color: "#e4e4e4", lineHeight: 1.08, marginBottom: 18, letterSpacing: "-0.02em" }}>
               {SLIDES[slide].title}
             </h2>

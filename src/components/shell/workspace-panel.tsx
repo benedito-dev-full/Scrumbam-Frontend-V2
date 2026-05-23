@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { SpaceTree } from "./space-tree";
 import { PlannerPanel } from "./planner-panel";
 import { FormsPanel } from "./forms-panel";
+import { DocsPanel } from "./docs-panel";
 
 /* ─── Ícones SVG custom — pixel-perfect ClickUp ──────────────────────────── */
 
@@ -319,6 +320,14 @@ export function WorkspacePanel() {
 
   if (pathname.startsWith("/teams")) {
     return null;
+  }
+
+  if (pathname.startsWith("/docs")) {
+    return (
+      <aside aria-label="Painel de documentos" className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar border-r border-border overflow-y-auto">
+        <DocsPanel />
+      </aside>
+    );
   }
 
   return (

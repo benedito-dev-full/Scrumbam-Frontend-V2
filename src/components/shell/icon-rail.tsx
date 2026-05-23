@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useInviteDialogStore } from "@/lib/stores/invite-dialog";
 
 /* ─── Ícones SVG custom — pixel-perfect ClickUp ──────────────────────────── */
 
@@ -174,7 +175,6 @@ const mainNav: RailItem[] = [
   { href: "/teams",    label: "Equipes",    renderIcon: () => <IcTeams /> },
   { href: "/docs",     label: "Documen...", renderIcon: () => <IcDocs /> },
   { href: "/forms",    label: "Formulário", renderIcon: () => <IcForm /> },
-  { href: "/more",     label: "Mais",       renderIcon: () => <IcGrid /> },
 ];
 
 /* ─── Botão do rail ───────────────────────────────────────────────────────── */
@@ -249,6 +249,7 @@ function RailButton({ item, active }: { item: RailItem; active?: boolean }) {
 /* ─── Rail principal ──────────────────────────────────────────────────────── */
 export function IconRail() {
   const pathname = usePathname();
+  const openInvite = useInviteDialogStore((s) => s.openDialog);
   const isActive = (href?: string) =>
     !!href && (href === "/" ? pathname === "/" : pathname.startsWith(href));
 
@@ -275,7 +276,7 @@ export function IconRail() {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-        <RailButton item={{ label: "Convidar",   renderIcon: () => <IcInvite />,  onClick: () => {} }} />
+        <RailButton item={{ label: "Convidar",   renderIcon: () => <IcInvite />,  onClick: openInvite }} />
         <RailButton item={{ label: "Fazer up...", renderIcon: () => <IcUpgrade />, onClick: () => {} }} />
       </div>
     </nav>
