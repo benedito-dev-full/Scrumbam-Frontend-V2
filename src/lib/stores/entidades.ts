@@ -16,6 +16,7 @@ type EntidadesState = {
   vinculos: VinculoEspaco[];
   addEspaco: (espaco: Espaco) => void;
   addVinculos: (vinculos: VinculoEspaco[]) => void;
+  renomearEntidade: (id: string, nome: string) => void;
 };
 
 export const useEntidadesStore = create<EntidadesState>((set) => ({
@@ -25,6 +26,12 @@ export const useEntidadesStore = create<EntidadesState>((set) => ({
     set((s) => ({ entidades: [...s.entidades, espaco] })),
   addVinculos: (novosVinculos) =>
     set((s) => ({ vinculos: [...s.vinculos, ...novosVinculos] })),
+  renomearEntidade: (id, nome) =>
+    set((s) => ({
+      entidades: s.entidades.map((e) =>
+        e.id === id ? { ...e, nome, atualizadoEm: new Date().toISOString() } : e,
+      ),
+    })),
 }));
 
 /** Helpers reativos para usar dentro de componentes client */

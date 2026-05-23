@@ -1,265 +1,333 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import Link from "next/link";
 import {
-  UserCheck,
-  Flag,
-  GitFork,
-  MessageSquare,
-  ChevronDown,
-  Plus,
-  Filter,
+  Settings, ChevronLeft, ChevronRight, List, Calendar,
+  Filter, CheckCheck, Search, Layers, Link2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { SpaceChip } from "@/components/shell/space-chip";
-import { cn } from "@/lib/utils";
-import { mockTarefas, diasUntil } from "@/lib/mocks/tarefas";
 import { mockEntidades } from "@/lib/mocks/entidades";
-import { PRIORIDADE_META, STATUS_META, type StatusTarefa, type Tarefa } from "@/lib/types/tarefa";
+import { mockTarefas } from "@/lib/mocks/tarefas";
 import { isEspaco } from "@/lib/types/entidade";
+import { STATUS_META } from "@/lib/types/tarefa";
+import { SpaceChip } from "@/components/shell/space-chip";
 
 const ME = "u1";
+const USER_NAME = "Benedito";
 
-type TabId = "abertas" | "concluidas" | "todas";
-
-const tabs: { id: TabId; label: string }[] = [
-  { id: "abertas", label: "Abertas" },
-  { id: "concluidas", label: "Concluídas" },
-  { id: "todas", label: "Todas" },
-];
-
-const STATUS_FECHADOS: StatusTarefa[] = ["concluido"];
-
-function getEspaco(id: string) {
-  return mockEntidades.find((e) => isEspaco(e) && e.id === id) ?? null;
-}
-
-const COL_GRID = "grid-cols-[minmax(0,1fr)_140px_120px_110px_120px_28px]";
-
-export default function AssignedPage() {
-  const [tab, setTab] = useState<TabId>("abertas");
-
-  const tarefasMinhas = mockTarefas.filter((t) => t.responsavelId === ME);
-
-  const filtradas = tarefasMinhas.filter((t) => {
-    if (tab === "abertas") return !STATUS_FECHADOS.includes(t.status);
-    if (tab === "concluidas") return STATUS_FECHADOS.includes(t.status);
-    return true;
-  });
-
-  const count = filtradas.length;
-
+/* ─── Ícones por classe ──────────────────────────────────────────────────── */
+function ClassIcon({ classe }: { classe: string }) {
+  if (classe === "doc") {
+    return (
+      <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <path d="M14 2v6h6M16 13H8M16 17H8" />
+      </svg>
+    );
+  }
+  if (classe === "pasta") {
+    return (
+      <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+      </svg>
+    );
+  }
   return (
-    <>
-      <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-4">
-        <div className="flex items-center gap-2">
-          <UserCheck className="size-4 text-muted-foreground" />
-          <h1 className="text-sm font-semibold text-foreground">Atribuídas a mim</h1>
-          <span className="rounded bg-muted px-1.5 text-[11px] font-medium text-muted-foreground">
-            {count}
-          </span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="xs" className="gap-1.5">
-            <Filter className="size-3.5" />
-            Filtro
-          </Button>
-          <Button size="sm" className="gap-1.5">
-            <Plus className="size-3.5" />
-            Nova tarefa
-          </Button>
-        </div>
-      </header>
-
-      <div className="flex h-10 items-center gap-px border-b border-border bg-background px-4">
-        {tabs.map((t) => {
-          const active = tab === t.id;
-          const c = tarefasMinhas.filter((tr) => {
-            if (t.id === "abertas") return !STATUS_FECHADOS.includes(tr.status);
-            if (t.id === "concluidas") return STATUS_FECHADOS.includes(tr.status);
-            return true;
-          }).length;
-          return (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setTab(t.id)}
-              className={cn(
-                "relative flex h-10 items-center gap-1.5 px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground",
-                active &&
-                  "text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-t-sm after:bg-primary",
-              )}
-            >
-              {t.label}
-              {c > 0 && (
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-px text-[10px] font-semibold leading-none",
-                    active
-                      ? "bg-primary/15 text-primary"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {c}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="flex h-10 items-center gap-2 border-b border-border bg-background/60 px-4">
-        <button
-          type="button"
-          className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary/15 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-        >
-          <span className="text-muted-foreground/80">Grupo:</span>
-          Espaço
-          <ChevronDown className="size-3" />
-        </button>
-        <span className="ml-auto text-[11px] text-muted-foreground">
-          {count} tarefas
-        </span>
-      </div>
-
-      <div className="mx-auto w-full max-w-5xl px-4 py-4">
-        {filtradas.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
-            <div
-              className={cn(
-                "grid items-center bg-muted/30 px-3 text-[11px] uppercase tracking-wider text-muted-foreground",
-                COL_GRID,
-              )}
-            >
-              <div className="py-2">Nome</div>
-              <div className="py-2">Espaço</div>
-              <div className="py-2">Status</div>
-              <div className="py-2">Prioridade</div>
-              <div className="py-2">Vencimento</div>
-              <div />
-            </div>
-            {filtradas.map((t) => (
-              <TaskRow key={t.id} tarefa={t} />
-            ))}
-            <button
-              type="button"
-              className="flex h-8 w-full items-center gap-2 border-t border-border px-3 text-[13px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
-            >
-              <Plus className="size-3.5" />
-              Adicionar tarefa
-            </button>
-          </div>
-        )}
-      </div>
-    </>
+    <svg width={13} height={13} viewBox="0 0 18 18" fill="none">
+      <path d="M2 5 L4.5 7.5 L7 3.5" stroke="#7c6ff7" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 11 L4.5 13.5 L7 9.5" stroke="#7c6ff7" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="9" y1="5.5" x2="16" y2="5.5" stroke="#7c6ff7" strokeWidth={1.6} strokeLinecap="round" />
+      <line x1="9" y1="11.5" x2="16" y2="11.5" stroke="#7c6ff7" strokeWidth={1.6} strokeLinecap="round" />
+    </svg>
   );
 }
 
-function TaskRow({ tarefa }: { tarefa: Tarefa }) {
-  const statusMeta = STATUS_META[tarefa.status];
-  const prioMeta = tarefa.prioridade ? PRIORIDADE_META[tarefa.prioridade] : null;
-  const espaco = getEspaco(tarefa.espacoId);
-  const dias = diasUntil(tarefa.dataVencimento);
+/* ─── Helpers ────────────────────────────────────────────────────────────── */
+function saudacao() {
+  const h = new Date().getHours();
+  if (h < 12) return "Bom dia";
+  if (h < 18) return "Boa tarde";
+  return "Boa noite";
+}
 
-  let dataTone = "text-muted-foreground";
-  let dataLabel = "—";
-  if (tarefa.dataVencimento) {
-    const d = new Date(tarefa.dataVencimento + "T00:00:00.000Z");
-    dataLabel = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-    if (dias != null) {
-      if (dias < 0) dataTone = "text-amber-400";
-      else if (dias === 0) dataTone = "text-primary";
-      else if (dias <= 3) dataTone = "text-foreground";
-    }
+function hrefDe(item: { id: string; idClasse: string }) {
+  if (item.idClasse === "doc") return `/docs/${item.id}`;
+  if (item.idClasse === "pasta") return `/folders/${item.id}`;
+  if (item.idClasse === "espaco") return `/spaces/${item.id}`;
+  return `/lists/${item.id}`;
+}
+
+const HOURS = ["O dia todo", "1 am", "2 am", "3 am", "4 am", "5 am", "6 am", "7 am", "8 am", "9 am", "10 am", "11 am", "12 pm"];
+
+/* ─── Página ─────────────────────────────────────────────────────────────── */
+export default function MinhasTarefasPage() {
+  const [agendaDia, setAgendaDia] = useState(() => new Date());
+  const [agendaView, setAgendaView] = useState<"lista" | "calendario">("lista");
+
+  const recentes = useMemo(() => {
+    return [...mockEntidades]
+      .filter((e) => !isEspaco(e))
+      .sort((a, b) => (b.atualizadoEm > a.atualizadoEm ? 1 : -1))
+      .slice(0, 8);
+  }, []);
+
+  const minhas = useMemo(
+    () => mockTarefas.filter((t) => t.responsavelId === ME && t.status !== "concluido").slice(0, 6),
+    [],
+  );
+
+  const diaLabel = agendaDia.toLocaleDateString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+  });
+  const diaNumero = agendaDia.getDate();
+  const tzLabel = "GMT" + (new Date().getTimezoneOffset() <= 0 ? "+" : "-") + Math.abs(new Date().getTimezoneOffset() / 60);
+
+  function shiftDia(delta: number) {
+    setAgendaDia((d) => {
+      const nd = new Date(d);
+      nd.setDate(nd.getDate() + delta);
+      return nd;
+    });
   }
 
   return (
-    <div
-      className={cn(
-        "group grid items-center border-t border-border px-3 text-[13px] transition-colors hover:bg-muted/40",
-        COL_GRID,
-      )}
-    >
-      <div className="flex h-9 items-center gap-2 truncate">
-        <span className={cn("size-1.5 shrink-0 rounded-full", statusMeta.dotClass)} />
-        <span className="truncate text-foreground">{tarefa.nome}</span>
-        {tarefa.subtarefas > 0 && (
-          <span className="inline-flex h-4 items-center gap-0.5 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
-            <GitFork className="size-3" />
-            {tarefa.subtarefas}
-          </span>
-        )}
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#111111", overflow: "hidden" }}>
 
-      <div className="flex h-9 items-center gap-2">
-        {espaco && isEspaco(espaco) && (
-          <>
-            <SpaceChip
-              iniciais={espaco.meta.iniciais}
-              cor={espaco.meta.cor}
-              iconName={espaco.meta.iconName}
-              size="xs"
+      {/* ── Topbar ── */}
+      <header style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "0 16px", height: 44, flexShrink: 0,
+        borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
+      }}>
+        <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>Minhas tarefas</span>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <button type="button" style={{
+            height: 28, padding: "0 12px", borderRadius: 6,
+            border: "1px solid rgba(255,255,255,0.12)", background: "none",
+            cursor: "pointer", color: "#c4c4c4", fontSize: 12, fontWeight: 500,
+          }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+          >
+            Gerenciar cartões
+          </button>
+          <button type="button" style={{ display: "grid", width: 28, height: 28, placeItems: "center", borderRadius: 6, border: 0, background: "none", cursor: "pointer", color: "#606068" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.color = "#c4c4c4"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+          >
+            <Settings size={14} />
+          </button>
+        </div>
+      </header>
+
+      {/* ── Conteúdo ── */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px 40px" }}>
+
+        {/* Saudação */}
+        <h1 style={{
+          fontSize: 26, fontWeight: 700, color: "#f4f4f5",
+          margin: 0, marginBottom: 20, letterSpacing: "-0.02em",
+        }}>
+          {saudacao()}, {USER_NAME}
+        </h1>
+
+        {/* Grid 2x2 */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+
+          {/* ─── Recentes ─── */}
+          <Card title="Recentes">
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {recentes.map((item) => {
+                const pai = item.idPai ? mockEntidades.find((e) => e.id === item.idPai) : null;
+                return (
+                  <Link key={item.id} href={hrefDe(item)} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    padding: "7px 10px", margin: "0 -10px", borderRadius: 6,
+                    textDecoration: "none", transition: "background 120ms",
+                  }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#242428"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                  >
+                    <ClassIcon classe={item.idClasse} />
+                    <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{item.nome}</span>
+                    {pai && <span style={{ fontSize: 12, color: "#505058" }}>• em {pai.nome}</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </Card>
+
+          {/* ─── Agenda ─── */}
+          <Card
+            title="Agenda"
+            headerExtra={
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button type="button" onClick={() => shiftDia(-1)} style={iconBtnStyle}>
+                  <ChevronLeft size={14} />
+                </button>
+                <button type="button" onClick={() => shiftDia(1)} style={iconBtnStyle}>
+                  <ChevronRight size={14} />
+                </button>
+                <span style={{ fontSize: 12, color: "#c4c4c4", fontWeight: 500, margin: "0 6px" }}>{diaLabel}</span>
+                <div style={{ display: "flex", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, overflow: "hidden", marginLeft: 4 }}>
+                  <button type="button" onClick={() => setAgendaView("lista")} style={{
+                    width: 26, height: 24, display: "grid", placeItems: "center",
+                    border: 0, cursor: "pointer", background: agendaView === "lista" ? "#1e1e1e" : "transparent",
+                    color: agendaView === "lista" ? "#e4e4e4" : "#606068",
+                  }}>
+                    <List size={12} />
+                  </button>
+                  <button type="button" onClick={() => setAgendaView("calendario")} style={{
+                    width: 26, height: 24, display: "grid", placeItems: "center",
+                    border: 0, cursor: "pointer", background: agendaView === "calendario" ? "#1e1e1e" : "transparent",
+                    color: agendaView === "calendario" ? "#e4e4e4" : "#606068",
+                  }}>
+                    <Calendar size={12} />
+                  </button>
+                </div>
+              </div>
+            }
+          >
+            {/* cabeçalho do dia */}
+            <div style={{
+              display: "grid", gridTemplateColumns: "60px 1fr",
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              paddingBottom: 8, marginBottom: 4,
+            }}>
+              <div style={{ fontSize: 10, color: "#505058", fontWeight: 500 }}>{tzLabel}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#888892", fontWeight: 600 }}>
+                {diaLabel.split(",")[0]}
+                <span style={{
+                  display: "grid", placeItems: "center", minWidth: 18, height: 18, padding: "0 5px", borderRadius: "50%",
+                  background: "#dc2626", color: "white", fontSize: 10, fontWeight: 700,
+                }}>{diaNumero}</span>
+              </div>
+            </div>
+
+            {/* timeline */}
+            <div style={{ display: "flex", flexDirection: "column", maxHeight: 240, overflowY: "auto" }}>
+              {HOURS.map((h) => (
+                <div key={h} style={{
+                  display: "grid", gridTemplateColumns: "60px 1fr",
+                  minHeight: 32, borderTop: "1px solid rgba(255,255,255,0.04)",
+                }}>
+                  <div style={{ fontSize: 11, color: "#505058", paddingTop: 6 }}>{h}</div>
+                  <div />
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* ─── Meu trabalho ─── */}
+          <Card title="Meu trabalho">
+            <EmptyArea
+              icon={<Link2 size={20} />}
+              text="Nada por aqui ainda"
+              hint="Tarefas vinculadas a você aparecerão neste cartão."
             />
-            <span className="text-[12px] text-muted-foreground">{espaco.nome}</span>
-          </>
-        )}
-      </div>
+          </Card>
 
-      <div className="flex h-9 items-center">
-        <span
-          className={cn(
-            "inline-flex h-5 items-center gap-1.5 rounded-full px-2 text-[11px] font-medium uppercase tracking-wider",
-            statusMeta.bgClass,
-            statusMeta.textClass,
-          )}
-        >
-          <span className={cn("size-1.5 rounded-full", statusMeta.dotClass)} />
-          {statusMeta.label}
-        </span>
-      </div>
+          {/* ─── Atribuídas a mim ─── */}
+          <Card
+            title="Atribuídas a mim"
+            headerExtra={
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button type="button" style={iconBtnStyle}><Filter size={12} /></button>
+                <button type="button" style={iconBtnStyle}><CheckCheck size={12} /></button>
+                <button type="button" style={iconBtnStyle}><Search size={12} /></button>
+                <button type="button" style={iconBtnStyle}><Settings size={12} /></button>
+              </div>
+            }
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 12 }}>
+              <button type="button" style={{
+                width: 26, height: 26, display: "grid", placeItems: "center",
+                borderRadius: 6, border: 0, background: "rgba(124,58,237,0.16)",
+                cursor: "pointer", color: "#a78bfa",
+              }}>
+                <Layers size={13} />
+              </button>
+              <button type="button" style={iconBtnStyle}>
+                <Link2 size={12} />
+              </button>
+            </div>
 
-      <div className="flex h-9 items-center gap-1.5">
-        {prioMeta ? (
-          <>
-            <Flag className={cn("size-3.5", prioMeta.flagClass)} />
-            <span className="text-[12px] text-foreground">{prioMeta.label}</span>
-          </>
-        ) : (
-          <span className="text-[12px] text-muted-foreground/40">—</span>
-        )}
-      </div>
-
-      <div className="flex h-9 items-center">
-        <span className={cn("text-[12px]", dataTone)}>{dataLabel}</span>
-      </div>
-
-      <div className="grid h-9 place-items-center">
-        <button
-          type="button"
-          aria-label="Comentários"
-          className="grid size-5 place-items-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
-        >
-          <MessageSquare className="size-3.5" />
-        </button>
+            {minhas.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                {minhas.map((t) => {
+                  const meta = STATUS_META[t.status];
+                  const esp = mockEntidades.find((e) => e.id === t.espacoId);
+                  return (
+                    <div key={t.id} style={{
+                      display: "flex", alignItems: "center", gap: 8,
+                      padding: "7px 10px", margin: "0 -10px", borderRadius: 6,
+                      cursor: "pointer", transition: "background 120ms",
+                    }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "#242428"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: meta.dotColor, flexShrink: 0 }} />
+                      <span style={{ fontSize: 13, color: "#c4c4c4", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.nome}</span>
+                      {esp && isEspaco(esp) && (
+                        <SpaceChip iniciais={esp.meta.iniciais} cor={esp.meta.cor} iconName={esp.meta.iconName} size="xs" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <EmptyArea
+                icon={<CheckCheck size={20} />}
+                text="Tudo em dia"
+                hint="Nenhuma tarefa atribuída a você no momento."
+              />
+            )}
+          </Card>
+        </div>
       </div>
     </div>
   );
 }
 
-function EmptyState() {
+/* ─── Subcomponentes ─────────────────────────────────────────────────────── */
+function Card({ title, headerExtra, children }: { title: string; headerExtra?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border p-14 text-center">
-      <div className="grid size-10 place-items-center rounded-full bg-emerald-500/10 text-emerald-400">
-        <UserCheck className="size-5" />
+    <section style={{
+      background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)",
+      padding: "14px 16px", minHeight: 260,
+      display: "flex", flexDirection: "column",
+    }}>
+      <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, minHeight: 26 }}>
+        <h2 style={{ fontSize: 14, fontWeight: 600, color: "#e4e4e4", margin: 0 }}>{title}</h2>
+        {headerExtra}
+      </header>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        {children}
       </div>
-      <div>
-        <h3 className="text-sm font-medium text-foreground">Nenhuma tarefa nesta categoria</h3>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Quando alguém te atribuir uma tarefa, ela aparecerá aqui.
-        </p>
+    </section>
+  );
+}
+
+function EmptyArea({ icon, text, hint }: { icon: React.ReactNode; text: string; hint: string }) {
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+      gap: 6, padding: "32px 16px", color: "#505058",
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: "50%",
+        display: "grid", placeItems: "center", background: "#1f1f1f", color: "#606068",
+      }}>
+        {icon}
       </div>
+      <p style={{ fontSize: 13, color: "#888892", fontWeight: 500, margin: 0 }}>{text}</p>
+      <p style={{ fontSize: 11, color: "#505058", margin: 0, textAlign: "center" }}>{hint}</p>
     </div>
   );
 }
+
+const iconBtnStyle: React.CSSProperties = {
+  display: "grid", width: 24, height: 24, placeItems: "center",
+  borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "#606068",
+};

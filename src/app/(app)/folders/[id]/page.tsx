@@ -3,12 +3,12 @@
 import { use, useState } from "react";
 import {
   Star, Share2, Bot, Sparkles, Plus, Filter,
-  RefreshCw, LayoutGrid, Maximize2, Settings2,
+  RefreshCw, LayoutGrid,
 } from "lucide-react";
 import { SpaceChip } from "@/components/shell/space-chip";
 import { useEntidadesStore } from "@/lib/stores/entidades";
 import { useFilhosDe } from "@/lib/stores/entidades";
-import { isEspaco } from "@/lib/types/entidade";
+import { isPasta } from "@/lib/types/entidade";
 import { mockEntidades } from "@/lib/mocks/entidades";
 import Link from "next/link";
 
@@ -66,14 +66,6 @@ function IcVoice() {
   );
 }
 
-function IcBookmark() {
-  return (
-    <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
-    </svg>
-  );
-}
-
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 type TabId = "overview" | "lista" | "quadro" | "calendario" | "gantt" | "tabela";
 
@@ -87,31 +79,31 @@ const TABS: { id: TabId; label: string; icon?: React.ReactNode }[] = [
 ];
 
 /* ─── Página ──────────────────────────────────────────────────────────────── */
-export default function SpacePage({ params }: { params: Promise<{ id: string }> }) {
+export default function FolderPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
 
   const entidade = useEntidadesStore((s) => s.entidades.find((e) => e.id === id) ?? null);
   const filhos = useFilhosDe(id);
 
-  if (!entidade || !isEspaco(entidade)) {
-    return <div style={{ color: "#7a7a85", padding: 40 }}>Espaço não encontrado.</div>;
+  if (!entidade || !isPasta(entidade)) {
+    return <div style={{ color: "#7a7a85", padding: 40 }}>Pasta não encontrada.</div>;
   }
 
-  const pastas = filhos.filter((f) => f.idClasse === "pasta");
+  /* espaço pai — usado para o chip/ícone do header */
+  const espacoPai = entidade.idPai ? mockEntidades.find((e) => e.id === entidade.idPai) : null;
+  const espacoMeta = espacoPai && "meta" in espacoPai && espacoPai.idClasse === "espaco" ? espacoPai.meta : null;
+
   const listas = filhos.filter((f) => f.idClasse === "backlog" || f.idClasse === "board");
   const docs   = filhos.filter((f) => f.idClasse === "doc");
 
-  /* recent — todos os filhos diretos + filhos das pastas */
-  const filhosDasPastas = pastas.flatMap((p) =>
-    mockEntidades.filter((e) => e.idPai === p.id)
-  );
-  const recentes = [...filhos, ...filhosDasPastas].slice(0, 6);
+  /* recent — todos os filhos diretos */
+  const recentes = [...filhos].slice(0, 6);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#111111", overflow: "hidden" }}>
 
-      {/* ── Topbar do espaço ── */}
+      {/* ── Topbar da pasta ── */}
       <header style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 16px", height: 44, flexShrink: 0,
@@ -119,7 +111,13 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
       }}>
         {/* esquerda: chip + nome + estrela + menu */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <SpaceChip iniciais={entidade.meta.iniciais} cor={entidade.meta.cor} iconName={entidade.meta.iconName} size="sm" />
+          {espacoMeta ? (
+            <SpaceChip iniciais={espacoMeta.iniciais} cor={espacoMeta.cor} iconName={espacoMeta.iconName} size="sm" />
+          ) : (
+            <div style={{ display: "grid", placeItems: "center", width: 22, height: 22, borderRadius: 5, background: "#1e1e1e" }}>
+              <IcFolder />
+            </div>
+          )}
           <button type="button" style={{ display: "flex", alignItems: "center", gap: 4, border: 0, background: "none", cursor: "pointer", color: "#e4e4e4", fontSize: 14, fontWeight: 600 }}>
             {entidade.nome}
             <IcCaret />
@@ -168,7 +166,6 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
         borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
         overflowX: "auto",
       }}>
-        {/* Adicionar canal */}
         <button type="button" style={{
           display: "flex", alignItems: "center", gap: 5, height: 36, padding: "0 10px",
           border: 0, background: "none", cursor: "pointer", color: "#606068", fontSize: 12, whiteSpace: "nowrap",
@@ -258,7 +255,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
           <div style={{ background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: "#888892", marginBottom: 12 }}>Recent</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {recentes.map((item) => {
+              {recentes.length > 0 ? recentes.map((item) => {
                 const pai = item.idPai ? mockEntidades.find(e => e.id === item.idPai) : null;
                 const href = item.idClasse === "backlog" || item.idClasse === "board"
                   ? `/lists/${item.id}`
@@ -282,7 +279,9 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
                     {pai && <span style={{ fontSize: 12, color: "#505058" }}>• em {pai.nome}</span>}
                   </Link>
                 );
-              })}
+              }) : (
+                <p style={{ fontSize: 12, color: "#404048" }}>Nada por aqui ainda</p>
+              )}
             </div>
           </div>
 
@@ -336,57 +335,8 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
           </div>
         </div>
 
-        {/* ── Folders — container próprio com borda ── */}
-        {pastas.length > 0 && (
-          <section style={{ marginBottom: 12, border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, overflow: "hidden" }}>
-            {/* header do container */}
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)",
-              background: "#1a1a1a",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <LayoutGrid size={13} style={{ color: "#606068" }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#c4c4c4" }}>Folders</span>
-              </div>
-              <div style={{ display: "flex", gap: 4 }}>
-                <button type="button" style={{ width: 24, height: 24, display: "grid", placeItems: "center", border: 0, background: "none", cursor: "pointer", color: "#606068", borderRadius: 5 }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.color = "#c4c4c4"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
-                >
-                  <Maximize2 size={12} />
-                </button>
-                <button type="button" style={{ width: 24, height: 24, display: "grid", placeItems: "center", border: 0, background: "none", cursor: "pointer", color: "#606068", borderRadius: 5 }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.color = "#c4c4c4"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
-                >
-                  <Plus size={13} />
-                </button>
-              </div>
-            </div>
-            {/* cards de pasta dentro do container */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, padding: "14px 16px", background: "#111111", minHeight: "28vh", maxHeight: "33vh", overflowY: "auto", alignContent: "flex-start" }}>
-              {pastas.map((pasta) => (
-                <Link key={pasta.id} href={`/folders/${pasta.id}`} style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  width: 200, padding: "10px 14px", borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.07)", background: "#1a1a1a",
-                  textDecoration: "none",
-                }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#1e1e1e"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "#1a1a1a"; }}
-                >
-                  <IcFolder color="#9ca3af" />
-                  <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{pasta.nome}</span>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
-
         {/* ── Lists — container próprio com borda ── */}
         <section style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, overflow: "hidden" }}>
-          {/* header do container */}
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)",
@@ -398,9 +348,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
             </div>
           </div>
 
-          {/* tabela dentro do container */}
           <div style={{ background: "#111111", minHeight: "28vh", maxHeight: "33vh", overflowY: "auto" }}>
-            {/* cabeçalho da tabela */}
             <div style={{
               display: "grid",
               gridTemplateColumns: "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
@@ -418,7 +366,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
               <div style={{ padding: "20px 16px", fontSize: 12, color: "#404048" }}>Nenhuma lista ainda</div>
             )}
 
-            <AddListRow espacoId={id} />
+            <AddListRow />
           </div>
         </section>
       </div>
@@ -446,28 +394,22 @@ function ListRow({ id, nome }: { id: string; nome: string }) {
         <IcList />
         <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{nome}</span>
       </div>
-      {/* cor */}
       <div style={{ fontSize: 12, color: "#404048" }}>-</div>
-      {/* progresso */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <div style={{ flex: 1, height: 4, borderRadius: 2, background: "#2a2a2a" }}>
           <div style={{ width: "0%", height: "100%", borderRadius: 2, background: "#7c3aed" }} />
         </div>
         <span style={{ fontSize: 11, color: "#505058", whiteSpace: "nowrap" }}>0/0</span>
       </div>
-      {/* início */}
       <div style={{ fontSize: 12, color: "#404048", display: "flex", alignItems: "center" }}>
         <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
       </div>
-      {/* término */}
       <div style={{ fontSize: 12, color: "#404048", display: "flex", alignItems: "center" }}>
         <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
       </div>
-      {/* prioridade */}
       <div>
         <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V4"/><path d="M5 4h13l-2 4 2 4H5"/></svg>
       </div>
-      {/* proprietário */}
       <div>
         <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
       </div>
@@ -476,7 +418,7 @@ function ListRow({ id, nome }: { id: string; nome: string }) {
   );
 }
 
-function AddListRow({ espacoId }: { espacoId: string }) {
+function AddListRow() {
   const [hovered, setHovered] = useState(false);
   return (
     <button type="button"

@@ -322,12 +322,16 @@ export function WorkspacePanel() {
     return null;
   }
 
-  if (pathname.startsWith("/docs")) {
+  if (pathname === "/docs") {
     return (
       <aside aria-label="Painel de documentos" className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar border-r border-border overflow-y-auto">
         <DocsPanel />
       </aside>
     );
+  }
+
+  if (pathname.startsWith("/docs/")) {
+    return null;
   }
 
   return (
@@ -358,7 +362,7 @@ export function WorkspacePanel() {
         </button>
       </header>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1 [&_[data-slot=scroll-area-scrollbar]]:hidden">
         <div className="space-y-5 px-2 pb-4">
           {/* seção Início */}
           {homeOpen && (
