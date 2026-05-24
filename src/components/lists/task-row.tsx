@@ -111,6 +111,14 @@ export function TaskRow({
   const updateTask = useTasksStore((s) => s.updateTask);
   const [rowHovered, setRowHovered] = useState(false);
   const [openDD, setOpenDD] = useState<string | null>(null);
+  /* célula que está a piscar verde após salvar */
+  const [flashCell, setFlashCell] = useState<string | null>(null);
+
+  function saveAndFlash(cell: string, patch: Parameters<typeof updateTask>[1]) {
+    updateTask(tarefa.id, patch);
+    setFlashCell(cell);
+    setTimeout(() => setFlashCell(null), 600);
+  }
 
   /* refs nas próprias <td> — toda a célula serve de âncora */
   const respTd   = useRef<HTMLTableCellElement>(null);
@@ -211,6 +219,7 @@ export function TaskRow({
         <EditableTd
           tdRef={respTd}
           active={openDD === "responsavel"}
+          flash={flashCell === "responsavel"}
           rowHovered={rowHovered}
           onClick={() => toggle("responsavel")}
         >
@@ -231,11 +240,11 @@ export function TaskRow({
           )}
           {openDD === "responsavel" && (
             <CellDropdown anchorRef={respTd} onClose={() => setOpenDD(null)}>
-              <DropItem active={!tarefa.responsavelId} onClick={() => { updateTask(tarefa.id, { responsavelId: null }); setOpenDD(null); }}>
+              <DropItem active={!tarefa.responsavelId} onClick={() => { saveAndFlash("responsavel", { responsavelId: null }); setOpenDD(null); }}>
                 <span style={{ color: "#7a7a85" }}>Sem responsável</span>
               </DropItem>
               {mockMembros.map((m) => (
-                <DropItem key={m.id} active={tarefa.responsavelId === m.id} onClick={() => { updateTask(tarefa.id, { responsavelId: m.id }); setOpenDD(null); }}>
+                <DropItem key={m.id} active={tarefa.responsavelId === m.id} onClick={() => { saveAndFlash("responsavel", { responsavelId: m.id }); setOpenDD(null); }}>
                   <div style={{
                     width: 20, height: 20, borderRadius: "50%",
                     background: "#3d2a6b", color: "#d8ccff",
@@ -255,6 +264,7 @@ export function TaskRow({
         <EditableTd
           tdRef={dataTd}
           active={openDD === "data"}
+          flash={flashCell === "data"}
           rowHovered={rowHovered}
           onClick={() => toggle("data")}
         >
@@ -276,7 +286,7 @@ export function TaskRow({
                   type="date"
                   autoFocus
                   defaultValue={tarefa.dataVencimento ?? ""}
-                  onChange={(e) => updateTask(tarefa.id, { dataVencimento: e.target.value || null })}
+                  onChange={(e) => saveAndFlash("data", { dataVencimento: e.target.value || null })}
                   onBlur={() => setOpenDD(null)}
                   style={{
                     background: "#26262f", border: "1px solid #3a3a46",
@@ -288,7 +298,7 @@ export function TaskRow({
                 {tarefa.dataVencimento && (
                   <button
                     type="button"
-                    onClick={() => { updateTask(tarefa.id, { dataVencimento: null }); setOpenDD(null); }}
+                    onClick={() => { saveAndFlash("data", { dataVencimento: null }); setOpenDD(null); }}
                     style={{
                       marginTop: 6, width: "100%", padding: "5px 0",
                       background: "none", border: "1px solid #2e2e38",
@@ -309,6 +319,7 @@ export function TaskRow({
         <EditableTd
           tdRef={prioTd}
           active={openDD === "prioridade"}
+          flash={flashCell === "prioridade"}
           rowHovered={rowHovered}
           onClick={() => toggle("prioridade")}
         >
@@ -321,14 +332,14 @@ export function TaskRow({
           )}
           {openDD === "prioridade" && (
             <CellDropdown anchorRef={prioTd} onClose={() => setOpenDD(null)}>
-              <DropItem active={!tarefa.prioridade} onClick={() => { updateTask(tarefa.id, { prioridade: null }); setOpenDD(null); }}>
+              <DropItem active={!tarefa.prioridade} onClick={() => { saveAndFlash("prioridade", { prioridade: null }); setOpenDD(null); }}>
                 <IcFlag size={12} />
                 <span style={{ color: "#7a7a85" }}>Sem prioridade</span>
               </DropItem>
               {allPrios.map((p) => {
                 const c = PRIO_CONFIG[p];
                 return (
-                  <DropItem key={p} active={tarefa.prioridade === p} onClick={() => { updateTask(tarefa.id, { prioridade: p }); setOpenDD(null); }}>
+                  <DropItem key={p} active={tarefa.prioridade === p} onClick={() => { saveAndFlash("prioridade", { prioridade: p }); setOpenDD(null); }}>
                     <IcFlag size={12} />
                     <span style={{ color: c.color }}>{c.label}</span>
                   </DropItem>
@@ -342,6 +353,7 @@ export function TaskRow({
         <EditableTd
           tdRef={statusTd}
           active={openDD === "status"}
+          flash={flashCell === "status"}
           rowHovered={rowHovered}
           onClick={() => toggle("status")}
         >
@@ -361,7 +373,7 @@ export function TaskRow({
                 const c = STATUS_CONFIG[s];
                 const Icon = c.Icon;
                 return (
-                  <DropItem key={s} active={tarefa.status === s} onClick={() => { updateTask(tarefa.id, { status: s }); setOpenDD(null); }}>
+                  <DropItem key={s} active={tarefa.status === s} onClick={() => { saveAndFlash("status", { status: s }); setOpenDD(null); }}>
                     <Icon size={12} />
                     <span style={{ color: c.iconColor }}>{c.label}</span>
                   </DropItem>
@@ -407,17 +419,29 @@ export function TaskRow({
 function EditableTd({
   tdRef,
   active,
+  flash,
   rowHovered,
   onClick,
   children,
 }: {
   tdRef: React.RefObject<HTMLTableCellElement | null>;
   active: boolean;
+  flash: boolean;
   rowHovered: boolean;
   onClick: () => void;
   children: React.ReactNode;
 }) {
   const [hov, setHov] = useState(false);
+  /* fase: idle → in → out → idle */
+  const [phase, setPhase] = useState<"idle" | "in" | "out">("idle");
+
+  useEffect(() => {
+    if (!flash) return;
+    setPhase("in");
+    const t1 = setTimeout(() => setPhase("out"), 200);
+    const t2 = setTimeout(() => setPhase("idle"), 650);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [flash]);
 
   return (
     <td
@@ -434,7 +458,16 @@ function EditableTd({
         transition: "box-shadow .1s",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 6, height: "100%" }}>
+      {/* overlay verde com fade-in / fade-out */}
+      {phase !== "idle" && (
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: 4, pointerEvents: "none",
+          background: "rgba(34,197,94,0.28)",
+          opacity: phase === "in" ? 1 : 0,
+          transition: phase === "in" ? "opacity .15s ease-in" : "opacity .45s ease-out",
+        }} />
+      )}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, height: "100%", position: "relative" }}>
         {children}
       </div>
     </td>

@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import { useTasksStore } from '@/lib/stores/tasks';
 import { useEntidadesStore } from '@/lib/stores/entidades';
 import { mockMembros } from '@/lib/mocks/entidades';
+import { isEspaco } from '@/lib/types/entidade';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { StatusTarefa, Prioridade } from '@/lib/types/tarefa';
@@ -77,7 +78,25 @@ export function CreateTaskModal({
 }: CreateTaskModalProps) {
   const addTask = useTasksStore((s) => s.addTask);
   const addDoc = useEntidadesStore((s) => s.addDoc);
+  const entidades = useEntidadesStore((s) => s.entidades);
   const router = useRouter();
+
+  /* Listas disponíveis em todo o workspace agrupadas por espaço */
+  const espacos = entidades.filter(isEspaco);
+  const listas = entidades.filter((e) => e.idClasse === 'board' || e.idClasse === 'backlog');
+
+  /* Encontra o espaço pai de uma lista (pode estar dentro de uma pasta) */
+  function espacoDaLista(listaId: string): string {
+    const lista = entidades.find((e) => e.id === listaId);
+    if (!lista) return '';
+    if (!lista.idPai) return lista.id;
+    const pai = entidades.find((e) => e.id === lista.idPai);
+    if (!pai) return '';
+    if (pai.idClasse === 'espaco') return pai.id;
+    /* pai é pasta — sobe mais um nível */
+    const avo = entidades.find((e) => e.id === pai.idPai);
+    return avo?.id ?? '';
+  }
 
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
@@ -85,11 +104,13 @@ export function CreateTaskModal({
   const [prioridade, setPrioridade] = useState<Prioridade | null>(null);
   const [responsavelId, setResponsavelId] = useState<string | null>(null);
   const [dataVencimento, setDataVencimento] = useState<string>('');
+  /* ID da lista de destino — inicia com a lista atual (espacoId) */
+  const [listaDestino, setListaDestino] = useState<string>(espacoId);
 
   const [abaAtiva, setAbaAtiva] = useState<'tarefa' | 'documento' | 'lembrete' | 'quadro' | 'paineis'>('tarefa');
 
   // dropdowns abertos
-  const [openDropdown, setOpenDropdown] = useState<'status' | 'prioridade' | 'responsavel' | 'data' | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<'status' | 'prioridade' | 'responsavel' | 'data' | 'lista' | null>(null);
   const [descAberta, setDescAberta] = useState(false);
 
   // aba documento
@@ -103,11 +124,13 @@ export function CreateTaskModal({
   const responsavelBtnRef = useRef<HTMLButtonElement>(null);
   const dataBtnRef = useRef<HTMLButtonElement>(null);
   const prioridadeBtnRef = useRef<HTMLButtonElement>(null);
+  const listaBtnRef = useRef<HTMLButtonElement>(null);
 
   const statusPortalRef = useRef<HTMLDivElement>(null);
   const responsavelPortalRef = useRef<HTMLDivElement>(null);
   const dataPortalRef = useRef<HTMLDivElement>(null);
   const prioridadePortalRef = useRef<HTMLDivElement>(null);
+  const listaPortalRef = useRef<HTMLDivElement>(null);
 
   // Reset ao abrir
   useEffect(() => {
@@ -119,12 +142,13 @@ export function CreateTaskModal({
     setPrioridade(null);
     setResponsavelId(null);
     setDataVencimento('');
+    setListaDestino(espacoId);
     setOpenDropdown(null);
     setDescAberta(false);
     setDocNome('');
     setDocPrivado(false);
     setTimeout(() => nomeRef.current?.focus(), 50);
-  }, [open, defaultStatus]);
+  }, [open, defaultStatus, espacoId]);
 
   // Fechar com Escape
   useEffect(() => {
@@ -139,7 +163,7 @@ export function CreateTaskModal({
   // Fechar dropdown ao clicar fora (exclui portais que estão no body)
   useEffect(() => {
     if (!openDropdown) return;
-    const portalRefs = [statusPortalRef, responsavelPortalRef, dataPortalRef, prioridadePortalRef];
+    const portalRefs = [statusPortalRef, responsavelPortalRef, dataPortalRef, prioridadePortalRef, listaPortalRef];
     function handleClick(e: MouseEvent) {
       const target = e.target as Node;
       const insideModal = modalRef.current?.contains(target);
@@ -159,7 +183,7 @@ export function CreateTaskModal({
     }
     addTask({
       id: crypto.randomUUID(),
-      espacoId,
+      espacoId: listaDestino || espacoId,
       nome: nome.trim(),
       status,
       prioridade,
@@ -265,11 +289,67 @@ export function CreateTaskModal({
 
             {/* Chips de contexto */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 18 }}>
-              <button type="button" style={chipStyle}>
-                <span style={{ fontSize: 13, color: '#888892', lineHeight: 1 }}>☰</span>
-                <span style={{ fontSize: 12, color: '#c4c4cc' }}>Projeto 1</span>
+              {/* Seletor de lista destino */}
+              <button
+                ref={listaBtnRef}
+                type="button"
+                style={chipStyle}
+                onClick={() => setOpenDropdown(openDropdown === 'lista' ? null : 'lista')}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              >
+                <List size={12} color="#888892" />
+                <span style={{ fontSize: 12, color: '#c4c4cc', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {entidades.find((e) => e.id === listaDestino)?.nome ?? 'Selecionar lista'}
+                </span>
                 <ChevronDown size={11} color="#6b6b74" />
               </button>
+              {openDropdown === 'lista' && (
+                <DropdownPortal triggerRef={listaBtnRef} portalRef={listaPortalRef}>
+                  <div style={{
+                    background: '#1c1c24', border: '1px solid #2e2e38', borderRadius: 8,
+                    padding: '4px', minWidth: 220, maxHeight: 300, overflowY: 'auto',
+                    boxShadow: '0 8px 24px rgba(0,0,0,.5)',
+                  }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: '#5a5a64', letterSpacing: '.6px', textTransform: 'uppercase', padding: '4px 10px 6px', margin: 0 }}>
+                      Listas do workspace
+                    </p>
+                    {espacos.map((esp) => {
+                      const listasDoEspaco = listas.filter((l) => espacoDaLista(l.id) === esp.id);
+                      if (listasDoEspaco.length === 0) return null;
+                      return (
+                        <div key={esp.id}>
+                          <p style={{ fontSize: 11, color: '#7a7a85', padding: '4px 10px 2px', margin: 0, fontWeight: 600 }}>
+                            {esp.nome}
+                          </p>
+                          {listasDoEspaco.map((lista) => (
+                            <button
+                              key={lista.id}
+                              type="button"
+                              onClick={() => { setListaDestino(lista.id); setOpenDropdown(null); }}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: 8,
+                                width: '100%', padding: '6px 10px', borderRadius: 5,
+                                background: listaDestino === lista.id ? 'rgba(124,92,255,0.12)' : 'none',
+                                border: 0, color: '#d4d4dc', fontSize: 12, cursor: 'pointer', textAlign: 'left',
+                              }}
+                              onMouseEnter={(e) => { if (listaDestino !== lista.id) e.currentTarget.style.background = '#26262f'; }}
+                              onMouseLeave={(e) => { if (listaDestino !== lista.id) e.currentTarget.style.background = 'none'; }}
+                            >
+                              <List size={12} color="#6a6a75" />
+                              {lista.nome}
+                              {listaDestino === lista.id && (
+                                <span style={{ marginLeft: 'auto', color: '#7c5cff', fontSize: 11 }}>✓</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </DropdownPortal>
+              )}
+
               <button type="button" style={chipStyle}>
                 <span style={{
                   width: 8, height: 8, borderRadius: '50%',
