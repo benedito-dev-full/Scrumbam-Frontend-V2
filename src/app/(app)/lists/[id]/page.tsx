@@ -5,7 +5,7 @@ import { Star, Share2, Bot, Sparkles } from "lucide-react";
 
 import { ViewSwitcher } from "@/components/shell/view-switcher";
 import {
-  IcCaret, IcCheck, IcChat, IcColumns, IcFilter, IcGitFork,
+  IcCaret, IcCheck, IcChat, IcFilter, IcGitFork,
   IcLayers, IcList, IcPlus, IcSearch, IcUser,
 } from "@/components/lists/icons";
 import { STATUS_CONFIG, GROUP_PILL_STYLE } from "@/components/lists/config";
@@ -31,6 +31,9 @@ export default function ListPage({
 
   /* Vista ativa: 'list' = tabela agrupada, 'board' = kanban */
   const [view, setView] = useState<"list" | "board">("list");
+
+  /* Modo de exibição de subtarefas */
+  const [subtarefasMode, setSubtarefasMode] = useState<"recolhidas" | "expandidas" | "separar">("recolhidas");
 
   /* Modal de criar task */
   const [modalOpen, setModalOpen] = useState(false);
@@ -63,11 +66,12 @@ export default function ListPage({
         value={view}
         onChange={(v) => setView(v as "list" | "board")}
       />
-      <Toolbar tarefasCount={null} onAddTask={() => openModal()} />
+      <Toolbar tarefasCount={null} onAddTask={() => openModal()} subtarefasMode={subtarefasMode} onSubtarefasMode={setSubtarefasMode} />
       {view === "list" ? (
         <ListContent
           espacoId={espacoId}
           listId={id}
+          subtarefasMode={subtarefasMode}
           onAddTask={openModal}
           onOpenTask={setSelectedTask}
         />
@@ -121,12 +125,14 @@ function BoardContent({
 /** Componente separado para ler do store de forma reativa */
 function ListContent({
   espacoId,
+  subtarefasMode,
   /* listId reservado para futura navegação / breadcrumbs */
   onAddTask,
   onOpenTask,
 }: {
   espacoId: string;
   listId: string;
+  subtarefasMode: SubtarefasMode;
   onAddTask: (defaultStatus?: StatusTarefa) => void;
   /** Callback para abrir o sheet de detalhe de uma tarefa */
   onOpenTask: (tarefa: Tarefa) => void;
@@ -148,6 +154,7 @@ function ListContent({
               key={g.status}
               status={g.status}
               tarefas={g.tarefas}
+              subtarefasMode={subtarefasMode}
               onAddTask={onAddTask}
               onOpenTask={onOpenTask}
             />
@@ -218,13 +225,21 @@ function TbBtn({ icon, label, bordered }: { icon: React.ReactNode; label: string
 }
 
 /* ─── Toolbar ────────────────────────────────────────────────────────────── */
+type SubtarefasMode = "recolhidas" | "expandidas" | "separar";
+
 function Toolbar({
   tarefasCount,
   onAddTask,
+  subtarefasMode,
+  onSubtarefasMode,
 }: {
   tarefasCount: number | null;
   onAddTask: () => void;
+  subtarefasMode: SubtarefasMode;
+  onSubtarefasMode: (m: SubtarefasMode) => void;
 }) {
+  const [subtarefasOpen, setSubtarefasOpen] = useState(false);
+
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -233,8 +248,66 @@ function Toolbar({
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <TabBtn active icon={<IcLayers size={14} />} label="Grupo: Status" />
-        <TabBtn icon={<IcGitFork size={14} />} label="Subtarefas" />
-        <TabBtn icon={<IcColumns size={14} />} label="Colunas" />
+
+        {/* Botão Subtarefas com dropdown */}
+        <div style={{ position: "relative" }}>
+          <TabBtn
+            icon={<IcGitFork size={14} />}
+            label="Subtarefas"
+            onClick={() => setSubtarefasOpen((v) => !v)}
+          />
+          {subtarefasOpen && (
+            <>
+              <div
+                style={{ position: "fixed", inset: 0, zIndex: 100 }}
+                onClick={() => setSubtarefasOpen(false)}
+              />
+              <div style={{
+                position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 101,
+                background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8,
+                padding: "6px 4px", minWidth: 220,
+                boxShadow: "0 8px 24px rgba(0,0,0,.5)",
+              }}>
+                <p style={{ fontSize: 11, fontWeight: 600, color: "#5a5a64", letterSpacing: ".6px", textTransform: "uppercase", padding: "4px 10px 6px", margin: 0 }}>
+                  Mostrar subtarefas
+                </p>
+                {(["recolhidas", "expandidas", "separar"] as SubtarefasMode[]).map((opt) => {
+                  const labels: Record<SubtarefasMode, string> = { recolhidas: "Recolhidas", expandidas: "Expandidas", separar: "Separar" };
+                  const descs: Record<SubtarefasMode, string | null> = { recolhidas: "(padrão)", expandidas: null, separar: "Usar isto para filtrar subtarefas" };
+                  const active = subtarefasMode === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => { onSubtarefasMode(opt); setSubtarefasOpen(false); }}
+                      style={{
+                        display: "flex", alignItems: "baseline", gap: 6,
+                        width: "100%", padding: "7px 10px", borderRadius: 5,
+                        background: "none", border: 0,
+                        color: "#d4d4dc", fontSize: 13, cursor: "pointer", textAlign: "left",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "#26262f"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                    >
+                      <span style={{ flex: 1 }}>
+                        {labels[opt]}
+                        {descs[opt] && (
+                          <span style={{ color: "#7a7a85", fontSize: 12, marginLeft: 5 }}>{descs[opt]}</span>
+                        )}
+                      </span>
+                      {active && (
+                        <span style={{ color: "#b6b6bf", marginLeft: "auto", flexShrink: 0 }}>
+                          <IcCheck size={13} />
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <SmallBtn icon={<IcFilter size={13} />} label="Filtro" />
@@ -272,9 +345,9 @@ function Toolbar({
   );
 }
 
-function TabBtn({ icon, label, active }: { icon: React.ReactNode; label: string; active?: boolean }) {
+function TabBtn({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active?: boolean; onClick?: () => void }) {
   return (
-    <button type="button" style={{
+    <button type="button" onClick={onClick} style={{
       display: "inline-flex", alignItems: "center", gap: 6, height: 28, padding: "0 10px",
       borderRadius: 6, background: active ? "rgba(124,92,255,0.16)" : "none",
       border: 0, color: active ? "#cfc1ff" : "#b6b6bf", fontSize: 13, fontWeight: 500, cursor: "pointer",
@@ -305,19 +378,32 @@ function SmallBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
 function GroupBlock({
   status,
   tarefas,
+  subtarefasMode,
   onAddTask,
   onOpenTask,
 }: {
   status: StatusTarefa;
   tarefas: Tarefa[];
+  subtarefasMode: SubtarefasMode;
   onAddTask: (defaultStatus?: StatusTarefa) => void;
-  /** Callback para abrir o sheet de detalhe de uma tarefa */
   onOpenTask: (tarefa: Tarefa) => void;
 }) {
   const [open, setOpen] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const cfg = STATUS_CONFIG[status];
   const StatusIcon = cfg.Icon;
+
+  /* No modo "expandidas", todas as linhas ficam com expanded=true */
+  function isExpanded(id: string) {
+    if (subtarefasMode === "expandidas") return true;
+    if (subtarefasMode === "recolhidas") return false;
+    return !!expandedRows[id];
+  }
+
+  /* No modo "separar", subtarefas são filtradas da lista principal */
+  const tarefasVisiveis = subtarefasMode === "separar"
+    ? tarefas.filter((t) => t.subtarefas === 0)
+    : tarefas;
 
   return (
     <div style={{ marginBottom: 8, marginTop: 16 }}>
@@ -337,7 +423,7 @@ function GroupBlock({
           <StatusIcon size={11} />
           {cfg.label}
         </span>
-        <span style={{ color: "#7a7a85", fontSize: 12, marginLeft: 2 }}>{tarefas.length}</span>
+        <span style={{ color: "#7a7a85", fontSize: 12, marginLeft: 2 }}>{tarefasVisiveis.length}</span>
       </div>
 
       {open && (
@@ -353,12 +439,12 @@ function GroupBlock({
           </colgroup>
           <thead><HeadRow /></thead>
           <tbody>
-            {tarefas.map((t) => (
+            {tarefasVisiveis.map((t) => (
               <TaskRow
                 key={t.id}
                 tarefa={t}
                 status={status}
-                expanded={!!expandedRows[t.id]}
+                expanded={isExpanded(t.id)}
                 onToggle={() => setExpandedRows((s) => ({ ...s, [t.id]: !s[t.id] }))}
                 onOpen={() => onOpenTask(t)}
               />

@@ -16,6 +16,8 @@ interface TasksState {
   tasks: Tarefa[];
   /** Adiciona uma task à lista */
   addTask: (task: Tarefa) => void;
+  /** Atualiza campos de uma task existente pelo id */
+  updateTask: (id: string, patch: Partial<Omit<Tarefa, 'id'>>) => void;
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -37,6 +39,11 @@ export const useTasksStore = create<TasksState>()(
 
       addTask: (task) =>
         set((s) => ({ tasks: [...s.tasks, task] })),
+
+      updateTask: (id, patch) =>
+        set((s) => ({
+          tasks: s.tasks.map((t) => t.id === id ? { ...t, ...patch } : t),
+        })),
     }),
     {
       name: 'scrumban_tasks_mock',

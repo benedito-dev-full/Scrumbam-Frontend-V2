@@ -5,6 +5,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { STATUS_CONFIG, PRIO_CONFIG } from "@/components/lists/config";
 import { mockMembros } from "@/lib/mocks/entidades";
 import { diasUntil } from "@/lib/mocks/tarefas";
+import { useTasksStore } from "@/lib/stores/tasks";
 import type { Prioridade, StatusTarefa, Tarefa } from "@/lib/types/tarefa";
 
 /* ─── Tipos internos ──────────────────────────────────────────────────────── */
@@ -412,12 +413,16 @@ function PropRow({ label, children }: { label: string; children: React.ReactNode
  * <TaskSheet task={selectedTask} onClose={() => setSelectedTask(null)} />
  */
 export function TaskSheet({ task, onClose }: TaskSheetProps) {
-  /* estado local — sem persistência, só UI */
+  const updateTask = useTasksStore((s) => s.updateTask);
+
+  /* estado local — espelhado do store, persiste ao confirmar */
   const [nome, setNome] = useState("");
   const [editandoNome, setEditandoNome] = useState(false);
   const [status, setStatus] = useState<StatusTarefa>("pendente");
   const [prioridade, setPrioridade] = useState<Prioridade | null>(null);
   const [responsavelId, setResponsavelId] = useState<string | null>(null);
+  const [dataVencimento, setDataVencimento] = useState<string | null>(null);
+  const [editandoData, setEditandoData] = useState(false);
   const [descricao, setDescricao] = useState("");
   const [novaSubtarefa, setNovaSubtarefa] = useState("");
   const [subtarefas, setSubtarefas] = useState<SubtarefaItem[]>([]);
@@ -438,10 +443,12 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
         setStatus(task.status);
         setPrioridade(task.prioridade);
         setResponsavelId(task.responsavelId);
+        setDataVencimento(task.dataVencimento);
         setDescricao("");
         setNovaSubtarefa("");
         setComentario("");
         setEditandoNome(false);
+        setEditandoData(false);
         /* gera subtarefas mock a partir do contador */
         const items: SubtarefaItem[] = Array.from({ length: task.subtarefas }, (_, i) => ({
           id: `sub-${task.id}-${i}`,
@@ -487,8 +494,11 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
 
   const confirmarNome = useCallback(() => {
     setEditandoNome(false);
-    if (!nome.trim()) setNome(task?.nome ?? "");
-  }, [nome, task?.nome]);
+    if (!task) return;
+    const novoNome = nome.trim() || task.nome;
+    setNome(novoNome);
+    updateTask(task.id, { nome: novoNome });
+  }, [nome, task, updateTask]);
 
   const adicionarSubtarefa = useCallback(() => {
     const texto = novaSubtarefa.trim();
@@ -509,9 +519,9 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
   /* Não renderiza nada se não há tarefa (nem no DOM, evita FOUC) */
   if (!task) return null;
 
-  const dataTexto = formatarData(task.dataVencimento);
-  const dataCor = corData(task.dataVencimento);
-  const diasRestantes = diasUntil(task.dataVencimento);
+  const dataTexto = formatarData(dataVencimento);
+  const dataCor = corData(dataVencimento);
+  const diasRestantes = diasUntil(dataVencimento);
 
   /* ─── Render ─────────────────────────────────────────────────────────────── */
   return (
@@ -637,38 +647,77 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
             </p>
 
             <PropRow label="Status">
-              <StatusSelect value={status} onChange={setStatus} />
+              <StatusSelect
+                value={status}
+                onChange={(v) => { setStatus(v); updateTask(task.id, { status: v }); }}
+              />
             </PropRow>
 
             <div style={{ height: 1, background: "#22222a", margin: "4px 0" }} />
 
             <PropRow label="Prioridade">
-              <PrioridadeSelect value={prioridade} onChange={setPrioridade} />
+              <PrioridadeSelect
+                value={prioridade}
+                onChange={(v) => { setPrioridade(v); updateTask(task.id, { prioridade: v }); }}
+              />
             </PropRow>
 
             <div style={{ height: 1, background: "#22222a", margin: "4px 0" }} />
 
             <PropRow label="Responsável">
-              <ResponsavelSelect value={responsavelId} onChange={setResponsavelId} />
+              <ResponsavelSelect
+                value={responsavelId}
+                onChange={(v) => { setResponsavelId(v); updateTask(task.id, { responsavelId: v }); }}
+              />
             </PropRow>
 
             <div style={{ height: 1, background: "#22222a", margin: "4px 0" }} />
 
             <PropRow label="Vencimento">
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6, color: dataCor, fontSize: 12 }}>
-                <IcCalendar size={13} />
-                {dataTexto || <span style={{ color: "#5a5a64" }}>Sem data</span>}
-                {diasRestantes !== null && diasRestantes < 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#fbbf24", letterSpacing: ".5px" }}>
-                    ATRASADO {Math.abs(diasRestantes)}D
-                  </span>
-                )}
-                {diasRestantes === 0 && (
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#7c5cff", letterSpacing: ".5px" }}>
-                    HOJE
-                  </span>
-                )}
-              </div>
+              {editandoData ? (
+                <input
+                  type="date"
+                  autoFocus
+                  defaultValue={dataVencimento ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value || null;
+                    setDataVencimento(val);
+                    updateTask(task.id, { dataVencimento: val });
+                  }}
+                  onBlur={() => setEditandoData(false)}
+                  style={{
+                    background: "#1c1c24", border: "1px solid #7c5cff",
+                    borderRadius: 6, color: "#d4d4dc", fontSize: 12,
+                    padding: "3px 8px", outline: "none",
+                    colorScheme: "dark",
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setEditandoData(true)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    color: dataCor, fontSize: 12, background: "none",
+                    border: "none", cursor: "pointer", padding: 0,
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.75"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+                >
+                  <IcCalendar size={13} />
+                  {dataTexto || <span style={{ color: "#5a5a64" }}>Sem data</span>}
+                  {diasRestantes !== null && diasRestantes < 0 && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fbbf24", letterSpacing: ".5px" }}>
+                      ATRASADO {Math.abs(diasRestantes)}D
+                    </span>
+                  )}
+                  {diasRestantes === 0 && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#7c5cff", letterSpacing: ".5px" }}>
+                      HOJE
+                    </span>
+                  )}
+                </button>
+              )}
             </PropRow>
           </section>
 
