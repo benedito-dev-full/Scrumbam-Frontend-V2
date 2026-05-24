@@ -10,11 +10,12 @@ import {
 } from "@/components/lists/icons";
 import { STATUS_CONFIG, GROUP_PILL_STYLE } from "@/components/lists/config";
 import { TaskRow } from "@/components/lists/task-row";
+import { KanbanBoard } from "@/components/tasks/kanban-board";
+import { CreateTaskModal } from "@/components/tasks/create-task-modal";
+import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useEntidadesStore } from "@/lib/stores/entidades";
-import {
-  agruparPorStatus,
-  tarefasPorEspaco,
-} from "@/lib/mocks/tarefas";
+import { useTasksStore } from "@/lib/stores/tasks";
+import { agruparPorStatus } from "@/lib/mocks/tarefas";
 import { type StatusTarefa, type Tarefa } from "@/lib/types/tarefa";
 
 /* ─── Página ─────────────────────────────────────────────────────────────── */
@@ -28,6 +29,16 @@ export default function ListPage({
     (s) => s.entidades.find((e) => e.id === id) ?? null,
   );
 
+  /* Vista ativa: 'list' = tabela agrupada, 'board' = kanban */
+  const [view, setView] = useState<"list" | "board">("list");
+
+  /* Modal de criar task */
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalDefaultStatus, setModalDefaultStatus] = useState<StatusTarefa | undefined>(undefined);
+
+  /* Sheet de detalhe de tarefa */
+  const [selectedTask, setSelectedTask] = useState<Tarefa | null>(null);
+
   if (!entidade) {
     return (
       <div className="grid h-full place-items-center p-8 text-sm" style={{ color: "#7a7a85" }}>
@@ -38,39 +49,123 @@ export default function ListPage({
 
   /* usa tarefas do espaço pai se disponível, senão tenta pelo próprio id */
   const espacoId = entidade.idPai ?? id;
-  const tarefas = tarefasPorEspaco(espacoId);
+
+  function openModal(defaultStatus?: StatusTarefa) {
+    setModalDefaultStatus(defaultStatus);
+    setModalOpen(true);
+  }
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden" style={{ background: "#111111" }}>
+      <PageHeader nome={entidade.nome} />
+      <ViewSwitcher
+        defaultValue="list"
+        value={view}
+        onChange={(v) => setView(v as "list" | "board")}
+      />
+      <Toolbar tarefasCount={null} onAddTask={() => openModal()} />
+      {view === "list" ? (
+        <ListContent
+          espacoId={espacoId}
+          listId={id}
+          onAddTask={openModal}
+          onOpenTask={setSelectedTask}
+        />
+      ) : (
+        <BoardContent
+          espacoId={espacoId}
+          onAddTask={openModal}
+          onOpenTask={setSelectedTask}
+        />
+      )}
+      <TaskSheet
+        task={selectedTask}
+        onClose={() => setSelectedTask(null)}
+      />
+      <CreateTaskModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        listId={id}
+        espacoId={espacoId}
+        defaultStatus={modalDefaultStatus}
+      />
+    </div>
+  );
+}
+
+/* ─── Conteúdo reativo do kanban ────────────────────────────────────────── */
+/** Lê do store de forma reativa e renderiza o KanbanBoard */
+function BoardContent({
+  espacoId,
+  onAddTask,
+  onOpenTask,
+}: {
+  espacoId: string;
+  onAddTask: (defaultStatus?: StatusTarefa) => void;
+  onOpenTask: (tarefa: Tarefa) => void;
+}) {
+  const allTasks = useTasksStore((s) => s.tasks);
+  const tarefas = allTasks.filter((t) => t.espacoId === espacoId);
+
+  return (
+    <KanbanBoard
+      tarefas={tarefas}
+      espacoId={espacoId}
+      onOpenTask={onOpenTask}
+      onAddTask={onAddTask}
+    />
+  );
+}
+
+/* ─── Conteúdo reativo da lista ──────────────────────────────────────────── */
+/** Componente separado para ler do store de forma reativa */
+function ListContent({
+  espacoId,
+  /* listId reservado para futura navegação / breadcrumbs */
+  onAddTask,
+  onOpenTask,
+}: {
+  espacoId: string;
+  listId: string;
+  onAddTask: (defaultStatus?: StatusTarefa) => void;
+  /** Callback para abrir o sheet de detalhe de uma tarefa */
+  onOpenTask: (tarefa: Tarefa) => void;
+}) {
+  const allTasks = useTasksStore((s) => s.tasks);
+  const tarefas = allTasks.filter((t) => t.espacoId === espacoId);
   const grupos = agruparPorStatus(tarefas).sort(
     (a, b) => STATUS_CONFIG[a.status].order - STATUS_CONFIG[b.status].order,
   );
 
   return (
-    <div className="flex h-full flex-col overflow-hidden" style={{ background: "#111111" }}>
-      <PageHeader nome={entidade.nome} />
-      <ViewSwitcher defaultValue="list" />
-      <Toolbar tarefasCount={tarefas.length} />
-      <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ background: "#111111" }}>
-        <div style={{ minWidth: 860, padding: "0 22px 60px" }}>
-          {grupos.length === 0 ? (
-            <EmptyState />
-          ) : (
-            grupos.map((g) => (
-              <GroupBlock key={g.status} status={g.status} tarefas={g.tarefas} />
-            ))
-          )}
-          <button
-            type="button"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 7,
-              color: "#5a5a64", padding: "14px 4px 0 4px",
-              fontSize: 13, cursor: "pointer", background: "none", border: 0,
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#e6e6ea")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#5a5a64")}
-          >
-            <IcPlus size={13} />
-            Novo status
-          </button>
-        </div>
+    <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ background: "#111111" }}>
+      <div style={{ minWidth: 860, padding: "0 22px 60px" }}>
+        {grupos.length === 0 ? (
+          <EmptyState onAddTask={() => onAddTask()} />
+        ) : (
+          grupos.map((g) => (
+            <GroupBlock
+              key={g.status}
+              status={g.status}
+              tarefas={g.tarefas}
+              onAddTask={onAddTask}
+              onOpenTask={onOpenTask}
+            />
+          ))
+        )}
+        <button
+          type="button"
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 7,
+            color: "#5a5a64", padding: "14px 4px 0 4px",
+            fontSize: 13, cursor: "pointer", background: "none", border: 0,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = "#e6e6ea")}
+          onMouseLeave={(e) => (e.currentTarget.style.color = "#5a5a64")}
+        >
+          <IcPlus size={13} />
+          Novo status
+        </button>
       </div>
     </div>
   );
@@ -123,7 +218,13 @@ function TbBtn({ icon, label, bordered }: { icon: React.ReactNode; label: string
 }
 
 /* ─── Toolbar ────────────────────────────────────────────────────────────── */
-function Toolbar({ tarefasCount }: { tarefasCount: number }) {
+function Toolbar({
+  tarefasCount,
+  onAddTask,
+}: {
+  tarefasCount: number | null;
+  onAddTask: () => void;
+}) {
   return (
     <div style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -148,9 +249,17 @@ function Toolbar({ tarefasCount }: { tarefasCount: number }) {
         >
           <IcSearch size={15} />
         </button>
-        <span style={{ color: "#7a7a85", fontSize: 12, padding: "0 4px" }}>{tarefasCount} tarefas</span>
+        {tarefasCount !== null && (
+          <span style={{ color: "#7a7a85", fontSize: 12, padding: "0 4px" }}>{tarefasCount} tarefas</span>
+        )}
         <div style={{ display: "inline-flex", alignItems: "stretch", height: 28, border: "1px solid #2a2a32", background: "#1c1c22", borderRadius: 6, overflow: "hidden" }}>
-          <button type="button" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0 12px", fontSize: 13, color: "#e6e6ea", background: "none", border: 0, cursor: "pointer" }}>
+          <button
+            type="button"
+            onClick={onAddTask}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0 12px", fontSize: 13, color: "#e6e6ea", background: "none", border: 0, cursor: "pointer" }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#252530"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+          >
             Add Tarefa
           </button>
           <div style={{ width: 1, background: "#2a2a32" }} />
@@ -193,7 +302,18 @@ function SmallBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
 }
 
 /* ─── Grupo de status ────────────────────────────────────────────────────── */
-function GroupBlock({ status, tarefas }: { status: StatusTarefa; tarefas: Tarefa[] }) {
+function GroupBlock({
+  status,
+  tarefas,
+  onAddTask,
+  onOpenTask,
+}: {
+  status: StatusTarefa;
+  tarefas: Tarefa[];
+  onAddTask: (defaultStatus?: StatusTarefa) => void;
+  /** Callback para abrir o sheet de detalhe de uma tarefa */
+  onOpenTask: (tarefa: Tarefa) => void;
+}) {
   const [open, setOpen] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const cfg = STATUS_CONFIG[status];
@@ -240,9 +360,10 @@ function GroupBlock({ status, tarefas }: { status: StatusTarefa; tarefas: Tarefa
                 status={status}
                 expanded={!!expandedRows[t.id]}
                 onToggle={() => setExpandedRows((s) => ({ ...s, [t.id]: !s[t.id] }))}
+                onOpen={() => onOpenTask(t)}
               />
             ))}
-            <AddRow />
+            <AddRow status={status} onAddTask={onAddTask} />
           </tbody>
         </table>
       )}
@@ -272,11 +393,22 @@ function HeadRow() {
   );
 }
 
-function AddRow() {
+function AddRow({
+  status,
+  onAddTask,
+}: {
+  status: StatusTarefa;
+  onAddTask: (defaultStatus?: StatusTarefa) => void;
+}) {
   const [hovered, setHovered] = useState(false);
   return (
-    <tr onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
-      <td colSpan={7} style={{ height: 34, borderBottom: "1px solid #1f1f25", background: hovered ? "#15151a" : "transparent", cursor: "pointer" }}>
+    <tr
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={() => onAddTask(status)}
+      style={{ cursor: "pointer" }}
+    >
+      <td colSpan={7} style={{ height: 34, borderBottom: "1px solid #1f1f25", background: hovered ? "#15151a" : "transparent" }}>
         <div style={{ paddingLeft: 30, height: 34, display: "flex", alignItems: "center", gap: 7, color: hovered ? "#e6e6ea" : "#7a7a85", fontSize: 13 }}>
           <IcPlus size={13} />Adicionar Tarefa
         </div>
@@ -285,7 +417,7 @@ function AddRow() {
   );
 }
 
-function EmptyState() {
+function EmptyState({ onAddTask }: { onAddTask: () => void }) {
   return (
     <div style={{ marginTop: 40, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: 40, border: "1px dashed #26262d", borderRadius: 8, textAlign: "center" }}>
       <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1f1f25", display: "flex", alignItems: "center", justifyContent: "center", color: "#7a7a85" }}>
@@ -293,6 +425,19 @@ function EmptyState() {
       </div>
       <p style={{ color: "#e6e6ea", fontSize: 14, fontWeight: 500, margin: 0 }}>Nenhuma tarefa nesta lista ainda</p>
       <p style={{ color: "#7a7a85", fontSize: 12, margin: 0 }}>Crie a primeira tarefa para começar.</p>
+      <button
+        type="button"
+        onClick={onAddTask}
+        style={{
+          marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6,
+          height: 32, padding: "0 14px", borderRadius: 7, border: "none",
+          background: "linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%)",
+          color: "#0a0a0a", fontSize: 13, fontWeight: 600, cursor: "pointer",
+        }}
+      >
+        <IcPlus size={13} />
+        Nova tarefa
+      </button>
     </div>
   );
 }

@@ -137,6 +137,26 @@ export default function LoginPage() {
           Criar conta grátis
         </Link>
       </p>
+
+      {/* Credenciais demo — visível apenas em modo mock */}
+      {process.env.NEXT_PUBLIC_MOCK_AUTH === 'true' && (
+        <div
+          style={{
+            marginTop: 16,
+            padding: '10px 14px',
+            borderRadius: 10,
+            background: 'rgba(34,211,238,0.05)',
+            border: '1px solid rgba(34,211,238,0.15)',
+          }}
+        >
+          <p style={{ fontSize: 11, color: '#22d3ee', margin: 0, fontWeight: 600, marginBottom: 4 }}>
+            Modo demonstração
+          </p>
+          <p style={{ fontSize: 11, color: '#71717a', margin: 0 }}>
+            Email: demo@scrumban.com · Senha: demo1234
+          </p>
+        </div>
+      )}
     </div>
   );
 }

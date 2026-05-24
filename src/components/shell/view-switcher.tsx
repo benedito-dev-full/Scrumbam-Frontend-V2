@@ -28,16 +28,47 @@ const defaultViews: View[] = [
   { id: "table", label: "Tabela", icon: Table },
 ];
 
+/**
+ * Switcher de visualizações (Lista, Quadro, Calendário, etc.).
+ *
+ * Suporta modo controlado externamente via `value`/`onChange` e modo
+ * autônomo via `defaultValue`. Se `value` e `onChange` não forem passados,
+ * mantém estado interno — retrocompatível com usos anteriores.
+ *
+ * @example
+ * // Modo controlado (página controla a view ativa):
+ * <ViewSwitcher value={view} onChange={(v) => setView(v)} />
+ *
+ * // Modo autônomo (estado interno):
+ * <ViewSwitcher defaultValue="list" />
+ */
 type ViewSwitcherProps = {
   views?: View[];
   defaultValue?: string;
+  /** View ativa — quando passado, ativa modo controlado */
+  value?: string;
+  /** Callback chamado ao trocar de view — obrigatório no modo controlado */
+  onChange?: (id: string) => void;
 };
 
 export function ViewSwitcher({
   views = defaultViews,
   defaultValue,
+  value,
+  onChange,
 }: ViewSwitcherProps) {
-  const [current, setCurrent] = useState(defaultValue ?? views[0]?.id);
+  /* Modo autônomo: estado interno usado só quando `value` não é fornecido */
+  const [internal, setInternal] = useState(defaultValue ?? views[0]?.id);
+
+  const current = value ?? internal;
+
+  function handleSelect(id: string) {
+    if (onChange) {
+      onChange(id);
+    } else {
+      setInternal(id);
+    }
+  }
 
   return (
     <div className="flex h-10 items-center gap-0 border-b border-border bg-background px-3">
@@ -51,7 +82,7 @@ export function ViewSwitcher({
               role="tab"
               aria-selected={active}
               data-active={active ? "" : undefined}
-              onClick={() => setCurrent(view.id)}
+              onClick={() => handleSelect(view.id)}
               className={cn(
                 "group -mb-px inline-flex h-10 items-center gap-1.5 border-b-2 border-transparent px-2.5 text-sm text-muted-foreground transition-colors outline-none",
                 "hover:text-foreground",

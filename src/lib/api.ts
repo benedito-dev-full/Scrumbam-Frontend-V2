@@ -23,9 +23,17 @@ function processQueue(error: unknown, token: string | null): void {
 
 // ─── Instância principal ──────────────────────────────────────────────────────
 
-const baseURL = process.env.NEXT_PUBLIC_API_URL;
-if (!baseURL) {
-  throw new Error("NEXT_PUBLIC_API_URL não definida — crie o arquivo .env.local");
+const baseURL = process.env.NEXT_PUBLIC_API_URL ?? '';
+
+// Em modo mock não precisamos da URL do backend — só avisamos em dev se ambos estão ausentes
+if (
+  !baseURL &&
+  process.env.NEXT_PUBLIC_MOCK_AUTH !== 'true' &&
+  process.env.NODE_ENV === 'development'
+) {
+  console.warn(
+    '[api] NEXT_PUBLIC_API_URL não definida — adicione NEXT_PUBLIC_MOCK_AUTH=true ao .env.local para modo offline'
+  );
 }
 
 const api = axios.create({

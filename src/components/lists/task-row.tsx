@@ -12,17 +12,21 @@ import type { StatusTarefa, Tarefa } from "@/lib/types/tarefa";
  * Linha individual de uma tarefa na tabela do board.
  *
  * Expande para mostrar subtarefas quando `expanded` é true.
+ * Chama `onOpen` ao clicar no nome da tarefa para abrir o sheet de detalhe.
  */
 export function TaskRow({
   tarefa,
   status,
   expanded,
   onToggle,
+  onOpen,
 }: {
   tarefa: Tarefa;
   status: StatusTarefa;
   expanded: boolean;
   onToggle: () => void;
+  /** Callback chamado ao clicar no nome da tarefa — abre o sheet de detalhe */
+  onOpen?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
   const cfg = STATUS_CONFIG[status];
@@ -60,7 +64,21 @@ export function TaskRow({
               <span style={{ width: 14, visibility: "hidden", display: "inline-flex" }}><IcCaretR size={12} /></span>
             )}
             <span style={{ display: "inline-flex", color: cfg.iconColor }}><StatusIcon size={13} /></span>
-            <span style={{ color: "#e6e6ea", fontWeight: 600, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tarefa.nome}</span>
+            <span
+              role={onOpen ? "button" : undefined}
+              tabIndex={onOpen ? 0 : undefined}
+              onClick={onOpen}
+              onKeyDown={onOpen ? (e) => { if (e.key === "Enter" || e.key === " ") onOpen(); } : undefined}
+              style={{
+                color: "#e6e6ea", fontWeight: 600, fontSize: 13,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                cursor: onOpen ? "pointer" : "default",
+              }}
+              onMouseEnter={onOpen ? (e) => { e.currentTarget.style.color = "#cfc1ff"; e.currentTarget.style.textDecoration = "underline"; } : undefined}
+              onMouseLeave={onOpen ? (e) => { e.currentTarget.style.color = "#e6e6ea"; e.currentTarget.style.textDecoration = "none"; } : undefined}
+            >
+              {tarefa.nome}
+            </span>
             {tarefa.subtarefas > 0 && (
               <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "#7a7a85", fontSize: 11, marginLeft: 2 }}>
                 <IcGitFork size={11} /> {tarefa.subtarefas}

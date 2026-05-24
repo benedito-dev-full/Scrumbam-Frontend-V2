@@ -8,6 +8,7 @@ import type {
   Entidade,
   Espaco,
   VinculoEspaco,
+  Doc,
 } from "@/lib/types/entidade";
 import { isEspaco } from "@/lib/types/entidade";
 
@@ -15,6 +16,7 @@ type EntidadesState = {
   entidades: Entidade[];
   vinculos: VinculoEspaco[];
   addEspaco: (espaco: Espaco) => void;
+  addDoc: (doc: Doc) => void;
   addVinculos: (vinculos: VinculoEspaco[]) => void;
   renomearEntidade: (id: string, nome: string) => void;
 };
@@ -24,6 +26,8 @@ export const useEntidadesStore = create<EntidadesState>((set) => ({
   vinculos: mockVinculos,
   addEspaco: (espaco) =>
     set((s) => ({ entidades: [...s.entidades, espaco] })),
+  addDoc: (doc) =>
+    set((s) => ({ entidades: [...s.entidades, doc] })),
   addVinculos: (novosVinculos) =>
     set((s) => ({ vinculos: [...s.vinculos, ...novosVinculos] })),
   renomearEntidade: (id, nome) =>

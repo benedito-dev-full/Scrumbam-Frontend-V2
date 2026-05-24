@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Plus, ChevronDown, ChevronUp, Globe, Check, Search } from "lucide-react";
 import { NexusIcon, NexusMiniIcon } from "@/components/ia/icons";
+import { AgentsTab } from "@/components/ia/agents-tab";
 
 /* ─── Cards de ação rápida ────────────────────────────────────────────────── */
 const QUICK_ACTIONS = [
@@ -222,9 +223,10 @@ export default function IAPage() {
   return (
     <div style={{
       position: "relative", display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center",
+      alignItems: "center", justifyContent: tab === "agentes" ? "flex-start" : "center",
       height: "100%", width: "100%", background: "#111111",
-      overflow: "hidden",
+      overflowY: "auto", overflowX: "hidden",
+      paddingTop: tab === "agentes" ? 32 : 0,
     }}>
 
       {/* ── gradiente aurora no topo ── */}
@@ -246,17 +248,132 @@ export default function IAPage() {
           </span>
         </div>
 
-        {/* card com borda gradiente — espessa e saturada igual ClickUp */}
-        <div style={{
-          width: "100%", borderRadius: 16,
-          padding: 2,
-          background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #dc2626 100%)",
-          boxShadow: "0 0 40px rgba(37,99,235,0.15), 0 0 40px rgba(124,58,237,0.1)",
-        }}>
-          <div style={{ borderRadius: 14, background: "#171717", overflow: "hidden" }}>
+        {/* card com borda gradiente — só na aba "pergunta" */}
+        {tab === "pergunta" && (
+          <div style={{
+            width: "100%", borderRadius: 16,
+            padding: 2,
+            background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #dc2626 100%)",
+            boxShadow: "0 0 40px rgba(37,99,235,0.15), 0 0 40px rgba(124,58,237,0.1)",
+          }}>
+            <div style={{ borderRadius: 14, background: "#171717", overflow: "hidden" }}>
 
-            {/* abas */}
-            <div style={{ display: "flex", gap: 2, padding: "10px 10px 0" }}>
+              {/* abas */}
+              <div style={{ display: "flex", gap: 2, padding: "10px 10px 0" }}>
+                <button
+                  type="button"
+                  onClick={() => setTab("pergunta")}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    height: 30, padding: "0 14px", borderRadius: 7,
+                    border: 0, cursor: "pointer", fontSize: 13, fontWeight: 500,
+                    background: tab === "pergunta" ? "#2563eb" : "transparent",
+                    color: tab === "pergunta" ? "#fff" : "#666",
+                  }}
+                >
+                  <NexusMiniIcon />
+                  Faça uma pergunta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("agentes")}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 6,
+                    height: 30, padding: "0 14px", borderRadius: 7,
+                    border: 0, cursor: "pointer", fontSize: 13, fontWeight: 500,
+                    background: "transparent",
+                    color: "#666",
+                  }}
+                >
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
+                    <path d="M12 12c-2-2.5-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.5 6-4z" />
+                    <path d="M12 12c2 2.5 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.5-6 4z" />
+                  </svg>
+                  Agentes
+                </button>
+              </div>
+
+              {/* textarea — altura maior igual ClickUp */}
+              <div style={{ padding: "16px 18px 4px" }}>
+                <textarea
+                  value={input}
+                  onChange={e => setInput(e.target.value)}
+                  placeholder="Pesquise em seu espaço de trabalho e na web em segundos. O que você quer encontrar?"
+                  rows={2}
+                  style={{
+                    width: "100%", background: "transparent", border: "none", outline: "none", resize: "none",
+                    fontSize: 14, color: "#c4c4c4", lineHeight: 1.65,
+                  }}
+                />
+              </div>
+
+              {/* rodapé do card */}
+              <div style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "8px 12px 12px",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {/* botão + */}
+                  <button type="button" style={{
+                    width: 28, height: 28, borderRadius: 6, border: "1px solid #333",
+                    background: "none", cursor: "pointer", color: "#888",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "#222"; e.currentTarget.style.color = "#ccc"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#888"; }}
+                  >
+                    <Plus size={14} strokeWidth={2} />
+                  </button>
+
+                  {/* botão Nexus ▾ com dropdown */}
+                  <ModelDropdown />
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  {/* globo */}
+                  <button type="button" style={{
+                    width: 28, height: 28, borderRadius: 6, border: "none",
+                    background: "none", cursor: "pointer", color: "#666",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "#aaa"; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = "#666"; }}
+                  >
+                    <Globe size={15} strokeWidth={1.7} />
+                  </button>
+
+                  {/* enviar */}
+                  <button
+                    type="button"
+                    style={{
+                      width: 30, height: 30, borderRadius: 7,
+                      border: "none", cursor: input.trim() ? "pointer" : "default",
+                      background: input.trim() ? "#2563eb" : "#1e1e1e",
+                      color: input.trim() ? "#fff" : "#444",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      transition: "background .15s",
+                    }}
+                  >
+                    {/* seta preenchida igual ClickUp */}
+                    <svg width={13} height={13} viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M5 3l14 9-14 9V3z" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* aba "agentes" — sem card gradiente, sem quick actions */}
+        {tab === "agentes" && (
+          <div style={{ width: "100%" }}>
+            {/* abas — repetidas fora do card para manter navegação */}
+            <div style={{
+              display: "flex", gap: 2, padding: "4px 0 16px",
+              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              marginBottom: 20,
+            }}>
               <button
                 type="button"
                 onClick={() => setTab("pergunta")}
@@ -264,8 +381,8 @@ export default function IAPage() {
                   display: "flex", alignItems: "center", gap: 6,
                   height: 30, padding: "0 14px", borderRadius: 7,
                   border: 0, cursor: "pointer", fontSize: 13, fontWeight: 500,
-                  background: tab === "pergunta" ? "#2563eb" : "transparent",
-                  color: tab === "pergunta" ? "#fff" : "#666",
+                  background: "transparent",
+                  color: "#666",
                 }}
               >
                 <NexusMiniIcon />
@@ -278,8 +395,8 @@ export default function IAPage() {
                   display: "flex", alignItems: "center", gap: 6,
                   height: 30, padding: "0 14px", borderRadius: 7,
                   border: 0, cursor: "pointer", fontSize: 13, fontWeight: 500,
-                  background: "transparent",
-                  color: tab === "agentes" ? "#c4c4c4" : "#666",
+                  background: "rgba(34,211,238,0.08)",
+                  color: "#22d3ee",
                 }}
               >
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
@@ -290,98 +407,33 @@ export default function IAPage() {
               </button>
             </div>
 
-            {/* textarea — altura maior igual ClickUp */}
-            <div style={{ padding: "16px 18px 4px" }}>
-              <textarea
-                value={input}
-                onChange={e => setInput(e.target.value)}
-                placeholder="Pesquise em seu espaço de trabalho e na web em segundos. O que você quer encontrar?"
-                rows={2}
-                style={{
-                  width: "100%", background: "transparent", border: "none", outline: "none", resize: "none",
-                  fontSize: 14, color: "#c4c4c4", lineHeight: 1.65,
-                }}
-              />
-            </div>
-
-            {/* rodapé do card */}
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "8px 12px 12px",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                {/* botão + */}
-                <button type="button" style={{
-                  width: 28, height: 28, borderRadius: 6, border: "1px solid #333",
-                  background: "none", cursor: "pointer", color: "#888",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#222"; e.currentTarget.style.color = "#ccc"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#888"; }}
-                >
-                  <Plus size={14} strokeWidth={2} />
-                </button>
-
-                {/* botão Nexus ▾ com dropdown */}
-                <ModelDropdown />
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                {/* globo */}
-                <button type="button" style={{
-                  width: 28, height: 28, borderRadius: 6, border: "none",
-                  background: "none", cursor: "pointer", color: "#666",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.color = "#aaa"; }}
-                  onMouseLeave={e => { e.currentTarget.style.color = "#666"; }}
-                >
-                  <Globe size={15} strokeWidth={1.7} />
-                </button>
-
-                {/* enviar */}
-                <button
-                  type="button"
-                  style={{
-                    width: 30, height: 30, borderRadius: 7,
-                    border: "none", cursor: input.trim() ? "pointer" : "default",
-                    background: input.trim() ? "#2563eb" : "#1e1e1e",
-                    color: input.trim() ? "#fff" : "#444",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    transition: "background .15s",
-                  }}
-                >
-                  {/* seta preenchida igual ClickUp */}
-                  <svg width={13} height={13} viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M5 3l14 9-14 9V3z" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+            <AgentsTab />
           </div>
-        </div>
+        )}
 
-        {/* cards de ação rápida — sem borda, compactos igual ClickUp */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginTop: 14, width: "100%" }}>
-          {QUICK_ACTIONS.map((a) => (
-            <button key={a.label} type="button" style={{
-              display: "flex", flexDirection: "column", alignItems: "flex-start",
-              gap: 8, padding: "12px 14px 12px",
-              borderRadius: 10, border: "none", overflow: "hidden",
-              background: "#1a1a1a", cursor: "pointer", textAlign: "left",
-              minWidth: 0,
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#202020"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#1a1a1a"; }}
-            >
-              <span style={{ color: "#aaa", flexShrink: 0 }}>{a.icon}</span>
-              <div style={{ minWidth: 0, width: "100%" }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#e4e4e4", marginBottom: 3 }}>{a.label}</p>
-                <p style={{ fontSize: 11, color: "#666", lineHeight: 1.4 }}>{a.sublabel}</p>
-              </div>
-            </button>
-          ))}
-        </div>
+        {/* cards de ação rápida — só na aba "pergunta" */}
+        {tab === "pergunta" && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, marginTop: 14, width: "100%" }}>
+            {QUICK_ACTIONS.map((a) => (
+              <button key={a.label} type="button" style={{
+                display: "flex", flexDirection: "column", alignItems: "flex-start",
+                gap: 8, padding: "12px 14px 12px",
+                borderRadius: 10, border: "none", overflow: "hidden",
+                background: "#1a1a1a", cursor: "pointer", textAlign: "left",
+                minWidth: 0,
+              }}
+                onMouseEnter={e => { e.currentTarget.style.background = "#202020"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "#1a1a1a"; }}
+              >
+                <span style={{ color: "#aaa", flexShrink: 0 }}>{a.icon}</span>
+                <div style={{ minWidth: 0, width: "100%" }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "#e4e4e4", marginBottom: 3 }}>{a.label}</p>
+                  <p style={{ fontSize: 11, color: "#666", lineHeight: 1.4 }}>{a.sublabel}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
 
       </div>
     </div>

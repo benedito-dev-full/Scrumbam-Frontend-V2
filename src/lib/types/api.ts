@@ -220,3 +220,67 @@ export interface ApiErrorResponse {
   message: string | string[];
   error?: string;
 }
+
+// ─── Agents ──────────────────────────────────────────────────────────────────
+
+export type AgentStatus =
+  | "pending_install"
+  | "never_connected"
+  | "online"
+  | "offline";
+
+export type ExecutionRisk = "LOW" | "MEDIUM" | "HIGH";
+
+export interface AgentDto {
+  id: string;
+  name: string;
+  hostname: string;
+  status: AgentStatus;
+  lastHeartbeat: string | null;
+  repoUrl: string | null;
+  repoApiKey: string | null;
+  autonomyLevel: ExecutionRisk;
+  orgId: string;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface CreateAgentDto {
+  name: string;
+  hostname: string;
+  repoUrl?: string;
+  autonomyLevel?: ExecutionRisk;
+}
+
+export interface UpdateAgentDto {
+  name?: string;
+  hostname?: string;
+  repoUrl?: string;
+  repoApiKey?: string;
+  autonomyLevel?: ExecutionRisk;
+}
+
+export interface InstallTokenDto {
+  token: string;
+  installCommand: string;
+  expiresAt: string;
+}
+
+export interface ExecutionDto {
+  id: string;
+  agentId: string;
+  taskId?: string | null;
+  prompt: string;
+  status: "queued" | "running" | "done" | "failed";
+  risk: ExecutionRisk;
+  output: string | null;
+  criadoEm: string;
+  atualizadoEm: string;
+}
+
+export interface CreateExecutionDto {
+  agentId: string;
+  prompt: string;
+  risk?: ExecutionRisk;
+  taskId?: string;
+}

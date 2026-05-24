@@ -15,6 +15,7 @@ import { useFilhosDe } from "@/lib/stores/entidades";
 import { isEspaco } from "@/lib/types/entidade";
 import { mockEntidades } from "@/lib/mocks/entidades";
 import Link from "next/link";
+import { AgentPopover } from "@/components/spaces/agent-popover";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 type TabId = "overview" | "lista" | "quadro" | "calendario" | "gantt" | "tabela";
@@ -84,7 +85,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <TopBtn icon={<IcVoice />} />
           <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)", margin: "0 4px" }} />
-          <TopBtn icon={<Bot size={14} />} label="Agentes" />
+          <AgentPopover spaceId={id} spaceName={entidade.nome} />
           <TopBtn icon={<Sparkles size={14} />} />
           <TopBtn icon={<span style={{ fontSize: 13 }}>✦</span>} label="Pergunte à IA" />
           <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)", margin: "0 4px" }} />
@@ -358,6 +359,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
             <AddListRow />
           </div>
         </section>
+
       </div>
     </div>
   );
