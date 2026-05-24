@@ -198,3 +198,38 @@ export async function mockMe(token: string): Promise<UserDto> {
 
   throw mockApiError(401, 'Token inválido');
 }
+
+/**
+ * Simula POST /auth/switch-org.
+ *
+ * No mock demo só existe uma org. Retorna os mesmos tokens com o
+ * organizationId atualizado no user.
+ */
+export async function mockSwitchOrg(
+  organizationId: string,
+): Promise<AuthResponseDto> {
+  await delay(300);
+
+  const targetOrg = MOCK_USER.availableOrgs?.find(
+    (o) => o.id === organizationId,
+  );
+
+  if (!targetOrg) {
+    throw mockApiError(403, 'Organização não acessível para este usuário');
+  }
+
+  const updatedUser: UserDto = {
+    ...MOCK_USER,
+    organizationId: targetOrg.id,
+    organizationName: targetOrg.nome,
+    orgRole: targetOrg.role,
+  };
+
+  return {
+    accessToken: MOCK_TOKEN,
+    refreshToken: MOCK_REFRESH,
+    expiresIn: 3600,
+    tokenType: 'Bearer',
+    user: updatedUser,
+  };
+}

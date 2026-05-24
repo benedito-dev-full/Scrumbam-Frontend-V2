@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { api, getApiErrorMessage } from '@/lib/api';
-import { mockLogin, mockRegister, mockMe } from '@/lib/mock/auth';
+import { mockLogin, mockRegister, mockMe, mockSwitchOrg } from '@/lib/mock/auth';
 import { useAuthStore } from '@/lib/stores/auth';
 import { qk } from '@/lib/query-keys';
 
@@ -142,6 +142,44 @@ export function useRegister() {
       useAuthStore.getState().setTokens(data.accessToken, data.refreshToken);
       useAuthStore.getState().setUser(data.user);
       router.push('/');
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error));
+    },
+  });
+}
+
+/**
+ * Mutation para trocar a organização ativa da sessão.
+ *
+ * Em modo mock: simula delay de 300ms e atualiza tokens localmente.
+ * Em produção: POST /auth/switch-org.
+ *
+ * Em caso de sucesso: atualiza store com novos tokens e dados do usuário,
+ * depois invalida todo o cache de queries (spaces, tasks, etc. ficam frescos).
+ * Em caso de erro: exibe toast com a mensagem do backend ou mock.
+ *
+ * @returns Handle de mutation (`mutate`, `mutateAsync`, `isPending`, ...)
+ *
+ * @example
+ * const switchOrg = useSwitchOrg();
+ * switchOrg.mutate('152');
+ */
+export function useSwitchOrg() {
+  const queryClient = useQueryClient();
+
+  return useMutation<AuthResponseDto, unknown, string>({
+    mutationFn: (organizationId: string) => {
+      if (USE_MOCK) return mockSwitchOrg(organizationId);
+      return api
+        .post<AuthResponseDto>('/auth/switch-org', { organizationId })
+        .then((r) => r.data);
+    },
+    onSuccess: (data) => {
+      useAuthStore.getState().setTokens(data.accessToken, data.refreshToken);
+      useAuthStore.getState().setUser(data.user);
+      // Invalida TODO o cache — org nova => spaces/tasks/sprints são diferentes
+      queryClient.invalidateQueries();
     },
     onError: (error) => {
       toast.error(getApiErrorMessage(error));
