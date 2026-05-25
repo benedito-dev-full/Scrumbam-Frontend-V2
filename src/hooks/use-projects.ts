@@ -52,6 +52,19 @@ interface ProjectPageDto {
  * return spaces?.map(s => <SpaceChip key={s.id} space={s} />);
  * ```
  */
+export function useProject(id: string | null) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  return useQuery<DProjectDto>({
+    queryKey: qk.projects.byId(id ?? ''),
+    queryFn: async () => {
+      const res = await api.get<DProjectDto>(`/projects/${id}`);
+      return res.data;
+    },
+    enabled: !!accessToken && !!id,
+    staleTime: 30_000,
+  });
+}
+
 export function useSpaces() {
   const accessToken = useAuthStore((s) => s.accessToken);
 

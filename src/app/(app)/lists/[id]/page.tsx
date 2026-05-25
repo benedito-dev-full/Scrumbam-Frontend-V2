@@ -13,7 +13,7 @@ import { TaskRow } from "@/components/lists/task-row";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 import { TaskSheet } from "@/components/tasks/task-sheet";
-import { useEntidadesStore } from "@/lib/stores/entidades";
+import { useProject } from "@/hooks/use-projects";
 import { useTasksStore } from "@/lib/stores/tasks";
 import { agruparPorStatus } from "@/lib/mocks/tarefas";
 import { type StatusTarefa, type Tarefa } from "@/lib/types/tarefa";
@@ -25,9 +25,7 @@ export default function ListPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const entidade = useEntidadesStore(
-    (s) => s.entidades.find((e) => e.id === id) ?? null,
-  );
+  const { data: entidade, isLoading } = useProject(id);
 
   /* Vista ativa: 'list' = tabela agrupada, 'board' = kanban */
   const [view, setView] = useState<"list" | "board">("list");
@@ -42,6 +40,10 @@ export default function ListPage({
   /* Sheet de detalhe de tarefa */
   const [selectedTask, setSelectedTask] = useState<Tarefa | null>(null);
 
+  if (isLoading) {
+    return <div className="grid h-full place-items-center p-8 text-sm" style={{ color: "#7a7a85" }}>Carregando…</div>;
+  }
+
   if (!entidade) {
     return (
       <div className="grid h-full place-items-center p-8 text-sm" style={{ color: "#7a7a85" }}>
@@ -50,7 +52,6 @@ export default function ListPage({
     );
   }
 
-  /* usa tarefas do espaço pai se disponível, senão tenta pelo próprio id */
   const espacoId = entidade.idPai ?? id;
 
   function openModal(defaultStatus?: StatusTarefa) {

@@ -5,16 +5,12 @@ import {
   Star, Share2, Bot, Sparkles, Plus, Filter,
   RefreshCw, LayoutGrid,
 } from "lucide-react";
-import { SpaceChip } from "@/components/shell/space-chip";
 import {
   IcList, IcFolder, IcDoc, IcCaret, IcMenu, IcVoice,
   TopBtn, ListRow, AddListRow,
 } from "@/components/shell/entity-page";
-import { useEntidadesStore } from "@/lib/stores/entidades";
-import { useFilhosDe } from "@/lib/stores/entidades";
-import { isPasta } from "@/lib/types/entidade";
-import { mockEntidades } from "@/lib/mocks/entidades";
 import Link from "next/link";
+import { useFolders, useLists } from "@/hooks/use-projects";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 type TabId = "overview" | "lista" | "quadro" | "calendario" | "gantt" | "tabela";
@@ -33,22 +29,19 @@ export default function FolderPage({ params }: { params: Promise<{ id: string }>
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
 
-  const entidade = useEntidadesStore((s) => s.entidades.find((e) => e.id === id) ?? null);
-  const filhos = useFilhosDe(id);
+  const { data: folders, isLoading } = useFolders(null);
+  const entidade = folders?.find((f) => f.id === id) ?? null;
+  const { data: listas = [] } = useLists(entidade ? id : null);
+  const docs: typeof listas = [];
+  const recentes = [...listas].slice(0, 6);
 
-  if (!entidade || !isPasta(entidade)) {
-    return <div style={{ color: "#7a7a85", padding: 40 }}>Pasta não encontrada.</div>;
+  if (isLoading) {
+    return <div style={{ color: "#7a7a85", padding: 40 }}>Carregando…</div>;
   }
 
-  /* espaço pai — usado para o chip/ícone do header */
-  const espacoPai = entidade.idPai ? mockEntidades.find((e) => e.id === entidade.idPai) : null;
-  const espacoMeta = espacoPai && "meta" in espacoPai && espacoPai.idClasse === "espaco" ? espacoPai.meta : null;
-
-  const listas = filhos.filter((f) => f.idClasse === "backlog" || f.idClasse === "board");
-  const docs   = filhos.filter((f) => f.idClasse === "doc");
-
-  /* recent — todos os filhos diretos */
-  const recentes = [...filhos].slice(0, 6);
+  if (!entidade) {
+    return <div style={{ color: "#7a7a85", padding: 40 }}>Pasta não encontrada.</div>;
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#111111", overflow: "hidden" }}>
@@ -60,13 +53,9 @@ export default function FolderPage({ params }: { params: Promise<{ id: string }>
         borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {espacoMeta ? (
-            <SpaceChip iniciais={espacoMeta.iniciais} cor={espacoMeta.cor} iconName={espacoMeta.iconName} size="sm" />
-          ) : (
-            <div style={{ display: "grid", placeItems: "center", width: 22, height: 22, borderRadius: 5, background: "#1e1e1e" }}>
-              <IcFolder />
-            </div>
-          )}
+          <div style={{ display: "grid", placeItems: "center", width: 22, height: 22, borderRadius: 5, background: "#1e1e1e" }}>
+            <IcFolder />
+          </div>
           <button type="button" style={{ display: "flex", alignItems: "center", gap: 4, border: 0, background: "none", cursor: "pointer", color: "#e4e4e4", fontSize: 14, fontWeight: 600 }}>
             {entidade.nome}
             <IcCaret />
@@ -203,31 +192,19 @@ export default function FolderPage({ params }: { params: Promise<{ id: string }>
           <div style={{ background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: "#888892", marginBottom: 12 }}>Recent</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {recentes.length > 0 ? recentes.map((item) => {
-                const pai = item.idPai ? mockEntidades.find(e => e.id === item.idPai) : null;
-                const href = item.idClasse === "backlog" || item.idClasse === "board"
-                  ? `/lists/${item.id}`
-                  : item.idClasse === "pasta"
-                  ? `/folders/${item.id}`
-                  : `/docs/${item.id}`;
-                return (
-                  <Link key={item.id} href={href} style={{
-                    display: "flex", alignItems: "center", gap: 7,
-                    padding: "5px 8px", margin: "0 -8px", borderRadius: 6,
-                    textDecoration: "none", transition: "background 120ms",
-                  }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#242428"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                  >
-                    <span style={{ flexShrink: 0 }}>
-                      {item.idClasse === "pasta" ? <IcFolder /> :
-                       item.idClasse === "doc"   ? <IcDoc /> : <IcList />}
-                    </span>
-                    <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{item.nome}</span>
-                    {pai && <span style={{ fontSize: 12, color: "#505058" }}>• em {pai.nome}</span>}
-                  </Link>
-                );
-              }) : (
+              {recentes.length > 0 ? recentes.map((item) => (
+                <Link key={item.id} href={`/lists/${item.id}`} style={{
+                  display: "flex", alignItems: "center", gap: 7,
+                  padding: "5px 8px", margin: "0 -8px", borderRadius: 6,
+                  textDecoration: "none", transition: "background 120ms",
+                }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#242428"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                >
+                  <IcList />
+                  <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{item.nome}</span>
+                </Link>
+              )) : (
                 <p style={{ fontSize: 12, color: "#404048" }}>Nada por aqui ainda</p>
               )}
             </div>
@@ -237,23 +214,19 @@ export default function FolderPage({ params }: { params: Promise<{ id: string }>
           <div style={{ background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: "#888892", marginBottom: 12 }}>Docs</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {docs.length > 0 ? docs.map((doc) => {
-                const pai = doc.idPai ? mockEntidades.find(e => e.id === doc.idPai) : null;
-                return (
-                  <Link key={doc.id} href={`/docs/${doc.id}`} style={{
-                    display: "flex", alignItems: "center", gap: 7,
-                    padding: "5px 8px", margin: "0 -8px", borderRadius: 6,
-                    textDecoration: "none", transition: "background 120ms",
-                  }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#242428"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                  >
-                    <IcDoc />
-                    <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{doc.nome}</span>
-                    {pai && <span style={{ fontSize: 12, color: "#505058" }}>• em {pai.nome}</span>}
-                  </Link>
-                );
-              }) : (
+              {docs.length > 0 ? docs.map((doc) => (
+                <Link key={doc.id} href={`/docs/${doc.id}`} style={{
+                  display: "flex", alignItems: "center", gap: 7,
+                  padding: "5px 8px", margin: "0 -8px", borderRadius: 6,
+                  textDecoration: "none", transition: "background 120ms",
+                }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#242428"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                >
+                  <IcDoc />
+                  <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{doc.nome}</span>
+                </Link>
+              )) : (
                 <p style={{ fontSize: 12, color: "#404048" }}>Nenhum documento ainda</p>
               )}
             </div>
