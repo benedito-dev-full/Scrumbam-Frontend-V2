@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
 import { useCommandPaletteStore } from "@/lib/stores/command-palette";
+import { useLogout } from "@/hooks/use-auth";
 
 /* ─── Topbar global — idêntica ao ClickUp ─────────────────────────────────
  * bg: #1a1a1a  (levemente mais claro que o fundo #0d0d0f)
@@ -122,6 +123,8 @@ export function AppTopbar() {
 
 /* ─── Menu do usuário ─────────────────────────────────────────────────────── */
 function UserMenu() {
+  const logout = useLogout();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -164,7 +167,7 @@ function UserMenu() {
           <DropdownMenuItem className="text-[13px]">Configurações</DropdownMenuItem>
           <DropdownMenuItem className="text-[13px]">Atalhos de teclado</DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" className="text-[13px]">Sair</DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" className="text-[13px]" onClick={() => logout.mutate()}>Sair</DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
