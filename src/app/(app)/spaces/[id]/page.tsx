@@ -10,12 +10,9 @@ import {
   IcList, IcFolder, IcDoc, IcCaret, IcMenu, IcVoice,
   TopBtn, ListRow, AddListRow,
 } from "@/components/shell/entity-page";
-import { useEntidadesStore } from "@/lib/stores/entidades";
-import { useFilhosDe } from "@/lib/stores/entidades";
-import { isEspaco } from "@/lib/types/entidade";
-import { mockEntidades } from "@/lib/mocks/entidades";
 import Link from "next/link";
 import { AgentPopover } from "@/components/spaces/agent-popover";
+import { useSpaces, useFolders, useLists } from "@/hooks/use-projects";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 type TabId = "overview" | "lista" | "quadro" | "calendario" | "gantt" | "tabela";
@@ -34,22 +31,20 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
 
-  const entidade = useEntidadesStore((s) => s.entidades.find((e) => e.id === id) ?? null);
-  const filhos = useFilhosDe(id);
+  const { data: spaces, isLoading } = useSpaces();
+  const entidade = spaces?.find((s) => s.id === id) ?? null;
+  const { data: pastas = [] } = useFolders(entidade ? id : null);
+  const { data: listas = [] } = useLists(entidade ? id : null);
+  const docs: typeof listas = [];
+  const recentes = [...pastas, ...listas].slice(0, 6);
 
-  if (!entidade || !isEspaco(entidade)) {
-    return <div style={{ color: "#7a7a85", padding: 40 }}>Espaço não encontrado.</div>;
+  if (isLoading) {
+    return <div style={{ color: "#7a7a85", padding: 40 }}>Carregando…</div>;
   }
 
-  const pastas = filhos.filter((f) => f.idClasse === "pasta");
-  const listas = filhos.filter((f) => f.idClasse === "backlog" || f.idClasse === "board");
-  const docs   = filhos.filter((f) => f.idClasse === "doc");
-
-  /* recent — todos os filhos diretos + filhos das pastas */
-  const filhosDasPastas = pastas.flatMap((p) =>
-    mockEntidades.filter((e) => e.idPai === p.id)
-  );
-  const recentes = [...filhos, ...filhosDasPastas].slice(0, 6);
+  if (!entidade) {
+    return <div style={{ color: "#7a7a85", padding: 40 }}>Espaço não encontrado.</div>;
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#111111", overflow: "hidden" }}>
@@ -62,7 +57,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
       }}>
         {/* esquerda: chip + nome + estrela + menu */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <SpaceChip iniciais={entidade.meta.iniciais} cor={entidade.meta.cor} iconName={entidade.meta.iconName} size="sm" />
+          <SpaceChip iniciais={entidade.nome.slice(0, 2).toUpperCase()} cor="#6366f1" size="sm" />
           <button type="button" style={{ display: "flex", alignItems: "center", gap: 4, border: 0, background: "none", cursor: "pointer", color: "#e4e4e4", fontSize: 14, fontWeight: 600 }}>
             {entidade.nome}
             <IcCaret />
@@ -203,10 +198,10 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {recentes.map((item) => {
                 const pai = item.idPai ? mockEntidades.find(e => e.id === item.idPai) : null;
-                const href = item.idClasse === "backlog" || item.idClasse === "board"
-                  ? `/lists/${item.id}`
-                  : item.idClasse === "pasta"
+                const href = item.idClasse === "-351"
                   ? `/folders/${item.id}`
+                  : item.idClasse === "-352"
+                  ? `/lists/${item.id}`
                   : `/docs/${item.id}`;
                 return (
                   <Link key={item.id} href={href} style={{
@@ -218,11 +213,10 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
                     <span style={{ flexShrink: 0 }}>
-                      {item.idClasse === "pasta" ? <IcFolder /> :
-                       item.idClasse === "doc"   ? <IcDoc /> : <IcList />}
+                      {item.idClasse === "-351" ? <IcFolder /> :
+                       item.idClasse === "-352" ? <IcList /> : <IcDoc />}
                     </span>
                     <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{item.nome}</span>
-                    {pai && <span style={{ fontSize: 12, color: "#505058" }}>• em {pai.nome}</span>}
                   </Link>
                 );
               })}
