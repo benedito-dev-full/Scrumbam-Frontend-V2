@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { TaskDetailDrawer } from "@/components/tasks/task-detail-drawer";
-import { useProject } from "@/hooks/use-projects";
+import { useProject, useLists } from "@/hooks/use-projects";
 import { useTasksByProject, useCreateTask, useUpdateTask } from "@/hooks/use-tasks";
 import {
   KANBAN_COLUMNS,
@@ -424,6 +424,7 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
         <CreateTaskModal
           listId={id}
           listName={listData.nome}
+          folderId={listData.idPai ?? null}
           defaultColId={createModalStatus}
           onClose={() => setCreateModalOpen(false)}
         />
@@ -961,32 +962,56 @@ function DropItem({ children, active, onClick }: {
 // ─── Modal de criação de tarefa ───────────────────────────────────────────────
 
 function CreateTaskModal({
-  listId, listName, defaultColId, onClose,
+  listId, listName, folderId, defaultColId, onClose,
 }: {
   listId: string;
   listName: string;
+  folderId: string | null;
   defaultColId: string;
   onClose: () => void;
 }) {
   const { mutate: createTask, isPending } = useCreateTask();
+  const { data: availableLists = [] } = useLists(folderId);
+
   const [titulo, setTitulo] = useState("");
-  const [descricao, setDescricao] = useState(false); // toggle campo desc
+  const [descricaoOpen, setDescricaoOpen] = useState(false);
+  const [descricao, setDescricao] = useState("");
   const [priority, setPriority] = useState<string | null>(null);
   const [dueDate, setDueDate] = useState<string>("");
+  const [selectedListId, setSelectedListId] = useState(listId);
+  const [selectedColId, setSelectedColId] = useState(defaultColId);
+
+  const [showListDD, setShowListDD] = useState(false);
+  const [showStatusDD, setShowStatusDD] = useState(false);
+  const [showRespDD, setShowRespDD] = useState(false);
   const [showPrioDD, setShowPrioDD] = useState(false);
   const [showDateDD, setShowDateDD] = useState(false);
 
-  const cfg = COL_CFG[defaultColId] ?? COL_CFG.backlog;
+  const listBtnRef  = useRef<HTMLButtonElement>(null);
+  const statusBtnRef = useRef<HTMLButtonElement>(null);
+  const respBtnRef  = useRef<HTMLButtonElement>(null);
+  const prioRef     = useRef<HTMLButtonElement>(null);
+  const dateRef     = useRef<HTMLButtonElement>(null);
 
-  const prioRef = useRef<HTMLButtonElement>(null);
-  const dateRef = useRef<HTMLButtonElement>(null);
+  const cfg = COL_CFG[selectedColId] ?? COL_CFG.backlog;
+  const selectedListName = availableLists.find((l) => l.id === selectedListId)?.nome ?? listName;
+
+  const prioOptions = [
+    { key: "URGENT", label: "Urgente", color: "#ef4444" },
+    { key: "HIGH",   label: "Alta",    color: "#f59e0b" },
+    { key: "MEDIUM", label: "Média",   color: "#60a5fa" },
+    { key: "LOW",    label: "Baixa",   color: "#71717a" },
+  ] as const;
+  const selectedPrio = prioOptions.find((p) => p.key === priority);
+
+  const statusOptions = Object.entries(COL_CFG);
 
   function handleCreate() {
     if (!titulo.trim() || isPending) return;
     createTask(
       {
         titulo: titulo.trim(),
-        idProject: listId,
+        idProject: selectedListId,
         ...(priority ? { priority } : {}),
         ...(dueDate ? { dueDate } : {}),
       },
@@ -994,7 +1019,6 @@ function CreateTaskModal({
     );
   }
 
-  // fechar com Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
@@ -1006,122 +1030,107 @@ function CreateTaskModal({
   const TABS = ["Tarefa", "Documento", "Lembrete", "Quadro branco", "Painéis"] as const;
   const [activeTab, setActiveTab] = useState<typeof TABS[number]>("Tarefa");
 
-  const prioOptions = [
-    { key: "URGENT", label: "Urgente", color: "#ef4444" },
-    { key: "HIGH",   label: "Alta",    color: "#f59e0b" },
-    { key: "MEDIUM", label: "Média",   color: "#60a5fa" },
-    { key: "LOW",    label: "Baixa",   color: "#71717a" },
-  ] as const;
+  const chipStyle = (active?: boolean): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", gap: 5,
+    height: 26, padding: "0 10px", borderRadius: 5,
+    background: active ? "#2e2e38" : "#2a2a30",
+    border: "1px solid #3a3a42",
+    color: "#b6b6bf", fontSize: 12, fontWeight: 500, cursor: "pointer",
+  });
 
-  const selectedPrio = prioOptions.find((p) => p.key === priority);
+  const fieldBtn: React.CSSProperties = {
+    display: "inline-flex", alignItems: "center", gap: 6,
+    height: 28, padding: "0 10px", borderRadius: 6,
+    background: "#232328", border: "1px solid #32323a",
+    color: "#8a8a93", fontSize: 12, cursor: "pointer",
+  };
 
   return createPortal(
     <>
       {/* Overlay */}
-      <div
-        onClick={onClose}
-        style={{
-          position: "fixed", inset: 0, zIndex: 10000,
-          background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)",
-        }}
-      />
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.55)", backdropFilter: "blur(2px)" }} />
 
       {/* Modal */}
-      <div
-        style={{
-          position: "fixed", zIndex: 10001,
-          top: "50%", left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: 680, maxWidth: "calc(100vw - 32px)",
-          background: "#1a1a20",
-          border: "1px solid #2e2e38",
-          borderRadius: 12,
-          boxShadow: "0 24px 64px rgba(0,0,0,0.7)",
-          display: "flex", flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
-        {/* ── Tabs do modal ── */}
-        <div style={{
-          display: "flex", alignItems: "center",
-          borderBottom: "1px solid #2a2a30",
-          padding: "0 16px",
-          gap: 2,
-        }}>
+      <div style={{
+        position: "fixed", zIndex: 10001,
+        top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+        width: 680, maxWidth: "calc(100vw - 32px)",
+        background: "#1a1a20", border: "1px solid #2e2e38", borderRadius: 12,
+        boxShadow: "0 24px 64px rgba(0,0,0,0.7)",
+        display: "flex", flexDirection: "column", overflow: "visible",
+      }}>
+        {/* ── Tabs ── */}
+        <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #2a2a30", padding: "0 16px", gap: 2, borderRadius: "12px 12px 0 0", overflow: "hidden" }}>
           {TABS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setActiveTab(t)}
-              style={{
-                height: 44, padding: "0 14px",
-                background: "none", border: 0, cursor: "pointer",
-                fontSize: 13, fontWeight: 500,
-                color: activeTab === t ? "#e9e9ee" : "#7a7a85",
-                borderBottom: activeTab === t ? "2px solid #7a5cff" : "2px solid transparent",
-                transition: "color .15s, border-color .15s",
-              }}
-            >
-              {t}
-            </button>
+            <button key={t} type="button" onClick={() => setActiveTab(t)} style={{
+              height: 44, padding: "0 14px", background: "none", border: 0, cursor: "pointer",
+              fontSize: 13, fontWeight: 500,
+              color: activeTab === t ? "#e9e9ee" : "#7a7a85",
+              borderBottom: activeTab === t ? "2px solid #7a5cff" : "2px solid transparent",
+            }}>{t}</button>
           ))}
-
-          {/* Fechar */}
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              marginLeft: "auto", width: 28, height: 28,
-              borderRadius: 6, background: "none", border: 0,
-              color: "#7a7a85", cursor: "pointer",
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              fontSize: 16, transition: "color .15s",
-            }}
+          <button type="button" onClick={onClose} style={{
+            marginLeft: "auto", width: 28, height: 28, borderRadius: 6,
+            background: "none", border: 0, color: "#7a7a85", cursor: "pointer",
+            display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16,
+          }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "#e9e9ee"; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = "#7a7a85"; }}
-          >
-            ✕
-          </button>
+          >✕</button>
         </div>
 
         {/* ── Corpo ── */}
-        <div style={{ padding: "16px 20px", flex: 1 }}>
+        <div style={{ padding: "16px 20px 0 20px" }}>
 
-          {/* Chips de contexto (List / Status) */}
+          {/* Chips Lista + Status */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-            {/* List chip */}
-            <button
-              type="button"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                height: 26, padding: "0 10px", borderRadius: 5,
-                background: "#2a2a30", border: "1px solid #3a3a42",
-                color: "#b6b6bf", fontSize: 12, fontWeight: 500, cursor: "pointer",
-              }}
-            >
-              <IcoList />
-              {listName}
-              <IcoChevronDown size={9} />
-            </button>
 
-            {/* Status chip */}
-            <button
-              type="button"
-              style={{
+            {/* Lista dropdown */}
+            <div style={{ position: "relative" }}>
+              <button ref={listBtnRef} type="button" onClick={() => setShowListDD((v) => !v)} style={chipStyle(showListDD)}>
+                <IcoList />
+                {selectedListName}
+                <IcoChevronDown size={9} />
+              </button>
+              {showListDD && availableLists.length > 0 && (
+                <CellDropdown anchorRef={listBtnRef} onClose={() => setShowListDD(false)}>
+                  {availableLists.map((l) => (
+                    <DropItem key={l.id} active={l.id === selectedListId} onClick={() => { setSelectedListId(l.id); setShowListDD(false); }}>
+                      <IcoList />
+                      {l.nome}
+                    </DropItem>
+                  ))}
+                </CellDropdown>
+              )}
+            </div>
+
+            {/* Status dropdown */}
+            <div style={{ position: "relative" }}>
+              <button ref={statusBtnRef} type="button" onClick={() => setShowStatusDD((v) => !v)} style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
                 height: 26, padding: "0 10px", borderRadius: 5,
                 background: cfg.chipBg, border: `1px solid ${cfg.chipBg}`,
                 color: cfg.chipColor, fontSize: 12, fontWeight: 700,
                 letterSpacing: "0.04em", textTransform: "uppercase", cursor: "pointer",
-              }}
-            >
-              <span style={{ width: 10, height: 10, display: "inline-flex" }}>{cfg.dotEl}</span>
-              {cfg.label}
-              <IcoChevronDown size={9} />
-            </button>
+              }}>
+                <span style={{ width: 10, height: 10, display: "inline-flex" }}>{cfg.dotEl}</span>
+                {cfg.label}
+                <IcoChevronDown size={9} />
+              </button>
+              {showStatusDD && (
+                <CellDropdown anchorRef={statusBtnRef} onClose={() => setShowStatusDD(false)}>
+                  {statusOptions.map(([colId, c]) => (
+                    <DropItem key={colId} active={selectedColId === colId} onClick={() => { setSelectedColId(colId); setShowStatusDD(false); }}>
+                      <span style={{ width: 10, height: 10, display: "inline-flex" }}>{c.dotEl}</span>
+                      <span style={{ color: c.chipColor }}>{c.label}</span>
+                    </DropItem>
+                  ))}
+                </CellDropdown>
+              )}
+            </div>
           </div>
 
-          {/* Input de título */}
+          {/* Input título */}
           <input
             autoFocus
             value={titulo}
@@ -1129,18 +1138,32 @@ function CreateTaskModal({
             onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) handleCreate(); }}
             placeholder="Nome da Tarefa ou digite '/' para inserir comandos"
             style={{
-              width: "100%", background: "transparent", border: 0,
-              outline: "none", color: "#e9e9ee", fontSize: 15,
-              fontWeight: 500, marginBottom: 14,
+              width: "100%", background: "transparent", border: 0, outline: "none",
+              color: "#e9e9ee", fontSize: 15, fontWeight: 500, marginBottom: 12,
               caretColor: "#7a5cff",
             }}
           />
 
-          {/* Ações rápidas */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 18 }}>
+          {/* Adicionar descrição — toggle textarea */}
+          {descricaoOpen ? (
+            <textarea
+              autoFocus
+              value={descricao}
+              onChange={(e) => setDescricao(e.target.value)}
+              placeholder="Adicione uma descrição…"
+              rows={3}
+              style={{
+                width: "100%", background: "#232328", border: "1px solid #32323a",
+                borderRadius: 6, outline: "none", color: "#e9e9ee", fontSize: 13,
+                padding: "8px 10px", resize: "vertical", marginBottom: 10,
+                caretColor: "#7a5cff",
+              }}
+            />
+          ) : (
             <button
               type="button"
-              style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: 0, color: "#7a7a85", fontSize: 13, cursor: "pointer", padding: "2px 0" }}
+              onClick={() => setDescricaoOpen(true)}
+              style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: 0, color: "#7a7a85", fontSize: 13, cursor: "pointer", padding: "2px 0", marginBottom: 8 }}
               onMouseEnter={(e) => { e.currentTarget.style.color = "#e9e9ee"; }}
               onMouseLeave={(e) => { e.currentTarget.style.color = "#7a7a85"; }}
             >
@@ -1150,51 +1173,53 @@ function CreateTaskModal({
               </svg>
               Adicionar descrição
             </button>
-            <button
-              type="button"
-              style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: 0, color: "#7a7a85", fontSize: 13, cursor: "pointer", padding: "2px 0" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = "#e9e9ee"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = "#7a7a85"; }}
-            >
-              <span style={{ width: 14, height: 14, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed, #3b82f6)", display: "inline-flex" }} />
-              Escrever com IA
-            </button>
-          </div>
+          )}
 
-          {/* Row de campos rápidos */}
+          {/* Escrever com IA */}
+          <button
+            type="button"
+            style={{ display: "flex", alignItems: "center", gap: 9, background: "none", border: 0, color: "#7a7a85", fontSize: 13, cursor: "pointer", padding: "2px 0", marginBottom: 14 }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#e9e9ee"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "#7a7a85"; }}
+          >
+            <span style={{ width: 14, height: 14, borderRadius: "50%", background: "linear-gradient(135deg, #7c3aed, #3b82f6)", display: "inline-flex", flexShrink: 0 }} />
+            Escrever com IA
+          </button>
+
+          {/* Campos rápidos */}
           <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, paddingBottom: 16, borderBottom: "1px solid #26262d" }}>
 
             {/* Responsável */}
-            <button
-              type="button"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                height: 28, padding: "0 10px", borderRadius: 6,
-                background: "#232328", border: "1px solid #32323a",
-                color: "#8a8a93", fontSize: 12, cursor: "pointer",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#4a4a52"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#32323a"; }}
-            >
-              <IcoUserAssign />
-              Responsável
-            </button>
+            <div style={{ position: "relative" }}>
+              <button ref={respBtnRef} type="button" onClick={() => setShowRespDD((v) => !v)} style={fieldBtn}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#4a4a52"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#32323a"; }}
+              >
+                <IcoUserAssign />
+                Responsável
+              </button>
+              {showRespDD && (
+                <CellDropdown anchorRef={respBtnRef} onClose={() => setShowRespDD(false)}>
+                  <div style={{ padding: "8px 10px" }}>
+                    <p style={{ fontSize: 11, color: "#7a7a85", margin: "0 0 8px", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".5px" }}>Responsável</p>
+                    <DropItem active onClick={() => setShowRespDD(false)}>
+                      <span style={{ color: "#7a7a85" }}>Sem responsável (em breve)</span>
+                    </DropItem>
+                  </div>
+                </CellDropdown>
+              )}
+            </div>
 
             {/* Data de vencimento */}
             <div style={{ position: "relative" }}>
-              <button
-                ref={dateRef}
-                type="button"
-                onClick={() => setShowDateDD((v) => !v)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  height: 28, padding: "0 10px", borderRadius: 6,
-                  background: dueDate ? "#1e3060" : "#232328",
-                  border: `1px solid ${dueDate ? "#3b82f6" : "#32323a"}`,
-                  color: dueDate ? "#93c5fd" : "#8a8a93", fontSize: 12, cursor: "pointer",
-                }}
+              <button ref={dateRef} type="button" onClick={() => setShowDateDD((v) => !v)} style={{
+                ...fieldBtn,
+                background: dueDate ? "#1e3060" : "#232328",
+                border: `1px solid ${dueDate ? "#3b82f6" : "#32323a"}`,
+                color: dueDate ? "#93c5fd" : "#8a8a93",
+              }}
                 onMouseEnter={(e) => { if (!dueDate) e.currentTarget.style.borderColor = "#4a4a52"; }}
-                onMouseLeave={(e) => { if (!dueDate) e.currentTarget.style.borderColor = "#32323a"; }}
+                onMouseLeave={(e) => { if (!dueDate) e.currentTarget.style.borderColor = dueDate ? "#3b82f6" : "#32323a"; }}
               >
                 <IcoCalendar />
                 {dueDate
@@ -1204,27 +1229,18 @@ function CreateTaskModal({
               {showDateDD && (
                 <CellDropdown anchorRef={dateRef} onClose={() => setShowDateDD(false)}>
                   <div style={{ padding: "8px 10px" }}>
-                    <p style={{ fontSize: 11, color: "#7a7a85", margin: "0 0 8px", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".5px" }}>
-                      Data de vencimento
-                    </p>
-                    <input
-                      type="date"
-                      autoFocus
-                      value={dueDate}
+                    <p style={{ fontSize: 11, color: "#7a7a85", margin: "0 0 8px", fontWeight: 600, textTransform: "uppercase", letterSpacing: ".5px" }}>Data de vencimento</p>
+                    <input type="date" autoFocus value={dueDate}
                       onChange={(e) => { setDueDate(e.target.value); setShowDateDD(false); }}
                       style={{
-                        background: "#26262f", border: "1px solid #3a3a46",
-                        borderRadius: 6, color: "#d4d4dc", fontSize: 12,
-                        padding: "5px 8px", outline: "none", width: "100%",
-                        colorScheme: "dark" as React.CSSProperties["colorScheme"],
+                        background: "#26262f", border: "1px solid #3a3a46", borderRadius: 6,
+                        color: "#d4d4dc", fontSize: 12, padding: "5px 8px", outline: "none",
+                        width: "100%", colorScheme: "dark" as React.CSSProperties["colorScheme"],
                       }}
                     />
                     {dueDate && (
-                      <button
-                        type="button"
-                        onClick={() => { setDueDate(""); setShowDateDD(false); }}
-                        style={{ marginTop: 6, width: "100%", padding: "5px 0", background: "none", border: "1px solid #2e2e38", borderRadius: 5, color: "#ef4444", fontSize: 12, cursor: "pointer" }}
-                      >
+                      <button type="button" onClick={() => { setDueDate(""); setShowDateDD(false); }}
+                        style={{ marginTop: 6, width: "100%", padding: "5px 0", background: "none", border: "1px solid #2e2e38", borderRadius: 5, color: "#ef4444", fontSize: 12, cursor: "pointer" }}>
                         Remover data
                       </button>
                     )}
@@ -1235,19 +1251,14 @@ function CreateTaskModal({
 
             {/* Prioridade */}
             <div style={{ position: "relative" }}>
-              <button
-                ref={prioRef}
-                type="button"
-                onClick={() => setShowPrioDD((v) => !v)}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  height: 28, padding: "0 10px", borderRadius: 6,
-                  background: selectedPrio ? "rgba(0,0,0,0.2)" : "#232328",
-                  border: `1px solid ${selectedPrio ? selectedPrio.color + "55" : "#32323a"}`,
-                  color: selectedPrio ? selectedPrio.color : "#8a8a93", fontSize: 12, cursor: "pointer",
-                }}
+              <button ref={prioRef} type="button" onClick={() => setShowPrioDD((v) => !v)} style={{
+                ...fieldBtn,
+                background: selectedPrio ? "rgba(0,0,0,0.2)" : "#232328",
+                border: `1px solid ${selectedPrio ? selectedPrio.color + "55" : "#32323a"}`,
+                color: selectedPrio ? selectedPrio.color : "#8a8a93",
+              }}
                 onMouseEnter={(e) => { if (!selectedPrio) e.currentTarget.style.borderColor = "#4a4a52"; }}
-                onMouseLeave={(e) => { if (!selectedPrio) e.currentTarget.style.borderColor = "#32323a"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = selectedPrio ? (selectedPrio.color + "55") : "#32323a"; }}
               >
                 <IcoFlag />
                 {selectedPrio ? selectedPrio.label : "Prioridade"}
@@ -1255,90 +1266,26 @@ function CreateTaskModal({
               {showPrioDD && (
                 <CellDropdown anchorRef={prioRef} onClose={() => setShowPrioDD(false)}>
                   <DropItem active={!priority} onClick={() => { setPriority(null); setShowPrioDD(false); }}>
-                    <IcoFlag />
-                    <span style={{ color: "#7a7a85" }}>Sem prioridade</span>
+                    <IcoFlag /><span style={{ color: "#7a7a85" }}>Sem prioridade</span>
                   </DropItem>
                   {prioOptions.map((p) => (
                     <DropItem key={p.key} active={priority === p.key} onClick={() => { setPriority(p.key); setShowPrioDD(false); }}>
-                      <IcoFlag />
-                      <span style={{ color: p.color }}>{p.label}</span>
+                      <IcoFlag /><span style={{ color: p.color }}>{p.label}</span>
                     </DropItem>
                   ))}
                 </CellDropdown>
               )}
             </div>
-
-            {/* Etiquetas placeholder */}
-            <button
-              type="button"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                height: 28, padding: "0 10px", borderRadius: 6,
-                background: "#232328", border: "1px solid #32323a",
-                color: "#8a8a93", fontSize: 12, cursor: "pointer",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#4a4a52"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#32323a"; }}
-            >
-              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-                <line x1="7" y1="7" x2="7.01" y2="7" />
-              </svg>
-              Etiquetas
-            </button>
-
-            {/* ··· more */}
-            <button
-              type="button"
-              style={{
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-                width: 28, height: 28, borderRadius: 6,
-                background: "#232328", border: "1px solid #32323a",
-                color: "#8a8a93", fontSize: 13, cursor: "pointer",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#4a4a52"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#32323a"; }}
-            >
-              ···
-            </button>
-          </div>
-
-          {/* Campos customizados */}
-          <div style={{ paddingTop: 14 }}>
-            <p style={{ fontSize: 11, color: "#5a5a64", fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase", marginBottom: 10 }}>
-              Campos
-            </p>
-            <button
-              type="button"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                height: 30, padding: "0 12px", borderRadius: 6,
-                background: "#232328", border: "1px solid #32323a",
-                color: "#8a8a93", fontSize: 12.5, cursor: "pointer",
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#4a4a52"; e.currentTarget.style.color = "#e9e9ee"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#32323a"; e.currentTarget.style.color = "#8a8a93"; }}
-            >
-              <IcoPlus size={12} />
-              Criar novo campo
-            </button>
           </div>
         </div>
 
         {/* ── Rodapé ── */}
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "12px 20px", borderTop: "1px solid #2a2a30",
-        }}>
-          {/* Modelos */}
-          <button
-            type="button"
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              height: 32, padding: "0 12px", borderRadius: 6,
-              background: "#232328", border: "1px solid #32323a",
-              color: "#8a8a93", fontSize: 12.5, cursor: "pointer",
-            }}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderTop: "1px solid #2a2a30" }}>
+          <button type="button" style={{
+            display: "inline-flex", alignItems: "center", gap: 6, height: 32, padding: "0 12px",
+            borderRadius: 6, background: "#232328", border: "1px solid #32323a",
+            color: "#8a8a93", fontSize: 12.5, cursor: "pointer",
+          }}
             onMouseEnter={(e) => { e.currentTarget.style.color = "#e9e9ee"; }}
             onMouseLeave={(e) => { e.currentTarget.style.color = "#8a8a93"; }}
           >
@@ -1348,26 +1295,21 @@ function CreateTaskModal({
             Modelos
           </button>
 
-          {/* Direita: attachments, notificações, criar */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button type="button" style={{ width: 32, height: 32, borderRadius: 6, background: "none", border: 0, color: "#7a7a85", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
               </svg>
             </button>
-            <button type="button" style={{ width: 32, height: 32, borderRadius: 6, background: "none", border: 0, color: "#7a7a85", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 12, gap: 3 }}>
+            <button type="button" style={{ width: 32, height: 32, borderRadius: 6, background: "none", border: 0, color: "#7a7a85", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 3, fontSize: 12 }}>
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
               <span>1</span>
             </button>
 
-            {/* Criar Tarefa split */}
             <div style={{ display: "inline-flex", alignItems: "center", borderRadius: 6, overflow: "hidden", border: "1px solid #4a3fbb" }}>
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={!titulo.trim() || isPending}
+              <button type="button" onClick={handleCreate} disabled={!titulo.trim() || isPending}
                 style={{
                   height: 32, padding: "0 16px",
                   background: titulo.trim() ? "#5a4fcf" : "#3a3550",
@@ -1380,14 +1322,11 @@ function CreateTaskModal({
               >
                 {isPending ? "Criando…" : "Criar Tarefa"}
               </button>
-              <button
-                type="button"
-                style={{
-                  height: 32, padding: "0 8px",
-                  background: "#5a4fcf", border: 0, cursor: "pointer",
-                  color: "white", borderLeft: "1px solid rgba(255,255,255,0.15)",
-                  display: "inline-flex", alignItems: "center",
-                }}
+              <button type="button" style={{
+                height: 32, padding: "0 8px", background: "#5a4fcf", border: 0, cursor: "pointer",
+                color: "white", borderLeft: "1px solid rgba(255,255,255,0.15)",
+                display: "inline-flex", alignItems: "center",
+              }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "#6b5fdd"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "#5a4fcf"; }}
               >
