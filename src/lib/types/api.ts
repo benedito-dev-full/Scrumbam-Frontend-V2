@@ -281,9 +281,8 @@ export interface InviteResponseDto {
   id: string;
   email: string;
   role: "MEMBER" | "VIEWER";
-  status: "PENDING" | "ACCEPTED" | "CANCELLED";
   expiresAt: string;
-  criadoEm: string;
+  createdAt: string;
 }
 
 export interface CreateInviteDto {

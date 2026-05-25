@@ -11,8 +11,7 @@ interface ListMembersResponse {
 }
 
 interface ListInvitesResponse {
-  items: InviteResponseDto[];
-  pagination: { hasMore: boolean; nextCursor: string | null };
+  invites: InviteResponseDto[];
 }
 
 // ─── Membros ──────────────────────────────────────────────────────────────────
@@ -78,7 +77,7 @@ export function useOrgInvites() {
       const res = await api.get<ListInvitesResponse>(
         `/organizations/${orgId}/invites`,
       );
-      return res.data.items ?? [];
+      return res.data.invites ?? [];
     },
     enabled: !!accessToken && !!orgId,
     staleTime: 30_000,
