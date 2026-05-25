@@ -422,6 +422,7 @@ function FolderNode({
       {/* Dialog de criação de List */}
       <CreateListDialog
         parentId={folder.id}
+        parentName={folder.nome}
         open={createListOpen}
         onOpenChange={setCreateListOpen}
       />
@@ -581,6 +582,7 @@ function SpaceNode({
       />
       <CreateListDialog
         parentId={space.id}
+        parentName={space.nome}
         open={createListOpen}
         onOpenChange={setCreateListOpen}
       />
