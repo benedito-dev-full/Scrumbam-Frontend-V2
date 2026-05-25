@@ -3,7 +3,7 @@
 import React, { use, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { Star, ChevronRight, LayoutGrid, Plus, SlidersHorizontal, CheckCircle2, User, Search, ChevronDown } from "lucide-react";
+import { LayoutGrid, ChevronDown, ChevronRight } from "lucide-react";
 
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { TaskDetailDrawer } from "@/components/tasks/task-detail-drawer";
@@ -17,22 +17,28 @@ import {
   priorityToLabel,
 } from "@/lib/mappers/task-status.mapper";
 import {
-  IcCaret, IcCaretR, IcChat, IcFilter, IcGitFork, IcColumns,
+  IcCaret, IcChat, IcFilter, IcGitFork, IcColumns,
   IcList, IcPlus, IcSearch, IcUser, IcCalPlus, IcFlag, IcUserPlus, IcCheck,
 } from "@/components/lists/icons";
 import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
 import { cn } from "@/lib/utils";
 
-// ─── Mapa V3 → config visual ──────────────────────────────────────────────────
+// ─── Config visual por status ─────────────────────────────────────────────────
 
-type ColCfg = { label: string; color: string; bg: string; pillBg: string; pillColor: string };
+type ColCfg = {
+  label: string;
+  dotColor: string;
+  pillBg: string;
+  pillColor: string;
+  iconType: "circle-dot" | "circle-half" | "circle-check" | "circle-x" | "circle";
+};
 
 const COL_CFG: Record<string, ColCfg> = {
-  backlog:     { label: "BACKLOG",      color: "#6b7280", bg: "#232329", pillBg: "#2a2a31", pillColor: "#d4d4dc" },
-  ready:       { label: "READY",        color: "#3b82f6", bg: "#1a2133", pillBg: "#1e3a5f", pillColor: "#93c5fd" },
-  progresso:   { label: "EM PROGRESSO", color: "#7c5cff", bg: "#1e1828", pillBg: "#7c5cff", pillColor: "#fff"    },
-  concluido:   { label: "CONCLUÍDO",    color: "#10b981", bg: "#0d2820", pillBg: "#0d2e1e", pillColor: "#6ee7b7" },
-  falhou:      { label: "FALHOU",       color: "#ef4444", bg: "#2a1212", pillBg: "#3d1212", pillColor: "#fca5a5" },
+  backlog:   { label: "BACKLOG",      dotColor: "#6b7280", pillBg: "#2a2a31",    pillColor: "#9ca3af", iconType: "circle"       },
+  ready:     { label: "READY",        dotColor: "#3b82f6", pillBg: "#1e3a5f",    pillColor: "#93c5fd", iconType: "circle-dot"   },
+  progresso: { label: "EM PROGRESSO", dotColor: "#7c5cff", pillBg: "#5b3fcb",    pillColor: "#ffffff", iconType: "circle-half"  },
+  concluido: { label: "CONCLUÍDO",    dotColor: "#10b981", pillBg: "#065f46",    pillColor: "#6ee7b7", iconType: "circle-check" },
+  falhou:    { label: "FALHOU",       dotColor: "#ef4444", pillBg: "#7f1d1d",    pillColor: "#fca5a5", iconType: "circle-x"     },
 };
 
 const PRIO_CFG: Record<string, { label: string; color: string }> = {
@@ -41,6 +47,50 @@ const PRIO_CFG: Record<string, { label: string; color: string }> = {
   MEDIUM: { label: "Média",   color: "#60a5fa" },
   LOW:    { label: "Baixa",   color: "#71717a" },
 };
+
+// ─── Ícone de status do grupo ─────────────────────────────────────────────────
+
+function StatusIcon({ type, color, size = 14 }: { type: ColCfg["iconType"]; color: string; size?: number }) {
+  const s = size;
+  if (type === "circle-dot") {
+    return (
+      <svg width={s} height={s} viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="7" stroke={color} strokeWidth="1.5" />
+        <circle cx="8" cy="8" r="2.5" fill={color} />
+      </svg>
+    );
+  }
+  if (type === "circle-half") {
+    return (
+      <svg width={s} height={s} viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="7" stroke={color} strokeWidth="1.5" />
+        <path d="M8 1a7 7 0 0 1 0 14V1z" fill={color} />
+      </svg>
+    );
+  }
+  if (type === "circle-check") {
+    return (
+      <svg width={s} height={s} viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="7" fill={color} />
+        <path d="M5 8.5l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (type === "circle-x") {
+    return (
+      <svg width={s} height={s} viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="7" fill={color} />
+        <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    );
+  }
+  // circle (backlog)
+  return (
+    <svg width={s} height={s} viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="7" stroke={color} strokeWidth="1.5" strokeDasharray="3 2" />
+    </svg>
+  );
+}
 
 // ─── Página principal ─────────────────────────────────────────────────────────
 
@@ -64,65 +114,56 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[#111111]">
 
-      {/* ── Breadcrumb ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 px-5 pt-2 text-[12px] text-[#7a7a85]">
-        {spaceData && (
-          <>
-            <Link href={`/spaces/${spaceData.id}`} className="transition-colors hover:text-[#b6b6bf]">
-              {spaceData.nome}
-            </Link>
-            <ChevronRight size={11} className="text-[#4a4a54]" />
-          </>
-        )}
-        {folderData && (
-          <>
-            <Link href={`/folders/${folderData.id}`} className="transition-colors hover:text-[#b6b6bf]">
-              {folderData.nome}
-            </Link>
-            <ChevronRight size={11} className="text-[#4a4a54]" />
-          </>
-        )}
-        <span className="flex items-center gap-1 text-[#b6b6bf]">
-          <IcList size={12} />
-          List
-        </span>
-        <ChevronRight size={11} className="text-[#4a4a54]" />
-        <span className="font-medium text-[#b6b6bf]">{listData.nome}</span>
-        <button type="button" className="ml-0.5 text-[#4a4a54] hover:text-[#7a7a85]">
-          <Star size={11} />
+      {/* ── Linha 1: Breadcrumb + ações ─────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-4 pt-2 pb-0.5">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1 text-[12px] text-[#6a6a75]">
+          {spaceData && (
+            <>
+              <Link href={`/spaces/${spaceData.id}`} className="transition-colors hover:text-[#b6b6bf]">
+                {spaceData.nome}
+              </Link>
+              <ChevronRight size={10} className="text-[#3a3a45]" />
+            </>
+          )}
+          {folderData && (
+            <>
+              <Link href={`/folders/${folderData.id}`} className="transition-colors hover:text-[#b6b6bf]">
+                {folderData.nome}
+              </Link>
+              <ChevronRight size={10} className="text-[#3a3a45]" />
+            </>
+          )}
+          <span className="flex items-center gap-1 text-[#7a7a85]">
+            <IcList size={12} />
+            List
+          </span>
+          <ChevronRight size={10} className="text-[#3a3a45]" />
+          <span className="font-medium text-[#c8c8d0]">{listData.nome}</span>
+        </div>
+
+        {/* Ações do lado direito */}
+        <div className="flex items-center gap-1">
+          <TopBtn label="Agentes" />
+          <TopBtn label="Pergunte à IA" accent />
+          <TopBtn label="⚡ Compartilhar" />
+        </div>
+      </div>
+
+      {/* ── Linha 2: Tabs de view ────────────────────────────────────────────── */}
+      <div className="flex items-center gap-0 border-b border-[#1e1e24] px-4">
+        <ViewTab label="Lista" icon={<IcList size={13} />} active={view === "lista"} onClick={() => setView("lista")} />
+        <ViewTab label="Quadro" icon={<LayoutGrid size={13} />} active={view === "quadro"} onClick={() => setView("quadro")} />
+        <button type="button" className="flex items-center gap-1 px-3 py-2 text-[13px] text-[#6a6a75] hover:text-[#b6b6bf]">
+          <IcPlus size={12} />
+          Visualização
         </button>
       </div>
 
-      {/* ── Header: tabs de view + ações ───────────────────────────────────── */}
-      <div className="flex items-center justify-between px-5 py-1.5">
-        <div className="flex items-center gap-0.5">
-          <ViewTab
-            label="Lista"
-            icon={<IcList size={13} />}
-            active={view === "lista"}
-            onClick={() => setView("lista")}
-          />
-          <ViewTab
-            label="Quadro"
-            icon={<LayoutGrid size={13} />}
-            active={view === "quadro"}
-            onClick={() => setView("quadro")}
-          />
-          <button type="button" className="flex items-center gap-1 px-3 py-1 text-[13px] text-[#7a7a85] hover:text-[#b6b6bf]">
-            <IcPlus size={12} /> Visualização
-          </button>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <HdrBtn label="Agentes" />
-          <HdrBtn label="Pergunte à IA" accent />
-          <HdrBtn label="⚡ Compartilhar" bordered />
-        </div>
-      </div>
-
-      {/* ── Toolbar ────────────────────────────────────────────────────────── */}
+      {/* ── Toolbar ─────────────────────────────────────────────────────────── */}
       <Toolbar listId={id} />
 
-      {/* ── Conteúdo ───────────────────────────────────────────────────────── */}
+      {/* ── Conteúdo ────────────────────────────────────────────────────────── */}
       <div className="flex flex-1 overflow-hidden">
         {view === "lista" ? (
           <ListView listId={id} onSelectTask={setSelectedTaskId} />
@@ -131,7 +172,6 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
         )}
       </div>
 
-      {/* ── Drawer de detalhe ──────────────────────────────────────────────── */}
       {selectedTaskId && (
         <TaskDetailDrawer
           taskId={selectedTaskId}
@@ -147,7 +187,6 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
 
 function ListView({ listId, onSelectTask }: { listId: string; onSelectTask: (id: string) => void }) {
   const { data: tasks = [], isLoading } = useTasksByProject(listId);
-  const { mutate: createTask } = useCreateTask();
 
   const groups = KANBAN_COLUMNS.map((col) => ({
     col,
@@ -156,9 +195,9 @@ function ListView({ listId, onSelectTask }: { listId: string; onSelectTask: (id:
 
   return (
     <div className="flex-1 overflow-y-auto overflow-x-auto">
-      <div style={{ minWidth: 760 }}>
-        {/* Cabeçalho de colunas */}
-        <HeadRow />
+      <div style={{ minWidth: 720 }}>
+        {/* Cabeçalho único da tabela */}
+        <TableHead />
 
         {isLoading ? (
           <Skeleton />
@@ -180,7 +219,7 @@ function ListView({ listId, onSelectTask }: { listId: string; onSelectTask: (id:
 
             <button
               type="button"
-              className="flex h-9 items-center gap-2 px-5 text-[13px] text-[#5a5a64] transition-colors hover:text-[#b6b6bf]"
+              className="flex h-9 items-center gap-2 px-4 text-[13px] text-[#4a4a55] transition-colors hover:text-[#b6b6bf]"
             >
               <IcPlus size={13} />
               Novo status
@@ -194,42 +233,24 @@ function ListView({ listId, onSelectTask }: { listId: string; onSelectTask: (id:
 
 // ─── Cabeçalho da tabela ──────────────────────────────────────────────────────
 
-function HeadRow() {
+function TableHead() {
   return (
     <div
-      className="sticky top-0 z-10 border-b border-[#26262d] bg-[#111111]"
-      style={{ minWidth: 760 }}
+      className="sticky top-0 z-10 flex items-center border-b border-[#232329] bg-[#111111]"
+      style={{ minWidth: 720, height: 32 }}
     >
-      <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
-        <colgroup>
-          <col style={{ width: "100%" }} />
-          <col style={{ width: 148 }} />
-          <col style={{ width: 148 }} />
-          <col style={{ width: 120 }} />
-          <col style={{ width: 120 }} />
-          <col style={{ width: 36 }} />
-          <col style={{ width: 36 }} />
-        </colgroup>
-        <thead>
-          <tr>
-            {(["Nome", "Responsável", "Data de vencimento", "Prioridade", "Status"] as const).map((h) => (
-              <th
-                key={h}
-                style={{
-                  padding: "6px 10px", textAlign: "left",
-                  fontSize: 12, fontWeight: 500, color: "#5a5a64",
-                  borderBottom: "1px solid #26262d",
-                }}
-              >
-                {h}
-              </th>
-            ))}
-            {/* chat / plus — sem label */}
-            <th style={{ borderBottom: "1px solid #26262d" }} />
-            <th style={{ borderBottom: "1px solid #26262d" }} />
-          </tr>
-        </thead>
-      </table>
+      {/* Nome — ocupa todo o espaço restante */}
+      <div className="flex-1 px-4 text-[12px] font-medium text-[#4a4a55]">Nome</div>
+      {/* Colunas fixas */}
+      <div style={{ width: 140 }} className="px-3 text-[12px] font-medium text-[#4a4a55]">Responsável</div>
+      <div style={{ width: 150 }} className="px-3 text-[12px] font-medium text-[#4a4a55]">Data de vencimento</div>
+      <div style={{ width: 110 }} className="px-3 text-[12px] font-medium text-[#4a4a55]">Prioridade</div>
+      {/* Botão + coluna */}
+      <div style={{ width: 40 }} className="flex items-center justify-center">
+        <button type="button" className="flex size-5 items-center justify-center rounded text-[#4a4a55] hover:bg-[#1e1e24] hover:text-[#9a9aaa]">
+          <IcPlus size={12} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -258,154 +279,101 @@ function GroupBlock({
     );
   }
 
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
-  function toggleRow(id: string) {
-    setExpandedRows((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  }
-
   return (
     <div>
       {/* ── Cabeçalho do grupo ── */}
       <div
-        className="flex h-9 cursor-pointer items-center gap-2 px-3 transition-colors hover:bg-[#161619]"
+        className="group flex h-9 cursor-pointer items-center gap-2 px-3 transition-colors hover:bg-[#141418]"
         onClick={() => setOpen((v) => !v)}
       >
+        {/* Chevron */}
         <span
-          className="text-[#5a5a64] transition-transform duration-150"
+          className="flex-shrink-0 text-[#4a4a55] transition-transform duration-150"
           style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)", display: "inline-flex" }}
         >
-          <IcCaret size={13} />
+          <IcCaret size={12} />
         </span>
-        {/* pill colorida */}
+
+        {/* Ícone circular do status */}
+        <span className="flex-shrink-0">
+          <StatusIcon type={cfg.iconType} color={cfg.dotColor} size={14} />
+        </span>
+
+        {/* Badge pill */}
         <span
           style={{
-            display: "inline-flex", alignItems: "center", gap: 5,
-            padding: "3px 10px", borderRadius: 5,
-            fontSize: 11, fontWeight: 700, letterSpacing: ".7px",
+            display: "inline-flex", alignItems: "center",
+            padding: "2px 8px", borderRadius: 4,
+            fontSize: 11, fontWeight: 700, letterSpacing: ".6px",
             background: cfg.pillBg, color: cfg.pillColor,
+            whiteSpace: "nowrap",
           }}
         >
           {cfg.label}
         </span>
-        <span className="text-[12px] text-[#5a5a64]">{tasks.length}</span>
+
+        {/* Contador */}
+        <span className="text-[12px] text-[#4a4a55]">{tasks.length}</span>
       </div>
 
-      {/* ── Tabela de tasks ── */}
+      {/* ── Linhas de tasks ── */}
       {open && (
-        <table style={{ width: "100%", tableLayout: "fixed", borderCollapse: "collapse" }}>
-          <colgroup>
-            <col style={{ width: "100%" }} />
-            <col style={{ width: 148 }} />
-            <col style={{ width: 148 }} />
-            <col style={{ width: 120 }} />
-            <col style={{ width: 120 }} />
-            <col style={{ width: 36 }} />
-            <col style={{ width: 36 }} />
-          </colgroup>
-          <tbody>
-            {tasks.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                cfg={cfg}
-                listId={listId}
-                expanded={expandedRows.has(task.id)}
-                onToggle={() => toggleRow(task.id)}
-                onOpen={() => onSelectTask(task.id)}
-              />
-            ))}
+        <div>
+          {tasks.map((task) => (
+            <TaskRow
+              key={task.id}
+              task={task}
+              cfg={cfg}
+              listId={listId}
+              onOpen={() => onSelectTask(task.id)}
+            />
+          ))}
 
-            {/* ── Adicionar tarefa inline ── */}
-            {addingInline ? (
-              <tr>
-                <td
-                  colSpan={7}
-                  style={{ padding: 0, borderBottom: "1px solid #1f1f25", height: 38 }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, paddingLeft: 38 }}>
-                    <span
-                      style={{
-                        display: "inline-flex", alignItems: "center", gap: 5,
-                        padding: "3px 9px", borderRadius: 5,
-                        fontSize: 11, fontWeight: 700, letterSpacing: ".7px",
-                        background: cfg.pillBg, color: cfg.pillColor,
-                      }}
-                    >
-                      {cfg.label}
-                    </span>
-                    <input
-                      autoFocus
-                      value={draft}
-                      onChange={(e) => setDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleInlineSubmit();
-                        if (e.key === "Escape") { setAddingInline(false); setDraft(""); }
-                      }}
-                      placeholder="Nome da tarefa…"
-                      disabled={isPending}
-                      style={{
-                        flex: 1, background: "transparent",
-                        border: 0, outline: "none",
-                        color: "#e6e6ea", fontSize: 13,
-                      }}
-                    />
-                    <span style={{ fontSize: 11, color: "#5a5a64", paddingRight: 12 }}>
-                      Enter para salvar · Esc para cancelar
-                    </span>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              <tr>
-                <td
-                  colSpan={7}
-                  style={{ padding: 0, borderBottom: "1px solid #1f1f25" }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setAddingInline(true)}
-                    style={{
-                      display: "flex", alignItems: "center", gap: 8,
-                      width: "100%", height: 36, paddingLeft: 14,
-                      background: "none", border: 0, cursor: "pointer",
-                      color: "#5a5a64", fontSize: 13,
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = "#161619";
-                      e.currentTarget.style.color = "#b6b6bf";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = "none";
-                      e.currentTarget.style.color = "#5a5a64";
-                    }}
-                  >
-                    <IcPlus size={13} />
-                    Adicionar Tarefa
-                  </button>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+          {/* Adicionar tarefa inline */}
+          {addingInline ? (
+            <div
+              className="flex items-center gap-3 border-b border-[#1e1e24]"
+              style={{ height: 36, paddingLeft: 40 }}
+            >
+              <StatusIcon type={cfg.iconType} color={cfg.dotColor} size={13} />
+              <input
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleInlineSubmit();
+                  if (e.key === "Escape") { setAddingInline(false); setDraft(""); }
+                }}
+                placeholder="Nome da tarefa…"
+                disabled={isPending}
+                className="flex-1 bg-transparent text-[13px] text-[#e6e6ea] outline-none placeholder:text-[#4a4a55]"
+              />
+              <span className="pr-4 text-[11px] text-[#4a4a55]">Enter · Esc</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddingInline(true)}
+              className="flex h-9 w-full items-center gap-2 border-b border-[#1a1a1f] px-10 text-[13px] text-[#4a4a55] transition-colors hover:bg-[#141418] hover:text-[#9a9aaa]"
+            >
+              <IcPlus size={12} />
+              Adicionar Tarefa
+            </button>
+          )}
+        </div>
       )}
     </div>
   );
 }
 
-// ─── Linha de task (TableRow) ──────────────────────────────────────────────────
+// ─── Linha de task ────────────────────────────────────────────────────────────
 
 function TaskRow({
-  task, cfg, listId, expanded, onToggle, onOpen,
+  task, cfg, listId, onOpen,
 }: {
   task: TaskResponseDto;
   cfg: ColCfg;
   listId: string;
-  expanded: boolean;
-  onToggle: () => void;
   onOpen: () => void;
 }) {
   const { mutate: updateTask } = useUpdateTask();
@@ -413,9 +381,9 @@ function TaskRow({
   const [flashCell, setFlashCell] = useState<string | null>(null);
   const [openDD, setOpenDD] = useState<string | null>(null);
 
-  const respTd  = useRef<HTMLTableCellElement>(null);
-  const dataTd  = useRef<HTMLTableCellElement>(null);
-  const prioTd  = useRef<HTMLTableCellElement>(null);
+  const respTd = useRef<HTMLDivElement>(null);
+  const dataTd = useRef<HTMLDivElement>(null);
+  const prioTd = useRef<HTMLDivElement>(null);
 
   function saveAndFlash(cell: string, dto: { priority?: string; dueDate?: string | null; assigneeId?: string | null }) {
     updateTask({ id: task.id, projectId: listId, dto });
@@ -430,227 +398,213 @@ function TaskRow({
   const prioLabel = task.priority ? priorityToLabel(task.priority) : null;
   const prioColor = task.priority ? priorityToColor(task.priority) : null;
 
-  const tdBase: React.CSSProperties = {
-    padding: 0, borderBottom: "1px solid #1f1f25", height: 38,
-    verticalAlign: "middle",
-    background: rowHovered ? "#15151a" : "transparent",
-    transition: "background .1s",
-  };
-  const cellInner: React.CSSProperties = {
-    padding: "0 10px", height: 38, display: "flex", alignItems: "center", gap: 8,
-  };
-
   return (
-    <>
-      <tr onMouseEnter={() => setRowHovered(true)} onMouseLeave={() => setRowHovered(false)}>
+    <div
+      className="group flex items-center border-b border-[#1a1a1f] transition-colors"
+      style={{
+        height: 36,
+        background: rowHovered ? "#141418" : "transparent",
+      }}
+      onMouseEnter={() => setRowHovered(true)}
+      onMouseLeave={() => setRowHovered(false)}
+    >
+      {/* ── Nome ── */}
+      <div className="flex flex-1 items-center gap-2 overflow-hidden px-3" style={{ paddingLeft: 14 }}>
+        {/* ícone de status da task */}
+        <span className="flex-shrink-0 opacity-60">
+          <StatusIcon type={cfg.iconType} color={cfg.dotColor} size={13} />
+        </span>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="truncate text-[13px] font-medium text-[#d4d4dc] transition-colors hover:text-[#cfc1ff] hover:underline"
+          style={{ textAlign: "left" }}
+        >
+          {task.title}
+        </button>
+        {task.identifier && (
+          <span
+            className="flex-shrink-0 font-mono text-[11px] text-[#4a4a55] transition-opacity"
+            style={{ opacity: rowHovered ? 1 : 0 }}
+          >
+            {task.identifier}
+          </span>
+        )}
+      </div>
 
-        {/* ── Nome ── */}
-        <td style={tdBase}>
-          <div style={{ ...cellInner, paddingLeft: 14, gap: 10 }}>
-            {/* chevron subtarefas (placeholder) */}
-            <span style={{ width: 14, display: "inline-flex", visibility: "hidden" }}>
-              <IcCaretR size={12} />
-            </span>
-            {/* pill de status minúscula */}
-            <span
-              style={{
-                display: "inline-flex", alignItems: "center",
-                padding: "2px 7px", borderRadius: 4,
-                fontSize: 10, fontWeight: 700, letterSpacing: ".5px",
-                background: cfg.pillBg, color: cfg.pillColor, whiteSpace: "nowrap",
-                flexShrink: 0,
-              }}
-            >
-              {cfg.label}
-            </span>
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={onOpen}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(); }}
-              style={{
-                color: "#e6e6ea", fontWeight: 600, fontSize: 13,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.color = "#cfc1ff";
-                e.currentTarget.style.textDecoration = "underline";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.color = "#e6e6ea";
-                e.currentTarget.style.textDecoration = "none";
-              }}
-            >
-              {task.title}
-            </span>
-            {task.identifier && (
-              <span style={{
-                flexShrink: 0, fontFamily: "monospace", fontSize: 11,
-                color: "#5a5a64",
-                opacity: rowHovered ? 1 : 0, transition: "opacity .15s",
-              }}>
-                {task.identifier}
-              </span>
-            )}
+      {/* ── Responsável ── */}
+      <EditableCell
+        cellRef={respTd}
+        active={openDD === "resp"}
+        flash={flashCell === "resp"}
+        rowHovered={rowHovered}
+        onClick={() => setOpenDD((v) => v === "resp" ? null : "resp")}
+        width={140}
+      >
+        {task.assigneeId ? (
+          <div className="flex size-6 items-center justify-center rounded-full bg-[#3d2a6b] text-[10px] font-semibold text-[#d8ccff]">
+            {task.assigneeId.slice(0, 2).toUpperCase()}
           </div>
-        </td>
+        ) : (
+          <span style={{ color: rowHovered ? "#5a5a65" : "transparent" }}>
+            <IcUserPlus size={14} />
+          </span>
+        )}
+        {openDD === "resp" && (
+          <CellDropdown anchorRef={respTd} onClose={() => setOpenDD(null)}>
+            <DropItem active={!task.assigneeId} onClick={() => setOpenDD(null)}>
+              <span className="text-[#7a7a85]">Sem responsável</span>
+            </DropItem>
+          </CellDropdown>
+        )}
+      </EditableCell>
 
-        {/* ── Responsável ── */}
-        <EditableTd
-          tdRef={respTd}
-          active={openDD === "resp"}
-          flash={flashCell === "resp"}
-          rowHovered={rowHovered}
-          onClick={() => setOpenDD((v) => v === "resp" ? null : "resp")}
-        >
-          {task.assigneeId ? (
-            <div style={{
-              width: 22, height: 22, borderRadius: "50%",
-              background: "#3d2a6b", color: "#d8ccff",
-              fontSize: 10, fontWeight: 600, flexShrink: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              {task.assigneeId.slice(0, 2).toUpperCase()}
-            </div>
-          ) : (
-            <span style={{ color: rowHovered ? "#6a6a75" : "transparent" }}>
-              <IcUserPlus size={14} />
-            </span>
-          )}
-          {openDD === "resp" && (
-            <CellDropdown anchorRef={respTd} onClose={() => setOpenDD(null)}>
-              <DropItem active={!task.assigneeId} onClick={() => { setOpenDD(null); }}>
-                <span style={{ color: "#7a7a85" }}>Sem responsável</span>
-              </DropItem>
-            </CellDropdown>
-          )}
-        </EditableTd>
-
-        {/* ── Data de vencimento ── */}
-        <EditableTd
-          tdRef={dataTd}
-          active={openDD === "data"}
-          flash={flashCell === "data"}
-          rowHovered={rowHovered}
-          onClick={() => setOpenDD((v) => v === "data" ? null : "data")}
-        >
-          {dateLabel ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              <span style={{ fontSize: 13, color: overdue ? "#fbbf24" : "#b6b6bf" }}>{dateLabel}</span>
-              {overdue && (
-                <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase", color: "#7a7a85" }}>
-                  ATRASADO
-                </span>
+      {/* ── Data de vencimento ── */}
+      <EditableCell
+        cellRef={dataTd}
+        active={openDD === "data"}
+        flash={flashCell === "data"}
+        rowHovered={rowHovered}
+        onClick={() => setOpenDD((v) => v === "data" ? null : "data")}
+        width={150}
+      >
+        {dateLabel ? (
+          <span className="text-[13px]" style={{ color: overdue ? "#fbbf24" : "#9a9aaa" }}>
+            {dateLabel}
+          </span>
+        ) : (
+          <span style={{ color: rowHovered ? "#5a5a65" : "transparent" }}>
+            <IcCalPlus size={14} />
+          </span>
+        )}
+        {openDD === "data" && (
+          <CellDropdown anchorRef={dataTd} onClose={() => setOpenDD(null)}>
+            <div className="p-1.5">
+              <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-[#6a6a75]">
+                Data de vencimento
+              </p>
+              <input
+                type="date"
+                autoFocus
+                defaultValue={task.dueDate ? task.dueDate.slice(0, 10) : ""}
+                onChange={(e) => saveAndFlash("data", { dueDate: e.target.value || null })}
+                onBlur={() => setOpenDD(null)}
+                className="w-full rounded-md border border-[#3a3a46] bg-[#26262f] px-2 py-1 text-[12px] text-[#d4d4dc] outline-none"
+                style={{ colorScheme: "dark" }}
+              />
+              {task.dueDate && (
+                <button
+                  type="button"
+                  onClick={() => { saveAndFlash("data", { dueDate: null }); setOpenDD(null); }}
+                  className="mt-1.5 w-full rounded border border-[#2e2e38] py-1 text-[12px] text-[#ef4444] transition-colors hover:bg-red-950/20"
+                >
+                  Remover data
+                </button>
               )}
             </div>
-          ) : (
-            <span style={{ color: rowHovered ? "#6a6a75" : "transparent" }}>
-              <IcCalPlus size={14} />
-            </span>
-          )}
-          {openDD === "data" && (
-            <CellDropdown anchorRef={dataTd} onClose={() => setOpenDD(null)}>
-              <div style={{ padding: "4px 6px 6px" }}>
-                <p style={{ fontSize: 11, color: "#7a7a85", margin: "0 0 6px", fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase" }}>
-                  Data de vencimento
-                </p>
-                <input
-                  type="date"
-                  autoFocus
-                  defaultValue={task.dueDate ? task.dueDate.slice(0, 10) : ""}
-                  onChange={(e) => saveAndFlash("data", { dueDate: e.target.value || null })}
-                  onBlur={() => setOpenDD(null)}
-                  style={{
-                    background: "#26262f", border: "1px solid #3a3a46",
-                    borderRadius: 6, color: "#d4d4dc", fontSize: 12,
-                    padding: "5px 8px", outline: "none", width: "100%",
-                    colorScheme: "dark" as React.CSSProperties["colorScheme"],
-                  }}
-                />
-                {task.dueDate && (
-                  <button
-                    type="button"
-                    onClick={() => { saveAndFlash("data", { dueDate: null }); setOpenDD(null); }}
-                    style={{
-                      marginTop: 6, width: "100%", padding: "5px 0",
-                      background: "none", border: "1px solid #2e2e38",
-                      borderRadius: 5, color: "#ef4444", fontSize: 12, cursor: "pointer",
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-                  >
-                    Remover data
-                  </button>
-                )}
-              </div>
-            </CellDropdown>
-          )}
-        </EditableTd>
+          </CellDropdown>
+        )}
+      </EditableCell>
 
-        {/* ── Prioridade ── */}
-        <EditableTd
-          tdRef={prioTd}
-          active={openDD === "prio"}
-          flash={flashCell === "prio"}
-          rowHovered={rowHovered}
-          onClick={() => setOpenDD((v) => v === "prio" ? null : "prio")}
-        >
-          {prioLabel && prioColor ? (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: prioColor }}>
-              <IcFlag size={13} />{prioLabel}
-            </span>
-          ) : (
-            <span style={{ color: rowHovered ? "#6a6a75" : "transparent" }}>
-              <IcFlag size={14} />
-            </span>
-          )}
-          {openDD === "prio" && (
-            <CellDropdown anchorRef={prioTd} onClose={() => setOpenDD(null)}>
-              <DropItem active={!task.priority} onClick={() => { saveAndFlash("prio", { priority: undefined }); setOpenDD(null); }}>
-                <IcFlag size={12} />
-                <span style={{ color: "#7a7a85" }}>Sem prioridade</span>
-              </DropItem>
-              {(["URGENT", "HIGH", "MEDIUM", "LOW"] as const).map((p) => {
-                const c = PRIO_CFG[p];
-                return (
-                  <DropItem key={p} active={task.priority === p} onClick={() => { saveAndFlash("prio", { priority: p }); setOpenDD(null); }}>
-                    <IcFlag size={12} />
-                    <span style={{ color: c.color }}>{c.label}</span>
-                  </DropItem>
-                );
-              })}
-            </CellDropdown>
-          )}
-        </EditableTd>
+      {/* ── Prioridade ── */}
+      <EditableCell
+        cellRef={prioTd}
+        active={openDD === "prio"}
+        flash={flashCell === "prio"}
+        rowHovered={rowHovered}
+        onClick={() => setOpenDD((v) => v === "prio" ? null : "prio")}
+        width={110}
+      >
+        {prioLabel && prioColor ? (
+          <span className="flex items-center gap-1.5 text-[13px]" style={{ color: prioColor }}>
+            <IcFlag size={12} />{prioLabel}
+          </span>
+        ) : (
+          <span style={{ color: rowHovered ? "#5a5a65" : "transparent" }}>
+            <IcFlag size={14} />
+          </span>
+        )}
+        {openDD === "prio" && (
+          <CellDropdown anchorRef={prioTd} onClose={() => setOpenDD(null)}>
+            <DropItem active={!task.priority} onClick={() => { saveAndFlash("prio", { priority: undefined }); setOpenDD(null); }}>
+              <IcFlag size={12} />
+              <span className="text-[#7a7a85]">Sem prioridade</span>
+            </DropItem>
+            {(["URGENT", "HIGH", "MEDIUM", "LOW"] as const).map((p) => {
+              const c = PRIO_CFG[p];
+              return (
+                <DropItem key={p} active={task.priority === p} onClick={() => { saveAndFlash("prio", { priority: p }); setOpenDD(null); }}>
+                  <IcFlag size={12} />
+                  <span style={{ color: c.color }}>{c.label}</span>
+                </DropItem>
+              );
+            })}
+          </CellDropdown>
+        )}
+      </EditableCell>
 
-        {/* ── Status (pill) ── */}
-        <td style={tdBase}>
-          <div style={cellInner}>
-            <span
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "3px 9px", borderRadius: 5,
-                fontSize: 11, fontWeight: 700, letterSpacing: ".7px", textTransform: "uppercase",
-                background: cfg.pillBg, color: cfg.pillColor, whiteSpace: "nowrap",
-              }}
-            >
-              {cfg.label}
-            </span>
-          </div>
-        </td>
+      {/* ── Extra slot ── */}
+      <div style={{ width: 40 }} />
+    </div>
+  );
+}
 
-        {/* ── Chat ── */}
-        <td style={{ ...tdBase, textAlign: "center" }}>
-          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: 38 }}>
-            <span style={{ color: "#6a6a75" }}><IcChat size={14} /></span>
-          </div>
-        </td>
+// ─── Célula editável (div, não td) ────────────────────────────────────────────
 
-        {/* ── Coluna extra ── */}
-        <td style={tdBase} />
-      </tr>
-    </>
+function EditableCell({
+  cellRef, active, flash, rowHovered, onClick, children, width,
+}: {
+  cellRef: React.RefObject<HTMLDivElement | null>;
+  active: boolean;
+  flash: boolean;
+  rowHovered: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  width: number;
+}) {
+  const [hov, setHov] = useState(false);
+  const [phase, setPhase] = useState<"idle" | "in" | "out">("idle");
+
+  useEffect(() => {
+    if (!flash) return;
+    setPhase("in");
+    const t1 = setTimeout(() => setPhase("out"), 200);
+    const t2 = setTimeout(() => setPhase("idle"), 650);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [flash]);
+
+  return (
+    <div
+      ref={cellRef}
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        width,
+        flexShrink: 0,
+        height: 36,
+        padding: "0 10px",
+        display: "flex",
+        alignItems: "center",
+        cursor: "pointer",
+        position: "relative",
+        boxShadow: hov || active ? "inset 0 0 0 1px #3a3a46" : "none",
+        borderRadius: 4,
+        transition: "box-shadow .1s",
+      }}
+    >
+      {phase !== "idle" && (
+        <div style={{
+          position: "absolute", inset: 0, borderRadius: 4, pointerEvents: "none",
+          background: "rgba(34,197,94,0.28)",
+          opacity: phase === "in" ? 1 : 0,
+          transition: phase === "in" ? "opacity .15s ease-in" : "opacity .45s ease-out",
+        }} />
+      )}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, position: "relative" }}>
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -705,71 +659,12 @@ function DropItem({ children, active, onClick }: {
     <button
       type="button"
       onClick={onClick}
-      style={{
-        display: "flex", alignItems: "center", gap: 8,
-        width: "100%", padding: "7px 10px", borderRadius: 5,
-        background: active ? "rgba(124,92,255,0.12)" : "none",
-        border: 0, color: "#d4d4dc", fontSize: 12,
-        cursor: "pointer", textAlign: "left",
-      }}
-      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#26262f"; }}
-      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = active ? "rgba(124,92,255,0.12)" : "none"; }}
+      className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-[12px] text-[#d4d4dc] transition-colors hover:bg-[#26262f]"
+      style={{ background: active ? "rgba(124,92,255,0.12)" : undefined, textAlign: "left" }}
     >
       {children}
-      {active && <span style={{ marginLeft: "auto", color: "#7c5cff" }}><IcCheck size={11} /></span>}
+      {active && <span className="ml-auto text-[#7c5cff]"><IcCheck size={11} /></span>}
     </button>
-  );
-}
-
-// ─── Célula editável ──────────────────────────────────────────────────────────
-
-function EditableTd({
-  tdRef, active, flash, rowHovered, onClick, children,
-}: {
-  tdRef: React.RefObject<HTMLTableCellElement | null>;
-  active: boolean;
-  flash: boolean;
-  rowHovered: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  const [hov, setHov] = useState(false);
-  const [phase, setPhase] = useState<"idle" | "in" | "out">("idle");
-
-  useEffect(() => {
-    if (!flash) return;
-    setPhase("in");
-    const t1 = setTimeout(() => setPhase("out"), 200);
-    const t2 = setTimeout(() => setPhase("idle"), 650);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
-  }, [flash]);
-
-  return (
-    <td
-      ref={tdRef}
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        padding: "0 10px", borderBottom: "1px solid #1f1f25", height: 38,
-        verticalAlign: "middle", cursor: "pointer", position: "relative",
-        background: rowHovered ? "#15151a" : "transparent",
-        boxShadow: hov || active ? "inset 0 0 0 1px #3a3a46" : "none",
-        borderRadius: 4, transition: "box-shadow .1s",
-      }}
-    >
-      {phase !== "idle" && (
-        <div style={{
-          position: "absolute", inset: 0, borderRadius: 4, pointerEvents: "none",
-          background: "rgba(34,197,94,0.28)",
-          opacity: phase === "in" ? 1 : 0,
-          transition: phase === "in" ? "opacity .15s ease-in" : "opacity .45s ease-out",
-        }} />
-      )}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, height: "100%", position: "relative" }}>
-        {children}
-      </div>
-    </td>
   );
 }
 
@@ -780,36 +675,51 @@ function Toolbar({ listId }: { listId: string }) {
 
   return (
     <div
-      className="flex items-center justify-between border-b border-[#26262d] bg-[#111111] px-5"
-      style={{ height: 40, flexShrink: 0 }}
+      className="flex items-center justify-between border-b border-[#1e1e24] px-3"
+      style={{ height: 38, flexShrink: 0 }}
     >
-      <div className="flex items-center gap-1">
-        <TbTab active icon={<IcColumns size={13} />} label="Grupo: Status" />
-        <TbTab icon={<IcGitFork size={13} />} label="Subtarefas" />
+      {/* Esquerda: agrupadores */}
+      <div className="flex items-center gap-0.5">
+        <TbTab active icon={<IcColumns size={12} />} label="Grupo: Status" />
+        <TbTab icon={<IcGitFork size={12} />} label="Subtarefas" />
         <TbTab icon={
-          <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/>
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="21" x2="9" y2="9" />
           </svg>
         } label="Colunas" />
       </div>
-      <div className="flex items-center gap-1.5">
-        <SmTbBtn icon={<IcFilter size={12} />} label="Filtro" />
-        <SmTbBtn icon={<IcCheck size={12} />} label="Fechado" />
-        <SmTbBtn icon={<IcUser size={12} />} label="Responsável" />
-        <button type="button" className="flex size-7 items-center justify-center rounded text-[#7a7a85] hover:bg-[#1c1c22] hover:text-[#e6e6ea]">
-          <IcSearch size={13} />
+
+      {/* Direita: ações */}
+      <div className="flex items-center gap-1">
+        <SmTbBtn icon={<IcFilter size={11} />} label="Filtro" />
+        <SmTbBtn icon={<IcCheck size={11} />} label="Fechado" />
+        <SmTbBtn icon={<IcUser size={11} />} label="Responsável" />
+        {/* Avatar usuário */}
+        <div className="mx-0.5 flex size-6 items-center justify-center rounded-full bg-[#3d2a6b] text-[10px] font-bold text-[#d8ccff]">
+          B
+        </div>
+        <button type="button" className="flex size-7 items-center justify-center rounded text-[#6a6a75] hover:bg-[#1c1c22] hover:text-[#e6e6ea]">
+          <IcSearch size={12} />
         </button>
-        <div className="flex overflow-hidden rounded border border-[#2a2a32]">
+        {/* Personalizar */}
+        <button type="button" className="flex h-7 items-center gap-1.5 rounded px-2 text-[13px] text-[#6a6a75] transition-colors hover:bg-[#1c1c22] hover:text-[#e6e6ea]">
+          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+          </svg>
+          Personalizar
+        </button>
+        {/* Add Tarefa */}
+        <div className="flex overflow-hidden rounded-md" style={{ height: 28 }}>
           <button
             type="button"
             onClick={() => createTask({ titulo: "Nova tarefa", idProject: listId })}
-            className="flex items-center gap-1.5 bg-[#1c1c22] px-3 text-[13px] text-[#e6e6ea] transition-colors hover:bg-[#252530]"
-            style={{ height: 28 }}
+            className="flex items-center gap-1.5 bg-[#5a4fcf] px-3 text-[13px] font-medium text-white transition-colors hover:bg-[#4e44b8]"
           >
             Add Tarefa
           </button>
-          <div className="w-px bg-[#2a2a32]" />
-          <button type="button" className="flex w-6 items-center justify-center bg-[#1c1c22] text-[#7a7a85] hover:bg-[#252530]">
+          <div className="w-px bg-[#4a40b8]" />
+          <button type="button" className="flex w-6 items-center justify-center bg-[#5a4fcf] text-white hover:bg-[#4e44b8]">
             <ChevronDown size={11} />
           </button>
         </div>
@@ -818,7 +728,7 @@ function Toolbar({ listId }: { listId: string }) {
   );
 }
 
-// ─── Sub-componentes menores ───────────────────────────────────────────────────
+// ─── Sub-componentes ──────────────────────────────────────────────────────────
 
 function ViewTab({ label, icon, active, onClick }: {
   label: string; icon: React.ReactNode; active: boolean; onClick: () => void;
@@ -830,8 +740,8 @@ function ViewTab({ label, icon, active, onClick }: {
       className={cn(
         "relative flex h-9 items-center gap-1.5 px-3 text-[13px] font-medium transition-colors",
         active
-          ? "text-[#e6e6ea] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#7c5cfc]"
-          : "text-[#7a7a85] hover:text-[#b6b6bf]",
+          ? "text-[#e6e6ea] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#7c5cfc]"
+          : "text-[#6a6a75] hover:text-[#b6b6bf]",
       )}
     >
       {icon}{label}
@@ -839,15 +749,15 @@ function ViewTab({ label, icon, active, onClick }: {
   );
 }
 
-function HdrBtn({ label, accent, bordered }: { label: string; accent?: boolean; bordered?: boolean }) {
+function TopBtn({ label, accent }: { label: string; accent?: boolean }) {
   return (
     <button
       type="button"
       className={cn(
-        "flex h-7 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium transition-colors",
-        accent && "bg-[#5a4fcf] text-white hover:bg-[#4e44b8]",
-        bordered && !accent && "border border-[#2a2a32] bg-[#1c1c22] text-[#b6b6bf] hover:text-[#e6e6ea]",
-        !accent && !bordered && "text-[#b6b6bf] hover:text-[#e6e6ea]",
+        "flex h-7 items-center gap-1 rounded px-2.5 text-[13px] font-medium transition-colors",
+        accent
+          ? "bg-[#5a4fcf] text-white hover:bg-[#4e44b8]"
+          : "text-[#7a7a85] hover:text-[#e6e6ea]",
       )}
     >
       {label}
@@ -860,10 +770,10 @@ function TbTab({ label, icon, active }: { label: string; icon: React.ReactNode; 
     <button
       type="button"
       className={cn(
-        "flex h-7 items-center gap-1.5 rounded px-2.5 text-[13px] font-medium transition-colors",
+        "flex h-7 items-center gap-1.5 rounded px-2 text-[12px] font-medium transition-colors",
         active
-          ? "bg-[rgba(124,92,255,0.16)] text-[#cfc1ff]"
-          : "text-[#7a7a85] hover:bg-[#17171c] hover:text-[#e6e6ea]",
+          ? "bg-[rgba(124,92,255,0.15)] text-[#cfc1ff]"
+          : "text-[#6a6a75] hover:bg-[#17171c] hover:text-[#e6e6ea]",
       )}
     >
       {icon}{label}
@@ -875,7 +785,7 @@ function SmTbBtn({ label, icon }: { label: string; icon: React.ReactNode }) {
   return (
     <button
       type="button"
-      className="flex h-7 items-center gap-1.5 rounded border border-[#2a2a32] bg-[#1c1c22] px-2.5 text-[13px] text-[#7a7a85] transition-colors hover:text-[#e6e6ea]"
+      className="flex h-7 items-center gap-1 rounded px-2 text-[12px] text-[#6a6a75] transition-colors hover:bg-[#1c1c22] hover:text-[#e6e6ea]"
     >
       {icon}{label}
     </button>
@@ -887,13 +797,13 @@ function Skeleton() {
     <div>
       {[1, 2, 3].map((g) => (
         <div key={g}>
-          <div className="flex h-9 items-center gap-3 px-5">
+          <div className="flex h-9 items-center gap-3 px-3">
             <div className="h-5 w-24 animate-pulse rounded bg-[#2a2a32]" />
           </div>
           {[1, 2].map((r) => (
-            <div key={r} className="flex h-9 items-center gap-3 border-b border-[#1e1e22] px-5">
-              <div className="size-4 animate-pulse rounded-full bg-[#2a2a32]" />
-              <div className="h-3 w-[200px] animate-pulse rounded bg-[#2a2a32]" />
+            <div key={r} className="flex h-9 items-center gap-3 border-b border-[#1a1a1f] px-3">
+              <div className="size-3.5 animate-pulse rounded-full bg-[#2a2a32]" />
+              <div className="h-3 w-48 animate-pulse rounded bg-[#2a2a32]" />
             </div>
           ))}
         </div>
