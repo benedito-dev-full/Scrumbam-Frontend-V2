@@ -112,7 +112,7 @@ export function KanbanBoard({
         <div className="flex h-full gap-3 overflow-x-auto p-4">
           {KANBAN_COLUMNS.map((col) => {
             const colTasks = tasks.filter(
-              (t) => intentionToColumn(t.status as V3Intention) === col.id,
+              (t) => !t.idPai && intentionToColumn(t.status as V3Intention) === col.id,
             );
             return (
               <KanbanColumn
