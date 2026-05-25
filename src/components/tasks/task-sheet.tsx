@@ -358,7 +358,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
 
   const [nome, setNome] = useState("");
   const [editandoNome, setEditandoNome] = useState(false);
-  const [statusVisual, setStatusVisual] = useState<StatusVisual>("pendente");
+  const [statusVisual, setStatusVisual] = useState<StatusVisual>("backlog");
   const [prioridade, setPrioridade] = useState<TaskPriority | null>(null);
   const [dataVencimento, setDataVencimento] = useState<string | null>(null);
   const [editandoData, setEditandoData] = useState(false);
