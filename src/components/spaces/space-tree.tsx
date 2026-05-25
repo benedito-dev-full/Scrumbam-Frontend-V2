@@ -644,7 +644,7 @@ function SpacePlusMenu({
         type="button"
         role="menuitem"
         onClick={onClick}
-        className={`flex w-full items-start gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-[#2a2a2f] ${highlight ? "bg-[#232329]" : ""}`}
+        className="flex w-full items-start gap-3 rounded-md px-3 py-2 text-left transition-colors hover:bg-[#2a2a2f]"
       >
         <span className="mt-0.5 shrink-0">{icon}</span>
         <span className="flex flex-col">
