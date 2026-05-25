@@ -83,7 +83,7 @@ export interface DProjectDto {
   atualizadoEm: string;
 }
 
-export interface ProjectResponseDto extends DProjectDto {}
+export type ProjectResponseDto = DProjectDto;
 
 export interface CreateProjectDto {
   nome: string;

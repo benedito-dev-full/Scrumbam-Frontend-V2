@@ -7,18 +7,7 @@
  * @see docs/plano/00-PLANO-MESTRE.md — §V3 Intentions
  */
 
-// ─── V3 Intentions (estados canônicos do backend) ────────────────────────────
-
-export type V3Intention =
-  | 'INBOX'
-  | 'READY'
-  | 'EXECUTING'
-  | 'DONE'
-  | 'FAILED'
-  | 'CANCELLED'
-  | 'DISCARDED'
-  | 'VALIDATING'
-  | 'VALIDATED';
+import type { V3Intention } from '@/lib/types/api';
 
 // ─── Colunas Kanban (agrupamentos visuais do frontend) ────────────────────────
 
@@ -105,7 +94,7 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
  */
 export function intentionToColumn(intention: V3Intention): KanbanColumn {
   for (const col of KANBAN_COLUMNS) {
-    if ((col.intentions as string[]).includes(intention)) return col.id;
+    if (col.intentions.includes(intention)) return col.id;
   }
   return 'backlog';
 }
