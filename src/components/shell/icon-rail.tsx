@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useInviteDialogStore } from "@/lib/stores/invite-dialog";
 
 /* ─── Ícones SVG custom — pixel-perfect ClickUp ──────────────────────────── */
@@ -239,8 +239,9 @@ function RailButton({ item, active }: { item: RailItem; active?: boolean }) {
       </Link>
     );
   }
+  // Botão sem href — onClick pode ser undefined (noop quando já ativo)
   return (
-    <button type="button" aria-label={item.label} onClick={item.onClick} style={baseStyle} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+    <button type="button" aria-label={item.label} onClick={item.onClick ?? (() => {})} style={baseStyle} onMouseEnter={onEnter} onMouseLeave={onLeave}>
       {content}
     </button>
   );
@@ -249,9 +250,27 @@ function RailButton({ item, active }: { item: RailItem; active?: boolean }) {
 /* ─── Rail principal ──────────────────────────────────────────────────────── */
 export function IconRail() {
   const pathname = usePathname();
+  const router = useRouter();
   const openInvite = useInviteDialogStore((s) => s.openDialog);
-  const isActive = (href?: string) =>
-    !!href && (href === "/" ? pathname === "/" : pathname.startsWith(href));
+
+  // Início fica ativo em qualquer rota que não pertença aos outros itens
+  const otherHrefs = mainNav.slice(1).map((i) => i.href).filter(Boolean) as string[];
+  const isHomeActive = !otherHrefs.some((href) => pathname.startsWith(href));
+
+  const isActive = (href?: string) => {
+    if (!href) return false;
+    if (href === "/") return isHomeActive;
+    return pathname.startsWith(href);
+  };
+
+  // Para Início: não navega se já está "em casa" (qualquer rota não listada)
+  const homeItem: RailItem = {
+    ...mainNav[0],
+    onClick: isHomeActive ? undefined : () => router.push("/"),
+    href: isHomeActive ? undefined : "/",
+  };
+
+  const navItems = [homeItem, ...mainNav.slice(1)];
 
   return (
     <nav
@@ -270,7 +289,7 @@ export function IconRail() {
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-        {mainNav.map((item) => (
+        {navItems.map((item) => (
           <RailButton key={item.label} item={item} active={isActive(item.href)} />
         ))}
       </div>
