@@ -255,7 +255,7 @@ function IndentGuide({ depth }: { depth: number }) {
 function Chevron({ open }: { open: boolean }) {
   return (
     <ChevronRight
-      strokeWidth={2.5}
+      strokeWidth={3.5}
       className={cn(
         "size-3.5 shrink-0 text-sidebar-foreground/70 transition-transform duration-150",
         open && "rotate-90",
