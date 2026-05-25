@@ -1,9 +1,9 @@
 "use client";
 
-import React, { use, useState } from "react";
-import { Star, Share2, Bot, Sparkles } from "lucide-react";
+import React, { use, useRef, useState } from "react";
+import Link from "next/link";
+import { Star, Share2, Bot, Sparkles, LayoutGrid, List, ChevronRight } from "lucide-react";
 
-import { ViewSwitcher } from "@/components/shell/view-switcher";
 import {
   IcCaret, IcCheck, IcFilter, IcGitFork,
   IcLayers, IcList, IcPlus, IcSearch, IcUser,
@@ -12,10 +12,10 @@ import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useProject } from "@/hooks/use-projects";
-import { useTasksByProject } from "@/hooks/use-tasks";
+import { useTasksByProject, useCreateTask } from "@/hooks/use-tasks";
 import { isOverdue, priorityToLabel, priorityToColor } from "@/lib/mappers/task-status.mapper";
 import { type StatusTarefa, type Tarefa } from "@/lib/types/tarefa";
-import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
+import type { DProjectDto, TaskResponseDto, V3Intention } from "@/lib/types/api";
 
 /* ─── Página ─────────────────────────────────────────────────────────────── */
 export default function ListPage({
@@ -24,26 +24,33 @@ export default function ListPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const { data: entidade, isLoading } = useProject(id);
 
-  /* Vista ativa: 'list' = tabela agrupada, 'board' = kanban */
-  const [view, setView] = useState<"list" | "board">("list");
+  /* Dados encadeados: List → Folder → Space */
+  const { data: listData, isLoading: listLoading } = useProject(id);
+  const { data: folderData } = useProject(listData?.idPai ?? null);
+  const { data: spaceData } = useProject(folderData?.idPai ?? null);
+
+  /* Vista ativa: 'kanban' ou 'lista' */
+  const [view, setView] = useState<"kanban" | "lista">("kanban");
 
   /* Modo de exibição de subtarefas */
   const [subtarefasMode, setSubtarefasMode] = useState<"recolhidas" | "expandidas" | "separar">("recolhidas");
 
-  /* Modal de criar task */
+  /* Modal de criar task (CreateTaskModal legado) */
   const [modalOpen, setModalOpen] = useState(false);
   const [modalDefaultStatus, setModalDefaultStatus] = useState<StatusTarefa | undefined>(undefined);
+
+  /* Quick create task inline */
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
 
   /* Sheet de detalhe de tarefa */
   const [selectedTask, setSelectedTask] = useState<Tarefa | null>(null);
 
-  if (isLoading) {
+  if (listLoading) {
     return <div className="grid h-full place-items-center p-8 text-sm" style={{ color: "#7a7a85" }}>Carregando…</div>;
   }
 
-  if (!entidade) {
+  if (!listData) {
     return (
       <div className="grid h-full place-items-center p-8 text-sm" style={{ color: "#7a7a85" }}>
         Lista não encontrada.
@@ -51,7 +58,7 @@ export default function ListPage({
     );
   }
 
-  const espacoId = entidade.idPai ?? id;
+  const espacoId = spaceData?.id ?? folderData?.id ?? listData.idPai ?? id;
 
   function openModal(defaultStatus?: StatusTarefa) {
     setModalDefaultStatus(defaultStatus);
@@ -60,14 +67,27 @@ export default function ListPage({
 
   return (
     <div className="flex h-full flex-col overflow-hidden" style={{ background: "#111111" }}>
-      <PageHeader nome={entidade.nome} />
-      <ViewSwitcher
-        defaultValue="list"
-        value={view}
-        onChange={(v) => setView(v as "list" | "board")}
+      <PageHeader
+        listData={listData}
+        folderData={folderData}
+        spaceData={spaceData}
+        view={view}
+        onViewChange={setView}
+        onNewTask={() => setQuickCreateOpen(true)}
       />
-      <Toolbar tarefasCount={null} onAddTask={() => openModal()} subtarefasMode={subtarefasMode} onSubtarefasMode={setSubtarefasMode} />
-      {view === "list" ? (
+      <Toolbar
+        tarefasCount={null}
+        onAddTask={() => openModal()}
+        subtarefasMode={subtarefasMode}
+        onSubtarefasMode={setSubtarefasMode}
+      />
+      {quickCreateOpen && (
+        <QuickCreateTask
+          listId={id}
+          onClose={() => setQuickCreateOpen(false)}
+        />
+      )}
+      {view === "lista" ? (
         <ListContent
           listId={id}
           onAddTask={openModal}
@@ -91,6 +111,85 @@ export default function ListPage({
         espacoId={espacoId}
         defaultStatus={modalDefaultStatus}
       />
+    </div>
+  );
+}
+
+/* ─── Quick Create Task (inline bar) ────────────────────────────────────── */
+/**
+ * Barra rápida de criação de task — aparece abaixo do header.
+ * Usa useCreateTask() para POST /tasks e fecha após sucesso.
+ */
+function QuickCreateTask({ listId, onClose }: { listId: string; onClose: () => void }) {
+  const [titulo, setTitulo] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const { mutate, isPending } = useCreateTask();
+
+  /* Foco automático ao montar */
+  React.useEffect(() => { inputRef.current?.focus(); }, []);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const trimmed = titulo.trim();
+    if (!trimmed || isPending) return;
+    mutate(
+      { titulo: trimmed, idProject: listId },
+      { onSuccess: onClose },
+    );
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Escape") onClose();
+  }
+
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 8,
+      padding: "8px 22px",
+      borderBottom: "1px solid #26262d",
+      background: "#15151a",
+      flexShrink: 0,
+    }}>
+      <form onSubmit={handleSubmit} style={{ flex: 1, display: "flex", gap: 8 }}>
+        <input
+          ref={inputRef}
+          value={titulo}
+          onChange={(e) => setTitulo(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Título da tarefa…"
+          disabled={isPending}
+          style={{
+            flex: 1, height: 32, padding: "0 10px",
+            background: "#1c1c24", border: "1px solid #2e2e38",
+            borderRadius: 6, color: "#e6e6ea", fontSize: 13, outline: "none",
+          }}
+          onFocus={(e) => { e.currentTarget.style.borderColor = "#5a4fcf"; }}
+          onBlur={(e) => { e.currentTarget.style.borderColor = "#2e2e38"; }}
+        />
+        <button
+          type="submit"
+          disabled={isPending || !titulo.trim()}
+          style={{
+            height: 32, padding: "0 14px", borderRadius: 6, border: "none",
+            background: titulo.trim() && !isPending ? "#5a4fcf" : "#2a2a32",
+            color: titulo.trim() && !isPending ? "#fff" : "#7a7a85",
+            fontSize: 13, fontWeight: 600, cursor: titulo.trim() && !isPending ? "pointer" : "default",
+            transition: "background .15s, color .15s",
+          }}
+        >
+          {isPending ? "Criando…" : "Criar"}
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          style={{
+            height: 32, padding: "0 10px", borderRadius: 6, border: "1px solid #2a2a32",
+            background: "none", color: "#7a7a85", fontSize: 13, cursor: "pointer",
+          }}
+        >
+          Cancelar
+        </button>
+      </form>
     </div>
   );
 }
@@ -241,31 +340,185 @@ function ListContentSkeleton() {
 }
 
 /* ─── Page header ────────────────────────────────────────────────────────── */
-function PageHeader({ nome }: { nome: string }) {
+/**
+ * Header completo da página de List:
+ * - Breadcrumb: Space › Folder › List (com links para Space e Folder)
+ * - Ícone + nome real da List (do backend)
+ * - Botão "+ Nova Task" que dispara quick create inline
+ * - Toggle Kanban / Lista
+ */
+function PageHeader({
+  listData,
+  folderData,
+  spaceData,
+  view,
+  onViewChange,
+  onNewTask,
+}: {
+  listData: DProjectDto;
+  folderData: DProjectDto | undefined;
+  spaceData: DProjectDto | undefined;
+  view: "kanban" | "lista";
+  onViewChange: (v: "kanban" | "lista") => void;
+  onNewTask: () => void;
+}) {
   return (
     <header
-      className="flex h-11 shrink-0 items-center justify-between gap-4 px-5"
-      style={{ borderBottom: "1px solid #26262d", background: "#111111" }}
+      style={{
+        borderBottom: "1px solid #26262d",
+        background: "#111111",
+        flexShrink: 0,
+      }}
     >
-      <div className="flex min-w-0 items-center gap-2">
-        <IcList size={16} />
-        <h1 className="truncate text-sm font-semibold" style={{ color: "#e6e6ea" }}>
-          {nome}
-        </h1>
-        <button type="button" style={{ display: "grid", width: 20, height: 20, placeItems: "center", borderRadius: 4, color: "#7a7a85", background: "none", border: 0 }}>
-          <IcCaret size={12} />
-        </button>
-        <button type="button" style={{ display: "grid", width: 24, height: 24, placeItems: "center", borderRadius: 4, color: "#7a7a85", background: "none", border: 0 }}>
-          <Star className="size-3.5" />
-        </button>
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <TbBtn icon={<Bot className="size-3.5" />} label="Agentes" />
-        <TbBtn icon={<Sparkles className="size-3.5" />} label="Pergunte à IA" />
-        <div style={{ width: 1, height: 16, background: "#26262d", margin: "0 4px" }} />
-        <TbBtn icon={<Share2 className="size-3.5" />} label="Compartilhar" bordered />
+      {/* Breadcrumb */}
+      {(spaceData || folderData) && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 4,
+          padding: "6px 20px 0",
+          fontSize: 11, color: "#7a7a85",
+        }}>
+          {spaceData && (
+            <>
+              <Link
+                href={`/spaces/${spaceData.id}`}
+                style={{ color: "#7a7a85", textDecoration: "none" }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "#b6b6bf"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "#7a7a85"; }}
+              >
+                {spaceData.nome}
+              </Link>
+              <ChevronRight size={11} style={{ color: "#4a4a54", flexShrink: 0 }} />
+            </>
+          )}
+          {folderData && (
+            <>
+              <Link
+                href={`/folders/${folderData.id}`}
+                style={{ color: "#7a7a85", textDecoration: "none" }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "#b6b6bf"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "#7a7a85"; }}
+              >
+                {folderData.nome}
+              </Link>
+              <ChevronRight size={11} style={{ color: "#4a4a54", flexShrink: 0 }} />
+            </>
+          )}
+          <span style={{ color: "#5a5a64" }}>{listData.nome}</span>
+        </div>
+      )}
+
+      {/* Linha principal: ícone + título + ações */}
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        gap: 12, padding: "4px 20px 8px",
+        minHeight: 40,
+      }}>
+        {/* Esquerda: ícone + título */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <span style={{ color: "#7a7a85", flexShrink: 0, display: "flex" }}><IcList size={16} /></span>
+          <h1 style={{
+            fontSize: 14, fontWeight: 600, color: "#e6e6ea",
+            margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}>
+            {listData.nome}
+          </h1>
+          <button type="button" style={{
+            display: "grid", width: 20, height: 20, placeItems: "center",
+            borderRadius: 4, color: "#7a7a85", background: "none", border: 0, cursor: "pointer",
+          }}>
+            <Star size={13} />
+          </button>
+          <button type="button" style={{
+            display: "grid", width: 20, height: 20, placeItems: "center",
+            borderRadius: 4, color: "#7a7a85", background: "none", border: 0, cursor: "pointer",
+          }}>
+            <IcCaret size={12} />
+          </button>
+        </div>
+
+        {/* Direita: ações */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <TbBtn icon={<Bot size={13} />} label="Agentes" />
+          <TbBtn icon={<Sparkles size={13} />} label="Pergunte à IA" />
+          <div style={{ width: 1, height: 16, background: "#26262d", margin: "0 2px" }} />
+
+          {/* Botão Nova Task */}
+          <button
+            type="button"
+            onClick={onNewTask}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 5,
+              height: 28, padding: "0 12px", borderRadius: 6,
+              border: "none",
+              background: "linear-gradient(135deg, #5a4fcf 0%, #7c3aed 100%)",
+              color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+          >
+            <IcPlus size={13} />
+            Nova Task
+          </button>
+
+          <div style={{ width: 1, height: 16, background: "#26262d", margin: "0 2px" }} />
+
+          {/* Toggle Kanban / Lista */}
+          <div style={{
+            display: "inline-flex", alignItems: "center",
+            height: 28, border: "1px solid #2a2a32", background: "#1c1c22",
+            borderRadius: 6, overflow: "hidden",
+          }}>
+            <ViewToggleBtn
+              icon={<LayoutGrid size={13} />}
+              label="Kanban"
+              active={view === "kanban"}
+              onClick={() => onViewChange("kanban")}
+            />
+            <div style={{ width: 1, background: "#2a2a32", height: "100%" }} />
+            <ViewToggleBtn
+              icon={<List size={13} />}
+              label="Lista"
+              active={view === "lista"}
+              onClick={() => onViewChange("lista")}
+            />
+          </div>
+
+          <TbBtn icon={<Share2 size={13} />} label="Compartilhar" bordered />
+        </div>
       </div>
     </header>
+  );
+}
+
+/** Botão individual dentro do toggle Kanban/Lista. */
+function ViewToggleBtn({
+  icon, label, active, onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 5,
+        height: "100%", padding: "0 10px",
+        background: active ? "rgba(90,79,207,0.20)" : "none",
+        border: 0,
+        color: active ? "#cfc1ff" : "#b6b6bf",
+        fontSize: 12, fontWeight: active ? 600 : 400,
+        cursor: "pointer", whiteSpace: "nowrap",
+        transition: "background .12s, color .12s",
+      }}
+      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = "#17171c"; e.currentTarget.style.color = "#e6e6ea"; } }}
+      onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#b6b6bf"; } }}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
 
