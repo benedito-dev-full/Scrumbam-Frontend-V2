@@ -6,7 +6,7 @@ import { Star, Share2, Bot, Sparkles } from "lucide-react";
 import { ViewSwitcher } from "@/components/shell/view-switcher";
 import {
   IcCaret, IcCheck, IcChat, IcFilter, IcGitFork,
-  IcLayers, IcList, IcPlus, IcSearch, IcUser,
+  IcLayers, IcList, IcPending, IcPlus, IcSearch, IcUser,
 } from "@/components/lists/icons";
 import { STATUS_CONFIG, GROUP_PILL_STYLE } from "@/components/lists/config";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
@@ -643,8 +643,14 @@ function TaskRowBackend({
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              if (hovered) { setExpanded(true); setAddingSubtask(true); }
-              else { setExpanded((v) => !v); }
+              if (hovered && !expanded) {
+                setExpanded(true);
+                setAddingSubtask(true);
+              } else {
+                // recolher: cancela input pendente
+                if (expanded) { setAddingSubtask(false); setNewSubtaskName(""); }
+                setExpanded((v) => !v);
+              }
             }}
             style={{
               width: 16, height: 16, flexShrink: 0, background: "none", border: 0,
@@ -918,6 +924,9 @@ function TaskRowBackend({
           <tr>
             <td colSpan={7} style={{ borderBottom: "1px solid #1f1f25", padding: 0 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, height: 34, paddingLeft: indent + 22 }}>
+                <span style={{ color: "#8a8a93", flexShrink: 0, display: "inline-flex", alignItems: "center" }}>
+                  <IcPending size={13} />
+                </span>
                 <input
                   autoFocus
                   value={newSubtaskName}
