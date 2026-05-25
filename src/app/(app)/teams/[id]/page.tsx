@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   BarChart2,
@@ -16,9 +16,12 @@ import {
   ArrowLeft,
   Loader2,
   UserMinus,
+  Search,
+  Check,
 } from "lucide-react";
-import { useTeams, useTeamMembers, useRemoveTeamMember } from "@/hooks/use-teams";
-import type { TeamMemberDto } from "@/lib/types/api";
+import { useTeams, useTeamMembers, useRemoveTeamMember, useAddTeamMember } from "@/hooks/use-teams";
+import { useOrgMembers } from "@/hooks/use-org-members";
+import type { TeamMemberDto, OrgMemberDto } from "@/lib/types/api";
 
 /* ══════════════════════════════════════════════════════════════════
    TIPOS (localStorage — sem backend)
@@ -160,6 +163,146 @@ function avatarColor(str: string) {
   return colors[Math.abs(h) % colors.length];
 }
 
+// ─── Popover de adicionar membro ─────────────────────────────────────────────
+
+function AddMemberPopover({
+  teamId,
+  currentMembers,
+  onClose,
+}: {
+  teamId: string;
+  currentMembers: TeamMemberDto[];
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [adding, setAdding] = useState<string | null>(null);
+  const [added, setAdded] = useState<Set<string>>(new Set());
+  const ref = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { data: orgMembers = [] } = useOrgMembers();
+  const addMember = useAddTeamMember(teamId);
+
+  // IDs já no time
+  const alreadyInTeam = new Set(currentMembers.map((m) => m.userId));
+
+  // Filtra por busca, exclui já adicionados nesta sessão ou já no time
+  const filtered = orgMembers.filter((m: OrgMemberDto) => {
+    const inTeam = alreadyInTeam.has(m.userId);
+    const matchSearch =
+      m.nome.toLowerCase().includes(search.toLowerCase()) ||
+      (m.email ?? "").toLowerCase().includes(search.toLowerCase());
+    return matchSearch && !inTeam;
+  });
+
+  // Fecha ao clicar fora
+  useEffect(() => {
+    setTimeout(() => inputRef.current?.focus(), 50);
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [onClose]);
+
+  const handleAdd = async (member: OrgMemberDto) => {
+    if (adding || added.has(member.userId)) return;
+    setAdding(member.userId);
+    try {
+      await addMember.mutateAsync({ userId: member.userId, cargo: "MEMBER" });
+      setAdded((prev) => new Set(prev).add(member.userId));
+    } catch {
+      // silencia — o hook invalida a query mesmo assim
+    } finally {
+      setAdding(null);
+    }
+  };
+
+  return (
+    <div
+      ref={ref}
+      style={{
+        position: "absolute",
+        right: "calc(100% + 8px)",
+        top: 0,
+        width: 260,
+        borderRadius: 10,
+        background: "#1a1a1a",
+        border: "1px solid rgba(255,255,255,0.1)",
+        boxShadow: "0 16px 48px rgba(0,0,0,0.7)",
+        zIndex: 100,
+        overflow: "hidden",
+      }}
+    >
+      {/* busca */}
+      <div style={{ padding: "10px 10px 6px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, height: 32, borderRadius: 7, background: "rgba(255,255,255,0.06)", padding: "0 10px" }}>
+          <Search size={13} strokeWidth={2} style={{ color: "#555", flexShrink: 0 }} />
+          <input
+            ref={inputRef}
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Busque ou insira o e-mail..."
+            style={{ flex: 1, background: "none", border: "none", outline: "none", color: "#e4e4e4", fontSize: 12 }}
+          />
+        </div>
+      </div>
+
+      {/* lista */}
+      <div style={{ maxHeight: 260, overflowY: "auto", padding: "4px 0" }}>
+        {filtered.length === 0 ? (
+          <p style={{ fontSize: 12, color: "#555", padding: "12px 14px" }}>
+            {search ? "Nenhum resultado." : "Todos os membros já estão no time."}
+          </p>
+        ) : (
+          filtered.map((m: OrgMemberDto) => {
+            const isAdded = added.has(m.userId);
+            const isLoading = adding === m.userId;
+            return (
+              <button
+                key={m.userId}
+                type="button"
+                onClick={() => handleAdd(m)}
+                disabled={isAdded || isLoading}
+                style={{
+                  display: "flex", alignItems: "center", gap: 9,
+                  width: "100%", padding: "7px 12px",
+                  border: "none", background: "none",
+                  cursor: isAdded ? "default" : "pointer",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => { if (!isAdded) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+              >
+                {/* avatar */}
+                <div style={{
+                  width: 26, height: 26, borderRadius: "50%",
+                  background: avatarColor(m.nome), flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: 10, fontWeight: 700, color: "#fff",
+                }}>
+                  {m.nome.charAt(0).toUpperCase()}
+                </div>
+
+                {/* info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 12, color: "#e4e4e4", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.nome}</p>
+                  {m.email && <p style={{ fontSize: 10, color: "#555", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.email}</p>}
+                </div>
+
+                {/* status */}
+                {isLoading && <Loader2 size={13} strokeWidth={2} style={{ color: "#555", flexShrink: 0, animation: "spin 1s linear infinite" }} />}
+                {isAdded && <Check size={13} strokeWidth={2.5} style={{ color: "#22c55e", flexShrink: 0 }} />}
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 function MemberRow({ member, onRemove, isRemoving }: { member: TeamMemberDto; onRemove: () => void; isRemoving: boolean }) {
   const [hovered, setHovered] = useState(false);
 
@@ -205,19 +348,29 @@ function MembersPanel({
 }) {
   const { data: members = [], isLoading } = useTeamMembers(teamId);
   const removeMember = useRemoveTeamMember(teamId);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   return (
-    <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "14px 16px" }}>
+    <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "14px 16px", position: "relative" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: members.length > 0 ? 12 : 4 }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4" }}>
           Membros {members.length > 0 && <span style={{ fontSize: 11, color: "#555", fontWeight: 400 }}>({members.length})</span>}
         </p>
-        <button type="button" onClick={onAddMember}
-          style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#777", display: "flex", alignItems: "center", justifyContent: "center" }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#e4e4e4"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "#777"; }}>
-          <Plus size={13} strokeWidth={2} />
-        </button>
+        <div style={{ position: "relative" }}>
+          <button type="button" onClick={() => setPopoverOpen((v) => !v)}
+            style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#777", display: "flex", alignItems: "center", justifyContent: "center" }}
+            onMouseEnter={e => { e.currentTarget.style.color = "#e4e4e4"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "#777"; }}>
+            <Plus size={13} strokeWidth={2} />
+          </button>
+          {popoverOpen && (
+            <AddMemberPopover
+              teamId={teamId}
+              currentMembers={members}
+              onClose={() => setPopoverOpen(false)}
+            />
+          )}
+        </div>
       </div>
 
       {isLoading ? (
