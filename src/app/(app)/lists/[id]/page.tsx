@@ -180,6 +180,7 @@ function ListView({ listId, onSelectTask }: { listId: string; onSelectTask: (id:
                 label={col.label}
                 color={col.color}
                 tasks={groupTasks}
+                listId={listId}
                 onSelectTask={onSelectTask}
                 onAddTask={() =>
                   createTask({ titulo: "Nova tarefa", idProject: listId })
@@ -205,11 +206,12 @@ function ListView({ listId, onSelectTask }: { listId: string; onSelectTask: (id:
 // ─── Grupo de status ──────────────────────────────────────────────────────────
 
 function StatusGroup({
-  label, color, tasks, onSelectTask, onAddTask,
+  label, color, tasks, listId, onSelectTask, onAddTask,
 }: {
   label: string;
   color: string;
   tasks: TaskResponseDto[];
+  listId: string;
   onSelectTask: (id: string) => void;
   onAddTask: () => void;
 }) {
@@ -218,8 +220,8 @@ function StatusGroup({
   const { mutate: createTask, isPending } = useCreateTask();
   const [draft, setDraft] = useState("");
 
-  function handleInlineSubmit(listId?: string) {
-    if (!draft.trim() || !listId) return;
+  function handleInlineSubmit() {
+    if (!draft.trim()) return;
     createTask(
       { titulo: draft.trim(), idProject: listId },
       { onSuccess: () => { setDraft(""); setAddingInline(false); } },
