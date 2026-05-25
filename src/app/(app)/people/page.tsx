@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -8,10 +8,11 @@ import {
   ChevronDown,
   X,
   Trash2,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInviteDialogStore } from "@/lib/stores/invite-dialog";
-import { useOrgMembers, useOrgInvites, useCancelInvite, useRemoveOrgMember } from "@/hooks/use-org-members";
+import { useOrgMembers, useOrgInvites, useCancelInvite, useRemoveOrgMember, useUpdateOrgMemberRole } from "@/hooks/use-org-members";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { OrgMemberDto, InviteResponseDto } from "@/lib/types/api";
 
@@ -324,6 +325,79 @@ export default function PeoplePage() {
   );
 }
 
+// ─── RoleDropdown ─────────────────────────────────────────────────────────────
+
+const ROLES: Array<{ value: 'ADMIN' | 'MEMBER' | 'VIEWER'; label: string }> = [
+  { value: 'ADMIN',  label: 'Administrador' },
+  { value: 'MEMBER', label: 'Membro' },
+  { value: 'VIEWER', label: 'Visualizador' },
+];
+
+function RoleDropdown({ memberId, currentRole, disabled }: { memberId: string; currentRole: 'ADMIN' | 'MEMBER' | 'VIEWER'; disabled?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [optimisticRole, setOptimisticRole] = useState(currentRole);
+  const ref = useRef<HTMLDivElement>(null);
+  const updateRole = useUpdateOrgMemberRole();
+
+  // Fecha ao clicar fora
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const handleSelect = (role: 'ADMIN' | 'MEMBER' | 'VIEWER') => {
+    if (role === optimisticRole) { setOpen(false); return; }
+    setOptimisticRole(role);
+    setOpen(false);
+    updateRole.mutate({ userId: memberId, role }, {
+      onError: () => setOptimisticRole(currentRole), // reverte se falhar
+    });
+  };
+
+  if (disabled) {
+    return <span className="text-[13px] text-muted-foreground">{roleLabel(optimisticRole)}</span>;
+  }
+
+  return (
+    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 rounded px-2 py-1 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+      >
+        {roleLabel(optimisticRole)}
+        <ChevronDown className="size-3 opacity-50" />
+      </button>
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, zIndex: 50, marginTop: 4,
+          minWidth: 160, borderRadius: 8, overflow: 'hidden',
+          background: '#1e1e1e', border: '1px solid rgba(255,255,255,0.09)',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        }}>
+          {ROLES.map((r) => (
+            <button
+              key={r.value}
+              type="button"
+              onClick={() => handleSelect(r.value)}
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 14px', border: 0, background: 'none', cursor: 'pointer', textAlign: 'left' }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+            >
+              <span style={{ fontSize: 13, color: optimisticRole === r.value ? '#e4e4e4' : '#888' }}>{r.label}</span>
+              {optimisticRole === r.value && <Check size={13} style={{ color: '#4f7ef7', flexShrink: 0 }} />}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── MemberRow ────────────────────────────────────────────────────────────────
 
 function MemberRow({ member, isMe, onRemove }: { member: OrgMemberDto; isMe: boolean; onRemove: () => void }) {
@@ -355,7 +429,9 @@ function MemberRow({ member, isMe, onRemove }: { member: OrgMemberDto; isMe: boo
         </div>
       </td>
       <td className="px-4 py-3 text-muted-foreground">{member.email ?? "—"}</td>
-      <td className="px-4 py-3 text-muted-foreground">{roleLabel(member.role)}</td>
+      <td className="px-4 py-3">
+        <RoleDropdown memberId={member.userId} currentRole={member.role} disabled={isMe} />
+      </td>
       <td className="px-4 py-3 text-muted-foreground">—</td>
       <td className="px-4 py-3">
         <span className="text-[11px] font-medium text-emerald-400">Ativo</span>
