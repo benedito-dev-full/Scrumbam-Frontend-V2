@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, ChevronDown, ChevronLeft, ChevronRight, Bell, Search, LayoutGrid, List } from "lucide-react";
-import { useCreateTeam } from "@/hooks/use-teams";
+import { useCreateTeam, useTeams } from "@/hooks/use-teams";
+import { useAuthStore } from "@/lib/stores/auth";
 
 /* ══════════════════════════════════════════════════════════════════
    TIPOS LOCAIS (localStorage — sem backend ainda)
@@ -586,19 +587,41 @@ function TeamsPanel({ teams, onTeamClick }: { teams: TeamLocal[]; onTeamClick?: 
 ══════════════════════════════════════════════════════════════════ */
 
 export default function TeamsPage() {
-  const [teams, setTeams] = useState<TeamLocal[]>([]);
+  const [localTeams, setLocalTeams] = useState<TeamLocal[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const router = useRouter();
   const createTeam = useCreateTeam();
+  const user = useAuthStore((s) => s.user);
+  const { data: apiTeams } = useTeams();
 
   useEffect(() => {
-    setTeams(loadTeams());
+    setLocalTeams(loadTeams());
     setHydrated(true);
   }, []);
 
+  // Quando o banco responde, sincroniza localStorage com os ids reais
+  useEffect(() => {
+    if (!apiTeams) return;
+    const merged: TeamLocal[] = apiTeams.map((t) => {
+      const existing = localTeams.find((l) => l.id === t.id || l.nome === t.nome);
+      return {
+        id: t.id,
+        nome: t.nome,
+        memberCount: t.memberCount ?? 1,
+        color: existing?.color ?? randomColor(),
+        criadoEm: t.criadoEm,
+      };
+    });
+    setLocalTeams(merged);
+    saveTeams(merged);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiTeams]);
+
+  // teams exibidos: banco (quando disponível) ou localStorage
+  const teams = localTeams;
+
   const handleCreate = async (nome: string) => {
-    // Otimista: adiciona localmente imediatamente para feedback visual instantâneo
     const tempId = Date.now().toString();
     const novo: TeamLocal = {
       id: tempId,
@@ -607,21 +630,21 @@ export default function TeamsPage() {
       color: randomColor(),
       criadoEm: new Date().toISOString(),
     };
-    const updated = [...teams, novo];
-    setTeams(updated);
+    const updated = [...localTeams, novo];
+    setLocalTeams(updated);
     saveTeams(updated);
 
-    // Persiste no banco em background
-    try {
-      const created = await createTeam.mutateAsync({ nome });
-      // Substitui o id temporário pelo id real do banco
-      const withRealId = updated.map(t =>
-        t.id === tempId ? { ...t, id: created.id } : t
-      );
-      setTeams(withRealId);
-      saveTeams(withRealId);
-    } catch {
-      // Se falhar: mantém no localStorage (funciona offline), sem remover do UI
+    if (user?.organizationId) {
+      try {
+        const created = await createTeam.mutateAsync({ nome });
+        const withRealId = updated.map(t =>
+          t.id === tempId ? { ...t, id: created.id } : t
+        );
+        setLocalTeams(withRealId);
+        saveTeams(withRealId);
+      } catch {
+        // mantém no localStorage se falhar
+      }
     }
   };
 
