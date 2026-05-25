@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMe } from "@/hooks/use-auth";
+import { useInviteDialogStore } from "@/lib/stores/invite-dialog";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -69,6 +70,7 @@ type FilterOption = (typeof FILTER_OPTIONS)[number];
 export default function PeoplePage() {
   const { data: me } = useMe();
   const members = useMockMembers(me?.name, me?.email);
+  const openInvite = useInviteDialogStore((s) => s.openDialog);
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterOption>("Todos os usuários");
@@ -118,6 +120,7 @@ export default function PeoplePage() {
         </div>
         <button
           type="button"
+          onClick={openInvite}
           className="flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-[13px] font-medium text-primary-foreground transition-colors hover:bg-primary/90"
         >
           <Plus className="size-4" />
@@ -199,6 +202,7 @@ export default function PeoplePage() {
               <td colSpan={8} className="px-6 py-2.5">
                 <button
                   type="button"
+                  onClick={openInvite}
                   className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
                 >
                   <span className="grid size-5 place-items-center rounded-full border border-dashed border-muted-foreground/40 text-muted-foreground/60">
