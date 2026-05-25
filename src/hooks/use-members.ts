@@ -6,28 +6,32 @@ import { qk } from '@/lib/query-keys';
 import { useAuthStore } from '@/lib/stores/auth';
 
 export interface ProjectMemberDto {
-  id: string;
-  name: string;
-  email: string;
-  role?: string;
+  userId: string;
+  nome: string;
+  email: string | null;
+  role: string;
+  cargo: string | null;
+}
+
+interface ListProjectMembersResponseDto {
+  members: ProjectMemberDto[];
 }
 
 /**
  * Lista membros de um projeto (List).
  *
  * Mapeia para `GET /projects/:projectId/members`.
- * Mais seguro que o endpoint da org — não requer ADMIN e já filtra
- * pelos membros do contexto correto.
- *
- * staleTime de 5 minutos — membros mudam raramente.
+ * Retorna `{ members: ProjectMemberDto[] }` — extrai o array internamente.
  */
 export function useProjectMembers(projectId: string | null | undefined) {
   const accessToken = useAuthStore((s) => s.accessToken);
   return useQuery<ProjectMemberDto[]>({
     queryKey: qk.projects.members(projectId ?? ''),
     queryFn: async () => {
-      const res = await api.get<ProjectMemberDto[]>(`/projects/${projectId}/members`);
-      return res.data;
+      const res = await api.get<ListProjectMembersResponseDto>(`/projects/${projectId}/members`);
+      const data = res.data;
+      if (Array.isArray(data)) return data;
+      return data?.members ?? [];
     },
     enabled: !!accessToken && !!projectId,
     staleTime: 5 * 60_000,

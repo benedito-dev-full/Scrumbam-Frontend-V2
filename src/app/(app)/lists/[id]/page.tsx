@@ -40,7 +40,8 @@ export default function ListPage({
   const { id } = use(params);
   const { data: projeto, isLoading: loadingProjeto } = useProject(id);
   const { data: tasks = [], isLoading: loadingTasks } = useTasksByProject(id);
-  const { data: members = [] } = useProjectMembers(id);
+  const { data: membersRaw = [] } = useProjectMembers(id);
+  const members = Array.isArray(membersRaw) ? membersRaw : [];
 
   const [view, setView] = useState<"list" | "board">("list");
   const [subtarefasMode, setSubtarefasMode] = useState<SubtarefasMode>("recolhidas");
@@ -575,9 +576,9 @@ function TaskRowBackend({
   const statusCfg = STATUS_CONFIG[statusVisual];
   const StatusIcon = statusCfg.Icon;
 
-  const assignee = task.assigneeId ? members.find((m) => m.id === task.assigneeId) : null;
+  const assignee = task.assigneeId ? members.find((m) => m.userId === task.assigneeId) : null;
   const assigneeInitials = assignee
-    ? assignee.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+    ? assignee.nome.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
     : null;
 
   const dateLabel = task.dueDate
@@ -665,7 +666,7 @@ function TaskRowBackend({
               }}>
                 {assigneeInitials}
               </span>
-              <span style={{ fontSize: 12, color: "#d4d4dc" }}>{assignee.name.split(" ")[0]}</span>
+              <span style={{ fontSize: 12, color: "#d4d4dc" }}>{assignee.nome.split(" ")[0]}</span>
             </>
           ) : (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: hovered ? "#5a5a64" : "transparent" }}>
@@ -689,10 +690,10 @@ function TaskRowBackend({
                 {!task.assigneeId && <IcCheck size={11} />}
               </button>
               {members.map((m) => {
-                const initials = m.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
-                const isSelected = task.assigneeId === m.id;
+                const initials = m.nome.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+                const isSelected = task.assigneeId === m.userId;
                 return (
-                  <button key={m.id} type="button" onClick={() => handleAssigneeChange(m.id)} style={{ ...dropItemStyle("#d4d4dc"), gap: 8, background: isSelected ? "rgba(124,92,255,0.12)" : "none" }}>
+                  <button key={m.userId} type="button" onClick={() => handleAssigneeChange(m.userId)} style={{ ...dropItemStyle("#d4d4dc"), gap: 8, background: isSelected ? "rgba(124,92,255,0.12)" : "none" }}>
                     <span style={{
                       width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
                       background: "#3d2a6b", color: "#d8ccff",
@@ -701,7 +702,7 @@ function TaskRowBackend({
                     }}>
                       {initials}
                     </span>
-                    <span style={{ flex: 1 }}>{m.name}</span>
+                    <span style={{ flex: 1 }}>{m.nome}</span>
                     {isSelected && <IcCheck size={11} />}
                   </button>
                 );
