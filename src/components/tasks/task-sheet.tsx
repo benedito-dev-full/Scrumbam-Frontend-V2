@@ -8,26 +8,27 @@ import type { TaskResponseDto, V3Intention, TaskPriority } from "@/lib/types/api
 
 /* ─── Mapeamentos V3Intention ↔ StatusVisual ──────────────────────────────── */
 
-type StatusVisual = "em-progresso" | "pendente" | "bloqueado" | "atrasado" | "concluido";
+type StatusVisual = "backlog" | "pronto" | "em-progresso" | "concluido" | "falhou" | "atrasado";
 
 const INTENTION_TO_VISUAL: Record<V3Intention, StatusVisual> = {
-  INBOX: "pendente",
-  READY: "pendente",
+  INBOX: "backlog",
+  READY: "pronto",
   EXECUTING: "em-progresso",
   VALIDATING: "em-progresso",
   DONE: "concluido",
   VALIDATED: "concluido",
-  FAILED: "bloqueado",
-  CANCELLED: "bloqueado",
-  DISCARDED: "bloqueado",
+  FAILED: "falhou",
+  CANCELLED: "concluido",
+  DISCARDED: "concluido",
 };
 
 const VISUAL_TO_INTENTION: Record<StatusVisual, V3Intention> = {
-  pendente: "INBOX",
+  backlog: "INBOX",
+  pronto: "READY",
   "em-progresso": "EXECUTING",
-  bloqueado: "FAILED",
-  atrasado: "INBOX",
   concluido: "DONE",
+  falhou: "FAILED",
+  atrasado: "INBOX",
 };
 
 const PRIORITY_LABEL: Record<TaskPriority, string> = {
@@ -162,14 +163,15 @@ function StatusSelect({
   const [open, setOpen] = useState(false);
   const cfg = STATUS_CONFIG[value];
   const StatusIcon = cfg.Icon;
-  const allStatuses: StatusVisual[] = ["em-progresso", "pendente", "bloqueado", "atrasado", "concluido"];
+  const allStatuses: StatusVisual[] = ["backlog", "pronto", "em-progresso", "concluido", "falhou"];
 
   const pillBg: Record<StatusVisual, string> = {
+    backlog:        "rgba(107,114,128,0.15)",
+    pronto:         "rgba(59,130,246,0.15)",
     "em-progresso": "rgba(124,92,255,0.18)",
-    pendente: "rgba(138,138,147,0.15)",
-    bloqueado: "rgba(239,68,68,0.15)",
-    atrasado: "rgba(245,158,11,0.15)",
-    concluido: "rgba(16,185,129,0.15)",
+    concluido:      "rgba(16,185,129,0.15)",
+    falhou:         "rgba(239,68,68,0.15)",
+    atrasado:       "rgba(245,158,11,0.15)",
   };
 
   return (
@@ -373,7 +375,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
     if (task) {
       const id = setTimeout(() => {
         setNome(task.nome);
-        setStatusVisual(INTENTION_TO_VISUAL[task.status] ?? "pendente");
+        setStatusVisual(INTENTION_TO_VISUAL[task.status] ?? "backlog");
         setPrioridade((task.priority as TaskPriority) ?? null);
         setDataVencimento(task.dueDate ?? null);
         setDescricao(task.description ?? "");

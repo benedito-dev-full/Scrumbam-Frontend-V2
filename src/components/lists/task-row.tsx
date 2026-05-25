@@ -142,7 +142,7 @@ export function TaskRow({
     }
   }
 
-  const allStatuses: StatusTarefa[] = ["em-progresso", "pendente", "bloqueado", "atrasado", "concluido"];
+  const allStatuses: StatusTarefa[] = ["backlog", "pronto", "em-progresso", "concluido", "falhou"];
   const allPrios: Prioridade[] = ["urgente", "alta", "media", "baixa"];
 
   function toggle(dd: string) {
