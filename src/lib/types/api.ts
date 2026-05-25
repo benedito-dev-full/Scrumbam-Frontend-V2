@@ -250,10 +250,10 @@ export interface TeamResponseDto {
 }
 
 export interface TeamMemberDto {
-  id: string;
-  name: string;
-  email: string;
-  role?: string;
+  userId: string;
+  nome: string;
+  email?: string | null;
+  cargo: 'LEAD' | 'MEMBER';
 }
 
 // ─── Organizations ───────────────────────────────────────────────────────────

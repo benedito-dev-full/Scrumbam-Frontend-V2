@@ -14,7 +14,10 @@ import {
   Plus,
   X,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
+import { useTeams, useTeamMembers } from "@/hooks/use-teams";
+import type { TeamMemberDto } from "@/lib/types/api";
 
 /* ══════════════════════════════════════════════════════════════════
    TIPOS (localStorage — sem backend)
@@ -149,6 +152,62 @@ function AddMemberModal({
    ABA VISÃO GERAL
 ══════════════════════════════════════════════════════════════════ */
 
+function avatarColor(str: string) {
+  const colors = ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f59e0b","#e91e63","#1abc9c","#e67e22"];
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
+  return colors[Math.abs(h) % colors.length];
+}
+
+function MembersPanel({
+  teamId,
+  onAddMember,
+}: {
+  teamId: string;
+  onAddMember: () => void;
+}) {
+  const { data: members = [], isLoading } = useTeamMembers(teamId);
+
+  return (
+    <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "14px 16px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: members.length > 0 ? 12 : 4 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4" }}>
+          Membros {members.length > 0 && <span style={{ fontSize: 11, color: "#555", fontWeight: 400 }}>({members.length})</span>}
+        </p>
+        <button type="button" onClick={onAddMember}
+          style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#777", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onMouseEnter={e => { e.currentTarget.style.color = "#e4e4e4"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "#777"; }}>
+          <Plus size={13} strokeWidth={2} />
+        </button>
+      </div>
+
+      {isLoading ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0", color: "#555" }}>
+          <Loader2 size={13} strokeWidth={2} style={{ animation: "spin 1s linear infinite" }} />
+          <span style={{ fontSize: 12 }}>Carregando...</span>
+        </div>
+      ) : members.length === 0 ? (
+        <p style={{ fontSize: 12, color: "#444", marginTop: 6 }}>Nenhum membro ainda.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {members.map((m: TeamMemberDto) => (
+            <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", background: avatarColor(m.nome), flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>
+                {m.nome.charAt(0).toUpperCase()}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: 12, color: "#e4e4e4", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.nome}</p>
+                <p style={{ fontSize: 10, color: "#555" }}>{m.cargo === "LEAD" ? "Lead" : "Membro"}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function TabVisaoGeral({
   team,
   onDescricaoChange,
@@ -158,7 +217,6 @@ function TabVisaoGeral({
   onDescricaoChange: (v: string) => void;
   onAddMember: () => void;
 }) {
-  const membros = team.membros ?? [];
 
   return (
     <div style={{ display: "flex", gap: 16, flex: 1, overflow: "hidden", padding: "16px 20px", minHeight: 0 }}>
@@ -233,34 +291,8 @@ function TabVisaoGeral({
       {/* coluna direita */}
       <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
 
-        {/* membros */}
-        <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "14px 16px" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: membros.length > 0 ? 12 : 4 }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4" }}>Membros</p>
-            <button type="button" onClick={onAddMember} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#777", display: "flex", alignItems: "center", justifyContent: "center" }}
-              onMouseEnter={e => { e.currentTarget.style.color = "#e4e4e4"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = "#777"; }}>
-              <Plus size={13} strokeWidth={2} />
-            </button>
-          </div>
-          {membros.length === 0 ? (
-            <p style={{ fontSize: 12, color: "#444", marginTop: 6 }}>Nenhum membro ainda.</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {membros.map(m => (
-                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: m.color, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>
-                    {getInitials(m.nome)}
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ fontSize: 12, color: "#e4e4e4", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.nome}</p>
-                    <p style={{ fontSize: 10, color: "#555" }}>{m.cargo === "LEAD" ? "Lead" : "Membro"}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* membros — dinâmico via backend */}
+        <MembersPanel teamId={team.id} onAddMember={onAddMember} />
 
         {/* análises */}
         <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "14px 16px" }}>

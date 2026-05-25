@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { qk } from '@/lib/query-keys';
 import { useAuthStore } from '@/lib/stores/auth';
-import type { TeamResponseDto } from '@/lib/types/api';
+import type { TeamResponseDto, TeamMemberDto } from '@/lib/types/api';
 
 interface CreateTeamPayload {
   nome: string;
@@ -48,6 +48,37 @@ export function useDeleteTeam() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.teams.all });
+    },
+  });
+}
+
+interface ListTeamMembersResponse {
+  members: TeamMemberDto[];
+}
+
+export function useTeamMembers(teamId: string) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+
+  return useQuery<TeamMemberDto[]>({
+    queryKey: qk.teams.members(teamId),
+    queryFn: async () => {
+      const res = await api.get<ListTeamMembersResponse>(`/teams/${teamId}/members`);
+      return res.data.members;
+    },
+    enabled: !!accessToken && !!teamId,
+    staleTime: 30_000,
+  });
+}
+
+export function useAddTeamMember(teamId: string) {
+  const qc = useQueryClient();
+
+  return useMutation<void, Error, { userId: string; cargo?: 'LEAD' | 'MEMBER' }>({
+    mutationFn: async (payload) => {
+      await api.post(`/teams/${teamId}/members`, payload);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.teams.members(teamId) });
     },
   });
 }
