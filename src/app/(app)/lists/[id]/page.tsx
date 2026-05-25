@@ -638,37 +638,24 @@ function TaskRowBackend({
       {/* Nome — clique no título abre TaskSheet */}
       <td style={{ ...tdStyle, padding: "0 10px 0 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, height: 36, paddingLeft: indent }}>
-          {/* No hover: botão "+" de subtarefa. Fora do hover: caret de expandir */}
-          {hovered ? (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setExpanded(true); setAddingSubtask(true); }}
-              title="Adicionar subtarefa"
-              style={{
-                width: 16, height: 16, flexShrink: 0, background: "none", border: 0,
-                color: "#7a7a85", cursor: "pointer", display: "inline-flex",
-                alignItems: "center", justifyContent: "center", borderRadius: 3,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = "#d4d4dc")}
-              onMouseLeave={(e) => (e.currentTarget.style.color = "#7a7a85")}
-            >
-              <IcPlus size={11} />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
-              style={{
-                width: 16, height: 16, flexShrink: 0, background: "none", border: 0,
-                color: "#5a5a64", cursor: "pointer", display: "inline-flex",
-                alignItems: "center", justifyContent: "center",
-                transform: expanded ? "rotate(0deg)" : "rotate(-90deg)",
-                transition: "transform .15s",
-              }}
-            >
-              <IcCaret size={10} />
-            </button>
-          )}
+          {/* Caret — sempre caret. No hover expande + abre input; fora do hover só expande/recolhe */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (hovered) { setExpanded(true); setAddingSubtask(true); }
+              else { setExpanded((v) => !v); }
+            }}
+            style={{
+              width: 16, height: 16, flexShrink: 0, background: "none", border: 0,
+              color: hovered ? "#d4d4dc" : "#5a5a64", cursor: "pointer", display: "inline-flex",
+              alignItems: "center", justifyContent: "center",
+              transform: expanded ? "rotate(0deg)" : "rotate(-90deg)",
+              transition: "transform .15s, color .1s",
+            }}
+          >
+            <IcCaret size={10} />
+          </button>
           <span style={{ color: statusCfg.iconColor, flexShrink: 0, display: "inline-flex", alignItems: "center" }}>
             <StatusIcon size={13} />
           </span>
@@ -683,6 +670,25 @@ function TaskRowBackend({
             {task.nome}
           </span>
           {task.idPai && <IcGitFork size={12} />}
+          {/* "+" no final da célula Nome, antes de Responsável — só no hover */}
+          {hovered && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setExpanded(true); setAddingSubtask(true); }}
+              title="Adicionar subtarefa"
+              style={{
+                marginLeft: "auto", flexShrink: 0,
+                width: 20, height: 20, borderRadius: "50%",
+                background: "#2a2a32", border: 0, cursor: "pointer",
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+                color: "#cfcfd6",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#7c5cff"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#2a2a32"; }}
+            >
+              <IcPlus size={11} />
+            </button>
+          )}
         </div>
       </td>
 
@@ -884,26 +890,8 @@ function TaskRowBackend({
         <IcChat size={13} />
       </td>
 
-      {/* "+" no final — no hover abre subtarefa, fora do hover fica vazio */}
-      <td style={{ ...tdStyle, textAlign: "center" }}>
-        {hovered && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); setExpanded(true); setAddingSubtask(true); }}
-            title="Adicionar subtarefa"
-            style={{
-              width: 20, height: 20, borderRadius: "50%",
-              background: "#2a2a32", border: 0, cursor: "pointer",
-              display: "inline-flex", alignItems: "center", justifyContent: "center",
-              color: "#cfcfd6",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#7c5cff"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "#2a2a32"; }}
-          >
-            <IcPlus size={11} />
-          </button>
-        )}
-      </td>
+      {/* Ações */}
+      <td style={{ ...tdStyle }} />
     </tr>
 
     {/* Subtarefas — lazy, recursivas */}
