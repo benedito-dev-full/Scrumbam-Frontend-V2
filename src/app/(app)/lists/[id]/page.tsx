@@ -931,7 +931,7 @@ function CellDropdown({ anchorRef, onClose, children }: {
   }, [anchorRef, onClose]);
 
   return createPortal(
-    <div ref={dropRef} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 99999, background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8, padding: 4, minWidth: 180, boxShadow: "0 8px 24px rgba(0,0,0,.5)" }}>
+    <div ref={dropRef} onClick={(e) => e.stopPropagation()} style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 99999, background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8, padding: 4, minWidth: 180, boxShadow: "0 8px 24px rgba(0,0,0,.5)" }}>
       {children}
     </div>,
     document.body,
@@ -944,7 +944,7 @@ function DropItem({ children, active, onClick }: {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={(e) => { e.stopPropagation(); onClick(); }}
       style={{
         display: "flex", alignItems: "center", gap: 8, width: "100%",
         padding: "7px 10px", borderRadius: 5,
