@@ -631,10 +631,10 @@ function TeamIconSvg({ path, size = 16, color = "currentColor" }: { path: string
 
 function CreateTeamModal({ onClose, onCreate }: { onClose: () => void; onCreate: (p: CreateTeamPayloadLocal) => void }) {
   const [nome, setNome] = useState("");
-  const [color, setColor] = useState(COLOR_PALETTE[2]); // azul padrão
+  const [color, setColor] = useState(COLOR_PALETTE[2]);
   const [icon, setIcon] = useState(TEAM_ICONS[0].name);
   const [panelOpen, setPanelOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"icone" | "cor">("icone");
+  const [colorDropOpen, setColorDropOpen] = useState(false);
   const [search, setSearch] = useState("");
 
   const selectedIcon = TEAM_ICONS.find(i => i.name === icon) ?? TEAM_ICONS[0];
@@ -652,22 +652,26 @@ function CreateTeamModal({ onClose, onCreate }: { onClose: () => void; onCreate:
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)" }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ width: 460, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
+      onClick={e => {
+        if (e.target === e.currentTarget) onClose();
+        // fecha sub-dropdowns ao clicar fora
+        if (colorDropOpen) setColorDropOpen(false);
+        if (panelOpen) setPanelOpen(false);
+      }}>
+      <div style={{ width: 460, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}
+        onClick={e => e.stopPropagation()}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: "#e4e4e4", marginBottom: 6 }}>Criar equipe</h2>
         <p style={{ fontSize: 13, color: "#666", marginBottom: 20, lineHeight: 1.5 }}>
           Uma equipe representa um grupo de pessoas com espaços e configurações próprias.
         </p>
 
         <form onSubmit={handleSubmit}>
-          {/* label */}
           <p style={{ fontSize: 12, color: "#888", fontWeight: 500, marginBottom: 8 }}>Ícone e nome</p>
 
           {/* linha: avatar-botão + input nome */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: panelOpen ? 0 : 20 }}>
-            {/* quadrado avatar — clicável, abre painel */}
             <button type="button"
-              onClick={() => setPanelOpen(v => !v)}
+              onClick={() => { setPanelOpen(v => !v); setColorDropOpen(false); }}
               style={{
                 flexShrink: 0, width: 42, height: 42, borderRadius: 8,
                 background: color,
@@ -675,10 +679,9 @@ function CreateTeamModal({ onClose, onCreate }: { onClose: () => void; onCreate:
                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "border-color .15s",
               }}>
-              <TeamIconSvg path={selectedIcon.path} size={18} color="#fff" />
+              <TeamIconSvg path={selectedIcon.path} size={22} color="#fff" />
             </button>
 
-            {/* input nome */}
             <input
               autoFocus
               value={nome}
@@ -690,77 +693,85 @@ function CreateTeamModal({ onClose, onCreate }: { onClose: () => void; onCreate:
             />
           </div>
 
-          {/* painel de ícone/cor — abre abaixo da linha */}
+          {/* painel de ícones — sem aba de cor, cor é sub-dropdown */}
           {panelOpen && (
-            <div style={{ marginTop: 2, marginBottom: 20, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "#141416", overflow: "hidden" }}>
-              {/* abas */}
-              <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-                {(["icone", "cor"] as const).map(tab => (
-                  <button key={tab} type="button" onClick={() => setActiveTab(tab)}
-                    style={{ flex: 1, height: 38, border: 0, background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: activeTab === tab ? "#e4e4e4" : "#666", borderBottom: activeTab === tab ? "2px solid #e4e4e4" : "2px solid transparent", transition: "all .15s" }}>
-                    {tab === "icone" ? "Ícone" : "Selecione a cor"}
-                  </button>
-                ))}
+            <div style={{ marginTop: 2, marginBottom: 20, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "#141416", overflow: "visible" }}>
+              {/* cabeçalho fixo da aba ícone */}
+              <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.07)", padding: "0 10px" }}>
+                <div style={{ height: 38, display: "flex", alignItems: "center", fontSize: 13, fontWeight: 500, color: "#e4e4e4", borderBottom: "2px solid #e4e4e4", paddingBottom: 0 }}>
+                  Ícone
+                </div>
               </div>
 
-              {activeTab === "icone" && (
-                <div style={{ padding: "10px 10px 12px" }}>
-                  {/* barra pesquisa + bolinhas de cor rápida */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-                    <input
-                      value={search}
-                      onChange={e => setSearch(e.target.value)}
-                      placeholder="Pesquisar..."
-                      style={{ flex: 1, height: 30, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "#e4e4e4", fontSize: 12, outline: "none" }}
-                    />
-                    {/* bolinha da cor ativa */}
-                    <button type="button" onClick={() => setActiveTab("cor")}
-                      style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.25)", background: color, cursor: "pointer", flexShrink: 0 }} />
-                    {/* + (placeholder, sem ação por enquanto) */}
+              <div style={{ padding: "10px 10px 12px" }}>
+                {/* barra pesquisa + bolinha cor (sub-dropdown) */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10, position: "relative" }}>
+                  <input
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    placeholder="Pesquisar..."
+                    style={{ flex: 1, height: 30, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "#e4e4e4", fontSize: 12, outline: "none" }}
+                  />
+
+                  {/* bolinha cor — abre sub-dropdown flutuante */}
+                  <div style={{ position: "relative", flexShrink: 0 }}>
                     <button type="button"
-                      style={{ width: 24, height: 24, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.15)", background: "none", cursor: "pointer", color: "#666", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16, lineHeight: 1 }}>
-                      +
+                      onClick={e => { e.stopPropagation(); setColorDropOpen(v => !v); }}
+                      style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.25)", background: color, cursor: "pointer", display: "block" }} />
+
+                    {colorDropOpen && (
+                      <div style={{
+                        position: "absolute", top: 30, right: 0, zIndex: 10,
+                        background: "#1e1e20", border: "1px solid rgba(255,255,255,0.12)",
+                        borderRadius: 8, padding: "10px", boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+                        display: "flex", flexWrap: "wrap", gap: 6, width: 168,
+                      }}
+                        onClick={e => e.stopPropagation()}>
+                        {COLOR_PALETTE.map(c => (
+                          <button key={c} type="button"
+                            onClick={() => { setColor(c); setColorDropOpen(false); }}
+                            style={{
+                              width: 26, height: 26, borderRadius: "50%",
+                              background: c, border: "2px solid",
+                              borderColor: color === c ? "#fff" : "transparent",
+                              cursor: "pointer", transition: "border-color .1s",
+                              boxShadow: color === c ? `0 0 0 1px ${c}` : "none",
+                            }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* grid de ícones SVG — selecionar NÃO fecha painel */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(11, 1fr)", gap: 0, maxHeight: 196, overflowY: "auto" }}>
+                  {filteredIcons.map(opt => (
+                    <button key={opt.name} type="button"
+                      onClick={() => setIcon(opt.name)}
+                      title={opt.name}
+                      style={{
+                        width: 32, height: 32, borderRadius: 4, border: "none",
+                        background: icon === opt.name ? "rgba(255,255,255,0.12)" : "none",
+                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                        color: icon === opt.name ? "#e4e4e4" : "#555", transition: "background .1s, color .1s",
+                      }}
+                      onMouseEnter={e => { if (icon !== opt.name) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#aaa"; }}}
+                      onMouseLeave={e => { if (icon !== opt.name) { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#555"; }}}>
+                      <TeamIconSvg path={opt.path} size={16} color="currentColor" />
                     </button>
-                  </div>
-
-                  {/* grid de ícones SVG */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(11, 1fr)", gap: 0, maxHeight: 196, overflowY: "auto" }}>
-                    {filteredIcons.map(opt => (
-                      <button key={opt.name} type="button"
-                        onClick={() => { setIcon(opt.name); setPanelOpen(false); }}
-                        title={opt.name}
-                        style={{
-                          width: 28, height: 28, borderRadius: 4, border: "none",
-                          background: icon === opt.name ? "rgba(255,255,255,0.12)" : "none",
-                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-                          color: icon === opt.name ? "#e4e4e4" : "#555", transition: "background .1s, color .1s",
-                        }}
-                        onMouseEnter={e => { if (icon !== opt.name) { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; e.currentTarget.style.color = "#aaa"; }}}
-                        onMouseLeave={e => { if (icon !== opt.name) { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#555"; }}}>
-                        <TeamIconSvg path={opt.path} size={13} color="currentColor" />
-                      </button>
-                    ))}
-                  </div>
+                  ))}
                 </div>
-              )}
 
-              {activeTab === "cor" && (
-                <div style={{ padding: "12px 12px 14px" }}>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                    {COLOR_PALETTE.map(c => (
-                      <button key={c} type="button"
-                        onClick={() => { setColor(c); setActiveTab("icone"); }}
-                        style={{
-                          width: 28, height: 28, borderRadius: "50%",
-                          background: c, border: "2px solid",
-                          borderColor: color === c ? "#fff" : "transparent",
-                          cursor: "pointer", transition: "border-color .1s",
-                          boxShadow: color === c ? `0 0 0 1px ${c}` : "none",
-                        }} />
-                    ))}
-                  </div>
+                {/* botão confirmar seleção */}
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+                  <button type="button" onClick={() => setPanelOpen(false)}
+                    style={{ height: 28, padding: "0 14px", borderRadius: 6, border: "none", background: "rgba(255,255,255,0.1)", cursor: "pointer", color: "#e4e4e4", fontSize: 12, fontWeight: 500 }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.16)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; }}>
+                    Confirmar
+                  </button>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
