@@ -572,7 +572,9 @@ function TaskRowBackend({
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
   const prioColor = priorityToColor(task.priority);
   const prioLabel = priorityToLabel(task.priority);
-  const statusVisual = INTENTION_TO_VISUAL_ROW[task.status as V3Intention] ?? "pendente";
+  const statusVisual: StatusVisualKey = overdue
+    ? "atrasado"
+    : (INTENTION_TO_VISUAL_ROW[task.status as V3Intention] ?? "pendente");
   const statusCfg = STATUS_CONFIG[statusVisual];
   const StatusIcon = statusCfg.Icon;
 
@@ -631,9 +633,6 @@ function TaskRowBackend({
           >
             <IcCaret size={10} />
           </button>
-          <span style={{ fontFamily: "monospace", fontSize: 10, color: "#5a5a64", flexShrink: 0 }}>
-            {task.identifier}
-          </span>
           <span style={{ color: statusCfg.iconColor, flexShrink: 0, display: "inline-flex", alignItems: "center" }}>
             <StatusIcon size={13} />
           </span>
