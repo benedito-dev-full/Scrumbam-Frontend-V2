@@ -535,17 +535,17 @@ function SpaceNode({
           />
         )}
 
-        {/* ações flutuantes no hover */}
+        {/* ações: "..." aparece só no hover; "+" fica sempre visível no hover e é o gatilho do menu */}
         {!editing && (
-          <div className="mr-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="mr-1 flex shrink-0 items-center gap-0.5">
             <button
               type="button"
               aria-label="Mais ações"
-              className="grid size-4 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="grid size-4 place-items-center rounded text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-muted hover:text-foreground"
             >
               <MoreHorizontal className="size-3" />
             </button>
-            {/* Menu "+" — abre folder ou list direto no space */}
+            {/* "+" sempre visível no hover — só abre no clique */}
             <SpacePlusMenu
               spaceName={space.nome}
               onCreateFolder={() => setCreateFolderOpen(true)}
@@ -666,7 +666,7 @@ function SpacePlusMenu({
         aria-haspopup="true"
         aria-expanded={menuOpen}
         onClick={openMenu}
-        className="grid size-4 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+        className="grid size-4 place-items-center rounded text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-muted hover:text-foreground"
       >
         <Plus className="size-3" />
       </button>
