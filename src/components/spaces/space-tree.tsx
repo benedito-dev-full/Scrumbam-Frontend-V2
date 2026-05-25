@@ -385,9 +385,9 @@ function FolderNode({
           </Link>
         )}
 
-        {/* ações flutuantes no hover */}
+        {/* ações: ... e + sempre visíveis */}
         {!editing && (
-          <div className="mr-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="mr-1 flex shrink-0 items-center gap-0.5">
             <button
               type="button"
               aria-label="Mais ações"
@@ -395,14 +395,12 @@ function FolderNode({
             >
               <MoreHorizontal className="size-3" />
             </button>
-            <button
-              type="button"
-              aria-label={`Adicionar lista em ${folder.nome}`}
-              onClick={() => setCreateListOpen(true)}
-              className="grid size-4 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <Plus className="size-3" />
-            </button>
+            <SpacePlusMenu
+              spaceName={folder.nome}
+              onCreateFolder={() => {}}
+              onCreateList={() => setCreateListOpen(true)}
+              showFolder={false}
+            />
           </div>
         )}
       </div>
@@ -590,20 +588,23 @@ function SpaceNode({
   );
 }
 
-// ─── SpacePlusMenu ────────────────────────────────────────────────────────────
+// ─── PlusMenu (Space e Folder) ────────────────────────────────────────────────
 
 /**
- * Menu "Criar" estilo ClickUp — abre ao clicar no "+" de um SpaceNode.
- * Itens principais (Lista, Pasta) são funcionais; demais são mockados.
+ * Menu "Criar" estilo ClickUp.
+ * `showFolder=true`  → Space (Lista + Pasta + itens mockados)
+ * `showFolder=false` → Folder (Lista + itens mockados, sem Pasta)
  */
 function SpacePlusMenu({
   spaceName,
   onCreateFolder,
   onCreateList,
+  showFolder = true,
 }: {
   spaceName: string;
   onCreateFolder: () => void;
   onCreateList: () => void;
+  showFolder?: boolean;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -694,12 +695,14 @@ function SpacePlusMenu({
               onClick={() => { setMenuOpen(false); onCreateList(); }}
               highlight
             />
-            <MenuItem
-              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>}
-              label="Pasta"
-              description="Agrupe listas, documentos e muito mais"
-              onClick={() => { setMenuOpen(false); onCreateFolder(); }}
-            />
+            {showFolder && (
+              <MenuItem
+                icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>}
+                label="Pasta"
+                description="Agrupe listas, documentos e muito mais"
+                onClick={() => { setMenuOpen(false); onCreateFolder(); }}
+              />
+            )}
           </div>
 
           <div className="my-1.5 h-px bg-[#2a2a2f]" />
