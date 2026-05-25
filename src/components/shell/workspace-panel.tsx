@@ -112,6 +112,7 @@ function IcHash() {
 type LeafItem = {
   href: string;
   label: string;
+  suffix?: string;
   renderIcon: () => React.ReactNode;
   badge?: string;
 };
@@ -151,8 +152,8 @@ function buildSections(orgName?: string): Section[] {
       label: "Canais",
       showAddButton: true,
       items: [
-        { href: "/channels/geral",   label: `Geral${suffix}`,   renderIcon: () => <IcChannel /> },
-        { href: "/channels/welcome", label: `Welcome${suffix}`, renderIcon: () => <IcHash /> },
+        { href: "/channels/geral",   label: "Geral",   suffix: orgName, renderIcon: () => <IcChannel /> },
+        { href: "/channels/welcome", label: "Welcome", suffix: orgName, renderIcon: () => <IcHash /> },
       ],
     },
   ];
@@ -183,7 +184,12 @@ function Leaf({
       <span className="shrink-0 text-muted-foreground group-data-active:text-sidebar-accent-foreground">
         {item.renderIcon()}
       </span>
-      <span className="flex-1 truncate">{item.label}</span>
+      <span className="flex-1 truncate">
+        {item.label}
+        {item.suffix && (
+          <span className="ml-1 text-[13px] text-sidebar-foreground/50">{`- ${item.suffix}`}</span>
+        )}
+      </span>
       {item.badge && (
         <span className="rounded bg-muted px-1.5 text-[10px] font-semibold text-muted-foreground">
           {item.badge}
