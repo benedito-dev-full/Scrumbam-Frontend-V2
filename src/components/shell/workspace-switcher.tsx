@@ -10,6 +10,7 @@ import {
 import {
   Settings, Users, LayoutGrid, FileText, SlidersHorizontal, Zap,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useMe, useSwitchOrg } from "@/hooks/use-auth";
 import { useAuthStore } from "@/lib/stores/auth";
 
@@ -23,6 +24,7 @@ import { useAuthStore } from "@/lib/stores/auth";
  * POST /auth/switch-org (trocar organização ativa).
  */
 export function WorkspaceSwitcher() {
+  const router = useRouter();
   const { data: me, isLoading: meLoading } = useMe();
   const switchOrg = useSwitchOrg();
   const currentOrgId = useAuthStore((s) => s.user?.organizationId);
@@ -124,15 +126,17 @@ export function WorkspaceSwitcher() {
         {/* botões Configurações + Pessoas */}
         <div style={{ display: "flex", gap: 6, padding: "0 10px 10px" }}>
           {[
-            { icon: <Settings size={13} />, label: "Configurações" },
-            { icon: <Users size={13} />,   label: "Pessoas" },
-          ].map(({ icon, label }) => (
-            <button key={label} type="button" style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-              gap: 5, height: 30, borderRadius: 6,
-              border: "1px solid rgba(255,255,255,0.09)", background: "none",
-              cursor: "pointer", color: "#c4c4c4", fontSize: 12,
-            }}
+            { icon: <Settings size={13} />, label: "Configurações", href: null },
+            { icon: <Users size={13} />,   label: "Pessoas",        href: "/people" },
+          ].map(({ icon, label, href }) => (
+            <button key={label} type="button"
+              onClick={() => { if (href) router.push(href); }}
+              style={{
+                flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+                gap: 5, height: 30, borderRadius: 6,
+                border: "1px solid rgba(255,255,255,0.09)", background: "none",
+                cursor: "pointer", color: "#c4c4c4", fontSize: 12,
+              }}
               onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
             >

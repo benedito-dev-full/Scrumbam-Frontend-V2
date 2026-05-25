@@ -331,7 +331,10 @@ function DirectMessagesSection({ userName }: { userName?: string }) {
         <ul className="space-y-1">
           {userName && (
             <li>
-              <div className="flex h-[34px] items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80">
+              <Link
+                href={`/dm/${encodeURIComponent(userName)}`}
+                className="flex h-[34px] items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+              >
                 <span className="grid size-5 shrink-0 place-items-center rounded-full bg-indigo-600 text-[9px] font-bold text-white">
                   {initials}
                 </span>
@@ -339,7 +342,7 @@ function DirectMessagesSection({ userName }: { userName?: string }) {
                   {userName}
                   <span className="ml-1 text-muted-foreground/50">— Você</span>
                 </span>
-              </div>
+              </Link>
             </li>
           )}
           <li>
