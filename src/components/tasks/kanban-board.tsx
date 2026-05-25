@@ -1,7 +1,7 @@
 'use client';
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
-import React from 'react';
+import React, { useState } from 'react';
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { useTasksByProject } from '@/hooks/use-tasks';
@@ -12,6 +12,7 @@ import {
   priorityToColor,
 } from '@/lib/mappers/task-status.mapper';
 import { cn } from '@/lib/utils';
+import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { KanbanColumnConfig } from '@/lib/mappers/task-status.mapper';
@@ -34,24 +35,35 @@ import type { TaskResponseDto, V3Intention } from '@/lib/types/api';
  */
 export function KanbanBoard({ projectId }: { projectId: string }) {
   const { data: tasks = [], isLoading } = useTasksByProject(projectId);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   if (isLoading) return <KanbanSkeleton />;
 
   return (
-    <div className="flex h-full gap-3 overflow-x-auto p-4">
-      {KANBAN_COLUMNS.map((col) => {
-        const colTasks = tasks.filter(
-          (t) => intentionToColumn(t.status as V3Intention) === col.id,
-        );
-        return (
-          <KanbanColumn
-            key={col.id}
-            config={col}
-            tasks={colTasks}
-          />
-        );
-      })}
-    </div>
+    <>
+      <div className="flex h-full gap-3 overflow-x-auto p-4">
+        {KANBAN_COLUMNS.map((col) => {
+          const colTasks = tasks.filter(
+            (t) => intentionToColumn(t.status as V3Intention) === col.id,
+          );
+          return (
+            <KanbanColumn
+              key={col.id}
+              config={col}
+              tasks={colTasks}
+              onSelectTask={setSelectedTaskId}
+            />
+          );
+        })}
+      </div>
+      {selectedTaskId !== null && (
+        <TaskDetailDrawer
+          taskId={selectedTaskId}
+          projectId={projectId}
+          onClose={() => setSelectedTaskId(null)}
+        />
+      )}
+    </>
   );
 }
 
@@ -60,9 +72,11 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
 function KanbanColumn({
   config,
   tasks,
+  onSelectTask,
 }: {
   config: KanbanColumnConfig;
   tasks: TaskResponseDto[];
+  onSelectTask: (id: string) => void;
 }) {
   return (
     <div className="flex w-[280px] shrink-0 flex-col gap-2">
@@ -83,7 +97,7 @@ function KanbanColumn({
       {/* Cards */}
       <div className="flex flex-col gap-2">
         {tasks.map((task) => (
-          <TaskCard key={task.id} task={task} />
+          <TaskCard key={task.id} task={task} onClick={() => onSelectTask(task.id)} />
         ))}
         {tasks.length === 0 && (
           <div className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground">
@@ -97,12 +111,18 @@ function KanbanColumn({
 
 // ─── TaskCard ─────────────────────────────────────────────────────────────────
 
-function TaskCard({ task }: { task: TaskResponseDto }) {
+function TaskCard({ task, onClick }: { task: TaskResponseDto; onClick: () => void }) {
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
   const prioColor = priorityToColor(task.priority);
 
   return (
-    <div className="cursor-pointer rounded-lg border border-border bg-card p-3 shadow-sm transition-colors hover:border-border/80 hover:bg-muted/30">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
+      className="cursor-pointer rounded-lg border border-border bg-card p-3 shadow-sm transition-colors hover:border-border/80 hover:bg-muted/30"
+    >
       {/* Identifier + prioridade */}
       <div className="mb-1.5 flex items-center justify-between">
         <span className="font-mono text-[11px] text-muted-foreground">

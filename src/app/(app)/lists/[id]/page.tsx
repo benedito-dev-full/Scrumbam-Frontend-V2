@@ -14,10 +14,10 @@ import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useProject } from "@/hooks/use-projects";
-import { useTasksStore } from "@/lib/stores/tasks";
-import { agruparPorStatus } from "@/lib/mocks/tarefas";
-// BoardContent já usa useTasksByProject internamente via KanbanBoard
+import { useTasksByProject } from "@/hooks/use-tasks";
+import { isOverdue, priorityToLabel, priorityToColor } from "@/lib/mappers/task-status.mapper";
 import { type StatusTarefa, type Tarefa } from "@/lib/types/tarefa";
+import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
 
 /* ─── Página ─────────────────────────────────────────────────────────────── */
 export default function ListPage({
@@ -114,58 +114,136 @@ function BoardContent({
 }
 
 /* ─── Conteúdo reativo da lista ──────────────────────────────────────────── */
-/** Componente separado para ler do store de forma reativa */
+/**
+ * Exibe tasks da list em formato tabular simples, conectado ao backend via useTasksByProject.
+ * Migrado de useTasksStore/mockTarefas → useTasksByProject (Débito D3).
+ */
 function ListContent({
-  espacoId,
-  subtarefasMode,
-  /* listId reservado para futura navegação / breadcrumbs */
+  listId,
   onAddTask,
-  onOpenTask,
 }: {
   espacoId: string;
   listId: string;
   subtarefasMode: SubtarefasMode;
   onAddTask: (defaultStatus?: StatusTarefa) => void;
-  /** Callback para abrir o sheet de detalhe de uma tarefa */
   onOpenTask: (tarefa: Tarefa) => void;
 }) {
-  const allTasks = useTasksStore((s) => s.tasks);
-  const tarefas = allTasks.filter((t) => t.espacoId === espacoId);
-  const grupos = agruparPorStatus(tarefas).sort(
-    (a, b) => STATUS_CONFIG[a.status].order - STATUS_CONFIG[b.status].order,
-  );
+  const { data: tasks = [], isLoading } = useTasksByProject(listId);
+
+  const COL = "grid-cols-[minmax(0,1fr)_130px_110px_110px]";
 
   return (
     <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ background: "#111111" }}>
-      <div style={{ minWidth: 860, padding: "0 22px 60px" }}>
-        {grupos.length === 0 ? (
+      <div style={{ minWidth: 700, padding: "16px 22px 60px" }}>
+        {isLoading ? (
+          <ListContentSkeleton />
+        ) : tasks.length === 0 ? (
           <EmptyState onAddTask={() => onAddTask()} />
         ) : (
-          grupos.map((g) => (
-            <GroupBlock
-              key={g.status}
-              status={g.status}
-              tarefas={g.tarefas}
-              subtarefasMode={subtarefasMode}
-              onAddTask={onAddTask}
-              onOpenTask={onOpenTask}
-            />
-          ))
+          <div className="overflow-hidden rounded-lg border border-border">
+            {/* Cabeçalho */}
+            <div className={`grid items-center bg-muted/30 px-3 py-2 text-[11px] uppercase tracking-wider text-muted-foreground ${COL}`}>
+              <div>Título</div>
+              <div>Status</div>
+              <div>Prioridade</div>
+              <div>Vencimento</div>
+            </div>
+            {/* Linhas */}
+            {tasks.map((t) => (
+              <ListTaskRow key={t.id} task={t} colGrid={COL} />
+            ))}
+            {/* Adicionar task */}
+            <button
+              type="button"
+              onClick={() => onAddTask()}
+              className="flex h-8 w-full items-center gap-2 border-t border-border px-3 text-[13px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+            >
+              <IcPlus size={13} />
+              Adicionar tarefa
+            </button>
+          </div>
         )}
-        <button
-          type="button"
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 7,
-            color: "#5a5a64", padding: "14px 4px 0 4px",
-            fontSize: 13, cursor: "pointer", background: "none", border: 0,
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#e6e6ea")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#5a5a64")}
-        >
-          <IcPlus size={13} />
-          Novo status
-        </button>
       </div>
+    </div>
+  );
+}
+
+/** Linha de task para a view de lista simples (backend-connected). */
+function ListTaskRow({ task, colGrid }: { task: TaskResponseDto; colGrid: string }) {
+  const STATUS_DOT: Record<string, string> = {
+    INBOX: "#6b7280", READY: "#3b82f6", EXECUTING: "#8b5cf6",
+    VALIDATING: "#f59e0b", DONE: "#10b981", FAILED: "#ef4444",
+    CANCELLED: "#71717a", DISCARDED: "#6b7280", VALIDATED: "#10b981",
+  };
+  const STATUS_LABEL: Record<string, string> = {
+    INBOX: "Backlog", READY: "Ready", EXECUTING: "Em andamento",
+    VALIDATING: "Validando", DONE: "Concluída", FAILED: "Falhou",
+    CANCELLED: "Cancelada", DISCARDED: "Descartada", VALIDATED: "Validada",
+  };
+
+  const dotColor = STATUS_DOT[task.status] ?? "#6b7280";
+  const statusLabel = STATUS_LABEL[task.status] ?? task.status;
+  const prioLabel = priorityToLabel(task.priority);
+  const prioColor = priorityToColor(task.priority);
+  const overdue = isOverdue(task.dueDate, task.status as V3Intention);
+  const dateLabel = task.dueDate
+    ? new Date(task.dueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+    : "—";
+
+  return (
+    <div
+      className={`group grid items-center border-t border-border px-3 text-[13px] transition-colors hover:bg-muted/40 ${colGrid}`}
+    >
+      {/* Título */}
+      <div className="flex h-9 items-center gap-2 truncate">
+        <span className="size-1.5 shrink-0 rounded-full" style={{ background: dotColor }} />
+        <span className="font-mono text-[11px] text-muted-foreground shrink-0">{task.identifier}</span>
+        <span className="truncate text-foreground">{task.title}</span>
+        {task.idPai && (
+          <span className="inline-flex h-4 items-center gap-0.5 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
+            <IcGitFork size={10} />
+          </span>
+        )}
+      </div>
+      {/* Status */}
+      <div className="flex h-9 items-center">
+        <span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-muted px-2 text-[11px] font-medium">
+          <span className="size-1.5 rounded-full" style={{ background: dotColor }} />
+          {statusLabel}
+        </span>
+      </div>
+      {/* Prioridade */}
+      <div className="flex h-9 items-center gap-1.5">
+        {task.priority ? (
+          <>
+            <span className="size-2 rounded-full" style={{ background: prioColor }} />
+            <span className="text-[12px] text-foreground">{prioLabel}</span>
+          </>
+        ) : (
+          <span className="text-[12px] text-muted-foreground/40">—</span>
+        )}
+      </div>
+      {/* Vencimento */}
+      <div className="flex h-9 items-center">
+        <span className={`text-[12px] ${overdue ? "text-amber-400" : "text-muted-foreground"}`}>
+          {overdue && task.dueDate ? "⚠ " : ""}{dateLabel}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** Skeleton para estado de carregamento da list view. */
+function ListContentSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="flex h-9 items-center gap-3 border-t border-border px-3 first:border-t-0">
+          <div className="size-1.5 animate-pulse rounded-full bg-muted" />
+          <div className="h-3 w-[180px] animate-pulse rounded bg-muted" />
+          <div className="ml-auto h-3 w-16 animate-pulse rounded bg-muted" />
+        </div>
+      ))}
     </div>
   );
 }

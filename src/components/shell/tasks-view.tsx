@@ -16,7 +16,6 @@ import {
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { Button } from "@/components/ui/button";
-import { SpaceChip } from "@/components/shell/space-chip";
 import { cn } from "@/lib/utils";
 import { useMyTasks } from "@/hooks/use-tasks";
 import { isOverdue, priorityToColor, priorityToLabel } from "@/lib/mappers/task-status.mapper";

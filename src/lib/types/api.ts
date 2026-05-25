@@ -182,20 +182,20 @@ export interface TaskResponseDto {
 }
 
 export interface CreateTaskDto {
-  nome: string;
-  projectId: string;
-  descricao?: string;
+  titulo: string;
+  idProject: string;
   priority?: TaskPriority;
+  dueDate?: string;
   assigneeId?: string;
-  sprintId?: string;
-  taskType?: TaskType;
+  descricao?: string;
 }
 
 export interface UpdateTaskDto {
-  nome?: string;
+  titulo?: string;
   descricao?: string;
   priority?: TaskPriority;
-  assigneeId?: string;
+  dueDate?: string | null;
+  assigneeId?: string | null;
 }
 
 export interface TaskFilters {
