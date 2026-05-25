@@ -197,7 +197,6 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
             <p style={{ fontSize: 12, fontWeight: 600, color: "#888892", marginBottom: 12 }}>Recent</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {recentes.map((item) => {
-                const pai = item.idPai ? mockEntidades.find(e => e.id === item.idPai) : null;
                 const href = item.idClasse === "-351"
                   ? `/folders/${item.id}`
                   : item.idClasse === "-352"
@@ -227,9 +226,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
           <div style={{ background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: "#888892", marginBottom: 12 }}>Docs</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {docs.length > 0 ? docs.map((doc) => {
-                const pai = doc.idPai ? mockEntidades.find(e => e.id === doc.idPai) : null;
-                return (
+              {docs.length > 0 ? docs.map((doc) => (
                   <Link key={doc.id} href={`/docs/${doc.id}`} style={{
                     display: "flex", alignItems: "center", gap: 7,
                     padding: "5px 8px", margin: "0 -8px", borderRadius: 6,
@@ -240,10 +237,8 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
                   >
                     <IcDoc />
                     <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{doc.nome}</span>
-                    {pai && <span style={{ fontSize: 12, color: "#505058" }}>• em {pai.nome}</span>}
                   </Link>
-                );
-              }) : (
+              )) : (
                 <p style={{ fontSize: 12, color: "#404048" }}>Nenhum documento ainda</p>
               )}
             </div>
