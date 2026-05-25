@@ -13,8 +13,8 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Variáveis de build (substituídas pelo Dokploy via env vars)
-ARG NEXT_PUBLIC_API_URL
+# Variáveis de build — defaults hardcoded para produção
+ARG NEXT_PUBLIC_API_URL=https://api.scrumban.com.br/api/v1
 ARG NEXT_PUBLIC_MOCK_AUTH=false
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
