@@ -184,11 +184,11 @@ function MemberRow({ member, onRemove, isRemoving }: { member: TeamMemberDto; on
         style={{
           width: 22, height: 22, borderRadius: 5, border: "none", background: "none",
           cursor: isRemoving ? "not-allowed" : "pointer",
-          color: "#555", display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0, opacity: hovered ? 1 : 0, transition: "opacity .15s, color .15s, background .12s",
+          color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0, transition: "background .12s",
         }}
-        onMouseEnter={e => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
-        onMouseLeave={e => { e.currentTarget.style.color = "#555"; e.currentTarget.style.background = "none"; }}
+        onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,38,38,0.15)"; }}
+        onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
       >
         <UserMinus size={12} strokeWidth={2} />
       </button>
