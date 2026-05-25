@@ -634,6 +634,9 @@ function TaskRowBackend({
           <span style={{ fontFamily: "monospace", fontSize: 10, color: "#5a5a64", flexShrink: 0 }}>
             {task.identifier}
           </span>
+          <span style={{ color: statusCfg.iconColor, flexShrink: 0, display: "inline-flex", alignItems: "center" }}>
+            <StatusIcon size={13} />
+          </span>
           <span
             role="button"
             tabIndex={0}
