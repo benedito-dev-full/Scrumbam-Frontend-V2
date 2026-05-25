@@ -1,7 +1,14 @@
 "use client";
 
 import React, { use, useEffect, useState } from "react";
-import { Star, Share2, Bot, Sparkles } from "lucide-react";
+import { Star, Share2, Bot, Sparkles, GripVertical } from "lucide-react";
+import {
+  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
+  useDroppable, useDraggable,
+  type DragEndEvent, type DragStartEvent,
+} from "@dnd-kit/core";
+import { useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/query-keys";
 
 import { ViewSwitcher } from "@/components/shell/view-switcher";
 import {
@@ -86,6 +93,8 @@ export default function ListPage({
           onAddTask={openModal}
           onOpenTask={setSelectedTask}
           members={members}
+          projectId={id}
+          allTasks={tasks}
         />
       ) : (
         <BoardContent
@@ -117,6 +126,16 @@ const INTENTION_TO_STATUS: Record<string, StatusVisual> = {
   CANCELLED:  "concluido",
   DISCARDED:  "concluido",
   FAILED:     "falhou",
+};
+
+// Mapa reverso: StatusVisual → V3 Intention canônica para drag-and-drop
+const INTENTION_TO_STATUS_REVERSE: Record<StatusVisual, string> = {
+  backlog:        "INBOX",
+  pronto:         "READY",
+  "em-progresso": "EXECUTING",
+  concluido:      "DONE",
+  falhou:         "FAILED",
+  atrasado:       "INBOX",
 };
 
 function agruparTasks(tasks: TaskResponseDto[]): { status: StatusVisual; tarefas: TaskResponseDto[] }[] {
@@ -174,6 +193,8 @@ function ListContent({
   onAddTask,
   onOpenTask,
   members,
+  projectId,
+  allTasks,
 }: {
   grupos: { status: StatusVisual; tarefas: TaskResponseDto[] }[];
   isLoading: boolean;
@@ -181,42 +202,109 @@ function ListContent({
   onAddTask: (defaultStatus?: StatusVisual) => void;
   onOpenTask: (task: TaskResponseDto) => void;
   members: ProjectMemberDto[];
+  projectId: string;
+  allTasks: TaskResponseDto[];
 }) {
+  const queryClient = useQueryClient();
+  const updateStatus = useUpdateTaskStatus();
+  const [draggingTask, setDraggingTask] = useState<TaskResponseDto | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+
+  function handleDragStart(event: DragStartEvent) {
+    const task = allTasks.find((t) => t.id === event.active.id);
+    setDraggingTask(task ?? null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setDraggingTask(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const targetStatus = over.id as StatusVisual;
+    const newIntention = INTENTION_TO_STATUS_REVERSE[targetStatus];
+    if (!newIntention) return;
+
+    const task = allTasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    // Já está no grupo certo
+    const currentStatus = INTENTION_TO_STATUS[task.status] ?? "backlog";
+    if (currentStatus === targetStatus) return;
+
+    // Otimista
+    queryClient.setQueryData<TaskResponseDto[]>(
+      qk.tasks.byProject(projectId),
+      (prev) => prev?.map((t) => t.id === taskId ? { ...t, status: newIntention } : t) ?? [],
+    );
+
+    updateStatus.mutate(
+      { id: taskId, status: newIntention, projectId },
+      {
+        onSuccess: () => void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) }),
+        onError: () => void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) }),
+      },
+    );
+  }
+
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ background: "#111111" }}>
-      <div style={{ minWidth: 860, padding: "0 22px 60px" }}>
-        {isLoading ? (
-          <ListSkeleton />
-        ) : grupos.length === 0 ? (
-          <EmptyState onAddTask={() => onAddTask()} />
-        ) : (
-          grupos.map((g) => (
-            <GroupBlock
-              key={g.status}
-              status={g.status}
-              tarefas={g.tarefas}
-              subtarefasMode={subtarefasMode}
-              onAddTask={onAddTask}
-              onOpenTask={onOpenTask}
-              members={members}
-            />
-          ))
-        )}
-        <button
-          type="button"
-          style={{
-            display: "inline-flex", alignItems: "center", gap: 7,
-            color: "#5a5a64", padding: "14px 4px 0 4px",
-            fontSize: 13, cursor: "pointer", background: "none", border: 0,
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "#e6e6ea")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "#5a5a64")}
-        >
-          <IcPlus size={13} />
-          Novo status
-        </button>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ background: "#111111" }}>
+        <div style={{ minWidth: 860, padding: "0 22px 60px" }}>
+          {isLoading ? (
+            <ListSkeleton />
+          ) : grupos.length === 0 ? (
+            <EmptyState onAddTask={() => onAddTask()} />
+          ) : (
+            grupos.map((g) => (
+              <GroupBlock
+                key={g.status}
+                status={g.status}
+                tarefas={g.tarefas}
+                subtarefasMode={subtarefasMode}
+                onAddTask={onAddTask}
+                onOpenTask={onOpenTask}
+                members={members}
+                isDragging={draggingTask !== null}
+              />
+            ))
+          )}
+          <button
+            type="button"
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 7,
+              color: "#5a5a64", padding: "14px 4px 0 4px",
+              fontSize: 13, cursor: "pointer", background: "none", border: 0,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "#e6e6ea")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "#5a5a64")}
+          >
+            <IcPlus size={13} />
+            Novo status
+          </button>
+        </div>
       </div>
-    </div>
+
+      <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
+        {draggingTask && (
+          <div style={{
+            background: "#1a1a22", border: "1px solid #7c5cff40", borderRadius: 6,
+            padding: "8px 12px", fontSize: 13, color: "#e6e6ea",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.5)", opacity: 0.95,
+            display: "flex", alignItems: "center", gap: 8, minWidth: 300,
+          }}>
+            <GripVertical size={13} style={{ color: "#7a7a85", flexShrink: 0 }} />
+            <span style={{ fontFamily: "monospace", fontSize: 11, color: "#7a7a85", flexShrink: 0 }}>
+              {draggingTask.identifier}
+            </span>
+            <span className="truncate">{draggingTask.nome}</span>
+          </div>
+        )}
+      </DragOverlay>
+    </DndContext>
   );
 }
 
@@ -407,6 +495,7 @@ function GroupBlock({
   onAddTask,
   onOpenTask,
   members,
+  isDragging,
 }: {
   status: StatusVisual;
   tarefas: TaskResponseDto[];
@@ -414,10 +503,12 @@ function GroupBlock({
   onAddTask: (defaultStatus?: StatusVisual) => void;
   onOpenTask: (task: TaskResponseDto) => void;
   members: ProjectMemberDto[];
+  isDragging?: boolean;
 }) {
   const [open, setOpen] = useState(true);
   const cfg = STATUS_CONFIG[status];
   const StatusIcon = cfg.Icon;
+  const { setNodeRef, isOver } = useDroppable({ id: status });
 
   const tarefasVisiveis = tarefas.filter((t) => !t.idPai);
 
@@ -442,32 +533,55 @@ function GroupBlock({
         <span style={{ color: "#7a7a85", fontSize: 12, marginLeft: 2 }}>{tarefasVisiveis.length}</span>
       </div>
 
-      {open && (
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <colgroup>
-            <col style={{ width: "auto" }} />
-            <col style={{ width: 170 }} />
-            <col style={{ width: 200 }} />
-            <col style={{ width: 130 }} />
-            <col style={{ width: 200 }} />
-            <col style={{ width: 48 }} />
-            <col style={{ width: 36 }} />
-          </colgroup>
-          <thead><HeadRow /></thead>
-          <tbody>
-            {tarefasVisiveis.map((t) => (
-              <TaskRowBackend
-                key={t.id}
-                task={t}
-                onOpenTask={onOpenTask}
-                members={members}
-                subtarefasMode={subtarefasMode}
-              />
-            ))}
-            <AddRow onAddTask={() => onAddTask(status)} />
-          </tbody>
-        </table>
-      )}
+      <div
+        ref={setNodeRef}
+        style={{
+          borderRadius: 8,
+          transition: "background .15s",
+          background: isOver ? "rgba(124,92,255,0.08)" : "transparent",
+          outline: isOver ? "1px solid rgba(124,92,255,0.3)" : "none",
+        }}
+      >
+        {open && (
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: 24 }} />
+              <col style={{ width: "auto" }} />
+              <col style={{ width: 170 }} />
+              <col style={{ width: 200 }} />
+              <col style={{ width: 130 }} />
+              <col style={{ width: 200 }} />
+              <col style={{ width: 48 }} />
+              <col style={{ width: 36 }} />
+            </colgroup>
+            <thead><HeadRow /></thead>
+            <tbody>
+              {tarefasVisiveis.map((t) => (
+                <TaskRowBackend
+                  key={t.id}
+                  task={t}
+                  onOpenTask={onOpenTask}
+                  members={members}
+                  subtarefasMode={subtarefasMode}
+                />
+              ))}
+              {isDragging && tarefasVisiveis.length === 0 && (
+                <tr>
+                  <td colSpan={8}>
+                    <div style={{
+                      padding: "12px 16px", fontSize: 12, color: "#7a7a85",
+                      textAlign: "center",
+                    }}>
+                      {isOver ? "Soltar aqui" : "Arraste para cá"}
+                    </div>
+                  </td>
+                </tr>
+              )}
+              <AddRow onAddTask={() => onAddTask(status)} />
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }
@@ -479,7 +593,8 @@ function HeadRow() {
   };
   return (
     <tr>
-      <th style={{ ...thStyle, paddingLeft: 30 }}>Nome</th>
+      <th style={{ ...thStyle, width: 24, padding: 0 }} />
+      <th style={{ ...thStyle, paddingLeft: 8 }}>Nome</th>
       <th style={thStyle}>Responsável</th>
       <th style={thStyle}>Data de vencimento</th>
       <th style={thStyle}>Prioridade</th>
@@ -630,6 +745,11 @@ function TaskRowBackend({
 
   const currentPrioVisual = task.priority ? PRIO_VISUAL_MAP[task.priority as TaskPriority] : null;
   const indent = 8 + depth * 30;
+  const isDraggable = depth === 0;
+  const { attributes, listeners, setNodeRef: setDragRef, isDragging: isBeingDragged } = useDraggable({
+    id: task.id,
+    disabled: !isDraggable,
+  });
 
   function handleAddSubtask() {
     const nome = newSubtaskName.trim();
@@ -649,10 +769,27 @@ function TaskRowBackend({
   return (
     <>
     <tr
+      ref={isDraggable ? setDragRef : undefined}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ cursor: "default" }}
+      style={{ cursor: "default", opacity: isBeingDragged ? 0.4 : 1 }}
     >
+      {/* Handle de drag — só em tasks raiz */}
+      <td style={{ ...tdStyle, width: 24, padding: 0 }}>
+        {isDraggable && (
+          <div
+            {...listeners}
+            {...attributes}
+            style={{
+              display: "flex", alignItems: "center", justifyContent: "center",
+              height: 36, cursor: "grab", color: hovered ? "#5a5a64" : "transparent",
+              transition: "color .15s",
+            }}
+          >
+            <GripVertical size={13} />
+          </div>
+        )}
+      </td>
       {/* Nome — clique no título abre TaskSheet */}
       <td style={{ ...tdStyle, padding: "0 10px 0 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, height: 36, paddingLeft: indent }}>
@@ -1020,7 +1157,7 @@ function AddRow({ onAddTask }: { onAddTask: () => void }) {
       onClick={onAddTask}
       style={{ cursor: "pointer" }}
     >
-      <td colSpan={7} style={{ height: 34, borderBottom: "1px solid #1f1f25", background: hovered ? "#15151a" : "transparent" }}>
+      <td colSpan={8} style={{ height: 34, borderBottom: "1px solid #1f1f25", background: hovered ? "#15151a" : "transparent" }}>
         <div style={{ paddingLeft: 30, height: 34, display: "flex", alignItems: "center", gap: 7, color: hovered ? "#e6e6ea" : "#7a7a85", fontSize: 13 }}>
           <IcPlus size={13} />Adicionar Tarefa
         </div>
