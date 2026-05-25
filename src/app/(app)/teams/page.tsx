@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Plus, ChevronDown, ChevronLeft, ChevronRight, Bell, Search, LayoutGrid, List } from "lucide-react";
+import { useCreateTeam } from "@/hooks/use-teams";
 
 /* ══════════════════════════════════════════════════════════════════
    TIPOS LOCAIS (localStorage — sem backend ainda)
@@ -271,19 +273,21 @@ function EmptyState({ onCreateTeam }: { onCreateTeam: () => void }) {
    TEAM CARD — grid de cards quando há times
 ══════════════════════════════════════════════════════════════════ */
 
-function TeamCard({ team, onNotify }: { team: TeamLocal; onNotify: (id: string) => void }) {
+function TeamCard({ team, onNotify, onClick }: { team: TeamLocal; onNotify: (id: string) => void; onClick: (id: string) => void }) {
   const inicial = team.nome.trim().charAt(0).toUpperCase();
 
   return (
-    <div style={{
-      width: 192,
-      borderRadius: 10,
-      background: "#1a1a1a",
-      border: "1px solid rgba(255,255,255,0.07)",
-      overflow: "hidden",
-      cursor: "pointer",
-      transition: "border-color .15s",
-    }}
+    <div
+      onClick={() => onClick(team.id)}
+      style={{
+        width: 192,
+        borderRadius: 10,
+        background: "#1a1a1a",
+        border: "1px solid rgba(255,255,255,0.07)",
+        overflow: "hidden",
+        cursor: "pointer",
+        transition: "border-color .15s",
+      }}
       onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.18)"; }}
       onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)"; }}
     >
@@ -344,9 +348,11 @@ type FilterId = "membros" | "criado" | "criador" | "classificar";
 function TeamsListView({
   teams,
   onCreateTeam,
+  onTeamClick,
 }: {
   teams: TeamLocal[];
   onCreateTeam: () => void;
+  onTeamClick: (id: string) => void;
 }) {
   const [activeFilter, setActiveFilter] = useState<FilterId | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -436,7 +442,7 @@ function TeamsListView({
         ) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
             {filtered.map(team => (
-              <TeamCard key={team.id} team={team} onNotify={() => {}} />
+              <TeamCard key={team.id} team={team} onNotify={() => {}} onClick={onTeamClick} />
             ))}
           </div>
         )}
@@ -497,7 +503,7 @@ function CreateTeamModal({ onClose, onCreate }: { onClose: () => void; onCreate:
    SIDEBAR
 ══════════════════════════════════════════════════════════════════ */
 
-function TeamsPanel({ teams }: { teams: TeamLocal[] }) {
+function TeamsPanel({ teams, onTeamClick }: { teams: TeamLocal[]; onTeamClick?: (id: string) => void }) {
   return (
     <>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 12px", height: 44, borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
@@ -559,7 +565,7 @@ function TeamsPanel({ teams }: { teams: TeamLocal[] }) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {teams.map(t => (
-              <button key={t.id} type="button" style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", height: 32, padding: "0 8px", borderRadius: 5, border: 0, cursor: "pointer", background: "none", color: "#888892", fontSize: 13 }}
+              <button key={t.id} type="button" onClick={() => onTeamClick?.(t.id)} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", height: 32, padding: "0 8px", borderRadius: 5, border: 0, cursor: "pointer", background: "none", color: "#888892", fontSize: 13 }}
                 onMouseEnter={e => { e.currentTarget.style.background = "#1a1a1c"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "none"; }}>
                 <div style={{ width: 18, height: 18, borderRadius: "50%", background: t.color, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#fff" }}>
@@ -583,23 +589,44 @@ export default function TeamsPage() {
   const [teams, setTeams] = useState<TeamLocal[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const router = useRouter();
+  const createTeam = useCreateTeam();
 
   useEffect(() => {
     setTeams(loadTeams());
     setHydrated(true);
   }, []);
 
-  const handleCreate = (nome: string) => {
+  const handleCreate = async (nome: string) => {
+    // Otimista: adiciona localmente imediatamente para feedback visual instantâneo
+    const tempId = Date.now().toString();
     const novo: TeamLocal = {
-      id: Date.now().toString(),
+      id: tempId,
       nome,
-      memberCount: 0,
+      memberCount: 1,
       color: randomColor(),
       criadoEm: new Date().toISOString(),
     };
     const updated = [...teams, novo];
     setTeams(updated);
     saveTeams(updated);
+
+    // Persiste no banco em background
+    try {
+      const created = await createTeam.mutateAsync({ nome });
+      // Substitui o id temporário pelo id real do banco
+      const withRealId = updated.map(t =>
+        t.id === tempId ? { ...t, id: created.id } : t
+      );
+      setTeams(withRealId);
+      saveTeams(withRealId);
+    } catch {
+      // Se falhar: mantém no localStorage (funciona offline), sem remover do UI
+    }
+  };
+
+  const handleTeamClick = (id: string) => {
+    router.push(`/teams/${id}`);
   };
 
   // Evita flash de conteúdo errado no SSR
@@ -609,13 +636,13 @@ export default function TeamsPage() {
     <div style={{ display: "flex", height: "100%", overflow: "hidden", background: "#111111" }}>
       {/* sidebar */}
       <aside style={{ width: 260, flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.07)", background: "#1a1a1a", display: "flex", flexDirection: "column" }}>
-        <TeamsPanel teams={teams} />
+        <TeamsPanel teams={teams} onTeamClick={handleTeamClick} />
       </aside>
 
       {/* conteúdo principal — muda conforme há times ou não */}
       {teams.length === 0
         ? <EmptyState onCreateTeam={() => setModalOpen(true)} />
-        : <TeamsListView teams={teams} onCreateTeam={() => setModalOpen(true)} />
+        : <TeamsListView teams={teams} onCreateTeam={() => setModalOpen(true)} onTeamClick={handleTeamClick} />
       }
 
       {/* modal */}
