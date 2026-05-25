@@ -289,14 +289,9 @@ function ListNode({
       )}
       style={{ paddingLeft }}
     >
-      {/* ícone substitui chevron: no hover mostra chevron, senão mostra IcList */}
-      <span className="relative mr-0.5 size-4 shrink-0">
-        <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-100 group-hover:opacity-0">
-          <IcList className="text-violet-400" />
-        </span>
-        <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100">
-          <ChevronRight className="size-3 text-muted-foreground" />
-        </span>
+      {/* ícone de lista — sem chevron, lista não tem filhos */}
+      <span className="mr-0.5 flex size-4 shrink-0 items-center justify-center">
+        <IcList className="text-violet-400" />
       </span>
 
       {editing ? (
