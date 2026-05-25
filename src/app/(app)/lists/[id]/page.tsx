@@ -16,8 +16,10 @@ import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
 import { useTasksByProject, useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
+import { useOrgMembers } from "@/hooks/use-members";
+import { useMe } from "@/hooks/use-auth";
 import { intentionToColumn, isOverdue, priorityToColor, priorityToLabel } from "@/lib/mappers/task-status.mapper";
-import type { TaskResponseDto, TaskPriority, V3Intention } from "@/lib/types/api";
+import type { TaskResponseDto, TaskPriority, V3Intention, OrgMemberDto } from "@/lib/types/api";
 
 // ─── Tipo de status visual (espelha StatusTarefa da main) ────────────────────
 type StatusVisual = "em-progresso" | "pendente" | "bloqueado" | "atrasado" | "concluido";
@@ -39,6 +41,8 @@ export default function ListPage({
   const { id } = use(params);
   const { data: projeto, isLoading: loadingProjeto } = useProject(id);
   const { data: tasks = [], isLoading: loadingTasks } = useTasksByProject(id);
+  const { data: me } = useMe();
+  const { data: members = [] } = useOrgMembers(me?.organizationId);
 
   const [view, setView] = useState<"list" | "board">("list");
   const [subtarefasMode, setSubtarefasMode] = useState<SubtarefasMode>("recolhidas");
@@ -90,6 +94,7 @@ export default function ListPage({
           subtarefasMode={subtarefasMode}
           onAddTask={openModal}
           onOpenTask={setSelectedTask}
+          members={members}
         />
       ) : (
         <BoardContent
@@ -163,12 +168,14 @@ function ListContent({
   subtarefasMode,
   onAddTask,
   onOpenTask,
+  members,
 }: {
   grupos: { status: StatusVisual; tarefas: TaskResponseDto[] }[];
   isLoading: boolean;
   subtarefasMode: SubtarefasMode;
   onAddTask: (defaultStatus?: StatusVisual) => void;
   onOpenTask: (task: TaskResponseDto) => void;
+  members: OrgMemberDto[];
 }) {
   return (
     <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ background: "#111111" }}>
@@ -186,6 +193,7 @@ function ListContent({
               subtarefasMode={subtarefasMode}
               onAddTask={onAddTask}
               onOpenTask={onOpenTask}
+              members={members}
             />
           ))
         )}
@@ -393,12 +401,14 @@ function GroupBlock({
   subtarefasMode,
   onAddTask,
   onOpenTask,
+  members,
 }: {
   status: StatusVisual;
   tarefas: TaskResponseDto[];
   subtarefasMode: SubtarefasMode;
   onAddTask: (defaultStatus?: StatusVisual) => void;
   onOpenTask: (task: TaskResponseDto) => void;
+  members: OrgMemberDto[];
 }) {
   const [open, setOpen] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -456,6 +466,7 @@ function GroupBlock({
                 expanded={isExpanded(t.id)}
                 onToggle={() => setExpandedRows((s) => ({ ...s, [t.id]: !s[t.id] }))}
                 onOpen={() => onOpenTask(t)}
+                members={members}
               />
             ))}
             <AddRow onAddTask={() => onAddTask(status)} />
@@ -522,23 +533,41 @@ const VISUAL_TO_BACKEND_PRIO: Record<keyof typeof PRIO_CONFIG_MAP, TaskPriority>
 const ALL_STATUS_VISUAL_ROW: StatusVisualKey[] = ["em-progresso", "pendente", "bloqueado", "concluido"];
 const ALL_PRIO_VISUAL_ROW = Object.keys(PRIO_CONFIG_MAP) as (keyof typeof PRIO_CONFIG_MAP)[];
 
+// ─── Ícones inline das células ────────────────────────────────────────────────
+function IcCalendarInline({ size = 13, color = "#5a5a64" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="5" width="18" height="16" rx="2" /><path d="M3 10h18M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+function IcUserInline({ size = 13, color = "#5a5a64" }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="4" /><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  );
+}
+
 // ─── TaskRow adaptado para dados reais do backend ────────────────────────────
 function TaskRowBackend({
   task,
   expanded: _expanded,
   onToggle,
   onOpen,
+  members,
 }: {
   task: TaskResponseDto;
   expanded: boolean;
   onToggle: () => void;
   onOpen: () => void;
+  members: OrgMemberDto[];
 }) {
   const updateTask = useUpdateTask();
   const updateStatus = useUpdateTaskStatus();
 
   const [hovered, setHovered] = useState(false);
-  const [openCell, setOpenCell] = useState<"status" | "prioridade" | "data" | null>(null);
+  const [openCell, setOpenCell] = useState<"status" | "prioridade" | "responsavel" | null>(null);
   const [editandoData, setEditandoData] = useState(false);
 
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
@@ -547,6 +576,11 @@ function TaskRowBackend({
   const statusVisual = INTENTION_TO_VISUAL_ROW[task.status as V3Intention] ?? "pendente";
   const statusCfg = STATUS_CONFIG[statusVisual];
   const StatusIcon = statusCfg.Icon;
+
+  const assignee = task.assigneeId ? members.find((m) => m.id === task.assigneeId) : null;
+  const assigneeInitials = assignee
+    ? assignee.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+    : null;
 
   const dateLabel = task.dueDate
     ? new Date(task.dueDate.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
@@ -575,6 +609,11 @@ function TaskRowBackend({
     updateTask.mutate({ id: task.id, projectId: task.projectId, dto: { dueDate: val } });
   }
 
+  function handleAssigneeChange(memberId: string | null) {
+    closeDropdown();
+    updateTask.mutate({ id: task.id, projectId: task.projectId, dto: { assigneeId: memberId } });
+  }
+
   const currentPrioVisual = task.priority ? PRIO_VISUAL_MAP[task.priority as TaskPriority] : null;
 
   return (
@@ -583,7 +622,7 @@ function TaskRowBackend({
       onMouseLeave={() => setHovered(false)}
       style={{ cursor: "default" }}
     >
-      {/* Nome — clique abre TaskSheet */}
+      {/* Nome — clique no título abre TaskSheet */}
       <td style={{ ...tdStyle, padding: "0 10px 0 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, height: 36, paddingLeft: 8 }}>
           <button
@@ -610,12 +649,71 @@ function TaskRowBackend({
         </div>
       </td>
 
-      {/* Responsável — estático por enquanto */}
-      <td style={{ ...tdStyle, padding: "0 10px" }}>
-        <span style={{ fontSize: 12, color: "#5a5a64" }}>—</span>
+      {/* Responsável — dropdown inline com membros reais */}
+      <td style={{ ...tdStyle, padding: "0 10px", position: "relative" }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setOpenCell(openCell === "responsavel" ? null : "responsavel"); }}
+          style={{ background: "none", border: 0, cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 6 }}
+          title="Alterar responsável"
+        >
+          {assignee ? (
+            <>
+              <span style={{
+                width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                background: "#3d2a6b", color: "#d8ccff",
+                fontSize: 9, fontWeight: 700,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+              }}>
+                {assigneeInitials}
+              </span>
+              <span style={{ fontSize: 12, color: "#d4d4dc" }}>{assignee.name.split(" ")[0]}</span>
+            </>
+          ) : (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: hovered ? "#5a5a64" : "transparent" }}>
+              <IcUserInline size={13} color={hovered ? "#5a5a64" : "transparent"} />
+              <span style={{ fontSize: 12 }}>Atribuir</span>
+            </span>
+          )}
+        </button>
+        {openCell === "responsavel" && (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 100 }} onClick={closeDropdown} />
+            <div style={{
+              position: "absolute", top: "calc(100% + 2px)", left: 0, zIndex: 101,
+              background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8,
+              padding: 4, minWidth: 180, maxHeight: 260, overflowY: "auto",
+              boxShadow: "0 8px 24px rgba(0,0,0,.5)",
+            }}>
+              <button type="button" onClick={() => handleAssigneeChange(null)} style={{ ...dropItemStyle("#7a7a85"), gap: 8 }}>
+                <IcUserInline size={13} color="#7a7a85" />
+                <span style={{ color: "#d4d4dc" }}>Sem responsável</span>
+                {!task.assigneeId && <IcCheck size={11} />}
+              </button>
+              {members.map((m) => {
+                const initials = m.name.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+                const isSelected = task.assigneeId === m.id;
+                return (
+                  <button key={m.id} type="button" onClick={() => handleAssigneeChange(m.id)} style={{ ...dropItemStyle("#d4d4dc"), gap: 8, background: isSelected ? "rgba(124,92,255,0.12)" : "none" }}>
+                    <span style={{
+                      width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                      background: "#3d2a6b", color: "#d8ccff",
+                      fontSize: 9, fontWeight: 700,
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                      {initials}
+                    </span>
+                    <span style={{ flex: 1 }}>{m.name}</span>
+                    {isSelected && <IcCheck size={11} />}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </td>
 
-      {/* Data de vencimento — dropdown inline */}
+      {/* Data de vencimento — ícone de calendário quando vazia */}
       <td style={{ ...tdStyle, padding: "0 10px", position: "relative" }}>
         {editandoData ? (
           <input
@@ -633,7 +731,7 @@ function TaskRowBackend({
           <button
             type="button"
             onClick={() => setEditandoData(true)}
-            style={{ background: "none", border: 0, cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 4 }}
+            style={{ background: "none", border: 0, cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 5 }}
             title="Alterar data"
           >
             {dateLabel ? (
@@ -641,13 +739,16 @@ function TaskRowBackend({
                 {overdue && "⚠ "}{dateLabel}
               </span>
             ) : (
-              <span style={{ fontSize: 12, color: hovered ? "#5a5a64" : "transparent" }}>Definir data</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, opacity: hovered ? 1 : 0, transition: "opacity .1s" }}>
+                <IcCalendarInline size={13} color="#5a5a64" />
+                <span style={{ fontSize: 12, color: "#5a5a64" }}>Definir data</span>
+              </span>
             )}
           </button>
         )}
       </td>
 
-      {/* Prioridade — dropdown inline */}
+      {/* Prioridade — ícone de bandeira quando vazia */}
       <td style={{ ...tdStyle, padding: "0 10px", position: "relative" }}>
         <button
           type="button"
@@ -661,7 +762,10 @@ function TaskRowBackend({
               <span style={{ fontSize: 12, color: prioColor }}>{prioLabel}</span>
             </>
           ) : (
-            <span style={{ fontSize: 12, color: hovered ? "#5a5a64" : "transparent" }}>Definir</span>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, opacity: hovered ? 1 : 0, transition: "opacity .1s" }}>
+              <IcFlagInline size={12} color="#5a5a64" />
+              <span style={{ fontSize: 12, color: "#5a5a64" }}>Definir</span>
+            </span>
           )}
         </button>
         {openCell === "prioridade" && (
@@ -673,7 +777,9 @@ function TaskRowBackend({
               padding: 4, minWidth: 150, boxShadow: "0 8px 24px rgba(0,0,0,.5)",
             }}>
               <button type="button" onClick={() => handlePrioChange(null)} style={dropItemStyle("#7a7a85")}>
-                <IcFlagInline size={12} color="#7a7a85" /> Sem prioridade
+                <IcFlagInline size={12} color="#7a7a85" />
+                <span style={{ color: "#d4d4dc" }}>Sem prioridade</span>
+                {!task.priority && <IcCheck size={11} />}
               </button>
               {ALL_PRIO_VISUAL_ROW.map((p) => {
                 const cfg = PRIO_CONFIG_MAP[p];
@@ -690,7 +796,7 @@ function TaskRowBackend({
         )}
       </td>
 
-      {/* Status — dropdown inline */}
+      {/* Status — ícone do status atual + dropdown */}
       <td style={{ ...tdStyle, padding: "0 10px", position: "relative" }}>
         <button
           type="button"
