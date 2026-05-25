@@ -681,7 +681,7 @@ function GroupBlock({ cfg, tasks, listId, onSelectTask, onOpenModal }: {
           ) : (
             <button
               type="button"
-              onClick={onOpenModal}
+              onClick={() => setAddingInline(true)}
               style={{
                 height: 32, display: "flex", alignItems: "center", gap: 8,
                 paddingLeft: 14, width: "100%", background: "none", border: 0,
