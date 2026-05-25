@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, ChevronDown, ChevronLeft, ChevronRight, Bell, Search, LayoutGrid, List } from "lucide-react";
-import { useCreateTeam, useTeams } from "@/hooks/use-teams";
+import { useCreateTeam, useTeams, useDeleteTeam } from "@/hooks/use-teams";
 import { useAuthStore } from "@/lib/stores/auth";
 
 /* ══════════════════════════════════════════════════════════════════
@@ -579,6 +579,94 @@ function CreateTeamModal({ onClose, onCreate }: { onClose: () => void; onCreate:
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   MODAL EDITAR EQUIPE
+══════════════════════════════════════════════════════════════════ */
+
+function EditTeamModal({ team, onClose, onSave }: { team: TeamLocal; onClose: () => void; onSave: (id: string, nome: string) => void }) {
+  const [nome, setNome] = useState(team.nome);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = nome.trim();
+    if (!trimmed || trimmed === team.nome) { onClose(); return; }
+    onSave(team.id, trimmed);
+    onClose();
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)" }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ width: 420, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#e4e4e4", marginBottom: 6 }}>Editar equipe</h2>
+        <p style={{ fontSize: 13, color: "#666", marginBottom: 20, lineHeight: 1.5 }}>
+          Altere o nome da equipe.
+        </p>
+        <form onSubmit={handleSubmit}>
+          <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Nome da equipe</label>
+          <input
+            autoFocus
+            value={nome}
+            onChange={e => setNome(e.target.value)}
+            placeholder="Nome da equipe..."
+            style={{ width: "100%", height: 38, padding: "0 12px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#e4e4e4", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+          />
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+            <button type="button" onClick={onClose} style={{ height: 34, padding: "0 16px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#888", fontSize: 13 }}
+              onMouseEnter={e => { e.currentTarget.style.color = "#e4e4e4"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "#888"; }}>
+              Cancelar
+            </button>
+            <button type="submit" disabled={!nome.trim()} style={{ height: 34, padding: "0 20px", borderRadius: 7, border: "none", background: nome.trim() ? "#e4e4e4" : "#2a2a2a", cursor: nome.trim() ? "pointer" : "not-allowed", color: nome.trim() ? "#111" : "#555", fontSize: 13, fontWeight: 600, transition: "all .15s" }}>
+              Salvar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MODAL CONFIRMAR EXCLUSÃO
+══════════════════════════════════════════════════════════════════ */
+
+function DeleteTeamModal({ team, onClose, onConfirm, isDeleting }: { team: TeamLocal; onClose: () => void; onConfirm: () => void; isDeleting: boolean }) {
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.6)" }}
+      onClick={e => { if (e.target === e.currentTarget && !isDeleting) onClose(); }}>
+      <div style={{ width: 420, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
+        {/* ícone */}
+        <div style={{ width: 44, height: 44, borderRadius: 10, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
+          <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+        </div>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#e4e4e4", marginBottom: 8 }}>
+          Excluir &ldquo;{team.nome}&rdquo;?
+        </h2>
+        <p style={{ fontSize: 13, color: "#666", lineHeight: 1.6, marginBottom: 24 }}>
+          Esta ação não pode ser desfeita. Todos os membros serão removidos e o time será excluído permanentemente.
+        </p>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button type="button" onClick={onClose} disabled={isDeleting}
+            style={{ height: 34, padding: "0 16px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: isDeleting ? "not-allowed" : "pointer", color: "#888", fontSize: 13, opacity: isDeleting ? 0.5 : 1 }}
+            onMouseEnter={e => { if (!isDeleting) e.currentTarget.style.color = "#e4e4e4"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "#888"; }}>
+            Cancelar
+          </button>
+          <button type="button" onClick={onConfirm} disabled={isDeleting}
+            style={{ height: 34, padding: "0 20px", borderRadius: 7, border: "none", background: isDeleting ? "#7f1d1d" : "#ef4444", cursor: isDeleting ? "not-allowed" : "pointer", color: "#fff", fontSize: 13, fontWeight: 600, transition: "background .15s", minWidth: 100 }}
+            onMouseEnter={e => { if (!isDeleting) e.currentTarget.style.background = "#dc2626"; }}
+            onMouseLeave={e => { if (!isDeleting) e.currentTarget.style.background = "#ef4444"; }}>
+            {isDeleting ? "Excluindo..." : "Sim, excluir"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
    ALL PEOPLE VIEW — aba "Todas as pessoas"
 ══════════════════════════════════════════════════════════════════ */
 
@@ -835,10 +923,13 @@ function TeamsPanel({
 export default function TeamsPage() {
   const [localTeams, setLocalTeams] = useState<TeamLocal[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<TeamLocal | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<TeamLocal | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [activeView, setActiveView] = useState<SidebarView>("equipes");
   const router = useRouter();
   const createTeam = useCreateTeam();
+  const deleteTeam = useDeleteTeam();
   const user = useAuthStore((s) => s.user);
   const { data: apiTeams } = useTeams();
 
@@ -904,14 +995,41 @@ export default function TeamsPage() {
     router.push(`/teams/${id}`);
   };
 
-  const handleDelete = (id: string) => {
-    const updated = localTeams.filter(t => t.id !== id);
+  const handleEdit = (id: string) => {
+    const team = localTeams.find(t => t.id === id);
+    if (team) setEditTarget(team);
+  };
+
+  const handleEditSave = (id: string, novoNome: string) => {
+    const updated = localTeams.map(t => t.id === id ? { ...t, nome: novoNome } : t);
     setLocalTeams(updated);
     saveTeams(updated);
   };
 
-  const handleEdit = (id: string) => {
-    router.push(`/teams/${id}`);
+  const handleDelete = (id: string) => {
+    const team = localTeams.find(t => t.id === id);
+    if (team) setDeleteTarget(team);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deleteTarget) return;
+    const id = deleteTarget.id;
+
+    // Remove localmente de imediato
+    const updated = localTeams.filter(t => t.id !== id);
+    setLocalTeams(updated);
+    saveTeams(updated);
+
+    // Persiste no banco se o id é real (não temporário)
+    if (user?.organizationId) {
+      try {
+        await deleteTeam.mutateAsync(id);
+      } catch {
+        // silencia — já foi removido do localStorage
+      }
+    }
+
+    setDeleteTarget(null);
   };
 
   // Evita flash de conteúdo errado no SSR
@@ -938,11 +1056,27 @@ export default function TeamsPage() {
         <TeamsListView teams={teams} onCreateTeam={() => setModalOpen(true)} onTeamClick={handleTeamClick} onEdit={handleEdit} onDelete={handleDelete} />
       )}
 
-      {/* modal */}
       {modalOpen && (
         <CreateTeamModal
           onClose={() => setModalOpen(false)}
           onCreate={handleCreate}
+        />
+      )}
+
+      {editTarget && (
+        <EditTeamModal
+          team={editTarget}
+          onClose={() => setEditTarget(null)}
+          onSave={handleEditSave}
+        />
+      )}
+
+      {deleteTarget && (
+        <DeleteTeamModal
+          team={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleDeleteConfirm}
+          isDeleting={deleteTeam.isPending}
         />
       )}
     </div>

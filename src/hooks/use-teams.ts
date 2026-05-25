@@ -38,6 +38,19 @@ export function useCreateTeam() {
   });
 }
 
+export function useDeleteTeam() {
+  const qc = useQueryClient();
+
+  return useMutation<void, Error, string>({
+    mutationFn: async (teamId) => {
+      await api.delete(`/teams/${teamId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.teams.all });
+    },
+  });
+}
+
 export function useTeams() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
