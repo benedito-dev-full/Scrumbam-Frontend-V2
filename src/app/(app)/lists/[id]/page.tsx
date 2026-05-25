@@ -15,7 +15,7 @@ import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
-import { useTasksByProject, useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
+import { useTasksByProject, useUpdateTask, useUpdateTaskStatus, useCreateTask, useSubtasks } from "@/hooks/use-tasks";
 import { useProjectMembers, type ProjectMemberDto } from "@/hooks/use-members";
 import { intentionToColumn, isOverdue, priorityToColor, priorityToLabel } from "@/lib/mappers/task-status.mapper";
 import type { TaskResponseDto, TaskPriority, V3Intention } from "@/lib/types/api";
@@ -410,15 +410,8 @@ function GroupBlock({
   members: ProjectMemberDto[];
 }) {
   const [open, setOpen] = useState(true);
-  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
   const cfg = STATUS_CONFIG[status];
   const StatusIcon = cfg.Icon;
-
-  function isExpanded(id: string) {
-    if (subtarefasMode === "expandidas") return true;
-    if (subtarefasMode === "recolhidas") return false;
-    return !!expandedRows[id];
-  }
 
   const tarefasVisiveis = subtarefasMode === "separar"
     ? tarefas.filter((t) => !t.idPai)
@@ -462,9 +455,7 @@ function GroupBlock({
               <TaskRowBackend
                 key={t.id}
                 task={t}
-                expanded={isExpanded(t.id)}
-                onToggle={() => setExpandedRows((s) => ({ ...s, [t.id]: !s[t.id] }))}
-                onOpen={() => onOpenTask(t)}
+                onOpenTask={onOpenTask}
                 members={members}
               />
             ))}
@@ -551,23 +542,27 @@ function IcUserInline({ size = 13, color = "#5a5a64" }: { size?: number; color?:
 // ─── TaskRow adaptado para dados reais do backend ────────────────────────────
 function TaskRowBackend({
   task,
-  expanded: _expanded,
-  onToggle,
-  onOpen,
+  onOpenTask,
   members,
+  depth = 0,
 }: {
   task: TaskResponseDto;
-  expanded: boolean;
-  onToggle: () => void;
-  onOpen: () => void;
+  onOpenTask: (t: TaskResponseDto) => void;
   members: ProjectMemberDto[];
+  depth?: number;
 }) {
   const updateTask = useUpdateTask();
   const updateStatus = useUpdateTaskStatus();
+  const createTask = useCreateTask();
 
   const [hovered, setHovered] = useState(false);
   const [openCell, setOpenCell] = useState<"status" | "prioridade" | "responsavel" | null>(null);
   const [editandoData, setEditandoData] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [addingSubtask, setAddingSubtask] = useState(false);
+  const [newSubtaskName, setNewSubtaskName] = useState("");
+
+  const { data: subtasks = [], isLoading: loadingSubtasks } = useSubtasks(task.id, expanded);
 
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
   const prioColor = priorityToColor(task.priority);
@@ -616,8 +611,25 @@ function TaskRowBackend({
   }
 
   const currentPrioVisual = task.priority ? PRIO_VISUAL_MAP[task.priority as TaskPriority] : null;
+  const indent = 8 + depth * 20;
+
+  function handleAddSubtask() {
+    const nome = newSubtaskName.trim();
+    if (!nome) return;
+    createTask.mutate(
+      { titulo: nome, idProject: task.projectId, idPai: task.id },
+      {
+        onSuccess: () => {
+          setNewSubtaskName("");
+          setAddingSubtask(false);
+          setExpanded(true);
+        },
+      }
+    );
+  }
 
   return (
+    <>
     <tr
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -625,11 +637,17 @@ function TaskRowBackend({
     >
       {/* Nome — clique no título abre TaskSheet */}
       <td style={{ ...tdStyle, padding: "0 10px 0 0" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, height: 36, paddingLeft: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, height: 36, paddingLeft: indent }}>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onToggle(); }}
-            style={{ width: 16, height: 16, flexShrink: 0, background: "none", border: 0, color: "#5a5a64", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+            onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
+            style={{
+              width: 16, height: 16, flexShrink: 0, background: "none", border: 0,
+              color: "#5a5a64", cursor: "pointer", display: "inline-flex",
+              alignItems: "center", justifyContent: "center",
+              transform: expanded ? "rotate(0deg)" : "rotate(-90deg)",
+              transition: "transform .15s",
+            }}
           >
             <IcCaret size={10} />
           </button>
@@ -639,8 +657,8 @@ function TaskRowBackend({
           <span
             role="button"
             tabIndex={0}
-            onClick={onOpen}
-            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(); }}
+            onClick={() => onOpenTask(task)}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpenTask(task); }}
             style={{ fontSize: 13, color: "#e6e6ea", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
             title="Abrir detalhes"
           >
@@ -851,6 +869,84 @@ function TaskRowBackend({
       {/* Ações */}
       <td style={{ ...tdStyle }} />
     </tr>
+
+    {/* Subtarefas — lazy, recursivas */}
+    {expanded && (
+      <>
+        {loadingSubtasks && (
+          <tr>
+            <td colSpan={7} style={{ padding: "6px 0 6px", paddingLeft: indent + 22, color: "#5a5a64", fontSize: 12, borderBottom: "1px solid #1f1f25" }}>
+              Carregando...
+            </td>
+          </tr>
+        )}
+        {subtasks.map((sub) => (
+          <TaskRowBackend
+            key={sub.id}
+            task={sub}
+            onOpenTask={onOpenTask}
+            members={members}
+            depth={depth + 1}
+          />
+        ))}
+        {/* Linha de adicionar subtarefa */}
+        {addingSubtask ? (
+          <tr>
+            <td colSpan={7} style={{ borderBottom: "1px solid #1f1f25", padding: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, height: 34, paddingLeft: indent + 22 }}>
+                <input
+                  autoFocus
+                  value={newSubtaskName}
+                  onChange={(e) => setNewSubtaskName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleAddSubtask();
+                    if (e.key === "Escape") { setAddingSubtask(false); setNewSubtaskName(""); }
+                  }}
+                  placeholder="Nome da subtarefa..."
+                  style={{
+                    flex: 1, background: "none", border: "none", outline: "none",
+                    color: "#e6e6ea", fontSize: 13,
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddSubtask}
+                  disabled={createTask.isPending || !newSubtaskName.trim()}
+                  style={{ background: "none", border: 0, color: "#7c5cff", cursor: "pointer", fontSize: 12, padding: "0 8px" }}
+                >
+                  {createTask.isPending ? "..." : "Salvar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAddingSubtask(false); setNewSubtaskName(""); }}
+                  style={{ background: "none", border: 0, color: "#5a5a64", cursor: "pointer", fontSize: 12, padding: "0 8px" }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </td>
+          </tr>
+        ) : (
+          <tr>
+            <td colSpan={7} style={{ borderBottom: "1px solid #1f1f25" }}>
+              <button
+                type="button"
+                onClick={() => setAddingSubtask(true)}
+                style={{
+                  background: "none", border: 0, cursor: "pointer",
+                  paddingLeft: indent + 22, height: 30, width: "100%", textAlign: "left",
+                  color: "#5a5a64", fontSize: 12, display: "flex", alignItems: "center", gap: 5,
+                }}
+              >
+                <IcPlus size={11} />
+                Adicionar subtarefa
+              </button>
+            </td>
+          </tr>
+        )}
+      </>
+    )}
+    </>
   );
 }
 

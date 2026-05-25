@@ -109,6 +109,27 @@ export function useMyTasks(status?: string) {
   });
 }
 
+/**
+ * Lista subtarefas diretas de uma task (filhas via idPai).
+ *
+ * Lazy: só dispara quando `enabled=true` (usuário expandiu a row).
+ * Mapeia para `GET /tasks?idPai={parentId}&limit=100`.
+ */
+export function useSubtasks(parentId: string, enabled: boolean) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  return useQuery<TaskResponseDto[]>({
+    queryKey: qk.tasks.children(parentId),
+    queryFn: async () => {
+      const res = await api.get<TasksPage>('/tasks', {
+        params: { idPai: parentId, limit: 100 },
+      });
+      return res.data.items;
+    },
+    enabled: !!accessToken && !!parentId && enabled,
+    staleTime: 15_000,
+  });
+}
+
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 /**
@@ -136,6 +157,7 @@ export function useCreateTask() {
       priority?: string;
       dueDate?: string;
       assigneeId?: string;
+      idPai?: string;
     }
   >({
     mutationFn: async ({ titulo, idProject, ...rest }) => {
@@ -150,6 +172,11 @@ export function useCreateTask() {
       void queryClient.invalidateQueries({
         queryKey: qk.tasks.byProject(variables.idProject),
       });
+      if (variables.idPai) {
+        void queryClient.invalidateQueries({
+          queryKey: qk.tasks.children(variables.idPai),
+        });
+      }
     },
   });
 }

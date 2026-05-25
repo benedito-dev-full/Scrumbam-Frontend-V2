@@ -31,6 +31,7 @@ export const qk = {
     all: ["tasks"] as const,
     byProject: (projectId: string) => ["tasks", "project", projectId] as const,
     byId: (id: string) => ["tasks", id] as const,
+    children: (parentId: string) => ["tasks", "children", parentId] as const,
     bySprint: (sprintId: string) => ["tasks", "sprint", sprintId] as const,
     assigned: (userId: string) => ["tasks", "assigned", userId] as const,
     filtered: (filters: TaskFilters) => ["tasks", "filtered", filters] as const,
