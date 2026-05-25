@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { X, ChevronDown } from "lucide-react";
+import { X, ChevronDown, Check } from "lucide-react";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { useCreateList } from "@/hooks/use-projects";
+import { useCreateList, useSpaces } from "@/hooks/use-projects";
 import { getApiErrorMessage } from "@/lib/api";
+import type { DProjectDto } from "@/lib/types/api";
 
 interface CreateListDialogProps {
   parentId: string;
@@ -15,24 +16,65 @@ interface CreateListDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const COLORS = ["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6","#ef4444","#14b8a6"];
+
+function chipColor(id: string) {
+  const idx = parseInt(id, 10) % COLORS.length;
+  return COLORS[isNaN(idx) ? 0 : idx];
+}
+
+function SpaceChip({ space }: { space: DProjectDto }) {
+  const initials = space.nome.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
+  return (
+    <span
+      className="grid size-5 shrink-0 place-items-center rounded-md text-[9px] font-bold text-white"
+      style={{ background: chipColor(space.id) }}
+    >
+      {initials}
+    </span>
+  );
+}
+
 export function CreateListDialog({ parentId, parentName, open, onOpenChange }: CreateListDialogProps) {
   const [nome, setNome] = useState("");
   const [privado, setPrivado] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedId, setSelectedId] = useState(parentId);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const { mutate, isPending } = useCreateList();
+  const { data: spaces } = useSpaces();
+
+  const selectedSpace = spaces?.find((s) => s.id === selectedId);
+  const displayName = selectedSpace?.nome ?? parentName ?? "Espaço";
+  const displayId = selectedSpace?.id ?? parentId;
 
   useEffect(() => {
     if (!open) {
       setNome("");
       setPrivado(false);
+      setDropdownOpen(false);
+      setSelectedId(parentId);
     }
-  }, [open]);
+  }, [open, parentId]);
+
+  // fecha dropdown ao clicar fora
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handler(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [dropdownOpen]);
 
   function handleSubmit() {
     const trimmed = nome.trim();
     if (!trimmed) return;
     mutate(
-      { nome: trimmed, idPai: parentId },
+      { nome: trimmed, idPai: selectedId },
       {
         onSuccess: (created) => {
           toast.success(`Lista "${created.nome}" criada`);
@@ -45,13 +87,9 @@ export function CreateListDialog({ parentId, parentName, open, onOpenChange }: C
     );
   }
 
-  const initials = parentName
-    ? parentName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
-    : "?";
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="p-0 gap-0 max-w-[540px] bg-[#1e1e24] border border-[#2a2a35] rounded-xl shadow-2xl">
+      <DialogContent className="p-0 gap-0 w-[600px] max-w-[600px] bg-[#1e1e24] border border-[#2a2a35] rounded-xl shadow-2xl">
         {/* header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-3">
           <div>
@@ -85,20 +123,42 @@ export function CreateListDialog({ parentId, parentName, open, onOpenChange }: C
             />
           </div>
 
-          {/* Espaço (localização) */}
-          <div className="space-y-1.5">
+          {/* Espaço (localização) — dropdown funcional */}
+          <div className="space-y-1.5" ref={dropdownRef}>
             <label className="text-[13px] font-medium text-white">Espaço (localização)</label>
-            <div className="flex items-center gap-2 rounded-md border border-[#3a3a45] bg-[#16161c] px-3 py-2.5">
-              <span className="grid size-5 shrink-0 place-items-center rounded-md bg-[#22c55e] text-[9px] font-bold text-white">
-                {initials}
-              </span>
-              <span className="flex-1 text-[13px] text-white">{parentName ?? "Espaço"}</span>
-              <ChevronDown className="size-4 text-[#8b8b9a]" />
-            </div>
+            <button
+              type="button"
+              onClick={() => setDropdownOpen((v) => !v)}
+              className="flex w-full items-center gap-2 rounded-md border border-[#3a3a45] bg-[#16161c] px-3 py-2.5 text-left transition-colors hover:border-[#6366f1]"
+            >
+              {selectedSpace && <SpaceChip space={selectedSpace} />}
+              <span className="flex-1 text-[13px] text-white truncate">{displayName}</span>
+              <ChevronDown className={`size-4 text-[#8b8b9a] transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {dropdownOpen && (
+              <div className="mt-1 max-h-[180px] overflow-y-auto rounded-md border border-[#3a3a45] bg-[#16161c] py-1 shadow-xl">
+                {spaces?.length === 0 && (
+                  <p className="px-3 py-2 text-[13px] text-[#8b8b9a]">Nenhum espaço encontrado</p>
+                )}
+                {spaces?.map((space) => (
+                  <button
+                    key={space.id}
+                    type="button"
+                    onClick={() => { setSelectedId(space.id); setDropdownOpen(false); }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-[13px] text-white hover:bg-[#2a2a35]"
+                  >
+                    <SpaceChip space={space} />
+                    <span className="flex-1 truncate">{space.nome}</span>
+                    {space.id === selectedId && <Check className="size-3.5 text-[#6366f1]" />}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Tornar privado */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between py-1">
             <div>
               <p className="text-[13px] font-medium text-white">Tornar privado</p>
               <p className="text-[12px] text-[#8b8b9a]">Somente você e membros convidados têm acesso</p>

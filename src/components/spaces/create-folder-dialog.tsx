@@ -48,7 +48,7 @@ export function CreateFolderDialog({ spaceId, open, onOpenChange }: CreateFolder
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="p-0 gap-0 max-w-[540px] bg-[#1e1e24] border border-[#2a2a35] rounded-xl shadow-2xl">
+      <DialogContent className="p-0 gap-0 w-[600px] max-w-[600px] bg-[#1e1e24] border border-[#2a2a35] rounded-xl shadow-2xl">
         {/* header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-3">
           <div>
@@ -94,26 +94,8 @@ export function CreateFolderDialog({ spaceId, open, onOpenChange }: CreateFolder
             />
           </div>
 
-          {/* Configurações */}
-          <div>
-            <p className="mb-2 text-[13px] font-medium text-white">Configurações</p>
-            <div className="rounded-md border border-[#2a2a35] bg-[#16161c] px-4 py-3 flex items-center gap-3">
-              <div className="grid size-8 shrink-0 place-items-center rounded-full border border-[#3a3a45] text-[#8b8b9a]">
-                <Circle className="size-4" />
-              </div>
-              <div className="flex-1">
-                <p className="text-[13px] font-medium text-white">Status</p>
-                <p className="text-[12px] text-[#8b8b9a]">Usar status de Espaço</p>
-              </div>
-              <div className="flex items-center gap-2 text-[#8b8b9a]">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
-              </div>
-            </div>
-          </div>
-
           {/* Tornar privado */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between py-1">
             <div>
               <p className="text-[13px] font-medium text-white">Tornar privado</p>
               <p className="text-[12px] text-[#8b8b9a]">Somente você e membros convidados têm acesso</p>
