@@ -611,7 +611,7 @@ function TaskRowBackend({
   }
 
   const currentPrioVisual = task.priority ? PRIO_VISUAL_MAP[task.priority as TaskPriority] : null;
-  const indent = 8 + depth * 20;
+  const indent = 8 + depth * 30;
 
   function handleAddSubtask() {
     const nome = newSubtaskName.trim();
