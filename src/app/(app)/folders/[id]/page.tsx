@@ -10,7 +10,7 @@ import {
   TopBtn, ListRow, AddListRow,
 } from "@/components/shell/entity-page";
 import Link from "next/link";
-import { useFolders, useLists } from "@/hooks/use-projects";
+import { useProject, useLists } from "@/hooks/use-projects";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 type TabId = "overview" | "lista" | "quadro" | "calendario" | "gantt" | "tabela";
@@ -29,8 +29,7 @@ export default function FolderPage({ params }: { params: Promise<{ id: string }>
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
 
-  const { data: folders, isLoading } = useFolders(null);
-  const entidade = folders?.find((f) => f.id === id) ?? null;
+  const { data: entidade, isLoading } = useProject(id);
   const { data: listas = [] } = useLists(entidade ? id : null);
   const docs: typeof listas = [];
   const recentes = [...listas].slice(0, 6);
