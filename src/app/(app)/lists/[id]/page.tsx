@@ -82,7 +82,7 @@ const COL_CFG: Record<string, ColCfg> = {
       </span>
     ),
   },
-  progresso: {
+  "em-progresso": {
     label: "EM PROGRESSO",
     chipBg: "#6f54f7", chipColor: "#ffffff",
     dotEl: (
