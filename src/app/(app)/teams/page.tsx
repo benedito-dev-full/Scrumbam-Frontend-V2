@@ -274,37 +274,112 @@ function EmptyState({ onCreateTeam }: { onCreateTeam: () => void }) {
    TEAM CARD — grid de cards quando há times
 ══════════════════════════════════════════════════════════════════ */
 
-function TeamCard({ team, onNotify, onClick }: { team: TeamLocal; onNotify: (id: string) => void; onClick: (id: string) => void }) {
+function TeamCard({
+  team,
+  onNotify,
+  onClick,
+  onEdit,
+  onDelete,
+}: {
+  team: TeamLocal;
+  onNotify: (id: string) => void;
+  onClick: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
   const inicial = team.nome.trim().charAt(0).toUpperCase();
+  const [hovered, setHovered] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div
-      onClick={() => onClick(team.id)}
+      onClick={() => { if (!menuOpen) onClick(team.id); }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => { setHovered(false); setMenuOpen(false); }}
       style={{
         width: 192,
         borderRadius: 10,
         background: "#1a1a1a",
-        border: "1px solid rgba(255,255,255,0.07)",
-        overflow: "hidden",
+        border: `1px solid ${hovered ? "rgba(255,255,255,0.18)" : "rgba(255,255,255,0.07)"}`,
+        overflow: "visible",
         cursor: "pointer",
         transition: "border-color .15s",
+        position: "relative",
       }}
-      onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.18)"; }}
-      onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)"; }}
     >
       {/* preview escuro */}
-      <div style={{ height: 110, background: "linear-gradient(160deg,#1c1c2e 0%,#111118 100%)", position: "relative", overflow: "hidden" }}>
-        {/* linhas decorativas */}
+      <div style={{ height: 110, background: "linear-gradient(160deg,#1c1c2e 0%,#111118 100%)", position: "relative", overflow: "hidden", borderRadius: "10px 10px 0 0" }}>
         <div style={{ position: "absolute", top: 22, left: 16, right: 16, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.06)" }} />
         <div style={{ position: "absolute", top: 36, left: 16, right: 40, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.04)" }} />
         <div style={{ position: "absolute", top: 50, left: 16, right: 28, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.03)" }} />
+
+        {/* botão ··· — só aparece no hover */}
+        {hovered && (
+          <button
+            type="button"
+            aria-label="Opções"
+            onClick={e => { e.stopPropagation(); setMenuOpen(v => !v); }}
+            style={{
+              position: "absolute", top: 8, right: 8,
+              width: 28, height: 28, borderRadius: 6,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(20,20,28,0.85)",
+              cursor: "pointer", color: "#c4c4c4",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              backdropFilter: "blur(4px)",
+              zIndex: 2,
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = "rgba(40,40,50,0.95)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "rgba(20,20,28,0.85)"; }}
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor">
+              <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
+            </svg>
+          </button>
+        )}
+
+        {/* dropdown */}
+        {menuOpen && (
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: "absolute", top: 40, right: 8,
+              width: 140, borderRadius: 8,
+              background: "#1e1e22", border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+              zIndex: 50, overflow: "hidden",
+            }}
+          >
+            {[
+              { label: "Editar", icon: "✏️", action: () => { setMenuOpen(false); onEdit(team.id); } },
+              { label: "Excluir", icon: "🗑️", action: () => { setMenuOpen(false); onDelete(team.id); }, danger: true },
+            ].map(item => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={item.action}
+                style={{
+                  display: "flex", alignItems: "center", gap: 8,
+                  width: "100%", height: 36, padding: "0 12px",
+                  border: 0, background: "none", cursor: "pointer",
+                  color: item.danger ? "#f87171" : "#c4c4c4",
+                  fontSize: 13, textAlign: "left",
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = item.danger ? "rgba(248,113,113,0.08)" : "rgba(255,255,255,0.05)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
+              >
+                <span style={{ fontSize: 12 }}>{item.icon}</span>
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* rodapé do card */}
       <div style={{ padding: "10px 12px 12px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
-            {/* avatar */}
             <div style={{
               width: 34, height: 34, borderRadius: "50%",
               background: team.color,
@@ -323,7 +398,6 @@ function TeamCard({ team, onNotify, onClick }: { team: TeamLocal; onNotify: (id:
               </p>
             </div>
           </div>
-          {/* sino */}
           <button
             type="button"
             aria-label="Notificações"
@@ -350,10 +424,14 @@ function TeamsListView({
   teams,
   onCreateTeam,
   onTeamClick,
+  onEdit,
+  onDelete,
 }: {
   teams: TeamLocal[];
   onCreateTeam: () => void;
   onTeamClick: (id: string) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const [activeFilter, setActiveFilter] = useState<FilterId | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
@@ -443,7 +521,7 @@ function TeamsListView({
         ) : (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
             {filtered.map(team => (
-              <TeamCard key={team.id} team={team} onNotify={() => {}} onClick={onTeamClick} />
+              <TeamCard key={team.id} team={team} onNotify={() => {}} onClick={onTeamClick} onEdit={onEdit} onDelete={onDelete} />
             ))}
           </div>
         )}
@@ -826,6 +904,16 @@ export default function TeamsPage() {
     router.push(`/teams/${id}`);
   };
 
+  const handleDelete = (id: string) => {
+    const updated = localTeams.filter(t => t.id !== id);
+    setLocalTeams(updated);
+    saveTeams(updated);
+  };
+
+  const handleEdit = (id: string) => {
+    router.push(`/teams/${id}`);
+  };
+
   // Evita flash de conteúdo errado no SSR
   if (!hydrated) return null;
 
@@ -847,7 +935,7 @@ export default function TeamsPage() {
       ) : teams.length === 0 ? (
         <EmptyState onCreateTeam={() => setModalOpen(true)} />
       ) : (
-        <TeamsListView teams={teams} onCreateTeam={() => setModalOpen(true)} onTeamClick={handleTeamClick} />
+        <TeamsListView teams={teams} onCreateTeam={() => setModalOpen(true)} onTeamClick={handleTeamClick} onEdit={handleEdit} onDelete={handleDelete} />
       )}
 
       {/* modal */}
