@@ -15,9 +15,9 @@ import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
-import { useTasksByProject } from "@/hooks/use-tasks";
+import { useTasksByProject, useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
 import { intentionToColumn, isOverdue, priorityToColor, priorityToLabel } from "@/lib/mappers/task-status.mapper";
-import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
+import type { TaskResponseDto, TaskPriority, V3Intention } from "@/lib/types/api";
 
 // ─── Tipo de status visual (espelha StatusTarefa da main) ────────────────────
 type StatusVisual = "em-progresso" | "pendente" | "bloqueado" | "atrasado" | "concluido";
@@ -488,6 +488,40 @@ function HeadRow() {
   );
 }
 
+// ─── Mapeamentos para dropdowns inline ───────────────────────────────────────
+
+type StatusVisualKey = "em-progresso" | "pendente" | "bloqueado" | "atrasado" | "concluido";
+
+const INTENTION_TO_VISUAL_ROW: Record<V3Intention, StatusVisualKey> = {
+  INBOX:      "pendente",
+  READY:      "pendente",
+  EXECUTING:  "em-progresso",
+  VALIDATING: "em-progresso",
+  DONE:       "concluido",
+  VALIDATED:  "concluido",
+  FAILED:     "bloqueado",
+  CANCELLED:  "bloqueado",
+  DISCARDED:  "bloqueado",
+};
+
+const VISUAL_TO_INTENTION_ROW: Record<StatusVisualKey, V3Intention> = {
+  pendente:       "INBOX",
+  "em-progresso": "EXECUTING",
+  bloqueado:      "FAILED",
+  atrasado:       "INBOX",
+  concluido:      "DONE",
+};
+
+const PRIO_VISUAL_MAP: Record<TaskPriority, keyof typeof PRIO_CONFIG_MAP> = {
+  URGENT: "urgente", HIGH: "alta", MEDIUM: "media", LOW: "baixa",
+};
+const PRIO_CONFIG_MAP = { urgente: { label: "Urgente", color: "#ef4444" }, alta: { label: "Alta", color: "#f59e0b" }, media: { label: "Média", color: "#60a5fa" }, baixa: { label: "Baixa", color: "#71717a" } };
+const VISUAL_TO_BACKEND_PRIO: Record<keyof typeof PRIO_CONFIG_MAP, TaskPriority> = {
+  urgente: "URGENT", alta: "HIGH", media: "MEDIUM", baixa: "LOW",
+};
+const ALL_STATUS_VISUAL_ROW: StatusVisualKey[] = ["em-progresso", "pendente", "bloqueado", "concluido"];
+const ALL_PRIO_VISUAL_ROW = Object.keys(PRIO_CONFIG_MAP) as (keyof typeof PRIO_CONFIG_MAP)[];
+
 // ─── TaskRow adaptado para dados reais do backend ────────────────────────────
 function TaskRowBackend({
   task,
@@ -500,10 +534,19 @@ function TaskRowBackend({
   onToggle: () => void;
   onOpen: () => void;
 }) {
+  const updateTask = useUpdateTask();
+  const updateStatus = useUpdateTaskStatus();
+
   const [hovered, setHovered] = useState(false);
+  const [openCell, setOpenCell] = useState<"status" | "prioridade" | "data" | null>(null);
+  const [editandoData, setEditandoData] = useState(false);
+
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
   const prioColor = priorityToColor(task.priority);
   const prioLabel = priorityToLabel(task.priority);
+  const statusVisual = INTENTION_TO_VISUAL_ROW[task.status as V3Intention] ?? "pendente";
+  const statusCfg = STATUS_CONFIG[statusVisual];
+  const StatusIcon = statusCfg.Icon;
 
   const dateLabel = task.dueDate
     ? new Date(task.dueDate.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
@@ -515,14 +558,32 @@ function TaskRowBackend({
     transition: "background .1s",
   };
 
+  function closeDropdown() { setOpenCell(null); }
+
+  function handleStatusChange(sv: StatusVisualKey) {
+    closeDropdown();
+    updateStatus.mutate({ id: task.id, status: VISUAL_TO_INTENTION_ROW[sv], projectId: task.projectId });
+  }
+
+  function handlePrioChange(p: keyof typeof PRIO_CONFIG_MAP | null) {
+    closeDropdown();
+    updateTask.mutate({ id: task.id, projectId: task.projectId, dto: { priority: p ? VISUAL_TO_BACKEND_PRIO[p] : undefined } });
+  }
+
+  function handleDateChange(val: string | null) {
+    setEditandoData(false);
+    updateTask.mutate({ id: task.id, projectId: task.projectId, dto: { dueDate: val } });
+  }
+
+  const currentPrioVisual = task.priority ? PRIO_VISUAL_MAP[task.priority as TaskPriority] : null;
+
   return (
     <tr
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      onClick={onOpen}
-      style={{ cursor: "pointer" }}
+      style={{ cursor: "default" }}
     >
-      {/* Nome */}
+      {/* Nome — clique abre TaskSheet */}
       <td style={{ ...tdStyle, padding: "0 10px 0 0" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, height: 36, paddingLeft: 8 }}>
           <button
@@ -535,44 +596,144 @@ function TaskRowBackend({
           <span style={{ fontFamily: "monospace", fontSize: 10, color: "#5a5a64", flexShrink: 0 }}>
             {task.identifier}
           </span>
-          <span style={{ fontSize: 13, color: "#e6e6ea", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={onOpen}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onOpen(); }}
+            style={{ fontSize: 13, color: "#e6e6ea", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", cursor: "pointer" }}
+            title="Abrir detalhes"
+          >
             {task.nome}
           </span>
           {task.idPai && <IcGitFork size={12} />}
         </div>
       </td>
 
-      {/* Responsável */}
+      {/* Responsável — estático por enquanto */}
       <td style={{ ...tdStyle, padding: "0 10px" }}>
         <span style={{ fontSize: 12, color: "#5a5a64" }}>—</span>
       </td>
 
-      {/* Data de vencimento */}
-      <td style={{ ...tdStyle, padding: "0 10px" }}>
-        {dateLabel ? (
-          <span style={{ fontSize: 12, color: overdue ? "#fbbf24" : "#b6b6bf" }}>
-            {overdue && "⚠ "}{dateLabel}
-          </span>
+      {/* Data de vencimento — dropdown inline */}
+      <td style={{ ...tdStyle, padding: "0 10px", position: "relative" }}>
+        {editandoData ? (
+          <input
+            type="date"
+            autoFocus
+            defaultValue={task.dueDate?.slice(0, 10) ?? ""}
+            onChange={(e) => handleDateChange(e.target.value || null)}
+            onBlur={() => setEditandoData(false)}
+            style={{
+              background: "#1c1c24", border: "1px solid #7c5cff", borderRadius: 5,
+              color: "#d4d4dc", fontSize: 12, padding: "2px 6px", outline: "none", colorScheme: "dark",
+            }}
+          />
         ) : (
-          <span style={{ fontSize: 12, color: "#5a5a64" }}>—</span>
+          <button
+            type="button"
+            onClick={() => setEditandoData(true)}
+            style={{ background: "none", border: 0, cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 4 }}
+            title="Alterar data"
+          >
+            {dateLabel ? (
+              <span style={{ fontSize: 12, color: overdue ? "#fbbf24" : "#b6b6bf" }}>
+                {overdue && "⚠ "}{dateLabel}
+              </span>
+            ) : (
+              <span style={{ fontSize: 12, color: hovered ? "#5a5a64" : "transparent" }}>Definir data</span>
+            )}
+          </button>
         )}
       </td>
 
-      {/* Prioridade */}
-      <td style={{ ...tdStyle, padding: "0 10px" }}>
-        {task.priority ? (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12 }}>
-            <IcFlagInline size={12} color={prioColor} />
-            <span style={{ color: prioColor }}>{prioLabel}</span>
-          </span>
-        ) : (
-          <span style={{ fontSize: 12, color: "#5a5a64" }}>—</span>
+      {/* Prioridade — dropdown inline */}
+      <td style={{ ...tdStyle, padding: "0 10px", position: "relative" }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setOpenCell(openCell === "prioridade" ? null : "prioridade"); }}
+          style={{ background: "none", border: 0, cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 5 }}
+          title="Alterar prioridade"
+        >
+          {task.priority ? (
+            <>
+              <IcFlagInline size={12} color={prioColor} />
+              <span style={{ fontSize: 12, color: prioColor }}>{prioLabel}</span>
+            </>
+          ) : (
+            <span style={{ fontSize: 12, color: hovered ? "#5a5a64" : "transparent" }}>Definir</span>
+          )}
+        </button>
+        {openCell === "prioridade" && (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 100 }} onClick={closeDropdown} />
+            <div style={{
+              position: "absolute", top: "calc(100% + 2px)", left: 0, zIndex: 101,
+              background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8,
+              padding: 4, minWidth: 150, boxShadow: "0 8px 24px rgba(0,0,0,.5)",
+            }}>
+              <button type="button" onClick={() => handlePrioChange(null)} style={dropItemStyle("#7a7a85")}>
+                <IcFlagInline size={12} color="#7a7a85" /> Sem prioridade
+              </button>
+              {ALL_PRIO_VISUAL_ROW.map((p) => {
+                const cfg = PRIO_CONFIG_MAP[p];
+                return (
+                  <button key={p} type="button" onClick={() => handlePrioChange(p)} style={dropItemStyle(cfg.color)}>
+                    <IcFlagInline size={12} color={cfg.color} />
+                    <span style={{ color: "#d4d4dc" }}>{cfg.label}</span>
+                    {currentPrioVisual === p && <IcCheck size={11} />}
+                  </button>
+                );
+              })}
+            </div>
+          </>
         )}
       </td>
 
-      {/* Status */}
-      <td style={{ ...tdStyle, padding: "0 10px" }}>
-        <span style={{ fontSize: 12, color: "#b6b6bf" }}>{task.status}</span>
+      {/* Status — dropdown inline */}
+      <td style={{ ...tdStyle, padding: "0 10px", position: "relative" }}>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); setOpenCell(openCell === "status" ? null : "status"); }}
+          style={{
+            display: "inline-flex", alignItems: "center", gap: 5,
+            background: "none", border: 0, cursor: "pointer", padding: 0,
+            color: statusCfg.iconColor, fontSize: 12, fontWeight: 600,
+          }}
+          title="Alterar status"
+        >
+          <StatusIcon size={12} />
+          <span>{statusCfg.label}</span>
+        </button>
+        {openCell === "status" && (
+          <>
+            <div style={{ position: "fixed", inset: 0, zIndex: 100 }} onClick={closeDropdown} />
+            <div style={{
+              position: "absolute", top: "calc(100% + 2px)", left: 0, zIndex: 101,
+              background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8,
+              padding: 4, minWidth: 160, boxShadow: "0 8px 24px rgba(0,0,0,.5)",
+            }}>
+              {ALL_STATUS_VISUAL_ROW.map((sv) => {
+                const cfg = STATUS_CONFIG[sv];
+                const Icon = cfg.Icon;
+                const isSelected = statusVisual === sv;
+                return (
+                  <button key={sv} type="button" onClick={() => handleStatusChange(sv)} style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    width: "100%", padding: "7px 10px", borderRadius: 5,
+                    background: isSelected ? "rgba(124,92,255,0.12)" : "none",
+                    border: 0, cursor: "pointer", textAlign: "left" as const,
+                    color: cfg.iconColor, fontSize: 12,
+                  }}>
+                    <Icon size={12} />
+                    <span style={{ color: "#d4d4dc" }}>{cfg.label}</span>
+                    {isSelected && <IcCheck size={11} />}
+                  </button>
+                );
+              })}
+            </div>
+          </>
+        )}
       </td>
 
       {/* Comentários */}
@@ -584,6 +745,15 @@ function TaskRowBackend({
       <td style={{ ...tdStyle }} />
     </tr>
   );
+}
+
+function dropItemStyle(color: string): React.CSSProperties {
+  return {
+    display: "flex", alignItems: "center", gap: 8,
+    width: "100%", padding: "7px 10px", borderRadius: 5,
+    background: "none", border: 0, cursor: "pointer",
+    color, fontSize: 12, textAlign: "left" as const,
+  };
 }
 
 function AddRow({ onAddTask }: { onAddTask: () => void }) {
