@@ -168,25 +168,26 @@ function avatarColor(str: string) {
 function AddMemberPopover({
   teamId,
   currentMembers,
+  anchorRef,
   onClose,
 }: {
   teamId: string;
   currentMembers: TeamMemberDto[];
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
   onClose: () => void;
 }) {
   const [search, setSearch] = useState("");
   const [adding, setAdding] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
+  const [pos, setPos] = useState({ top: 0, right: 0 });
   const ref = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: orgMembers = [] } = useOrgMembers();
   const addMember = useAddTeamMember(teamId);
 
-  // IDs já no time
   const alreadyInTeam = new Set(currentMembers.map((m) => m.userId));
 
-  // Filtra por busca, exclui já adicionados nesta sessão ou já no time
   const filtered = orgMembers.filter((m: OrgMemberDto) => {
     const inTeam = alreadyInTeam.has(m.userId);
     const matchSearch =
@@ -195,15 +196,25 @@ function AddMemberPopover({
     return matchSearch && !inTeam;
   });
 
-  // Fecha ao clicar fora
   useEffect(() => {
+    // Calcula posição baseada no botão âncora
+    if (anchorRef.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setPos({
+        top: rect.bottom + 6,
+        right: window.innerWidth - rect.right,
+      });
+    }
     setTimeout(() => inputRef.current?.focus(), 50);
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+      if (ref.current && !ref.current.contains(e.target as Node) &&
+          anchorRef.current && !anchorRef.current.contains(e.target as Node)) {
+        onClose();
+      }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [onClose]);
+  }, [onClose, anchorRef]);
 
   const handleAdd = async (member: OrgMemberDto) => {
     if (adding || added.has(member.userId)) return;
@@ -212,7 +223,7 @@ function AddMemberPopover({
       await addMember.mutateAsync({ userId: member.userId, cargo: "MEMBER" });
       setAdded((prev) => new Set(prev).add(member.userId));
     } catch {
-      // silencia — o hook invalida a query mesmo assim
+      // silencia
     } finally {
       setAdding(null);
     }
@@ -222,15 +233,15 @@ function AddMemberPopover({
     <div
       ref={ref}
       style={{
-        position: "absolute",
-        right: "calc(100% + 8px)",
-        top: 0,
+        position: "fixed",
+        top: pos.top,
+        right: pos.right,
         width: 260,
         borderRadius: 10,
         background: "#1a1a1a",
         border: "1px solid rgba(255,255,255,0.1)",
         boxShadow: "0 16px 48px rgba(0,0,0,0.7)",
-        zIndex: 100,
+        zIndex: 9999,
         overflow: "hidden",
       }}
     >
@@ -349,28 +360,31 @@ function MembersPanel({
   const { data: members = [], isLoading } = useTeamMembers(teamId);
   const removeMember = useRemoveTeamMember(teamId);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   return (
-    <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "14px 16px", position: "relative" }}>
+    <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "14px 16px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: members.length > 0 ? 12 : 4 }}>
         <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4" }}>
           Membros {members.length > 0 && <span style={{ fontSize: 11, color: "#555", fontWeight: 400 }}>({members.length})</span>}
         </p>
-        <div style={{ position: "relative" }}>
-          <button type="button" onClick={() => setPopoverOpen((v) => !v)}
-            style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#777", display: "flex", alignItems: "center", justifyContent: "center" }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#e4e4e4"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#777"; }}>
-            <Plus size={13} strokeWidth={2} />
-          </button>
-          {popoverOpen && (
-            <AddMemberPopover
-              teamId={teamId}
-              currentMembers={members}
-              onClose={() => setPopoverOpen(false)}
-            />
-          )}
-        </div>
+        <button
+          ref={btnRef}
+          type="button"
+          onClick={() => setPopoverOpen((v) => !v)}
+          style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#777", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onMouseEnter={e => { e.currentTarget.style.color = "#e4e4e4"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "#777"; }}>
+          <Plus size={13} strokeWidth={2} />
+        </button>
+        {popoverOpen && (
+          <AddMemberPopover
+            teamId={teamId}
+            currentMembers={members}
+            anchorRef={btnRef}
+            onClose={() => setPopoverOpen(false)}
+          />
+        )}
       </div>
 
       {isLoading ? (
