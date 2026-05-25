@@ -237,7 +237,14 @@ export interface TeamResponseDto {
   id: string;
   nome: string;
   orgId?: string;
+  prefix?: string;
+  description?: string | null;
+  color?: string | null;
+  icon?: string | null;
   memberCount?: number;
+  myCargo?: 'LEAD' | 'MEMBER' | null;
+  canEdit?: boolean;
+  canDelete?: boolean;
   criadoEm: string;
   atualizadoEm: string;
 }

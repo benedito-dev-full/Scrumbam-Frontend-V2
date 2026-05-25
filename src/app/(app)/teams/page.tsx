@@ -15,6 +15,7 @@ interface TeamLocal {
   nome: string;
   memberCount: number;
   color: string;
+  icon?: string;
   criadoEm: string;
 }
 
@@ -288,6 +289,7 @@ function TeamCard({
   onDelete: (id: string) => void;
 }) {
   const inicial = team.nome.trim().charAt(0).toUpperCase();
+  const iconEmoji = ICON_OPTIONS.find(i => i.name === team.icon)?.emoji;
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -384,10 +386,10 @@ function TeamCard({
               width: 34, height: 34, borderRadius: "50%",
               background: team.color,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 14, fontWeight: 700, color: "#fff", flexShrink: 0,
+              fontSize: iconEmoji ? 16 : 14, fontWeight: 700, color: "#fff", flexShrink: 0,
               marginTop: -22, boxShadow: "0 0 0 3px #1a1a1a",
             }}>
-              {inicial}
+              {iconEmoji ?? inicial}
             </div>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -534,41 +536,145 @@ function TeamsListView({
    MODAL CRIAR EQUIPE
 ══════════════════════════════════════════════════════════════════ */
 
-function CreateTeamModal({ onClose, onCreate }: { onClose: () => void; onCreate: (nome: string) => void }) {
+/* paleta de cores e lista de ícones disponíveis para seleção */
+const COLOR_PALETTE = [
+  "#ef4444","#f97316","#eab308","#22c55e",
+  "#14b8a6","#3b82f6","#8b5cf6","#ec4899",
+  "#64748b","#06b6d4","#a3e635","#f43f5e",
+];
+
+const ICON_OPTIONS: { name: string; emoji: string }[] = [
+  { name: "users",       emoji: "👥" },
+  { name: "rocket",      emoji: "🚀" },
+  { name: "star",        emoji: "⭐" },
+  { name: "lightning",   emoji: "⚡" },
+  { name: "fire",        emoji: "🔥" },
+  { name: "diamond",     emoji: "💎" },
+  { name: "target",      emoji: "🎯" },
+  { name: "shield",      emoji: "🛡️" },
+  { name: "code",        emoji: "💻" },
+  { name: "chart",       emoji: "📊" },
+  { name: "megaphone",   emoji: "📣" },
+  { name: "wrench",      emoji: "🔧" },
+  { name: "palette",     emoji: "🎨" },
+  { name: "globe",       emoji: "🌐" },
+  { name: "lock",        emoji: "🔒" },
+  { name: "heart",       emoji: "❤️" },
+];
+
+interface CreateTeamPayloadLocal {
+  nome: string;
+  color: string;
+  icon: string;
+}
+
+function CreateTeamModal({ onClose, onCreate }: { onClose: () => void; onCreate: (p: CreateTeamPayloadLocal) => void }) {
   const [nome, setNome] = useState("");
+  const [color, setColor] = useState(COLOR_PALETTE[5]); // azul padrão
+  const [icon, setIcon] = useState(ICON_OPTIONS[0].name);
+  const [colorOpen, setColorOpen] = useState(false);
+  const [iconOpen, setIconOpen] = useState(false);
+
+  const selectedIcon = ICON_OPTIONS.find(i => i.name === icon) ?? ICON_OPTIONS[0];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = nome.trim();
     if (!trimmed) return;
-    onCreate(trimmed);
+    onCreate({ nome: trimmed, color, icon });
     onClose();
   };
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)" }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div style={{ width: 420, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
+      onClick={e => { if (e.target === e.currentTarget) { onClose(); } }}>
+      <div style={{ width: 440, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: "#e4e4e4", marginBottom: 6 }}>Criar equipe</h2>
         <p style={{ fontSize: 13, color: "#666", marginBottom: 20, lineHeight: 1.5 }}>
-          Dê um nome para sua nova equipe. Você poderá adicionar membros depois.
+          Escolha um ícone, uma cor e dê um nome para sua nova equipe.
         </p>
+
         <form onSubmit={handleSubmit}>
-          <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 6 }}>Nome da equipe</label>
-          <input
-            autoFocus
-            value={nome}
-            onChange={e => setNome(e.target.value)}
-            placeholder="Ex: Backend, Marketing, Design..."
-            style={{ width: "100%", height: 38, padding: "0 12px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#e4e4e4", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-          />
+          <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 8 }}>Nome da equipe</label>
+
+          {/* linha: ícone + cor + input */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+
+            {/* botão ícone */}
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <button type="button" onClick={() => { setIconOpen(v => !v); setColorOpen(false); }}
+                title="Escolher ícone"
+                style={{ width: 38, height: 38, borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "border-color .15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}>
+                {selectedIcon.emoji}
+              </button>
+
+              {/* dropdown ícones */}
+              {iconOpen && (
+                <div style={{ position: "absolute", top: 44, left: 0, zIndex: 10, background: "#252528", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, width: 168 }}>
+                  {ICON_OPTIONS.map(opt => (
+                    <button key={opt.name} type="button"
+                      onClick={() => { setIcon(opt.name); setIconOpen(false); }}
+                      style={{ width: 36, height: 36, borderRadius: 6, border: "1px solid", borderColor: icon === opt.name ? "rgba(255,255,255,0.3)" : "transparent", background: icon === opt.name ? "rgba(255,255,255,0.08)" : "none", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .1s" }}
+                      onMouseEnter={e => { if (icon !== opt.name) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                      onMouseLeave={e => { if (icon !== opt.name) e.currentTarget.style.background = "none"; }}>
+                      {opt.emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* botão cor */}
+            <div style={{ position: "relative", flexShrink: 0 }}>
+              <button type="button" onClick={() => { setColorOpen(v => !v); setIconOpen(false); }}
+                title="Escolher cor"
+                style={{ width: 38, height: 38, borderRadius: 7, border: "2px solid rgba(255,255,255,0.15)", background: color, cursor: "pointer", transition: "border-color .15s" }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)"; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }} />
+
+              {/* dropdown cores */}
+              {colorOpen && (
+                <div style={{ position: "absolute", top: 44, left: 0, zIndex: 10, background: "#252528", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, width: 148 }}>
+                  {COLOR_PALETTE.map(c => (
+                    <button key={c} type="button"
+                      onClick={() => { setColor(c); setColorOpen(false); }}
+                      style={{ width: 28, height: 28, borderRadius: 6, border: "2px solid", borderColor: color === c ? "#fff" : "transparent", background: c, cursor: "pointer", transition: "border-color .1s" }} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* input nome */}
+            <input
+              autoFocus
+              value={nome}
+              onChange={e => setNome(e.target.value)}
+              placeholder="Ex: Backend, Marketing, Design..."
+              style={{ flex: 1, height: 38, padding: "0 12px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#e4e4e4", fontSize: 13, outline: "none" }}
+            />
+          </div>
+
+          {/* preview */}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+            <div style={{ width: 32, height: 32, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
+              {selectedIcon.emoji}
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 600, color: nome.trim() ? "#e4e4e4" : "#444" }}>
+              {nome.trim() || "Nome da equipe"}
+            </span>
+          </div>
+
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-            <button type="button" onClick={onClose} style={{ height: 34, padding: "0 16px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#888", fontSize: 13 }}
+            <button type="button" onClick={onClose}
+              style={{ height: 34, padding: "0 16px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#888", fontSize: 13 }}
               onMouseEnter={e => { e.currentTarget.style.color = "#e4e4e4"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "#888"; }}>
               Cancelar
             </button>
-            <button type="submit" disabled={!nome.trim()} style={{ height: 34, padding: "0 20px", borderRadius: 7, border: "none", background: nome.trim() ? "#e4e4e4" : "#2a2a2a", cursor: nome.trim() ? "pointer" : "not-allowed", color: nome.trim() ? "#111" : "#555", fontSize: 13, fontWeight: 600, transition: "all .15s" }}>
+            <button type="submit" disabled={!nome.trim()}
+              style={{ height: 34, padding: "0 20px", borderRadius: 7, border: "none", background: nome.trim() ? "#e4e4e4" : "#2a2a2a", cursor: nome.trim() ? "pointer" : "not-allowed", color: nome.trim() ? "#111" : "#555", fontSize: 13, fontWeight: 600, transition: "all .15s" }}>
               Criar equipe
             </button>
           </div>
@@ -952,7 +1058,8 @@ export default function TeamsPage() {
         id: t.id,
         nome: t.nome,
         memberCount: t.memberCount ?? 1,
-        color: existing?.color ?? randomColor(),
+        color: t.color ?? existing?.color ?? randomColor(),
+        icon: t.icon ?? existing?.icon,
         criadoEm: t.criadoEm,
       };
     });
@@ -964,13 +1071,14 @@ export default function TeamsPage() {
   // teams exibidos: banco (quando disponível) ou localStorage
   const teams = localTeams;
 
-  const handleCreate = async (nome: string) => {
+  const handleCreate = async ({ nome, color, icon }: CreateTeamPayloadLocal) => {
     const tempId = Date.now().toString();
     const novo: TeamLocal = {
       id: tempId,
       nome,
       memberCount: 1,
-      color: randomColor(),
+      color,
+      icon,
       criadoEm: new Date().toISOString(),
     };
     const updated = [...localTeams, novo];
@@ -979,9 +1087,9 @@ export default function TeamsPage() {
 
     if (user?.organizationId) {
       try {
-        const created = await createTeam.mutateAsync({ nome });
+        const created = await createTeam.mutateAsync({ nome, color, icon });
         const withRealId = updated.map(t =>
-          t.id === tempId ? { ...t, id: created.id } : t
+          t.id === tempId ? { ...t, id: created.id, color: created.color ?? color } : t
         );
         setLocalTeams(withRealId);
         saveTeams(withRealId);

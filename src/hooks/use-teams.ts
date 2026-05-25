@@ -11,6 +11,7 @@ interface CreateTeamPayload {
   prefix?: string;
   description?: string;
   color?: string;
+  icon?: string;
 }
 
 interface ListTeamsResponse {
