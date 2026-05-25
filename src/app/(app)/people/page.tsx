@@ -5,14 +5,13 @@ import {
   Search,
   Plus,
   Download,
-  MoreHorizontal,
-  Bell,
   ChevronDown,
   X,
+  Trash2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInviteDialogStore } from "@/lib/stores/invite-dialog";
-import { useOrgMembers, useOrgInvites, useCancelInvite } from "@/hooks/use-org-members";
+import { useOrgMembers, useOrgInvites, useCancelInvite, useRemoveOrgMember } from "@/hooks/use-org-members";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { OrgMemberDto, InviteResponseDto } from "@/lib/types/api";
 
@@ -74,10 +73,12 @@ export default function PeoplePage() {
   const { data: members = [], isLoading: loadingMembers } = useOrgMembers();
   const { data: invites = [], isLoading: loadingInvites } = useOrgInvites();
   const cancelInvite = useCancelInvite();
+  const removeMember = useRemoveOrgMember();
 
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterOption>("Todos os usuários");
   const [filterOpen, setFilterOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<OrgMemberDto | null>(null);
 
   const filteredMembers = members.filter((m) => {
     const matchSearch =
@@ -216,7 +217,12 @@ export default function PeoplePage() {
 
               {/* Membros reais */}
               {(filter !== "Convidados") && filteredMembers.map((member) => (
-                <MemberRow key={member.userId} member={member} isMe={member.email === me?.email} />
+                <MemberRow
+                  key={member.userId}
+                  member={member}
+                  isMe={member.email === me?.email}
+                  onRemove={() => setRemoveTarget(member)}
+                />
               ))}
 
               {/* Convites pendentes */}
@@ -257,13 +263,57 @@ export default function PeoplePage() {
           </table>
         )}
       </div>
+      {/* Modal de confirmação de remoção */}
+      {removeTarget && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)" }}
+          onClick={() => setRemoveTarget(null)}
+        >
+          <div
+            style={{ width: 420, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#e4e4e4", marginBottom: 8 }}>
+              Remover membro
+            </h2>
+            <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6, marginBottom: 24 }}>
+              Tem certeza que deseja remover <strong style={{ color: "#e4e4e4" }}>{removeTarget.nome}</strong> da organização?
+              Essa ação não pode ser desfeita.
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setRemoveTarget(null)}
+                style={{ height: 34, padding: "0 16px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#888", fontSize: 13 }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "#e4e4e4"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "#888"; }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={removeMember.isPending}
+                onClick={async () => {
+                  await removeMember.mutateAsync(removeTarget.userId);
+                  setRemoveTarget(null);
+                }}
+                style={{ height: 34, padding: "0 20px", borderRadius: 7, border: "none", background: removeMember.isPending ? "#5a1a1a" : "#c0392b", cursor: removeMember.isPending ? "not-allowed" : "pointer", color: "#fff", fontSize: 13, fontWeight: 600, transition: "background .15s" }}
+                onMouseEnter={(e) => { if (!removeMember.isPending) e.currentTarget.style.background = "#e74c3c"; }}
+                onMouseLeave={(e) => { if (!removeMember.isPending) e.currentTarget.style.background = "#c0392b"; }}
+              >
+                {removeMember.isPending ? "Removendo..." : "Remover"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── MemberRow ────────────────────────────────────────────────────────────────
 
-function MemberRow({ member, isMe }: { member: OrgMemberDto; isMe: boolean }) {
+function MemberRow({ member, isMe, onRemove }: { member: OrgMemberDto; isMe: boolean; onRemove: () => void }) {
   const color = avatarColor(member.nome);
   const ini = initials(member.nome);
 
@@ -298,22 +348,18 @@ function MemberRow({ member, isMe }: { member: OrgMemberDto; isMe: boolean }) {
         <span className="text-[11px] font-medium text-emerald-400">Ativo</span>
       </td>
       <td className="px-2 py-3">
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button
-            type="button"
-            className="grid size-7 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            aria-label="Notificações"
-          >
-            <Bell className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            className="grid size-7 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            aria-label="Mais opções"
-          >
-            <MoreHorizontal className="size-3.5" />
-          </button>
-        </div>
+        {!isMe && (
+          <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              type="button"
+              onClick={onRemove}
+              title="Remover membro"
+              className="grid size-7 place-items-center rounded text-red-500/60 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </div>
+        )}
       </td>
     </tr>
   );
