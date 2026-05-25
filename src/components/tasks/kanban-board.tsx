@@ -2,15 +2,28 @@
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
 import React, { useState } from 'react';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  useDroppable,
+  useDraggable,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core';
+import { useQueryClient } from '@tanstack/react-query';
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
-import { useTasksByProject } from '@/hooks/use-tasks';
+import { useTasksByProject, useUpdateTaskStatus } from '@/hooks/use-tasks';
 import {
   KANBAN_COLUMNS,
   intentionToColumn,
   isOverdue,
   priorityToColor,
 } from '@/lib/mappers/task-status.mapper';
+import { qk } from '@/lib/query-keys';
 import { cn } from '@/lib/utils';
 import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer';
 
@@ -18,28 +31,17 @@ import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer';
 import type { KanbanColumnConfig } from '@/lib/mappers/task-status.mapper';
 import type { TaskResponseDto, V3Intention } from '@/lib/types/api';
 
+// ─── Coluna → intention canônica (primeira da lista = status ao dropar) ────────
+const COLUMN_TO_INTENTION: Record<string, V3Intention> = {
+  backlog:        'INBOX',
+  ready:          'READY',
+  'em-progresso': 'EXECUTING',
+  concluido:      'DONE',
+  falhou:         'FAILED',
+};
+
 // ─── KanbanBoard ──────────────────────────────────────────────────────────────
 
-/**
- * Quadro Kanban V3 com 5 colunas conectadas ao backend.
- *
- * Agrupa tasks por V3 Intention via `intentionToColumn()`.
- * Tasks com `dueDate` no passado em estados não-terminais exibem badge "atrasado".
- *
- * @param projectId    - ID do DProject (List, idClasse=-352) cujas tasks serão exibidas.
- * @param onSelectTask - Callback opcional para elevar o estado de seleção à página pai.
- *                       Se fornecido, o drawer interno NÃO é renderizado (evita dois drawers).
- *                       Se omitido, o KanbanBoard gerencia o drawer internamente.
- *
- * @example
- * ```tsx
- * // Modo standalone (drawer interno):
- * <KanbanBoard projectId={listId} />
- *
- * // Modo controlado (drawer na página pai):
- * <KanbanBoard projectId={listId} onSelectTask={setSelectedTaskId} />
- * ```
- */
 export function KanbanBoard({
   projectId,
   onSelectTask,
@@ -48,32 +50,88 @@ export function KanbanBoard({
   onSelectTask?: (taskId: string) => void;
 }) {
   const { data: tasks = [], isLoading } = useTasksByProject(projectId);
+  const updateStatus = useUpdateTaskStatus();
+  const queryClient = useQueryClient();
+  const [activeTask, setActiveTask] = useState<TaskResponseDto | null>(null);
   const [internalSelectedTaskId, setInternalSelectedTaskId] = useState<string | null>(null);
 
-  // Quando onSelectTask é fornecido, o pai controla o drawer — não usamos estado interno.
   const isControlled = onSelectTask !== undefined;
   const handleSelectTask = isControlled ? onSelectTask : setInternalSelectedTaskId;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+
+  function handleDragStart(event: DragStartEvent) {
+    const task = tasks.find((t) => t.id === event.active.id);
+    setActiveTask(task ?? null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const targetCol = over.id as string;
+    const newIntention = COLUMN_TO_INTENTION[targetCol];
+    if (!newIntention) return;
+
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    // Já está na coluna certa — não fazer nada
+    if (intentionToColumn(task.status as V3Intention) === targetCol) return;
+
+    // Atualização otimista — move o card imediatamente na UI
+    queryClient.setQueryData<TaskResponseDto[]>(
+      qk.tasks.byProject(projectId),
+      (prev) =>
+        prev?.map((t) =>
+          t.id === taskId ? { ...t, status: newIntention } : t,
+        ) ?? [],
+    );
+
+    // Persiste no backend
+    updateStatus.mutate(
+      { id: taskId, status: newIntention, projectId },
+      {
+        onError: () => {
+          // Rollback: revalida a query do backend
+          void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
+        },
+      },
+    );
+  }
 
   if (isLoading) return <KanbanSkeleton />;
 
   return (
     <>
-      <div className="flex h-full gap-3 overflow-x-auto p-4">
-        {KANBAN_COLUMNS.map((col) => {
-          const colTasks = tasks.filter(
-            (t) => intentionToColumn(t.status as V3Intention) === col.id,
-          );
-          return (
-            <KanbanColumn
-              key={col.id}
-              config={col}
-              tasks={colTasks}
-              onSelectTask={handleSelectTask}
-            />
-          );
-        })}
-      </div>
-      {/* Drawer interno: apenas quando não controlado pelo pai */}
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="flex h-full gap-3 overflow-x-auto p-4">
+          {KANBAN_COLUMNS.map((col) => {
+            const colTasks = tasks.filter(
+              (t) => intentionToColumn(t.status as V3Intention) === col.id,
+            );
+            return (
+              <KanbanColumn
+                key={col.id}
+                config={col}
+                tasks={colTasks}
+                onSelectTask={handleSelectTask}
+                isDragging={activeTask !== null}
+              />
+            );
+          })}
+        </div>
+
+        {/* Card "fantasma" seguindo o cursor durante o drag */}
+        <DragOverlay dropAnimation={{ duration: 150, easing: 'ease' }}>
+          {activeTask && <TaskCard task={activeTask} onClick={() => {}} isDragOverlay />}
+        </DragOverlay>
+      </DndContext>
+
       {!isControlled && internalSelectedTaskId !== null && (
         <TaskDetailDrawer
           taskId={internalSelectedTaskId}
@@ -91,35 +149,49 @@ function KanbanColumn({
   config,
   tasks,
   onSelectTask,
+  isDragging,
 }: {
   config: KanbanColumnConfig;
   tasks: TaskResponseDto[];
   onSelectTask: (id: string) => void;
+  isDragging: boolean;
 }) {
+  const { setNodeRef, isOver } = useDroppable({ id: config.id });
+
   return (
     <div className="flex w-[280px] shrink-0 flex-col gap-2">
-      {/* Header da coluna */}
+      {/* Header */}
       <div className="flex items-center gap-2 px-1">
-        <span
-          className="size-2.5 rounded-full"
-          style={{ background: config.color }}
-        />
-        <span className="text-[13px] font-semibold text-foreground">
-          {config.label}
-        </span>
-        <span className="ml-auto text-[12px] text-muted-foreground">
-          {tasks.length}
-        </span>
+        <span className="size-2.5 rounded-full" style={{ background: config.color }} />
+        <span className="text-[13px] font-semibold text-foreground">{config.label}</span>
+        <span className="ml-auto text-[12px] text-muted-foreground">{tasks.length}</span>
       </div>
 
-      {/* Cards */}
-      <div className="flex flex-col gap-2">
+      {/* Drop zone */}
+      <div
+        ref={setNodeRef}
+        className={cn(
+          'flex min-h-[80px] flex-col gap-2 rounded-xl p-1 transition-colors',
+          isOver && 'bg-muted/40 ring-1 ring-border',
+          isDragging && !isOver && 'bg-muted/10',
+        )}
+      >
         {tasks.map((task) => (
           <TaskCard key={task.id} task={task} onClick={() => onSelectTask(task.id)} />
         ))}
-        {tasks.length === 0 && (
+        {tasks.length === 0 && !isDragging && (
           <div className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground">
             Nenhuma task
+          </div>
+        )}
+        {tasks.length === 0 && isDragging && (
+          <div className={cn(
+            'rounded-lg border border-dashed px-3 py-6 text-center text-[12px] transition-colors',
+            isOver
+              ? 'border-violet-500/60 bg-violet-500/10 text-violet-400'
+              : 'border-border text-muted-foreground',
+          )}>
+            {isOver ? 'Soltar aqui' : 'Arraste para cá'}
           </div>
         )}
       </div>
@@ -129,23 +201,37 @@ function KanbanColumn({
 
 // ─── TaskCard ─────────────────────────────────────────────────────────────────
 
-function TaskCard({ task, onClick }: { task: TaskResponseDto; onClick: () => void }) {
+function TaskCard({
+  task,
+  onClick,
+  isDragOverlay = false,
+}: {
+  task: TaskResponseDto;
+  onClick: () => void;
+  isDragOverlay?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id });
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
   const prioColor = priorityToColor(task.priority);
 
   return (
     <div
+      ref={isDragOverlay ? undefined : setNodeRef}
+      {...(isDragOverlay ? {} : { ...listeners, ...attributes })}
       role="button"
       tabIndex={0}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
-      className="cursor-pointer rounded-lg border border-border bg-card p-3 shadow-sm transition-colors hover:border-border/80 hover:bg-muted/30"
+      className={cn(
+        'cursor-grab rounded-lg border border-border bg-card p-3 shadow-sm transition-all active:cursor-grabbing',
+        isDragging && !isDragOverlay && 'opacity-40',
+        isDragOverlay && 'rotate-1 shadow-xl ring-1 ring-violet-500/40',
+        !isDragging && !isDragOverlay && 'hover:border-border/80 hover:bg-muted/30',
+      )}
     >
       {/* Identifier + prioridade */}
       <div className="mb-1.5 flex items-center justify-between">
-        <span className="font-mono text-[11px] text-muted-foreground">
-          {task.identifier}
-        </span>
+        <span className="font-mono text-[11px] text-muted-foreground">{task.identifier}</span>
         {task.priority && (
           <span
             className="size-1.5 rounded-full"
@@ -161,12 +247,7 @@ function TaskCard({ task, onClick }: { task: TaskResponseDto; onClick: () => voi
       {/* dueDate + badge atrasado */}
       {task.dueDate && (
         <div className="mt-2 flex items-center gap-1.5">
-          <span
-            className={cn(
-              'text-[11px]',
-              overdue ? 'font-medium text-red-400' : 'text-muted-foreground',
-            )}
-          >
+          <span className={cn('text-[11px]', overdue ? 'font-medium text-red-400' : 'text-muted-foreground')}>
             {overdue && '⚠ '}
             {new Date(task.dueDate!.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR', {
               day: '2-digit',
