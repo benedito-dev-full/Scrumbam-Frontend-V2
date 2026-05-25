@@ -14,7 +14,7 @@ import {
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { SpaceTree } from "./space-tree";
+import { SpaceTree } from "@/components/spaces/space-tree";
 import { PlannerPanel } from "./planner-panel";
 import { FormsPanel } from "./forms-panel";
 import { DocsPanel } from "./docs-panel";

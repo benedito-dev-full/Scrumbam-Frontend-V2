@@ -24,10 +24,51 @@ export interface AuthResponseDto {
   user: UserDto;
 }
 
-// ─── Projects (= Spaces no frontend) ─────────────────────────────────────────
+// ─── Projects (= Spaces/Folders/Lists no frontend) ───────────────────────────
 
-export interface ProjectResponseDto {
+/**
+ * Espelha o campo idClasse do DProject (ADR-V2-051 hierarquia).
+ *
+ * Valores canônicos (chaves negativas do seed V2):
+ * - `-350` → SPACE  (raiz da hierarquia, nunca tem pai)
+ * - `-351` → FOLDER (filho de SPACE, agrupador de LISTs)
+ * - `-352` → LIST   (filho de FOLDER, contém DTask)
+ * - `-353` → DOC    (filho de FOLDER, conteúdo livre)
+ *
+ * Backend serializa BigInt como string — por isso `string`.
+ */
+export type DProjectIdClasse = '-350' | '-351' | '-352' | '-353' | string;
+
+/**
+ * Representação canônica de um DProject V2 (ADR-V2-051).
+ *
+ * Usado pelos hooks `useSpaces`, `useFolders`, `useLists` para tipar
+ * as respostas do endpoint `GET /projects`.
+ *
+ * @example
+ * ```typescript
+ * const space: DProjectDto = {
+ *   id: '100',
+ *   idClasse: '-350',
+ *   idPai: null,
+ *   nome: 'Produto',
+ *   // ...
+ * };
+ * ```
+ */
+export interface DProjectDto {
+  /** Chave do DProject, serializada como string (BigInt no banco). */
   id: string;
+  /**
+   * Tipo do projeto (ADR-V2-051).
+   * `-350`=SPACE, `-351`=FOLDER, `-352`=LIST, `-353`=DOC.
+   */
+  idClasse: DProjectIdClasse;
+  /**
+   * ID do DProject pai ou null para SPACEs (raízes).
+   * Serializado como string (BigInt).
+   */
+  idPai: string | null;
   nome: string;
   prefix: string | null;
   description: string | null;
@@ -36,9 +77,13 @@ export interface ProjectResponseDto {
   repoUrl: string | null;
   teamId: string | null;
   folderId: string | null;
+  /** Projeto privado (true) ou público na org (false). ADR-V2-051 §8. */
+  privado: boolean;
   criadoEm: string;
   atualizadoEm: string;
 }
+
+export interface ProjectResponseDto extends DProjectDto {}
 
 export interface CreateProjectDto {
   nome: string;
@@ -46,12 +91,22 @@ export interface CreateProjectDto {
   description?: string;
   repoUrl?: string;
   teamId?: string;
+  /** idClasse do tipo: -350=SPACE, -351=FOLDER, -352=LIST, -353=DOC */
+  idClasse?: DProjectIdClasse;
+  /** ID do projeto pai (SPACE ou FOLDER) */
+  idPai?: string | null;
+  /** Tornar projeto privado (visível apenas a membros explícitos). */
+  privado?: boolean;
 }
 
 export interface UpdateProjectDto {
   nome?: string;
   description?: string;
   repoUrl?: string;
+  /** ID do projeto pai | null para mover à raiz | omitir para manter. */
+  idPai?: string | null;
+  /** Tornar projeto privado (true) ou público (false) | omitir para manter. */
+  privado?: boolean;
 }
 
 // ─── Tasks ───────────────────────────────────────────────────────────────────

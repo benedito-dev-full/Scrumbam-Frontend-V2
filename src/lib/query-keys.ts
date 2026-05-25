@@ -9,6 +9,23 @@ export const qk = {
     byId: (id: string) => ["projects", id] as const,
     members: (id: string) => ["projects", id, "members"] as const,
     stats: (id: string) => ["projects", id, "stats"] as const,
+    /**
+     * Lista de SPACEs (idClasse=-350) do usuário na org ativa.
+     * Chave estável — invalida ao trocar de org via useSwitchOrg.
+     */
+    spaces: ["projects", "spaces"] as const,
+    /**
+     * Lista de FOLDERs (idClasse=-351) filhos de um SPACE específico.
+     *
+     * @param spaceId - ID do SPACE pai (string serializado do BigInt)
+     */
+    folders: (spaceId: string) => ["projects", "folders", spaceId] as const,
+    /**
+     * Lista de LISTs (idClasse=-352) filhos de um FOLDER específico.
+     *
+     * @param folderId - ID do FOLDER pai (string serializado do BigInt)
+     */
+    lists: (folderId: string) => ["projects", "lists", folderId] as const,
   },
   tasks: {
     all: ["tasks"] as const,
