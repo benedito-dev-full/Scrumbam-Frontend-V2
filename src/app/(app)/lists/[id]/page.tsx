@@ -10,6 +10,7 @@ import {
 } from "@/components/lists/icons";
 import { STATUS_CONFIG, GROUP_PILL_STYLE } from "@/components/lists/config";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
+import { TaskSheet } from "@/components/tasks/task-sheet";
 
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
@@ -92,10 +93,11 @@ export default function ListPage({
       ) : (
         <BoardContent
           listId={id}
+          tasks={tasks}
           onOpenTask={setSelectedTask}
         />
       )}
-      {/* TaskSheet e CreateTaskModal serão migrados no próximo passo */}
+      <TaskSheet task={selectedTask} onClose={() => setSelectedTask(null)} />
     </div>
   );
 }
@@ -129,15 +131,20 @@ function agruparTasks(tasks: TaskResponseDto[]): { status: StatusVisual; tarefas
 // ─── BoardContent ─────────────────────────────────────────────────────────────
 function BoardContent({
   listId,
+  tasks,
   onOpenTask,
 }: {
   listId: string;
+  tasks: TaskResponseDto[];
   onOpenTask: (task: TaskResponseDto) => void;
 }) {
   return (
     <KanbanBoard
       projectId={listId}
-      onSelectTask={(taskId) => onOpenTask({ id: taskId } as TaskResponseDto)}
+      onSelectTask={(taskId) => {
+        const found = tasks.find((t) => t.id === taskId);
+        if (found) onOpenTask(found);
+      }}
     />
   );
 }

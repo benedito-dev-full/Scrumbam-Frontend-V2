@@ -3,17 +3,51 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 
 import { STATUS_CONFIG, PRIO_CONFIG } from "@/components/lists/config";
-import { mockMembros } from "@/lib/mocks/entidades";
-import { diasUntil } from "@/lib/mocks/tarefas";
-import { useTasksStore } from "@/lib/stores/tasks";
-import type { Prioridade, StatusTarefa, Tarefa } from "@/lib/types/tarefa";
+import { useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
+import type { TaskResponseDto, V3Intention, TaskPriority } from "@/lib/types/api";
+
+/* ─── Mapeamentos V3Intention ↔ StatusVisual ──────────────────────────────── */
+
+type StatusVisual = "em-progresso" | "pendente" | "bloqueado" | "atrasado" | "concluido";
+
+const INTENTION_TO_VISUAL: Record<V3Intention, StatusVisual> = {
+  INBOX: "pendente",
+  READY: "pendente",
+  EXECUTING: "em-progresso",
+  VALIDATING: "em-progresso",
+  DONE: "concluido",
+  VALIDATED: "concluido",
+  FAILED: "bloqueado",
+  CANCELLED: "bloqueado",
+  DISCARDED: "bloqueado",
+};
+
+const VISUAL_TO_INTENTION: Record<StatusVisual, V3Intention> = {
+  pendente: "INBOX",
+  "em-progresso": "EXECUTING",
+  bloqueado: "FAILED",
+  atrasado: "INBOX",
+  concluido: "DONE",
+};
+
+const PRIORITY_LABEL: Record<TaskPriority, string> = {
+  LOW: "Baixa",
+  MEDIUM: "Média",
+  HIGH: "Alta",
+  URGENT: "Urgente",
+};
+
+const PRIORITY_COLOR: Record<TaskPriority, string> = {
+  LOW: "#60a5fa",
+  MEDIUM: "#fbbf24",
+  HIGH: "#f97316",
+  URGENT: "#ef4444",
+};
 
 /* ─── Tipos internos ──────────────────────────────────────────────────────── */
 
 interface TaskSheetProps {
-  /** Tarefa exibida. Se null, o sheet não é renderizado. */
-  task: Tarefa | null;
-  /** Callback para fechar o sheet */
+  task: TaskResponseDto | null;
   onClose: () => void;
 }
 
@@ -25,14 +59,23 @@ interface SubtarefaItem {
 
 /* ─── Helpers de formatação ───────────────────────────────────────────────── */
 
-function formatarData(iso: string | null): string {
+function formatarData(iso: string | null | undefined): string {
   if (!iso) return "";
-  const d = new Date(iso + "T00:00:00.000Z");
+  const d = new Date(iso.slice(0, 10) + "T12:00:00");
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
 }
 
-function corData(iso: string | null): string {
-  const dias = diasUntil(iso);
+function diasUntilDate(iso: string | null | undefined): number | null {
+  if (!iso) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(iso.slice(0, 10) + "T12:00:00");
+  due.setHours(0, 0, 0, 0);
+  return Math.round((due.getTime() - today.getTime()) / 86_400_000);
+}
+
+function corData(iso: string | null | undefined): string {
+  const dias = diasUntilDate(iso);
   if (dias === null) return "#b6b6bf";
   if (dias < 0) return "#fbbf24";
   if (dias === 0) return "#7c5cff";
@@ -109,20 +152,19 @@ function IcCheck({ size = 12 }: { size?: number }) {
 
 /* ─── Sub-componentes das seções ──────────────────────────────────────────── */
 
-/** Badge/select de status clicável */
 function StatusSelect({
   value,
   onChange,
 }: {
-  value: StatusTarefa;
-  onChange: (v: StatusTarefa) => void;
+  value: StatusVisual;
+  onChange: (v: StatusVisual) => void;
 }) {
   const [open, setOpen] = useState(false);
   const cfg = STATUS_CONFIG[value];
   const StatusIcon = cfg.Icon;
-  const allStatuses: StatusTarefa[] = ["em-progresso", "pendente", "bloqueado", "atrasado", "concluido"];
+  const allStatuses: StatusVisual[] = ["em-progresso", "pendente", "bloqueado", "atrasado", "concluido"];
 
-  const pillBg: Record<StatusTarefa, string> = {
+  const pillBg: Record<StatusVisual, string> = {
     "em-progresso": "rgba(124,92,255,0.18)",
     pendente: "rgba(138,138,147,0.15)",
     bloqueado: "rgba(239,68,68,0.15)",
@@ -149,7 +191,6 @@ function StatusSelect({
       </button>
       {open && (
         <>
-          {/* camada de fecho ao clicar fora */}
           <div
             style={{ position: "fixed", inset: 0, zIndex: 1 }}
             onClick={() => setOpen(false)}
@@ -194,17 +235,26 @@ function StatusSelect({
   );
 }
 
-/** Select de prioridade */
 function PrioridadeSelect({
   value,
   onChange,
 }: {
-  value: Prioridade | null;
-  onChange: (v: Prioridade | null) => void;
+  value: TaskPriority | null;
+  onChange: (v: TaskPriority | null) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const prio = value ? PRIO_CONFIG[value] : null;
-  const allPrios: Prioridade[] = ["urgente", "alta", "media", "baixa"];
+  const allPrios: TaskPriority[] = ["URGENT", "HIGH", "MEDIUM", "LOW"];
+
+  const prioColor = value ? PRIORITY_COLOR[value] : null;
+  const prioLabel = value ? PRIORITY_LABEL[value] : null;
+
+  /* Mapeia backend priority para a config de PRIO_CONFIG (visual da main) */
+  const PRIO_MAP: Record<TaskPriority, keyof typeof PRIO_CONFIG> = {
+    URGENT: "urgente",
+    HIGH: "alta",
+    MEDIUM: "media",
+    LOW: "baixa",
+  };
 
   return (
     <div style={{ position: "relative" }}>
@@ -215,13 +265,13 @@ function PrioridadeSelect({
           display: "inline-flex", alignItems: "center", gap: 6,
           padding: "4px 10px", borderRadius: 6,
           background: "#1c1c24", border: "1px solid #2e2e38",
-          color: prio ? prio.color : "#7a7a85", fontSize: 12, fontWeight: 500,
+          color: prioColor ?? "#7a7a85", fontSize: 12, fontWeight: 500,
           cursor: "pointer",
         }}
       >
         <IcFlag size={12} />
-        <span style={{ color: prio ? prio.color : "#7a7a85" }}>
-          {prio ? prio.label : "Sem prioridade"}
+        <span style={{ color: prioColor ?? "#7a7a85" }}>
+          {prioLabel ?? "Sem prioridade"}
         </span>
         <IcChevDown size={11} />
       </button>
@@ -255,7 +305,8 @@ function PrioridadeSelect({
               )}
             </button>
             {allPrios.map((p) => {
-              const c = PRIO_CONFIG[p];
+              const visualKey = PRIO_MAP[p];
+              const c = PRIO_CONFIG[visualKey];
               return (
                 <button
                   key={p}
@@ -285,110 +336,6 @@ function PrioridadeSelect({
   );
 }
 
-/** Select de responsável */
-function ResponsavelSelect({
-  value,
-  onChange,
-}: {
-  value: string | null;
-  onChange: (v: string | null) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const membro = value ? mockMembros.find((m) => m.id === value) : null;
-
-  return (
-    <div style={{ position: "relative" }}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        style={{
-          display: "inline-flex", alignItems: "center", gap: 7,
-          padding: "4px 10px", borderRadius: 6,
-          background: "#1c1c24", border: "1px solid #2e2e38",
-          color: "#b6b6bf", fontSize: 12, fontWeight: 500, cursor: "pointer",
-        }}
-      >
-        {membro ? (
-          <>
-            <div style={{
-              width: 20, height: 20, borderRadius: "50%",
-              background: "#3d2a6b", color: "#d8ccff",
-              fontSize: 9, fontWeight: 700,
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}>
-              {membro.iniciais}
-            </div>
-            <span style={{ color: "#e6e6ea" }}>{membro.nome}</span>
-          </>
-        ) : (
-          <span style={{ color: "#7a7a85" }}>Sem responsável</span>
-        )}
-        <IcChevDown size={11} />
-      </button>
-      {open && (
-        <>
-          <div
-            style={{ position: "fixed", inset: 0, zIndex: 1 }}
-            onClick={() => setOpen(false)}
-          />
-          <div style={{
-            position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 2,
-            background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8,
-            padding: 4, minWidth: 180, boxShadow: "0 8px 24px rgba(0,0,0,.4)",
-          }}>
-            <button
-              type="button"
-              onClick={() => { onChange(null); setOpen(false); }}
-              style={{
-                display: "flex", alignItems: "center", gap: 8,
-                width: "100%", padding: "7px 10px", borderRadius: 5,
-                background: value === null ? "rgba(124,92,255,0.12)" : "none",
-                border: 0, color: "#7a7a85", fontSize: 12, cursor: "pointer",
-              }}
-              onMouseEnter={(e) => { if (value !== null) e.currentTarget.style.background = "#26262f"; }}
-              onMouseLeave={(e) => { if (value !== null) e.currentTarget.style.background = "none"; }}
-            >
-              <span style={{ color: "#d4d4dc" }}>Sem responsável</span>
-              {value === null && (
-                <span style={{ marginLeft: "auto", color: "#7c5cff" }}><IcCheck size={11} /></span>
-              )}
-            </button>
-            {mockMembros.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                onClick={() => { onChange(m.id); setOpen(false); }}
-                style={{
-                  display: "flex", alignItems: "center", gap: 8,
-                  width: "100%", padding: "7px 10px", borderRadius: 5,
-                  background: m.id === value ? "rgba(124,92,255,0.12)" : "none",
-                  border: 0, color: "#d4d4dc", fontSize: 12, cursor: "pointer",
-                }}
-                onMouseEnter={(e) => { if (m.id !== value) e.currentTarget.style.background = "#26262f"; }}
-                onMouseLeave={(e) => { if (m.id !== value) e.currentTarget.style.background = "none"; }}
-              >
-                <div style={{
-                  width: 22, height: 22, borderRadius: "50%",
-                  background: "#3d2a6b", color: "#d8ccff",
-                  fontSize: 9, fontWeight: 700, flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
-                  {m.iniciais}
-                </div>
-                {m.nome}
-                {m.id === value && (
-                  <span style={{ marginLeft: "auto", color: "#7c5cff" }}><IcCheck size={11} /></span>
-                )}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-/** Linha de propriedade do painel */
 function PropRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{
@@ -403,24 +350,14 @@ function PropRow({ label, children }: { label: string; children: React.ReactNode
 
 /* ─── Componente principal ────────────────────────────────────────────────── */
 
-/**
- * Sheet lateral de detalhe de tarefa.
- *
- * Abre deslizando da direita com animação CSS. Fecha ao pressionar Escape,
- * clicar no overlay ou no botão de fechar.
- *
- * @example
- * <TaskSheet task={selectedTask} onClose={() => setSelectedTask(null)} />
- */
 export function TaskSheet({ task, onClose }: TaskSheetProps) {
-  const updateTask = useTasksStore((s) => s.updateTask);
+  const updateTask = useUpdateTask();
+  const updateStatus = useUpdateTaskStatus();
 
-  /* estado local — espelhado do store, persiste ao confirmar */
   const [nome, setNome] = useState("");
   const [editandoNome, setEditandoNome] = useState(false);
-  const [status, setStatus] = useState<StatusTarefa>("pendente");
-  const [prioridade, setPrioridade] = useState<Prioridade | null>(null);
-  const [responsavelId, setResponsavelId] = useState<string | null>(null);
+  const [statusVisual, setStatusVisual] = useState<StatusVisual>("pendente");
+  const [prioridade, setPrioridade] = useState<TaskPriority | null>(null);
   const [dataVencimento, setDataVencimento] = useState<string | null>(null);
   const [editandoData, setEditandoData] = useState(false);
   const [descricao, setDescricao] = useState("");
@@ -432,32 +369,20 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
   const tituloInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  /* Sincroniza estado quando a tarefa muda.
-   * Usa setTimeout para não chamar setState diretamente no corpo do effect
-   * (react-hooks/set-state-in-effect). Mesmo padrão de provision-modal.tsx.
-   */
   useEffect(() => {
     if (task) {
       const id = setTimeout(() => {
         setNome(task.nome);
-        setStatus(task.status);
-        setPrioridade(task.prioridade);
-        setResponsavelId(task.responsavelId);
-        setDataVencimento(task.dataVencimento);
-        setDescricao("");
+        setStatusVisual(INTENTION_TO_VISUAL[task.status] ?? "pendente");
+        setPrioridade((task.priority as TaskPriority) ?? null);
+        setDataVencimento(task.dueDate ?? null);
+        setDescricao(task.description ?? "");
         setNovaSubtarefa("");
         setComentario("");
         setEditandoNome(false);
         setEditandoData(false);
-        /* gera subtarefas mock a partir do contador */
-        const items: SubtarefaItem[] = Array.from({ length: task.subtarefas }, (_, i) => ({
-          id: `sub-${task.id}-${i}`,
-          nome: `Subtarefa ${i + 1}`,
-          concluida: false,
-        }));
-        setSubtarefas(items);
+        setSubtarefas([]);
       }, 0);
-      /* pequeno delay para que o transform já tenha sido aplicado antes do reflow */
       requestAnimationFrame(() => setVisivel(true));
       return () => clearTimeout(id);
     } else {
@@ -466,7 +391,6 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
     }
   }, [task]);
 
-  /* Fechar com Escape */
   useEffect(() => {
     if (!task) return;
     function handleKey(e: KeyboardEvent) {
@@ -476,7 +400,6 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [task, onClose]);
 
-  /* Auto-resize do textarea de descrição */
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -484,7 +407,6 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
     el.style.height = `${el.scrollHeight}px`;
   }, [descricao]);
 
-  /* Foca o input de título ao entrar em modo de edição */
   useEffect(() => {
     if (editandoNome) {
       tituloInputRef.current?.focus();
@@ -497,8 +419,29 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
     if (!task) return;
     const novoNome = nome.trim() || task.nome;
     setNome(novoNome);
-    updateTask(task.id, { nome: novoNome });
+    if (novoNome !== task.nome) {
+      updateTask.mutate({ id: task.id, projectId: task.projectId, dto: { titulo: novoNome } });
+    }
   }, [nome, task, updateTask]);
+
+  const handleStatusChange = useCallback((v: StatusVisual) => {
+    if (!task) return;
+    setStatusVisual(v);
+    const intention = VISUAL_TO_INTENTION[v];
+    updateStatus.mutate({ id: task.id, status: intention, projectId: task.projectId });
+  }, [task, updateStatus]);
+
+  const handlePrioridadeChange = useCallback((v: TaskPriority | null) => {
+    if (!task) return;
+    setPrioridade(v);
+    updateTask.mutate({ id: task.id, projectId: task.projectId, dto: { priority: v ?? undefined } });
+  }, [task, updateTask]);
+
+  const handleDueDateChange = useCallback((val: string | null) => {
+    if (!task) return;
+    setDataVencimento(val);
+    updateTask.mutate({ id: task.id, projectId: task.projectId, dto: { dueDate: val } });
+  }, [task, updateTask]);
 
   const adicionarSubtarefa = useCallback(() => {
     const texto = novaSubtarefa.trim();
@@ -516,14 +459,12 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
     );
   }, []);
 
-  /* Não renderiza nada se não há tarefa (nem no DOM, evita FOUC) */
   if (!task) return null;
 
   const dataTexto = formatarData(dataVencimento);
   const dataCor = corData(dataVencimento);
-  const diasRestantes = diasUntil(dataVencimento);
+  const diasRestantes = diasUntilDate(dataVencimento);
 
-  /* ─── Render ─────────────────────────────────────────────────────────────── */
   return (
     <>
       {/* Overlay */}
@@ -577,7 +518,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
           </button>
 
           <span style={{ fontSize: 12, color: "#5a5a64", fontWeight: 500, letterSpacing: ".5px" }}>
-            {task.id.toUpperCase()}
+            {task.identifier.toUpperCase()}
           </span>
 
           <button
@@ -647,28 +588,13 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
             </p>
 
             <PropRow label="Status">
-              <StatusSelect
-                value={status}
-                onChange={(v) => { setStatus(v); updateTask(task.id, { status: v }); }}
-              />
+              <StatusSelect value={statusVisual} onChange={handleStatusChange} />
             </PropRow>
 
             <div style={{ height: 1, background: "#22222a", margin: "4px 0" }} />
 
             <PropRow label="Prioridade">
-              <PrioridadeSelect
-                value={prioridade}
-                onChange={(v) => { setPrioridade(v); updateTask(task.id, { prioridade: v }); }}
-              />
-            </PropRow>
-
-            <div style={{ height: 1, background: "#22222a", margin: "4px 0" }} />
-
-            <PropRow label="Responsável">
-              <ResponsavelSelect
-                value={responsavelId}
-                onChange={(v) => { setResponsavelId(v); updateTask(task.id, { responsavelId: v }); }}
-              />
+              <PrioridadeSelect value={prioridade} onChange={handlePrioridadeChange} />
             </PropRow>
 
             <div style={{ height: 1, background: "#22222a", margin: "4px 0" }} />
@@ -681,8 +607,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                   defaultValue={dataVencimento ?? ""}
                   onChange={(e) => {
                     const val = e.target.value || null;
-                    setDataVencimento(val);
-                    updateTask(task.id, { dataVencimento: val });
+                    handleDueDateChange(val);
                   }}
                   onBlur={() => setEditandoData(false)}
                   style={{
@@ -792,7 +717,6 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
               </div>
             )}
 
-            {/* Input de nova subtarefa */}
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
               background: "#1a1a22", border: "1px solid #26262d",
@@ -822,7 +746,6 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
             <div style={{
               display: "flex", alignItems: "flex-start", gap: 10,
             }}>
-              {/* Avatar do usuário atual (mock) */}
               <div style={{
                 width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
                 background: "#3d2a6b", color: "#d8ccff",
