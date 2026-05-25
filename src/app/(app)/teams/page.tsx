@@ -1142,6 +1142,7 @@ export default function TeamsPage() {
   const [deleteTarget, setDeleteTarget] = useState<TeamLocal | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [activeView, setActiveView] = useState<SidebarView>("equipes");
+  const [toast, setToast] = useState<{ msg: string; type: "error" | "success" } | null>(null);
   const router = useRouter();
   const createTeam = useCreateTeam();
   const deleteTeam = useDeleteTeam();
@@ -1180,30 +1181,36 @@ export default function TeamsPage() {
   // teams exibidos: banco (quando disponível) ou localStorage
   const teams = localTeams;
 
-  const handleCreate = async ({ nome, color, icon }: CreateTeamPayloadLocal) => {
-    const tempId = Date.now().toString();
-    const novo: TeamLocal = {
-      id: tempId,
-      nome,
-      memberCount: 1,
-      color,
-      icon,
-      criadoEm: new Date().toISOString(),
-    };
-    const updated = [...localTeams, novo];
-    setLocalTeams(updated);
-    saveTeams(updated);
+  const showToast = (msg: string, type: "error" | "success") => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4500);
+  };
 
-    if (user?.organizationId) {
-      try {
-        const created = await createTeam.mutateAsync({ nome, color, icon });
-        const withRealId = updated.map(t =>
-          t.id === tempId ? { ...t, id: created.id, color: created.color ?? color } : t
-        );
-        setLocalTeams(withRealId);
-        saveTeams(withRealId);
-      } catch {
-        // mantém no localStorage se falhar
+  const handleCreate = async ({ nome, color, icon }: CreateTeamPayloadLocal) => {
+    if (!user?.organizationId) {
+      showToast("Nenhuma organização ativa. Faça login novamente.", "error");
+      return;
+    }
+
+    try {
+      const created = await createTeam.mutateAsync({ nome, color, icon });
+      const novo: TeamLocal = {
+        id: created.id,
+        nome: created.nome,
+        memberCount: created.memberCount ?? 1,
+        color: created.color ?? color,
+        icon: created.icon ?? icon,
+        criadoEm: created.criadoEm,
+      };
+      const updated = [...localTeams, novo];
+      setLocalTeams(updated);
+      saveTeams(updated);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      if (status === 401) {
+        showToast("Sessão expirada. Saia e entre novamente para criar equipes.", "error");
+      } else {
+        showToast("Falha ao criar equipe. Verifique sua conexão e tente novamente.", "error");
       }
     }
   };
@@ -1295,6 +1302,27 @@ export default function TeamsPage() {
           onConfirm={handleDeleteConfirm}
           isDeleting={deleteTeam.isPending}
         />
+      )}
+
+      {/* Toast de feedback */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)",
+          zIndex: 9999, display: "flex", alignItems: "center", gap: 10,
+          background: toast.type === "error" ? "#2d1414" : "#142d14",
+          border: `1px solid ${toast.type === "error" ? "#c0392b" : "#27ae60"}`,
+          borderRadius: 8, padding: "12px 18px",
+          boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
+          color: toast.type === "error" ? "#f87171" : "#4ade80",
+          fontSize: 13, fontWeight: 500, maxWidth: 420, textAlign: "center",
+        }}>
+          <span>{toast.type === "error" ? "⚠" : "✓"}</span>
+          <span>{toast.msg}</span>
+          <button onClick={() => setToast(null)}
+            style={{ marginLeft: 8, background: "none", border: "none", cursor: "pointer", color: "inherit", opacity: 0.6, fontSize: 16, lineHeight: 1 }}>
+            ×
+          </button>
+        </div>
       )}
     </div>
   );
