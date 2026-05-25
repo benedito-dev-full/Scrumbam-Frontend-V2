@@ -5,11 +5,9 @@ import { Star, Share2, Bot, Sparkles } from "lucide-react";
 
 import { ViewSwitcher } from "@/components/shell/view-switcher";
 import {
-  IcCaret, IcCheck, IcChat, IcFilter, IcGitFork,
+  IcCaret, IcCheck, IcFilter, IcGitFork,
   IcLayers, IcList, IcPlus, IcSearch, IcUser,
 } from "@/components/lists/icons";
-import { STATUS_CONFIG, GROUP_PILL_STYLE } from "@/components/lists/config";
-import { TaskRow } from "@/components/lists/task-row";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 import { TaskSheet } from "@/components/tasks/task-sheet";
@@ -71,11 +69,8 @@ export default function ListPage({
       <Toolbar tarefasCount={null} onAddTask={() => openModal()} subtarefasMode={subtarefasMode} onSubtarefasMode={setSubtarefasMode} />
       {view === "list" ? (
         <ListContent
-          espacoId={espacoId}
           listId={id}
-          subtarefasMode={subtarefasMode}
           onAddTask={openModal}
-          onOpenTask={setSelectedTask}
         />
       ) : (
         <BoardContent
@@ -122,11 +117,8 @@ function ListContent({
   listId,
   onAddTask,
 }: {
-  espacoId: string;
   listId: string;
-  subtarefasMode: SubtarefasMode;
   onAddTask: (defaultStatus?: StatusTarefa) => void;
-  onOpenTask: (tarefa: Tarefa) => void;
 }) {
   const { data: tasks = [], isLoading } = useTasksByProject(listId);
 
@@ -441,135 +433,6 @@ function SmallBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
     >
       {icon} {label}
     </button>
-  );
-}
-
-/* ─── Grupo de status ────────────────────────────────────────────────────── */
-function GroupBlock({
-  status,
-  tarefas,
-  subtarefasMode,
-  onAddTask,
-  onOpenTask,
-}: {
-  status: StatusTarefa;
-  tarefas: Tarefa[];
-  subtarefasMode: SubtarefasMode;
-  onAddTask: (defaultStatus?: StatusTarefa) => void;
-  onOpenTask: (tarefa: Tarefa) => void;
-}) {
-  const [open, setOpen] = useState(true);
-  const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
-  const cfg = STATUS_CONFIG[status];
-  const StatusIcon = cfg.Icon;
-
-  /* No modo "expandidas", todas as linhas ficam com expanded=true */
-  function isExpanded(id: string) {
-    if (subtarefasMode === "expandidas") return true;
-    if (subtarefasMode === "recolhidas") return false;
-    return !!expandedRows[id];
-  }
-
-  /* No modo "separar", subtarefas são filtradas da lista principal */
-  const tarefasVisiveis = subtarefasMode === "separar"
-    ? tarefas.filter((t) => t.subtarefas === 0)
-    : tarefas;
-
-  return (
-    <div style={{ marginBottom: 8, marginTop: 16 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0 8px" }}>
-        <button type="button" onClick={() => setOpen((v) => !v)} style={{
-          width: 18, display: "inline-flex", alignItems: "center", justifyContent: "center",
-          color: "#7a7a85", background: "none", border: 0, cursor: "pointer",
-          transform: open ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform .15s",
-        }}>
-          <IcCaret size={12} />
-        </button>
-        <span style={{
-          display: "inline-flex", alignItems: "center", gap: 6, padding: "3px 9px",
-          borderRadius: 5, fontSize: 11, fontWeight: 700, letterSpacing: ".7px", textTransform: "uppercase",
-          background: GROUP_PILL_STYLE[status].bg, color: GROUP_PILL_STYLE[status].color,
-        }}>
-          <StatusIcon size={11} />
-          {cfg.label}
-        </span>
-        <span style={{ color: "#7a7a85", fontSize: 12, marginLeft: 2 }}>{tarefasVisiveis.length}</span>
-      </div>
-
-      {open && (
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <colgroup>
-            <col style={{ width: "auto" }} />
-            <col style={{ width: 170 }} />
-            <col style={{ width: 200 }} />
-            <col style={{ width: 130 }} />
-            <col style={{ width: 200 }} />
-            <col style={{ width: 48 }} />
-            <col style={{ width: 36 }} />
-          </colgroup>
-          <thead><HeadRow /></thead>
-          <tbody>
-            {tarefasVisiveis.map((t) => (
-              <TaskRow
-                key={t.id}
-                tarefa={t}
-                status={status}
-                expanded={isExpanded(t.id)}
-                onToggle={() => setExpandedRows((s) => ({ ...s, [t.id]: !s[t.id] }))}
-                onOpen={() => onOpenTask(t)}
-              />
-            ))}
-            <AddRow status={status} onAddTask={onAddTask} />
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
-
-function HeadRow() {
-  const thStyle: React.CSSProperties = {
-    fontWeight: 500, color: "#7a7a85", fontSize: 12, textAlign: "left",
-    padding: "6px 10px", borderTop: "1px solid #1f1f25", borderBottom: "1px solid #1f1f25", background: "transparent",
-  };
-  return (
-    <tr>
-      <th style={{ ...thStyle, paddingLeft: 30 }}>Nome</th>
-      <th style={thStyle}>Responsável</th>
-      <th style={thStyle}>Data de vencimento</th>
-      <th style={thStyle}>Prioridade</th>
-      <th style={thStyle}>Status</th>
-      <th style={{ ...thStyle, textAlign: "center" }}><IcChat size={13} /></th>
-      <th style={{ ...thStyle, textAlign: "center" }}>
-        <span style={{ display: "inline-flex", width: 18, height: 18, borderRadius: "50%", background: "#2a2a32", alignItems: "center", justifyContent: "center", color: "#cfcfd6" }}>
-          <IcPlus size={11} />
-        </span>
-      </th>
-    </tr>
-  );
-}
-
-function AddRow({
-  status,
-  onAddTask,
-}: {
-  status: StatusTarefa;
-  onAddTask: (defaultStatus?: StatusTarefa) => void;
-}) {
-  const [hovered, setHovered] = useState(false);
-  return (
-    <tr
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onClick={() => onAddTask(status)}
-      style={{ cursor: "pointer" }}
-    >
-      <td colSpan={7} style={{ height: 34, borderBottom: "1px solid #1f1f25", background: hovered ? "#15151a" : "transparent" }}>
-        <div style={{ paddingLeft: 30, height: 34, display: "flex", alignItems: "center", gap: 7, color: hovered ? "#e6e6ea" : "#7a7a85", fontSize: 13 }}>
-          <IcPlus size={13} />Adicionar Tarefa
-        </div>
-      </td>
-    </tr>
   );
 }
 
