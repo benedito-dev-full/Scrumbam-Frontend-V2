@@ -255,24 +255,19 @@ function SectionBlock({ section }: { section: Section }) {
 
   return (
     <div>
-      <div className="group mb-1 flex h-7 items-center justify-between px-3">
+      <div className="mb-1 flex h-7 items-center justify-between px-3">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex flex-1 items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 transition-colors hover:text-muted-foreground"
+          className="flex flex-1 items-center gap-1 text-[12px] font-semibold text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
         >
-          {open ? (
-            <ChevronDown className="size-2.5" />
-          ) : (
-            <ChevronRight className="size-2.5" />
-          )}
           {section.label}
         </button>
         {section.showAddButton && (
           <button
             type="button"
             aria-label={`Adicionar em ${section.label}`}
-            className="grid size-4 place-items-center rounded text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="grid size-4 place-items-center rounded text-muted-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             <Plus className="size-3" />
           </button>
@@ -286,6 +281,17 @@ function SectionBlock({ section }: { section: Section }) {
               <Leaf item={item} active={pathname === item.href} />
             </li>
           ))}
+          {section.id === "canais" && (
+            <li>
+              <button
+                type="button"
+                className="flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-muted-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+              >
+                <Plus className="size-3.5 shrink-0" />
+                Adicionar canal
+              </button>
+            </li>
+          )}
         </ul>
       )}
     </div>
@@ -346,11 +352,6 @@ export function WorkspacePanel() {
           onClick={() => setHomeOpen((v) => !v)}
           className="flex h-7 flex-1 items-center gap-1 rounded px-1 text-[13px] font-semibold text-sidebar-foreground transition-colors hover:text-foreground"
         >
-          {homeOpen ? (
-            <ChevronDown className="size-3.5 text-muted-foreground" />
-          ) : (
-            <ChevronRight className="size-3.5 text-muted-foreground" />
-          )}
           Início
         </button>
         <button

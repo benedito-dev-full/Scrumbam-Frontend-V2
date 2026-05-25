@@ -256,7 +256,7 @@ function ListNode({
   const pathname = usePathname();
   const href = `/lists/${list.id}`;
   const active = pathname === href || pathname.startsWith(href + "/");
-  const paddingLeft = 8 + depth * 14;
+  const paddingLeft = 8 + depth * 20;
 
   const { editing, draft, setDraft, inputRef, isPending, startEdit, handleKeyDown, commitEdit } =
     useInlineRename(list);
@@ -322,7 +322,7 @@ function FolderNode({
   const href = `/folders/${folder.id}`;
   const active = pathname === href || pathname.startsWith(href + "/");
   const open = isExpanded(folder.id);
-  const paddingLeft = 8 + depth * 14;
+  const paddingLeft = 8 + depth * 20;
 
   const { data: lists, isLoading } = useLists(open ? folder.id : null);
 
@@ -448,7 +448,7 @@ function SpaceNode({
   const href = `/spaces/${space.id}`;
   const active = pathname === href || pathname.startsWith(href + "/");
   const open = isExpanded(space.id);
-  const paddingLeft = 8 + depth * 14;
+  const paddingLeft = 8 + depth * 20;
 
   const { data: folders, isLoading } = useFolders(open ? space.id : null);
 
@@ -496,7 +496,7 @@ function SpaceNode({
 
         {/* chip colorido com iniciais */}
         <span
-          className="mr-1.5 grid size-4 shrink-0 place-items-center rounded text-[9px] font-semibold text-white"
+          className="mr-1.5 grid size-6 shrink-0 place-items-center rounded-md text-[11px] font-bold text-white"
           style={{ background: chipColor }}
           aria-hidden
         >
@@ -792,27 +792,21 @@ export function SpaceTree() {
   return (
     <div>
       {/* cabeçalho da seção "Espaços" */}
-      <div className="group mb-1 flex h-7 items-center justify-between px-3">
+      <div className="mb-1 flex h-7 items-center justify-between px-3">
         <button
           type="button"
           onClick={() => setSectionOpen((v) => !v)}
-          className="flex flex-1 items-center gap-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 transition-colors hover:text-muted-foreground"
+          className="flex flex-1 items-center gap-1 text-[12px] font-semibold text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
         >
-          <ChevronRight
-            className={cn(
-              "size-2.5 transition-transform duration-150",
-              sectionOpen && "rotate-90",
-            )}
-          />
           Espaços
         </button>
 
-        {/* botão "+ Novo Space" */}
+        {/* botão "+" ao lado do header */}
         <button
           type="button"
           aria-label="Novo espaço"
           onClick={() => setCreateDialogOpen(true)}
-          className="grid size-4 place-items-center rounded text-muted-foreground/60 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          className="grid size-4 place-items-center rounded text-muted-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <Plus className="size-3" />
         </button>
@@ -831,17 +825,16 @@ export function SpaceTree() {
               onToggle={toggle}
             />
           ))}
-          {!isLoading && spaces?.length === 0 && (
-            <p className="px-3 py-2 text-[12px] text-muted-foreground/60">
-              Nenhum space ainda.{" "}
-              <button
-                type="button"
-                onClick={() => setCreateDialogOpen(true)}
-                className="underline hover:text-muted-foreground"
-              >
-                Criar o primeiro
-              </button>
-            </p>
+          {/* "+ Novo Espaço" sempre visível no final */}
+          {!isLoading && (
+            <button
+              type="button"
+              onClick={() => setCreateDialogOpen(true)}
+              className="flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-muted-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            >
+              <Plus className="size-3.5 shrink-0" />
+              Novo Espaço
+            </button>
           )}
         </div>
       )}
