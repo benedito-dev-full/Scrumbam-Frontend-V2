@@ -1,541 +1,467 @@
 "use client";
 
-import React, { use, useRef, useState } from "react";
+import React, { use, useState } from "react";
 import Link from "next/link";
-import { Star, Share2, Bot, Sparkles, LayoutGrid, List, ChevronRight } from "lucide-react";
-
 import {
-  IcCaret, IcCheck, IcFilter, IcGitFork,
-  IcLayers, IcList, IcPlus, IcSearch, IcUser,
-} from "@/components/lists/icons";
+  Star, Share2, ChevronDown, ChevronRight,
+  Bell, Calendar, Flag, Plus, SlidersHorizontal,
+  CheckCircle2, User, Search, LayoutGrid,
+} from "lucide-react";
+
 import { KanbanBoard } from "@/components/tasks/kanban-board";
-import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 import { TaskDetailDrawer } from "@/components/tasks/task-detail-drawer";
-import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useProject } from "@/hooks/use-projects";
 import { useTasksByProject, useCreateTask } from "@/hooks/use-tasks";
-import { isOverdue, priorityToLabel, priorityToColor } from "@/lib/mappers/task-status.mapper";
-import { type StatusTarefa, type Tarefa } from "@/lib/types/tarefa";
+import {
+  KANBAN_COLUMNS,
+  intentionToColumn,
+  isOverdue,
+  priorityToColor,
+  priorityToLabel,
+} from "@/lib/mappers/task-status.mapper";
 import type { DProjectDto, TaskResponseDto, V3Intention } from "@/lib/types/api";
+import { cn } from "@/lib/utils";
 
-/* ─── Página ─────────────────────────────────────────────────────────────── */
-export default function ListPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+// ─── Mapeamento status → label e cor ─────────────────────────────────────────
+
+const STATUS_LABEL: Record<string, string> = {
+  INBOX: "Backlog", READY: "Ready", EXECUTING: "Em Progresso",
+  VALIDATING: "Validando", DONE: "Concluído", VALIDATED: "Validado",
+  FAILED: "Falhou", CANCELLED: "Cancelado", DISCARDED: "Descartado",
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  INBOX: "#6b7280", READY: "#3b82f6", EXECUTING: "#8b5cf6",
+  VALIDATING: "#f59e0b", DONE: "#10b981", VALIDATED: "#10b981",
+  FAILED: "#ef4444", CANCELLED: "#71717a", DISCARDED: "#6b7280",
+};
+
+// ─── Página principal ─────────────────────────────────────────────────────────
+
+export default function ListPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
 
-  /* Dados encadeados: List → Folder → Space */
-  const { data: listData, isLoading: listLoading } = useProject(id);
+  const { data: listData, isLoading } = useProject(id);
   const { data: folderData } = useProject(listData?.idPai ?? null);
   const { data: spaceData } = useProject(folderData?.idPai ?? null);
 
-  /* Vista ativa: 'kanban' ou 'lista' */
-  const [view, setView] = useState<"kanban" | "lista">("kanban");
-
-  /* Modo de exibição de subtarefas */
-  const [subtarefasMode, setSubtarefasMode] = useState<"recolhidas" | "expandidas" | "separar">("recolhidas");
-
-  /* Modal de criar task (CreateTaskModal legado) */
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalDefaultStatus, setModalDefaultStatus] = useState<StatusTarefa | undefined>(undefined);
-
-  /* Quick create task inline */
-  const [quickCreateOpen, setQuickCreateOpen] = useState(false);
-
-  /* Sheet de detalhe de tarefa (legado) */
-  const [selectedTask, setSelectedTask] = useState<Tarefa | null>(null);
-
-  /* Drawer de detalhe de task (V2 — Kanban e Lista) */
+  const [view, setView] = useState<"lista" | "quadro">("lista");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  if (listLoading) {
-    return <div className="grid h-full place-items-center p-8 text-sm" style={{ color: "#7a7a85" }}>Carregando…</div>;
+  if (isLoading) {
+    return <div className="grid h-full place-items-center text-sm text-muted-foreground">Carregando…</div>;
   }
-
   if (!listData) {
-    return (
-      <div className="grid h-full place-items-center p-8 text-sm" style={{ color: "#7a7a85" }}>
-        Lista não encontrada.
-      </div>
-    );
-  }
-
-  const espacoId = spaceData?.id ?? folderData?.id ?? listData.idPai ?? id;
-
-  function openModal(defaultStatus?: StatusTarefa) {
-    setModalDefaultStatus(defaultStatus);
-    setModalOpen(true);
+    return <div className="grid h-full place-items-center text-sm text-muted-foreground">Lista não encontrada.</div>;
   }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden" style={{ background: "#111111" }}>
-      <PageHeader
-        listData={listData}
-        folderData={folderData}
-        spaceData={spaceData}
-        view={view}
-        onViewChange={setView}
-        onNewTask={() => setQuickCreateOpen(true)}
-      />
-      <Toolbar
-        tarefasCount={null}
-        onAddTask={() => openModal()}
-        subtarefasMode={subtarefasMode}
-        onSubtarefasMode={setSubtarefasMode}
-      />
-      {quickCreateOpen && (
-        <QuickCreateTask
-          listId={id}
-          onClose={() => setQuickCreateOpen(false)}
-        />
-      )}
-      {view === "lista" ? (
-        <ListContent
-          listId={id}
-          onAddTask={openModal}
-          onSelectTask={setSelectedTaskId}
-        />
-      ) : (
-        <BoardContent
-          listId={id}
-          espacoId={espacoId}
-          onAddTask={openModal}
-          onOpenTask={setSelectedTask}
-          onSelectTask={setSelectedTaskId}
-        />
-      )}
-      {selectedTaskId !== null && (
+    <div className="flex h-full flex-col overflow-hidden bg-[#111111]">
+      {/* ── Breadcrumb ───────────────────────────────────────────────────── */}
+      <div className="flex items-center gap-1 px-5 pt-2 text-[12px] text-[#7a7a85]">
+        {spaceData && (
+          <>
+            <Link href={`/spaces/${spaceData.id}`} className="hover:text-[#b6b6bf] transition-colors">
+              {spaceData.nome}
+            </Link>
+            <ChevronRight size={11} className="text-[#4a4a54]" />
+          </>
+        )}
+        {folderData && (
+          <>
+            <Link href={`/folders/${folderData.id}`} className="hover:text-[#b6b6bf] transition-colors">
+              {folderData.nome}
+            </Link>
+            <ChevronRight size={11} className="text-[#4a4a54]" />
+          </>
+        )}
+        <span className="flex items-center gap-1 text-[#b6b6bf]">
+          {/* ícone lista inline no breadcrumb */}
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/>
+            <line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+          </svg>
+          List
+        </span>
+        <ChevronRight size={11} className="text-[#4a4a54]" />
+        <span className="text-[#b6b6bf] font-medium">{listData.nome}</span>
+        <button type="button" className="ml-0.5 text-[#4a4a54] hover:text-[#7a7a85]">
+          <Star size={11} />
+        </button>
+      </div>
+
+      {/* ── Header: título + ações ───────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-5 py-1.5">
+        {/* Tabs de view */}
+        <div className="flex items-center gap-0.5">
+          <ViewTab
+            label="Lista"
+            icon={
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            }
+            active={view === "lista"}
+            onClick={() => setView("lista")}
+          />
+          <ViewTab
+            label="Quadro"
+            icon={<LayoutGrid size={13} />}
+            active={view === "quadro"}
+            onClick={() => setView("quadro")}
+          />
+          <button type="button" className="flex items-center gap-1 px-3 py-1 text-[13px] text-[#7a7a85] hover:text-[#b6b6bf]">
+            <Plus size={12} /> Visualização
+          </button>
+        </div>
+
+        {/* Ações direita */}
+        <div className="flex items-center gap-1.5">
+          <HdrBtn label="Agentes" />
+          <HdrBtn label="Pergunte à IA" accent />
+          <HdrBtn label="⚡ Compartilhar" bordered />
+        </div>
+      </div>
+
+      {/* ── Toolbar ─────────────────────────────────────────────────────── */}
+      <Toolbar listId={id} />
+
+      {/* ── Conteúdo ────────────────────────────────────────────────────── */}
+      <div className="flex flex-1 overflow-hidden">
+        {view === "lista" ? (
+          <ListView listId={id} onSelectTask={setSelectedTaskId} />
+        ) : (
+          <KanbanBoard projectId={id} onSelectTask={setSelectedTaskId} />
+        )}
+      </div>
+
+      {/* ── Drawer de detalhe ───────────────────────────────────────────── */}
+      {selectedTaskId && (
         <TaskDetailDrawer
           taskId={selectedTaskId}
           projectId={id}
           onClose={() => setSelectedTaskId(null)}
         />
       )}
-      <TaskSheet
-        task={selectedTask}
-        onClose={() => setSelectedTask(null)}
-      />
-      <CreateTaskModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        listId={id}
-        espacoId={espacoId}
-        defaultStatus={modalDefaultStatus}
-      />
     </div>
   );
 }
 
-/* ─── Quick Create Task (inline bar) ────────────────────────────────────── */
-/**
- * Barra rápida de criação de task — aparece abaixo do header.
- * Usa useCreateTask() para POST /tasks e fecha após sucesso.
- */
-function QuickCreateTask({ listId, onClose }: { listId: string; onClose: () => void }) {
-  const [titulo, setTitulo] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { mutate, isPending } = useCreateTask();
+// ─── View Lista (agrupada por status, estilo ClickUp) ─────────────────────────
 
-  /* Foco automático ao montar */
-  React.useEffect(() => { inputRef.current?.focus(); }, []);
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = titulo.trim();
-    if (!trimmed || isPending) return;
-    mutate(
-      { titulo: trimmed, idProject: listId },
-      { onSuccess: onClose },
-    );
-  }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Escape") onClose();
-  }
-
-  return (
-    <div style={{
-      display: "flex", alignItems: "center", gap: 8,
-      padding: "8px 22px",
-      borderBottom: "1px solid #26262d",
-      background: "#15151a",
-      flexShrink: 0,
-    }}>
-      <form onSubmit={handleSubmit} style={{ flex: 1, display: "flex", gap: 8 }}>
-        <input
-          ref={inputRef}
-          value={titulo}
-          onChange={(e) => setTitulo(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Título da tarefa…"
-          disabled={isPending}
-          style={{
-            flex: 1, height: 32, padding: "0 10px",
-            background: "#1c1c24", border: "1px solid #2e2e38",
-            borderRadius: 6, color: "#e6e6ea", fontSize: 13, outline: "none",
-          }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = "#5a4fcf"; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = "#2e2e38"; }}
-        />
-        <button
-          type="submit"
-          disabled={isPending || !titulo.trim()}
-          style={{
-            height: 32, padding: "0 14px", borderRadius: 6, border: "none",
-            background: titulo.trim() && !isPending ? "#5a4fcf" : "#2a2a32",
-            color: titulo.trim() && !isPending ? "#fff" : "#7a7a85",
-            fontSize: 13, fontWeight: 600, cursor: titulo.trim() && !isPending ? "pointer" : "default",
-            transition: "background .15s, color .15s",
-          }}
-        >
-          {isPending ? "Criando…" : "Criar"}
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            height: 32, padding: "0 10px", borderRadius: 6, border: "1px solid #2a2a32",
-            background: "none", color: "#7a7a85", fontSize: 13, cursor: "pointer",
-          }}
-        >
-          Cancelar
-        </button>
-      </form>
-    </div>
-  );
-}
-
-/* ─── Conteúdo reativo do kanban ────────────────────────────────────────── */
-/** Renderiza o KanbanBoard conectado ao backend via projectId (List). */
-function BoardContent({
-  listId,
-  onSelectTask,
-}: {
-  listId: string;
-  espacoId: string;
-  onAddTask: (defaultStatus?: StatusTarefa) => void;
-  onOpenTask: (tarefa: Tarefa) => void;
-  onSelectTask: (taskId: string) => void;
-}) {
-  return <KanbanBoard projectId={listId} onSelectTask={onSelectTask} />;
-}
-
-/* ─── Conteúdo reativo da lista ──────────────────────────────────────────── */
-/**
- * Exibe tasks da list em formato tabular simples, conectado ao backend via useTasksByProject.
- * Migrado de useTasksStore/mockTarefas → useTasksByProject (Débito D3).
- */
-function ListContent({
-  listId,
-  onAddTask,
-  onSelectTask,
-}: {
-  listId: string;
-  onAddTask: (defaultStatus?: StatusTarefa) => void;
-  onSelectTask: (taskId: string) => void;
-}) {
+function ListView({ listId, onSelectTask }: { listId: string; onSelectTask: (id: string) => void }) {
   const { data: tasks = [], isLoading } = useTasksByProject(listId);
+  const { mutate: createTask } = useCreateTask();
 
-  const COL = "grid-cols-[minmax(0,1fr)_130px_110px_110px]";
+  // Agrupa tasks pelas 5 colunas Kanban
+  const groups = KANBAN_COLUMNS.map((col) => ({
+    col,
+    tasks: tasks.filter((t) => intentionToColumn(t.status as V3Intention) === col.id),
+  }));
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ background: "#111111" }}>
-      <div style={{ minWidth: 700, padding: "16px 22px 60px" }}>
+    <div className="flex-1 overflow-y-auto overflow-x-auto">
+      <div style={{ minWidth: 700 }}>
+        {/* Cabeçalho de colunas — fixo */}
+        <div className="sticky top-0 z-10 flex items-center border-b border-[#26262d] bg-[#111111] px-5 py-0" style={{ minWidth: 700 }}>
+          <div className="flex-1 py-2 text-[12px] font-medium text-[#5a5a64]">Nome</div>
+          <div className="w-[140px] shrink-0 py-2 text-[12px] font-medium text-[#5a5a64]">Responsável</div>
+          <div className="w-[150px] shrink-0 py-2 text-[12px] font-medium text-[#5a5a64]">Data de vencimento</div>
+          <div className="w-[120px] shrink-0 py-2 text-[12px] font-medium text-[#5a5a64]">Prioridade</div>
+          <div className="w-[32px] shrink-0" />
+        </div>
+
         {isLoading ? (
-          <ListContentSkeleton />
-        ) : tasks.length === 0 ? (
-          <EmptyState onAddTask={() => onAddTask()} />
+          <ListSkeleton />
         ) : (
-          <div className="overflow-hidden rounded-lg border border-border">
-            {/* Cabeçalho */}
-            <div className={`grid items-center bg-muted/30 px-3 py-2 text-[11px] uppercase tracking-wider text-muted-foreground ${COL}`}>
-              <div>Título</div>
-              <div>Status</div>
-              <div>Prioridade</div>
-              <div>Vencimento</div>
-            </div>
-            {/* Linhas */}
-            {tasks.map((t) => (
-              <ListTaskRow key={t.id} task={t} colGrid={COL} onClick={() => onSelectTask(t.id)} />
+          <>
+            {groups.map(({ col, tasks: groupTasks }) => (
+              <StatusGroup
+                key={col.id}
+                label={col.label}
+                color={col.color}
+                tasks={groupTasks}
+                onSelectTask={onSelectTask}
+                onAddTask={() =>
+                  createTask({ titulo: "Nova tarefa", idProject: listId })
+                }
+              />
             ))}
-            {/* Adicionar task */}
+
+            {/* + Novo status */}
             <button
               type="button"
-              onClick={() => onAddTask()}
-              className="flex h-8 w-full items-center gap-2 border-t border-border px-3 text-[13px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
+              className="flex h-9 items-center gap-2 px-5 text-[13px] text-[#5a5a64] hover:text-[#b6b6bf] transition-colors"
             >
-              <IcPlus size={13} />
-              Adicionar tarefa
+              <Plus size={13} />
+              Novo status
             </button>
-          </div>
+          </>
         )}
       </div>
     </div>
   );
 }
 
-/** Linha de task para a view de lista simples (backend-connected). */
-function ListTaskRow({ task, colGrid, onClick }: { task: TaskResponseDto; colGrid: string; onClick: () => void }) {
-  const STATUS_DOT: Record<string, string> = {
-    INBOX: "#6b7280", READY: "#3b82f6", EXECUTING: "#8b5cf6",
-    VALIDATING: "#f59e0b", DONE: "#10b981", FAILED: "#ef4444",
-    CANCELLED: "#71717a", DISCARDED: "#6b7280", VALIDATED: "#10b981",
-  };
-  const STATUS_LABEL: Record<string, string> = {
-    INBOX: "Backlog", READY: "Ready", EXECUTING: "Em andamento",
-    VALIDATING: "Validando", DONE: "Concluída", FAILED: "Falhou",
-    CANCELLED: "Cancelada", DISCARDED: "Descartada", VALIDATED: "Validada",
-  };
+// ─── Grupo de status ──────────────────────────────────────────────────────────
 
-  const dotColor = STATUS_DOT[task.status] ?? "#6b7280";
-  const statusLabel = STATUS_LABEL[task.status] ?? task.status;
-  const prioLabel = priorityToLabel(task.priority);
-  const prioColor = priorityToColor(task.priority);
+function StatusGroup({
+  label, color, tasks, onSelectTask, onAddTask,
+}: {
+  label: string;
+  color: string;
+  tasks: TaskResponseDto[];
+  onSelectTask: (id: string) => void;
+  onAddTask: () => void;
+}) {
+  const [open, setOpen] = useState(true);
+  const [addingInline, setAddingInline] = useState(false);
+  const { mutate: createTask, isPending } = useCreateTask();
+  const [draft, setDraft] = useState("");
+
+  function handleInlineSubmit(listId?: string) {
+    if (!draft.trim() || !listId) return;
+    createTask(
+      { titulo: draft.trim(), idProject: listId },
+      { onSuccess: () => { setDraft(""); setAddingInline(false); } },
+    );
+  }
+
+  return (
+    <div>
+      {/* Header do grupo */}
+      <div
+        className="group flex h-9 cursor-pointer items-center gap-2 px-5 hover:bg-[#161619]"
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="text-[#5a5a64] transition-transform" style={{ transform: open ? "rotate(0deg)" : "rotate(-90deg)", display: "inline-flex" }}>
+          <ChevronDown size={13} />
+        </span>
+        {/* Ícone de status circular */}
+        <span className="flex size-4 shrink-0 items-center justify-center rounded-full border-2" style={{ borderColor: color }}>
+          <span className="size-1.5 rounded-full" style={{ background: color }} />
+        </span>
+        <span className="text-[12px] font-semibold uppercase tracking-wider" style={{ color }}>
+          {label}
+        </span>
+        <span className="text-[12px] text-[#5a5a64]">{tasks.length}</span>
+      </div>
+
+      {/* Linhas de tasks */}
+      {open && (
+        <>
+          {tasks.map((task) => (
+            <TaskRow key={task.id} task={task} onClick={() => onSelectTask(task.id)} />
+          ))}
+
+          {/* Inline add */}
+          {addingInline ? (
+            <div className="flex h-9 items-center gap-3 border-b border-[#26262d] px-5">
+              <span className="flex size-4 shrink-0 items-center justify-center rounded-full border-2" style={{ borderColor: color }}>
+                <span className="size-1.5 rounded-full" style={{ background: color }} />
+              </span>
+              <input
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleInlineSubmit();
+                  if (e.key === "Escape") { setAddingInline(false); setDraft(""); }
+                }}
+                placeholder="Nome da tarefa…"
+                disabled={isPending}
+                className="flex-1 bg-transparent text-[13px] text-[#e6e6ea] placeholder:text-[#5a5a64] outline-none"
+              />
+              <span className="text-[11px] text-[#5a5a64]">Enter para salvar · Esc para cancelar</span>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddingInline(true)}
+              className="flex h-9 w-full items-center gap-2 border-b border-[#1e1e22] px-5 text-[13px] text-[#5a5a64] transition-colors hover:bg-[#161619] hover:text-[#b6b6bf]"
+            >
+              <Plus size={13} />
+              Adicionar Tarefa
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Linha de task ────────────────────────────────────────────────────────────
+
+function TaskRow({ task, onClick }: { task: TaskResponseDto; onClick: () => void }) {
+  const color = STATUS_COLOR[task.status] ?? "#6b7280";
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
   const dateLabel = task.dueDate
     ? new Date(task.dueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
-    : "—";
+    : null;
+  const prioColor = priorityToColor(task.priority);
+  const prioLabel = priorityToLabel(task.priority);
 
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
-      className={`group grid cursor-pointer items-center border-t border-border px-3 text-[13px] transition-colors hover:bg-muted/40 ${colGrid}`}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
+      className="group flex h-9 cursor-pointer items-center border-b border-[#1e1e22] px-5 transition-colors hover:bg-[#161619]"
     >
-      {/* Título */}
-      <div className="flex h-9 items-center gap-2 truncate">
-        <span className="size-1.5 shrink-0 rounded-full" style={{ background: dotColor }} />
-        <span className="font-mono text-[11px] text-muted-foreground shrink-0">{task.identifier}</span>
-        <span className="truncate text-foreground">{task.title}</span>
-        {task.idPai && (
-          <span className="inline-flex h-4 items-center gap-0.5 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
-            <IcGitFork size={10} />
+      {/* Nome */}
+      <div className="flex flex-1 items-center gap-2 min-w-0">
+        {/* Ícone circular do status */}
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          className="flex size-4 shrink-0 items-center justify-center rounded-full border-2 hover:opacity-80 transition-opacity"
+          style={{ borderColor: color }}
+          title={STATUS_LABEL[task.status]}
+        >
+          <span className="size-1.5 rounded-full" style={{ background: color }} />
+        </button>
+        <span className="truncate text-[13px] text-[#e6e6ea]">{task.title}</span>
+        {task.identifier && (
+          <span className="shrink-0 font-mono text-[11px] text-[#5a5a64] opacity-0 transition-opacity group-hover:opacity-100">
+            {task.identifier}
           </span>
         )}
       </div>
-      {/* Status */}
-      <div className="flex h-9 items-center">
-        <span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-muted px-2 text-[11px] font-medium">
-          <span className="size-1.5 rounded-full" style={{ background: dotColor }} />
-          {statusLabel}
-        </span>
-      </div>
-      {/* Prioridade */}
-      <div className="flex h-9 items-center gap-1.5">
-        {task.priority ? (
-          <>
-            <span className="size-2 rounded-full" style={{ background: prioColor }} />
-            <span className="text-[12px] text-foreground">{prioLabel}</span>
-          </>
+
+      {/* Responsável */}
+      <div className="flex w-[140px] shrink-0 items-center">
+        {task.assigneeId ? (
+          <span className="flex size-6 items-center justify-center rounded-full bg-violet-600 text-[10px] font-bold text-white">
+            {task.assigneeId.slice(0, 2).toUpperCase()}
+          </span>
         ) : (
-          <span className="text-[12px] text-muted-foreground/40">—</span>
-        )}
-      </div>
-      {/* Vencimento */}
-      <div className="flex h-9 items-center">
-        <span className={`text-[12px] ${overdue ? "text-amber-400" : "text-muted-foreground"}`}>
-          {overdue && task.dueDate ? "⚠ " : ""}{dateLabel}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/** Skeleton para estado de carregamento da list view. */
-function ListContentSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="flex h-9 items-center gap-3 border-t border-border px-3 first:border-t-0">
-          <div className="size-1.5 animate-pulse rounded-full bg-muted" />
-          <div className="h-3 w-[180px] animate-pulse rounded bg-muted" />
-          <div className="ml-auto h-3 w-16 animate-pulse rounded bg-muted" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ─── Page header ────────────────────────────────────────────────────────── */
-/**
- * Header completo da página de List:
- * - Breadcrumb: Space › Folder › List (com links para Space e Folder)
- * - Ícone + nome real da List (do backend)
- * - Botão "+ Nova Task" que dispara quick create inline
- * - Toggle Kanban / Lista
- */
-function PageHeader({
-  listData,
-  folderData,
-  spaceData,
-  view,
-  onViewChange,
-  onNewTask,
-}: {
-  listData: DProjectDto;
-  folderData: DProjectDto | undefined;
-  spaceData: DProjectDto | undefined;
-  view: "kanban" | "lista";
-  onViewChange: (v: "kanban" | "lista") => void;
-  onNewTask: () => void;
-}) {
-  return (
-    <header
-      style={{
-        borderBottom: "1px solid #26262d",
-        background: "#111111",
-        flexShrink: 0,
-      }}
-    >
-      {/* Breadcrumb */}
-      {(spaceData || folderData) && (
-        <div style={{
-          display: "flex", alignItems: "center", gap: 4,
-          padding: "6px 20px 0",
-          fontSize: 11, color: "#7a7a85",
-        }}>
-          {spaceData && (
-            <>
-              <Link
-                href={`/spaces/${spaceData.id}`}
-                style={{ color: "#7a7a85", textDecoration: "none" }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "#b6b6bf"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "#7a7a85"; }}
-              >
-                {spaceData.nome}
-              </Link>
-              <ChevronRight size={11} style={{ color: "#4a4a54", flexShrink: 0 }} />
-            </>
-          )}
-          {folderData && (
-            <>
-              <Link
-                href={`/folders/${folderData.id}`}
-                style={{ color: "#7a7a85", textDecoration: "none" }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "#b6b6bf"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "#7a7a85"; }}
-              >
-                {folderData.nome}
-              </Link>
-              <ChevronRight size={11} style={{ color: "#4a4a54", flexShrink: 0 }} />
-            </>
-          )}
-          <span style={{ color: "#5a5a64" }}>{listData.nome}</span>
-        </div>
-      )}
-
-      {/* Linha principal: ícone + título + ações */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        gap: 12, padding: "4px 20px 8px",
-        minHeight: 40,
-      }}>
-        {/* Esquerda: ícone + título */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-          <span style={{ color: "#7a7a85", flexShrink: 0, display: "flex" }}><IcList size={16} /></span>
-          <h1 style={{
-            fontSize: 14, fontWeight: 600, color: "#e6e6ea",
-            margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-          }}>
-            {listData.nome}
-          </h1>
-          <button type="button" style={{
-            display: "grid", width: 20, height: 20, placeItems: "center",
-            borderRadius: 4, color: "#7a7a85", background: "none", border: 0, cursor: "pointer",
-          }}>
-            <Star size={13} />
-          </button>
-          <button type="button" style={{
-            display: "grid", width: 20, height: 20, placeItems: "center",
-            borderRadius: 4, color: "#7a7a85", background: "none", border: 0, cursor: "pointer",
-          }}>
-            <IcCaret size={12} />
-          </button>
-        </div>
-
-        {/* Direita: ações */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-          <TbBtn icon={<Bot size={13} />} label="Agentes" />
-          <TbBtn icon={<Sparkles size={13} />} label="Pergunte à IA" />
-          <div style={{ width: 1, height: 16, background: "#26262d", margin: "0 2px" }} />
-
-          {/* Botão Nova Task */}
           <button
             type="button"
-            onClick={onNewTask}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 5,
-              height: 28, padding: "0 12px", borderRadius: 6,
-              border: "none",
-              background: "linear-gradient(135deg, #5a4fcf 0%, #7c3aed 100%)",
-              color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer",
-            }}
-            onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
+            onClick={(e) => e.stopPropagation()}
+            className="flex size-6 items-center justify-center rounded-full border border-dashed border-[#3a3a44] text-[#5a5a64] opacity-0 transition-opacity group-hover:opacity-100 hover:border-[#7a7a85] hover:text-[#b6b6bf]"
           >
-            <IcPlus size={13} />
-            Nova Task
+            <Bell size={11} />
           </button>
-
-          <div style={{ width: 1, height: 16, background: "#26262d", margin: "0 2px" }} />
-
-          {/* Toggle Kanban / Lista */}
-          <div style={{
-            display: "inline-flex", alignItems: "center",
-            height: 28, border: "1px solid #2a2a32", background: "#1c1c22",
-            borderRadius: 6, overflow: "hidden",
-          }}>
-            <ViewToggleBtn
-              icon={<LayoutGrid size={13} />}
-              label="Kanban"
-              active={view === "kanban"}
-              onClick={() => onViewChange("kanban")}
-            />
-            <div style={{ width: 1, background: "#2a2a32", height: "100%" }} />
-            <ViewToggleBtn
-              icon={<List size={13} />}
-              label="Lista"
-              active={view === "lista"}
-              onClick={() => onViewChange("lista")}
-            />
-          </div>
-
-          <TbBtn icon={<Share2 size={13} />} label="Compartilhar" bordered />
-        </div>
+        )}
       </div>
-    </header>
+
+      {/* Data de vencimento */}
+      <div className="flex w-[150px] shrink-0 items-center">
+        {dateLabel ? (
+          <span className={cn(
+            "flex items-center gap-1 text-[12px]",
+            overdue ? "text-red-400 font-medium" : "text-[#7a7a85]",
+          )}>
+            <Calendar size={11} />
+            {dateLabel}
+            {overdue && <span className="rounded-sm bg-red-500/15 px-1 py-px text-[10px] text-red-400">atrasado</span>}
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 text-[12px] text-[#5a5a64] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[#b6b6bf]"
+          >
+            <Calendar size={11} />
+          </button>
+        )}
+      </div>
+
+      {/* Prioridade */}
+      <div className="flex w-[120px] shrink-0 items-center">
+        {task.priority ? (
+          <span className="flex items-center gap-1.5 text-[12px] text-[#b6b6bf]">
+            <Flag size={11} style={{ color: prioColor }} />
+            {prioLabel}
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 text-[12px] text-[#5a5a64] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[#b6b6bf]"
+          >
+            <Flag size={11} />
+          </button>
+        )}
+      </div>
+
+      {/* Coluna extra (+ campo) */}
+      <div className="flex w-[32px] shrink-0 items-center justify-center">
+        <button
+          type="button"
+          onClick={(e) => e.stopPropagation()}
+          className="size-5 text-[#5a5a64] opacity-0 transition-opacity group-hover:opacity-100 hover:text-[#b6b6bf]"
+        >
+          <Plus size={12} />
+        </button>
+      </div>
+    </div>
   );
 }
 
-/** Botão individual dentro do toggle Kanban/Lista. */
-function ViewToggleBtn({
-  icon, label, active, onClick,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  active: boolean;
-  onClick: () => void;
+// ─── Toolbar ──────────────────────────────────────────────────────────────────
+
+function Toolbar({ listId }: { listId: string }) {
+  const { mutate: createTask } = useCreateTask();
+
+  return (
+    <div className="flex items-center justify-between border-b border-[#26262d] bg-[#111111] px-5" style={{ height: 40, flexShrink: 0 }}>
+      {/* Esquerda */}
+      <div className="flex items-center gap-1">
+        <TbTab active icon={
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        } label="Grupo: Status" />
+        <TbTab icon={
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="6" y1="3" x2="6" y2="15"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M18 9a9 9 0 0 1-9 9"/></svg>
+        } label="Subtarefas" />
+        <TbTab icon={
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>
+        } label="Colunas" />
+      </div>
+
+      {/* Direita */}
+      <div className="flex items-center gap-1.5">
+        <SmTbBtn icon={<SlidersHorizontal size={12} />} label="Filtro" />
+        <SmTbBtn icon={<CheckCircle2 size={12} />} label="Fechado" />
+        <SmTbBtn icon={<User size={12} />} label="Responsável" />
+        <button type="button" className="flex size-7 items-center justify-center rounded text-[#7a7a85] hover:bg-[#1c1c22] hover:text-[#e6e6ea]">
+          <Search size={13} />
+        </button>
+        {/* Add Tarefa split button */}
+        <div className="flex overflow-hidden rounded border border-[#2a2a32]">
+          <button
+            type="button"
+            onClick={() => createTask({ titulo: "Nova tarefa", idProject: listId })}
+            className="flex items-center gap-1.5 bg-[#1c1c22] px-3 text-[13px] text-[#e6e6ea] transition-colors hover:bg-[#252530]"
+            style={{ height: 28 }}
+          >
+            Add Tarefa
+          </button>
+          <div className="w-px bg-[#2a2a32]" />
+          <button type="button" className="flex w-6 items-center justify-center bg-[#1c1c22] text-[#7a7a85] hover:bg-[#252530]">
+            <ChevronDown size={11} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sub-componentes menores ──────────────────────────────────────────────────
+
+function ViewTab({ label, icon, active, onClick }: {
+  label: string; icon: React.ReactNode; active: boolean; onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 5,
-        height: "100%", padding: "0 10px",
-        background: active ? "rgba(90,79,207,0.20)" : "none",
-        border: 0,
-        color: active ? "#cfc1ff" : "#b6b6bf",
-        fontSize: 12, fontWeight: active ? 600 : 400,
-        cursor: "pointer", whiteSpace: "nowrap",
-        transition: "background .12s, color .12s",
-      }}
-      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = "#17171c"; e.currentTarget.style.color = "#e6e6ea"; } }}
-      onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#b6b6bf"; } }}
+      className={cn(
+        "relative flex h-9 items-center gap-1.5 px-3 text-[13px] font-medium transition-colors",
+        active
+          ? "text-[#e6e6ea] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#7c5cfc]"
+          : "text-[#7a7a85] hover:text-[#b6b6bf]",
+      )}
     >
       {icon}
       {label}
@@ -543,194 +469,68 @@ function ViewToggleBtn({
   );
 }
 
-function TbBtn({ icon, label, bordered }: { icon: React.ReactNode; label: string; bordered?: boolean }) {
+function HdrBtn({ label, accent, bordered }: { label: string; accent?: boolean; bordered?: boolean }) {
   return (
-    <button type="button" style={{
-      display: "inline-flex", alignItems: "center", gap: 6,
-      height: 28, padding: "0 10px", borderRadius: 6,
-      border: bordered ? "1px solid #2a2a32" : "none",
-      background: bordered ? "#1c1c22" : "none",
-      color: "#b6b6bf", fontSize: 13, cursor: "pointer",
-    }}
-      onMouseEnter={(e) => (e.currentTarget.style.color = "#e6e6ea")}
-      onMouseLeave={(e) => (e.currentTarget.style.color = "#b6b6bf")}
+    <button
+      type="button"
+      className={cn(
+        "flex h-7 items-center gap-1.5 rounded-md px-3 text-[13px] font-medium transition-colors",
+        accent && "bg-[#5a4fcf] text-white hover:bg-[#4e44b8]",
+        bordered && !accent && "border border-[#2a2a32] bg-[#1c1c22] text-[#b6b6bf] hover:text-[#e6e6ea]",
+        !accent && !bordered && "text-[#b6b6bf] hover:text-[#e6e6ea]",
+      )}
     >
-      {icon}{label}
+      {label}
     </button>
   );
 }
 
-/* ─── Toolbar ────────────────────────────────────────────────────────────── */
-type SubtarefasMode = "recolhidas" | "expandidas" | "separar";
-
-function Toolbar({
-  tarefasCount,
-  onAddTask,
-  subtarefasMode,
-  onSubtarefasMode,
-}: {
-  tarefasCount: number | null;
-  onAddTask: () => void;
-  subtarefasMode: SubtarefasMode;
-  onSubtarefasMode: (m: SubtarefasMode) => void;
-}) {
-  const [subtarefasOpen, setSubtarefasOpen] = useState(false);
-
+function TbTab({ label, icon, active }: { label: string; icon: React.ReactNode; active?: boolean }) {
   return (
-    <div style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      gap: 12, padding: "0 22px", height: 44,
-      borderBottom: "1px solid #26262d", background: "#111111", flexShrink: 0,
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <TabBtn active icon={<IcLayers size={14} />} label="Grupo: Status" />
+    <button
+      type="button"
+      className={cn(
+        "flex h-7 items-center gap-1.5 rounded px-2.5 text-[13px] font-medium transition-colors",
+        active
+          ? "bg-[rgba(124,92,255,0.16)] text-[#cfc1ff]"
+          : "text-[#7a7a85] hover:bg-[#17171c] hover:text-[#e6e6ea]",
+      )}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
 
-        {/* Botão Subtarefas com dropdown */}
-        <div style={{ position: "relative" }}>
-          <TabBtn
-            icon={<IcGitFork size={14} />}
-            label="Subtarefas"
-            onClick={() => setSubtarefasOpen((v) => !v)}
-          />
-          {subtarefasOpen && (
-            <>
-              <div
-                style={{ position: "fixed", inset: 0, zIndex: 100 }}
-                onClick={() => setSubtarefasOpen(false)}
-              />
-              <div style={{
-                position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 101,
-                background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8,
-                padding: "6px 4px", minWidth: 220,
-                boxShadow: "0 8px 24px rgba(0,0,0,.5)",
-              }}>
-                <p style={{ fontSize: 11, fontWeight: 600, color: "#5a5a64", letterSpacing: ".6px", textTransform: "uppercase", padding: "4px 10px 6px", margin: 0 }}>
-                  Mostrar subtarefas
-                </p>
-                {(["recolhidas", "expandidas", "separar"] as SubtarefasMode[]).map((opt) => {
-                  const labels: Record<SubtarefasMode, string> = { recolhidas: "Recolhidas", expandidas: "Expandidas", separar: "Separar" };
-                  const descs: Record<SubtarefasMode, string | null> = { recolhidas: "(padrão)", expandidas: null, separar: "Usar isto para filtrar subtarefas" };
-                  const active = subtarefasMode === opt;
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => { onSubtarefasMode(opt); setSubtarefasOpen(false); }}
-                      style={{
-                        display: "flex", alignItems: "baseline", gap: 6,
-                        width: "100%", padding: "7px 10px", borderRadius: 5,
-                        background: "none", border: 0,
-                        color: "#d4d4dc", fontSize: 13, cursor: "pointer", textAlign: "left",
-                      }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = "#26262f"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-                    >
-                      <span style={{ flex: 1 }}>
-                        {labels[opt]}
-                        {descs[opt] && (
-                          <span style={{ color: "#7a7a85", fontSize: 12, marginLeft: 5 }}>{descs[opt]}</span>
-                        )}
-                      </span>
-                      {active && (
-                        <span style={{ color: "#b6b6bf", marginLeft: "auto", flexShrink: 0 }}>
-                          <IcCheck size={13} />
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
+function SmTbBtn({ label, icon }: { label: string; icon: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      className="flex h-7 items-center gap-1.5 rounded border border-[#2a2a32] bg-[#1c1c22] px-2.5 text-[13px] text-[#7a7a85] transition-colors hover:text-[#e6e6ea]"
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
+
+function ListSkeleton() {
+  return (
+    <div>
+      {[1, 2, 3].map((g) => (
+        <div key={g}>
+          <div className="flex h-9 items-center gap-3 px-5">
+            <div className="size-4 animate-pulse rounded-full bg-[#2a2a32]" />
+            <div className="h-3 w-24 animate-pulse rounded bg-[#2a2a32]" />
+          </div>
+          {[1, 2].map((r) => (
+            <div key={r} className="flex h-9 items-center gap-3 border-b border-[#1e1e22] px-5">
+              <div className="size-4 animate-pulse rounded-full bg-[#2a2a32]" />
+              <div className="h-3 w-[200px] animate-pulse rounded bg-[#2a2a32]" />
+            </div>
+          ))}
         </div>
-
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <SmallBtn icon={<IcFilter size={13} />} label="Filtro" />
-        <SmallBtn icon={<IcCheck size={13} />} label="Fechado" />
-        <SmallBtn icon={<IcUser size={13} />} label="Responsável" />
-        <button type="button" style={{
-          width: 28, height: 28, display: "inline-flex", alignItems: "center", justifyContent: "center",
-          borderRadius: 6, color: "#b6b6bf", background: "none", border: 0,
-        }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "#17171c"; e.currentTarget.style.color = "#e6e6ea"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#b6b6bf"; }}
-        >
-          <IcSearch size={15} />
-        </button>
-        {tarefasCount !== null && (
-          <span style={{ color: "#7a7a85", fontSize: 12, padding: "0 4px" }}>{tarefasCount} tarefas</span>
-        )}
-        <div style={{ display: "inline-flex", alignItems: "stretch", height: 28, border: "1px solid #2a2a32", background: "#1c1c22", borderRadius: 6, overflow: "hidden" }}>
-          <button
-            type="button"
-            onClick={onAddTask}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "0 12px", fontSize: 13, color: "#e6e6ea", background: "none", border: 0, cursor: "pointer" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "#252530"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
-          >
-            Add Tarefa
-          </button>
-          <div style={{ width: 1, background: "#2a2a32" }} />
-          <button type="button" style={{ width: 26, display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#b6b6bf", background: "none", border: 0, cursor: "pointer" }}>
-            <IcCaret size={11} />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TabBtn({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active?: boolean; onClick?: () => void }) {
-  return (
-    <button type="button" onClick={onClick} style={{
-      display: "inline-flex", alignItems: "center", gap: 6, height: 28, padding: "0 10px",
-      borderRadius: 6, background: active ? "rgba(124,92,255,0.16)" : "none",
-      border: 0, color: active ? "#cfc1ff" : "#b6b6bf", fontSize: 13, fontWeight: 500, cursor: "pointer",
-    }}
-      onMouseEnter={(e) => { if (!active) { e.currentTarget.style.background = "#17171c"; e.currentTarget.style.color = "#e6e6ea"; } }}
-      onMouseLeave={(e) => { if (!active) { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#b6b6bf"; } }}
-    >
-      {icon} {label}
-    </button>
-  );
-}
-
-function SmallBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <button type="button" style={{
-      display: "inline-flex", alignItems: "center", gap: 6, height: 28, padding: "0 10px",
-      border: "1px solid #2a2a32", background: "#1c1c22", borderRadius: 6, color: "#b6b6bf", fontSize: 13, cursor: "pointer",
-    }}
-      onMouseEnter={(e) => { e.currentTarget.style.color = "#e6e6ea"; e.currentTarget.style.borderColor = "#34343d"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.color = "#b6b6bf"; e.currentTarget.style.borderColor = "#2a2a32"; }}
-    >
-      {icon} {label}
-    </button>
-  );
-}
-
-function EmptyState({ onAddTask }: { onAddTask: () => void }) {
-  return (
-    <div style={{ marginTop: 40, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: 40, border: "1px dashed #26262d", borderRadius: 8, textAlign: "center" }}>
-      <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#1f1f25", display: "flex", alignItems: "center", justifyContent: "center", color: "#7a7a85" }}>
-        <IcPlus size={18} />
-      </div>
-      <p style={{ color: "#e6e6ea", fontSize: 14, fontWeight: 500, margin: 0 }}>Nenhuma tarefa nesta lista ainda</p>
-      <p style={{ color: "#7a7a85", fontSize: 12, margin: 0 }}>Crie a primeira tarefa para começar.</p>
-      <button
-        type="button"
-        onClick={onAddTask}
-        style={{
-          marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6,
-          height: 32, padding: "0 14px", borderRadius: 7, border: "none",
-          background: "linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%)",
-          color: "#0a0a0a", fontSize: 13, fontWeight: 600, cursor: "pointer",
-        }}
-      >
-        <IcPlus size={13} />
-        Nova tarefa
-      </button>
+      ))}
     </div>
   );
 }
