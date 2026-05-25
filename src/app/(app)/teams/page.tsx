@@ -501,10 +501,191 @@ function CreateTeamModal({ onClose, onCreate }: { onClose: () => void; onCreate:
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   ALL PEOPLE VIEW — aba "Todas as pessoas"
+══════════════════════════════════════════════════════════════════ */
+
+interface PersonMock {
+  id: string;
+  nome: string;
+  online: boolean;
+}
+
+type PeopleFilter = "status" | "equipe" | "tipo" | "gerente" | "classificar";
+
+function AllPeopleView({ pessoas }: { pessoas: PersonMock[] }) {
+  const [activeFilter, setActiveFilter] = useState<PeopleFilter | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+
+  const filters: { id: PeopleFilter; label: string }[] = [
+    { id: "status",      label: "Status" },
+    { id: "equipe",      label: "Equipe" },
+    { id: "tipo",        label: "Tipo de conta" },
+    { id: "gerente",     label: "Gerente" },
+    { id: "classificar", label: "Classificar" },
+  ];
+
+  const filtered = search.trim()
+    ? pessoas.filter(p => p.nome.toLowerCase().includes(search.toLowerCase()))
+    : pessoas;
+
+  const getIniciais = (nome: string) =>
+    nome.trim().split(" ").slice(0, 2).map(w => w[0]).join("").toUpperCase();
+
+  return (
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* topbar */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: 52, borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
+        <h1 style={{ fontSize: 15, fontWeight: 700, color: "#e4e4e4" }}>Todas as pessoas</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <button type="button" style={{ height: 30, padding: "0 14px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#c4c4c4", fontSize: 13, fontWeight: 500, display: "flex", alignItems: "center", gap: 6 }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.22)"; e.currentTarget.style.color = "#fff"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#c4c4c4"; }}>
+            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Exportar
+          </button>
+          <button type="button" style={{ height: 30, padding: "0 14px", borderRadius: 7, border: "none", background: "#e4e4e4", cursor: "pointer", color: "#111", fontSize: 13, fontWeight: 600 }}
+            onMouseEnter={e => { e.currentTarget.style.background = "#fff"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "#e4e4e4"; }}>
+            Convidar
+          </button>
+        </div>
+      </div>
+
+      {/* barra de filtros */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: 44, borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {filters.map(f => (
+            <button key={f.id} type="button"
+              onClick={() => setActiveFilter(activeFilter === f.id ? null : f.id)}
+              style={{
+                height: 28, padding: "0 10px", borderRadius: 6, border: "1px solid",
+                borderColor: activeFilter === f.id ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.1)",
+                background: activeFilter === f.id ? "rgba(255,255,255,0.06)" : "none",
+                cursor: "pointer", color: activeFilter === f.id ? "#e4e4e4" : "#777",
+                fontSize: 12, fontWeight: 500, display: "flex", alignItems: "center", gap: 4, transition: "all .15s",
+              }}
+              onMouseEnter={e => { if (activeFilter !== f.id) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)"; e.currentTarget.style.color = "#c4c4c4"; }}}
+              onMouseLeave={e => { if (activeFilter !== f.id) { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "#777"; }}}>
+              {f.label} <ChevronDown size={11} strokeWidth={2} />
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {searchOpen ? (
+            <input autoFocus value={search} onChange={e => setSearch(e.target.value)}
+              onBlur={() => { if (!search) setSearchOpen(false); }}
+              placeholder="Pesquisar pessoa..."
+              style={{ height: 28, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.15)", background: "rgba(255,255,255,0.05)", color: "#e4e4e4", fontSize: 12, outline: "none", width: 180 }} />
+          ) : (
+            <button type="button" onClick={() => setSearchOpen(true)}
+              style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#666", display: "flex", alignItems: "center", justifyContent: "center" }}
+              onMouseEnter={e => { e.currentTarget.style.color = "#c4c4c4"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "#666"; }}>
+              <Search size={13} strokeWidth={1.8} />
+            </button>
+          )}
+          {([
+            { mode: "grid" as const, icon: LayoutGrid },
+            { mode: "list" as const, icon: List },
+          ] as const).map(({ mode, icon: Icon }) => (
+            <button key={mode} type="button" onClick={() => setViewMode(mode)}
+              style={{ width: 28, height: 28, borderRadius: 6, border: "1px solid", borderColor: viewMode === mode ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.08)", background: viewMode === mode ? "rgba(255,255,255,0.06)" : "none", cursor: "pointer", color: viewMode === mode ? "#e4e4e4" : "#555", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon size={13} strokeWidth={1.8} />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* grid de pessoas */}
+      <div style={{ flex: 1, overflowY: "auto", padding: 20 }}>
+        {filtered.length === 0 && search ? (
+          <p style={{ color: "#555", fontSize: 13 }}>Nenhuma pessoa encontrada para "{search}".</p>
+        ) : (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 14 }}>
+            {filtered.map(p => (
+              <div key={p.id} style={{ width: 148, borderRadius: 10, background: "#1e1e1e", border: "1px solid rgba(255,255,255,0.07)", overflow: "hidden", cursor: "pointer", transition: "border-color .15s" }}
+                onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.18)"; }}
+                onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.07)"; }}>
+                {/* avatar grande */}
+                <div style={{ height: 148, background: "#e8e8e8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: 36, fontWeight: 800, color: "#111", letterSpacing: "-0.02em" }}>
+                    {getIniciais(p.nome)}
+                  </span>
+                </div>
+                {/* nome + dot */}
+                <div style={{ padding: "10px 12px 12px", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {p.nome}
+                  </span>
+                  {p.online && (
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", flexShrink: 0, boxShadow: "0 0 0 2px #1e1e1e" }} />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════════
    SIDEBAR
 ══════════════════════════════════════════════════════════════════ */
 
-function TeamsPanel({ teams, onTeamClick }: { teams: TeamLocal[]; onTeamClick?: (id: string) => void }) {
+type SidebarView = "equipes" | "pessoas";
+
+function TeamsPanel({
+  teams,
+  onTeamClick,
+  activeView,
+  onViewChange,
+}: {
+  teams: TeamLocal[];
+  onTeamClick?: (id: string) => void;
+  activeView: SidebarView;
+  onViewChange: (v: SidebarView) => void;
+}) {
+  const navItems: { id: SidebarView | null; label: string; badge?: string; icon: React.ReactNode }[] = [
+    {
+      id: "equipes",
+      label: "Todas as equipes",
+      badge: teams.length > 0 ? String(teams.length) : undefined,
+      icon: (
+        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      ),
+    },
+    {
+      id: "pessoas",
+      label: "Todas as pessoas",
+      badge: "1",
+      icon: (
+        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="8" r="4"/><path d="M4 20v-2a8 8 0 0 1 16 0v2"/>
+        </svg>
+      ),
+    },
+    {
+      id: null,
+      label: "Dados analíticos",
+      icon: (
+        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+          <line x1="6" y1="20" x2="6" y2="14"/>
+        </svg>
+      ),
+    },
+  ];
+
   return (
     <>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 12px", height: 44, borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
@@ -521,35 +702,22 @@ function TeamsPanel({ teams, onTeamClick }: { teams: TeamLocal[]; onTeamClick?: 
       </header>
 
       <div style={{ padding: "8px 6px" }}>
-        {[
-          { label: "Todas as equipes", active: true, badge: teams.length > 0 ? String(teams.length) : undefined, icon: (
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-          )},
-          { label: "Todas as pessoas", active: false, badge: "1", icon: (
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="8" r="4"/><path d="M4 20v-2a8 8 0 0 1 16 0v2"/>
-            </svg>
-          )},
-          { label: "Dados analíticos", active: false, badge: undefined, icon: (
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
-              <line x1="6" y1="20" x2="6" y2="14"/>
-            </svg>
-          )},
-        ].map((item) => (
-          <button key={item.label} type="button" style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", height: 34, padding: "0 8px", borderRadius: 5, border: 0, cursor: "pointer", textAlign: "left", background: item.active ? "#202022" : "none", color: item.active ? "#e4e4e4" : "#888892", fontSize: 13, fontWeight: item.active ? 500 : 400 }}
-            onMouseEnter={e => { if (!item.active) e.currentTarget.style.background = "#1a1a1c"; }}
-            onMouseLeave={e => { if (!item.active) e.currentTarget.style.background = "none"; }}>
-            <span style={{ color: item.active ? "#c0c0c4" : "#505058", flexShrink: 0 }}>{item.icon}</span>
-            <span style={{ flex: 1 }}>{item.label}</span>
-            {item.badge && (
-              <span style={{ fontSize: 11, color: "#606068", background: "#202022", borderRadius: 4, padding: "0 5px", lineHeight: "18px" }}>{item.badge}</span>
-            )}
-          </button>
-        ))}
+        {navItems.map((item) => {
+          const isActive = item.id !== null && activeView === item.id;
+          return (
+            <button key={item.label} type="button"
+              onClick={() => item.id && onViewChange(item.id)}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", height: 34, padding: "0 8px", borderRadius: 5, border: 0, cursor: "pointer", textAlign: "left", background: isActive ? "#202022" : "none", color: isActive ? "#e4e4e4" : "#888892", fontSize: 13, fontWeight: isActive ? 500 : 400 }}
+              onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "#1a1a1c"; }}
+              onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "none"; }}>
+              <span style={{ color: isActive ? "#c0c0c4" : "#505058", flexShrink: 0 }}>{item.icon}</span>
+              <span style={{ flex: 1 }}>{item.label}</span>
+              {item.badge && (
+                <span style={{ fontSize: 11, color: "#606068", background: "#202022", borderRadius: 4, padding: "0 5px", lineHeight: "18px" }}>{item.badge}</span>
+              )}
+            </button>
+          );
+        })}
 
         <p style={{ fontSize: 11, fontWeight: 600, color: "#505058", textTransform: "uppercase", letterSpacing: "0.06em", padding: "12px 8px 6px" }}>
           Minhas equipes
@@ -590,10 +758,16 @@ export default function TeamsPage() {
   const [localTeams, setLocalTeams] = useState<TeamLocal[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [hydrated, setHydrated] = useState(false);
+  const [activeView, setActiveView] = useState<SidebarView>("equipes");
   const router = useRouter();
   const createTeam = useCreateTeam();
   const user = useAuthStore((s) => s.user);
   const { data: apiTeams } = useTeams();
+
+  // Mock de pessoas — apenas o usuário logado por enquanto
+  const mockPessoas: PersonMock[] = user
+    ? [{ id: user.entidadeId, nome: user.name, online: true }]
+    : [];
 
   useEffect(() => {
     setLocalTeams(loadTeams());
@@ -659,14 +833,22 @@ export default function TeamsPage() {
     <div style={{ display: "flex", height: "100%", overflow: "hidden", background: "#111111" }}>
       {/* sidebar */}
       <aside style={{ width: 260, flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.07)", background: "#1a1a1a", display: "flex", flexDirection: "column" }}>
-        <TeamsPanel teams={teams} onTeamClick={handleTeamClick} />
+        <TeamsPanel
+          teams={teams}
+          onTeamClick={handleTeamClick}
+          activeView={activeView}
+          onViewChange={setActiveView}
+        />
       </aside>
 
-      {/* conteúdo principal — muda conforme há times ou não */}
-      {teams.length === 0
-        ? <EmptyState onCreateTeam={() => setModalOpen(true)} />
-        : <TeamsListView teams={teams} onCreateTeam={() => setModalOpen(true)} onTeamClick={handleTeamClick} />
-      }
+      {/* conteúdo principal */}
+      {activeView === "pessoas" ? (
+        <AllPeopleView pessoas={mockPessoas} />
+      ) : teams.length === 0 ? (
+        <EmptyState onCreateTeam={() => setModalOpen(true)} />
+      ) : (
+        <TeamsListView teams={teams} onCreateTeam={() => setModalOpen(true)} onTeamClick={handleTeamClick} />
+      )}
 
       {/* modal */}
       {modalOpen && (
