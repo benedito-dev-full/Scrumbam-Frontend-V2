@@ -143,7 +143,7 @@ export default function DirectMessagePage({
             onChange={(e) => setMessage(e.target.value)}
             placeholder={
               isMe
-                ? "Escreva uma nota, pressione a barra de espaço para usar a IA ou "/" para usar comandos"
+                ? 'Escreva uma nota, pressione a barra de espaço para usar a IA ou "/" para usar comandos'
                 : `Escreva para ${displayName}, pressione a barra de espaço para usar a IA ou "/" para usar comandos`
             }
             className="w-full resize-none bg-transparent text-[13px] text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
