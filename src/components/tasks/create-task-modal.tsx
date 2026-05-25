@@ -1,31 +1,48 @@
 'use client';
 
-// Modal de criação de task — layout inspirado no ClickUp:
-// título grande editável + chips de propriedades em linha + footer com ações.
-
-// ─── Externos ─────────────────────────────────────────────────────────────────
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, FileText, Sparkles, User, CalendarDays, Flag,
-  Tag, MoreHorizontal, Paperclip, Bell, ChevronDown,
+  X, FileText, Sparkles, CalendarDays, Flag,
+  MoreHorizontal, Paperclip, Bell, ChevronDown,
   Table2, Columns3, List,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
 
-// ─── Stores / Mocks ───────────────────────────────────────────────────────────
-import { useTasksStore } from '@/lib/stores/tasks';
-import { useEntidadesStore } from '@/lib/stores/entidades';
-import { mockMembros } from '@/lib/mocks/entidades';
-import { isEspaco } from '@/lib/types/entidade';
+import { GROUP_PILL_STYLE, PRIO_CONFIG, STATUS_CONFIG } from '@/components/lists/config';
+import { useCreateTask } from '@/hooks/use-tasks';
+import type { TaskPriority, V3Intention } from '@/lib/types/api';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-import type { StatusTarefa, Prioridade } from '@/lib/types/tarefa';
-import { STATUS_META, PRIORIDADE_META } from '@/lib/types/tarefa';
-import { GROUP_PILL_STYLE, PRIO_CONFIG } from '@/components/lists/config';
+/* ─── Mapeamentos StatusVisual ↔ V3Intention ─────────────────────────────── */
 
-// ─── Portal de dropdown (escapa de overflow:hidden do modal) ─────────────────
+type StatusVisual = 'em-progresso' | 'pendente' | 'bloqueado' | 'atrasado' | 'concluido';
+
+const VISUAL_TO_INTENTION: Record<StatusVisual, V3Intention> = {
+  pendente:       'INBOX',
+  'em-progresso': 'EXECUTING',
+  bloqueado:      'FAILED',
+  atrasado:       'INBOX',
+  concluido:      'DONE',
+};
+
+const PRIO_BACKEND_TO_VISUAL: Record<TaskPriority, keyof typeof PRIO_CONFIG> = {
+  URGENT: 'urgente',
+  HIGH:   'alta',
+  MEDIUM: 'media',
+  LOW:    'baixa',
+};
+
+const VISUAL_TO_BACKEND_PRIO: Record<keyof typeof PRIO_CONFIG, TaskPriority> = {
+  urgente: 'URGENT',
+  alta:    'HIGH',
+  media:   'MEDIUM',
+  baixa:   'LOW',
+};
+
+const ALL_STATUS_VISUAL: StatusVisual[] = ['em-progresso', 'pendente', 'bloqueado', 'atrasado', 'concluido'];
+const ALL_PRIO_VISUAL = Object.keys(PRIO_CONFIG) as (keyof typeof PRIO_CONFIG)[];
+
+/* ─── Portal de dropdown ─────────────────────────────────────────────────── */
 
 function DropdownPortal({
   triggerRef,
@@ -52,68 +69,33 @@ function DropdownPortal({
   );
 }
 
-// ─── Props ────────────────────────────────────────────────────────────────────
+/* ─── Props ──────────────────────────────────────────────────────────────── */
+
 interface CreateTaskModalProps {
   open: boolean;
   onClose: () => void;
   listId: string;
-  espacoId: string;
-  defaultStatus?: StatusTarefa;
+  defaultStatus?: StatusVisual;
 }
 
-// ─── Componente principal ─────────────────────────────────────────────────────
+/* ─── Componente principal ───────────────────────────────────────────────── */
 
-/**
- * Modal de criação de task no estilo ClickUp.
- *
- * Layout: tabs no topo, título grande editável, descrição inline,
- * chips de propriedades (status, responsável, data, prioridade, etiquetas),
- * footer com modelos + criar tarefa.
- */
 export function CreateTaskModal({
   open,
   onClose,
-  espacoId,
+  listId,
   defaultStatus,
 }: CreateTaskModalProps) {
-  const addTask = useTasksStore((s) => s.addTask);
-  const addDoc = useEntidadesStore((s) => s.addDoc);
-  const entidades = useEntidadesStore((s) => s.entidades);
-  const router = useRouter();
-
-  /* Listas disponíveis em todo o workspace agrupadas por espaço */
-  const espacos = entidades.filter(isEspaco);
-  const listas = entidades.filter((e) => e.idClasse === 'board' || e.idClasse === 'backlog');
-
-  /* Encontra o espaço pai de uma lista (pode estar dentro de uma pasta) */
-  function espacoDaLista(listaId: string): string {
-    const lista = entidades.find((e) => e.id === listaId);
-    if (!lista) return '';
-    if (!lista.idPai) return lista.id;
-    const pai = entidades.find((e) => e.id === lista.idPai);
-    if (!pai) return '';
-    if (pai.idClasse === 'espaco') return pai.id;
-    /* pai é pasta — sobe mais um nível */
-    const avo = entidades.find((e) => e.id === pai.idPai);
-    return avo?.id ?? '';
-  }
+  const createTask = useCreateTask();
 
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [status, setStatus] = useState<StatusTarefa>(defaultStatus ?? 'pendente');
-  const [prioridade, setPrioridade] = useState<Prioridade | null>(null);
-  const [responsavelId, setResponsavelId] = useState<string | null>(null);
+  const [status, setStatus] = useState<StatusVisual>(defaultStatus ?? 'pendente');
+  const [prioridade, setPrioridade] = useState<keyof typeof PRIO_CONFIG | null>(null);
   const [dataVencimento, setDataVencimento] = useState<string>('');
-  /* ID da lista de destino — inicia com a lista atual (espacoId) */
-  const [listaDestino, setListaDestino] = useState<string>(espacoId);
-
   const [abaAtiva, setAbaAtiva] = useState<'tarefa' | 'documento' | 'lembrete' | 'quadro' | 'paineis'>('tarefa');
-
-  // dropdowns abertos
-  const [openDropdown, setOpenDropdown] = useState<'status' | 'prioridade' | 'responsavel' | 'data' | 'lista' | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<'status' | 'prioridade' | 'data' | null>(null);
   const [descAberta, setDescAberta] = useState(false);
-
-  // aba documento
   const [docNome, setDocNome] = useState('');
   const [docPrivado, setDocPrivado] = useState(false);
 
@@ -121,18 +103,13 @@ export function CreateTaskModal({
   const modalRef = useRef<HTMLDivElement>(null);
 
   const statusBtnRef = useRef<HTMLButtonElement>(null);
-  const responsavelBtnRef = useRef<HTMLButtonElement>(null);
   const dataBtnRef = useRef<HTMLButtonElement>(null);
   const prioridadeBtnRef = useRef<HTMLButtonElement>(null);
-  const listaBtnRef = useRef<HTMLButtonElement>(null);
 
   const statusPortalRef = useRef<HTMLDivElement>(null);
-  const responsavelPortalRef = useRef<HTMLDivElement>(null);
   const dataPortalRef = useRef<HTMLDivElement>(null);
   const prioridadePortalRef = useRef<HTMLDivElement>(null);
-  const listaPortalRef = useRef<HTMLDivElement>(null);
 
-  // Reset ao abrir
   useEffect(() => {
     if (!open) return;
     setAbaAtiva('tarefa');
@@ -140,17 +117,14 @@ export function CreateTaskModal({
     setDescricao('');
     setStatus(defaultStatus ?? 'pendente');
     setPrioridade(null);
-    setResponsavelId(null);
     setDataVencimento('');
-    setListaDestino(espacoId);
     setOpenDropdown(null);
     setDescAberta(false);
     setDocNome('');
     setDocPrivado(false);
     setTimeout(() => nomeRef.current?.focus(), 50);
-  }, [open, defaultStatus, espacoId]);
+  }, [open, defaultStatus]);
 
-  // Fechar com Escape
   useEffect(() => {
     if (!open) return;
     function handleKey(e: KeyboardEvent) {
@@ -160,10 +134,9 @@ export function CreateTaskModal({
     return () => document.removeEventListener('keydown', handleKey);
   }, [open, onClose]);
 
-  // Fechar dropdown ao clicar fora (exclui portais que estão no body)
   useEffect(() => {
     if (!openDropdown) return;
-    const portalRefs = [statusPortalRef, responsavelPortalRef, dataPortalRef, prioridadePortalRef, listaPortalRef];
+    const portalRefs = [statusPortalRef, dataPortalRef, prioridadePortalRef];
     function handleClick(e: MouseEvent) {
       const target = e.target as Node;
       const insideModal = modalRef.current?.contains(target);
@@ -181,27 +154,32 @@ export function CreateTaskModal({
       nomeRef.current?.focus();
       return;
     }
-    addTask({
-      id: crypto.randomUUID(),
-      espacoId: listaDestino || espacoId,
-      nome: nome.trim(),
-      status,
-      prioridade,
-      responsavelId,
-      dataVencimento: dataVencimento || null,
-      subtarefas: 0,
-    });
-    toast.success('Tarefa criada!');
-    onClose();
+    const intention = VISUAL_TO_INTENTION[status];
+    const backendPrio = prioridade ? VISUAL_TO_BACKEND_PRIO[prioridade] : undefined;
+    createTask.mutate(
+      {
+        titulo: nome.trim(),
+        idProject: listId,
+        priority: backendPrio,
+        dueDate: dataVencimento || undefined,
+      },
+      {
+        onSuccess: () => {
+          toast.success('Tarefa criada!');
+          onClose();
+        },
+        onError: () => {
+          toast.error('Erro ao criar tarefa. Tente novamente.');
+        },
+      },
+    );
+    /* Fecha otimisticamente — o invalidateQueries no hook atualiza a lista */
+    void intention;
   }
 
-  const statusMeta = STATUS_META[status];
+  const statusCfg = STATUS_CONFIG[status];
   const pillStyle = GROUP_PILL_STYLE[status];
   const prioCfg = prioridade ? PRIO_CONFIG[prioridade] : null;
-  const responsavel = responsavelId ? mockMembros.find((m) => m.id === responsavelId) : null;
-
-  const statusList = Object.entries(STATUS_META) as [StatusTarefa, typeof STATUS_META[StatusTarefa]][];
-  const prioList = Object.entries(PRIO_CONFIG) as [Prioridade, typeof PRIO_CONFIG[Prioridade]][];
 
   return (
     <div
@@ -262,7 +240,6 @@ export function CreateTaskModal({
             </button>
           ))}
 
-          {/* Fechar */}
           <button
             type="button"
             onClick={onClose}
@@ -285,363 +262,252 @@ export function CreateTaskModal({
         {/* ── Corpo: aba Tarefa ── */}
         {abaAtiva === 'tarefa' && (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 0' }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 0' }}>
 
-            {/* Chips de contexto */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 18 }}>
-              {/* Seletor de lista destino */}
-              <button
-                ref={listaBtnRef}
-                type="button"
-                style={chipStyle}
-                onClick={() => setOpenDropdown(openDropdown === 'lista' ? null : 'lista')}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.09)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-              >
-                <List size={12} color="#888892" />
-                <span style={{ fontSize: 12, color: '#c4c4cc', maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {entidades.find((e) => e.id === listaDestino)?.nome ?? 'Selecionar lista'}
-                </span>
-                <ChevronDown size={11} color="#6b6b74" />
-              </button>
-              {openDropdown === 'lista' && (
-                <DropdownPortal triggerRef={listaBtnRef} portalRef={listaPortalRef}>
-                  <div style={{
-                    background: '#1c1c24', border: '1px solid #2e2e38', borderRadius: 8,
-                    padding: '4px', minWidth: 220, maxHeight: 300, overflowY: 'auto',
-                    boxShadow: '0 8px 24px rgba(0,0,0,.5)',
-                  }}>
-                    <p style={{ fontSize: 11, fontWeight: 600, color: '#5a5a64', letterSpacing: '.6px', textTransform: 'uppercase', padding: '4px 10px 6px', margin: 0 }}>
-                      Listas do workspace
-                    </p>
-                    {espacos.map((esp) => {
-                      const listasDoEspaco = listas.filter((l) => espacoDaLista(l.id) === esp.id);
-                      if (listasDoEspaco.length === 0) return null;
-                      return (
-                        <div key={esp.id}>
-                          <p style={{ fontSize: 11, color: '#7a7a85', padding: '4px 10px 2px', margin: 0, fontWeight: 600 }}>
-                            {esp.nome}
-                          </p>
-                          {listasDoEspaco.map((lista) => (
-                            <button
-                              key={lista.id}
-                              type="button"
-                              onClick={() => { setListaDestino(lista.id); setOpenDropdown(null); }}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: 8,
-                                width: '100%', padding: '6px 10px', borderRadius: 5,
-                                background: listaDestino === lista.id ? 'rgba(124,92,255,0.12)' : 'none',
-                                border: 0, color: '#d4d4dc', fontSize: 12, cursor: 'pointer', textAlign: 'left',
-                              }}
-                              onMouseEnter={(e) => { if (listaDestino !== lista.id) e.currentTarget.style.background = '#26262f'; }}
-                              onMouseLeave={(e) => { if (listaDestino !== lista.id) e.currentTarget.style.background = 'none'; }}
-                            >
-                              <List size={12} color="#6a6a75" />
-                              {lista.nome}
-                              {listaDestino === lista.id && (
-                                <span style={{ marginLeft: 'auto', color: '#7c5cff', fontSize: 11 }}>✓</span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </DropdownPortal>
-              )}
+              {/* Chip de tipo */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 18 }}>
+                <button type="button" style={chipStyle}>
+                  <span style={{
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: pillStyle.bg === '#2a2a31' ? '#5c6bc0' : pillStyle.bg,
+                    display: 'inline-block', flexShrink: 0,
+                    boxShadow: '0 0 0 2px rgba(92,107,192,0.25)',
+                  }} />
+                  <span style={{ fontSize: 12, color: '#c4c4cc' }}>Tarefa</span>
+                  <ChevronDown size={11} color="#6b6b74" />
+                </button>
+              </div>
 
-              <button type="button" style={chipStyle}>
-                <span style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: pillStyle.bg === '#2a2a31' ? '#5c6bc0' : pillStyle.bg,
-                  display: 'inline-block', flexShrink: 0,
-                  boxShadow: '0 0 0 2px rgba(92,107,192,0.25)',
-                }} />
-                <span style={{ fontSize: 12, color: '#c4c4cc' }}>Tarefa</span>
-                <ChevronDown size={11} color="#6b6b74" />
-              </button>
-            </div>
-
-            {/* Título */}
-            <textarea
-              ref={nomeRef}
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-              placeholder="Tarefa Nome"
-              rows={1}
-              style={{
-                width: '100%', boxSizing: 'border-box',
-                background: 'none', border: 'none', outline: 'none',
-                color: nome ? '#e4e4e4' : '#4a4a5a',
-                fontSize: 20, fontWeight: 500,
-                resize: 'none', lineHeight: 1.3,
-                fontFamily: 'inherit',
-                padding: 0, marginBottom: 14,
-                overflow: 'hidden',
-              }}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') { e.preventDefault(); handleCriar(); }
-              }}
-              onInput={(e) => {
-                const el = e.currentTarget;
-                el.style.height = 'auto';
-                el.style.height = `${el.scrollHeight}px`;
-              }}
-            />
-
-            {/* Descrição */}
-            {!descAberta ? (
-              <button
-                type="button"
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  background: 'none', border: 'none', cursor: 'text',
-                  color: '#6b6b74', fontSize: 13, padding: '4px 0', marginBottom: 4,
-                  width: '100%', textAlign: 'left',
-                }}
-                onClick={() => setDescAberta(true)}
-              >
-                <FileText size={14} style={{ flexShrink: 0 }} />
-                <span>Adicionar descrição</span>
-              </button>
-            ) : (
+              {/* Título */}
               <textarea
-                autoFocus
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                placeholder="Adicionar descrição..."
+                ref={nomeRef}
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                placeholder="Tarefa Nome"
+                rows={1}
                 style={{
                   width: '100%', boxSizing: 'border-box',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                  borderRadius: 7, outline: 'none',
-                  color: '#c4c4c4', fontSize: 13,
-                  resize: 'none', lineHeight: 1.55,
-                  fontFamily: 'inherit', padding: '10px 12px',
-                  minHeight: 72, marginBottom: 8,
+                  background: 'none', border: 'none', outline: 'none',
+                  color: nome ? '#e4e4e4' : '#4a4a5a',
+                  fontSize: 20, fontWeight: 500,
+                  resize: 'none', lineHeight: 1.3,
+                  fontFamily: 'inherit',
+                  padding: 0, marginBottom: 14,
+                  overflow: 'hidden',
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); handleCriar(); }
+                }}
+                onInput={(e) => {
+                  const el = e.currentTarget;
+                  el.style.height = 'auto';
+                  el.style.height = `${el.scrollHeight}px`;
                 }}
               />
-            )}
 
-            {/* Escrever com IA */}
-            <button
-              type="button"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 7,
-                background: 'none', border: 'none', cursor: 'pointer',
-                color: '#6b6b74', fontSize: 13, padding: '4px 0', marginBottom: 18,
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = '#a1a1aa'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = '#6b6b74'; }}
-            >
-              <Sparkles size={14} />
-              Escrever com IA
-            </button>
-
-          </div>{/* fim scroll */}
-
-          {/* ── Área fixa: chips + campos (sem overflow para não cortar dropdowns) ── */}
-          <div style={{ padding: '0 20px 12px', flexShrink: 0 }}>
-
-            {/* ── Chips de propriedades ── */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16, position: 'relative' }}>
-
-              {/* Status */}
-              <div>
+              {/* Descrição */}
+              {!descAberta ? (
                 <button
-                  ref={statusBtnRef}
                   type="button"
-                  onClick={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
                   style={{
-                    display: 'inline-flex', alignItems: 'center',
-                    height: 28, padding: '0 10px', borderRadius: 5,
-                    border: 'none', cursor: 'pointer',
-                    background: pillStyle.bg,
-                    color: pillStyle.color,
-                    fontSize: 12, fontWeight: 700,
-                    letterSpacing: '0.04em', textTransform: 'uppercase',
-                    transition: 'opacity 120ms',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    background: 'none', border: 'none', cursor: 'text',
+                    color: '#6b6b74', fontSize: 13, padding: '4px 0', marginBottom: 4,
+                    width: '100%', textAlign: 'left',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                  onClick={() => setDescAberta(true)}
                 >
-                  {statusMeta.label}
+                  <FileText size={14} style={{ flexShrink: 0 }} />
+                  <span>Adicionar descrição</span>
                 </button>
-                {openDropdown === 'status' && (
-                  <DropdownPortal triggerRef={statusBtnRef} portalRef={statusPortalRef}>
-                    <div style={dropdownStyle}>
-                      {statusList.sort((a, b) => a[1].order - b[1].order).map(([val, meta]) => (
-                        <button
-                          key={val}
-                          type="button"
-                          onClick={() => { setStatus(val); setOpenDropdown(null); }}
-                          data-selected={status === val ? '1' : '0'}
-                          style={{
-                            ...dropdownItemStyle,
-                            background: status === val ? 'rgba(255,255,255,0.06)' : 'none',
-                          }}
-                          {...itemHover}
-                        >
-                          <span style={{
-                            width: 8, height: 8, borderRadius: '50%',
-                            background: GROUP_PILL_STYLE[val].bg === '#2a2a31' ? '#71717a' : GROUP_PILL_STYLE[val].bg,
-                            display: 'inline-block', flexShrink: 0,
-                          }} />
-                          {meta.label}
-                        </button>
-                      ))}
-                    </div>
-                  </DropdownPortal>
-                )}
-              </div>
-
-              {/* Responsável */}
-              <div>
-                <button
-                  ref={responsavelBtnRef}
-                  type="button"
-                  onClick={() => setOpenDropdown(openDropdown === 'responsavel' ? null : 'responsavel')}
-                  style={propChipStyle}
-                >
-                  <User size={13} />
-                  {responsavel ? responsavel.nome : 'Responsável'}
-                </button>
-                {openDropdown === 'responsavel' && (
-                  <DropdownPortal triggerRef={responsavelBtnRef} portalRef={responsavelPortalRef}>
-                    <div style={dropdownStyle}>
-                      <button
-                        type="button"
-                        onClick={() => { setResponsavelId(null); setOpenDropdown(null); }}
-                        style={{ ...dropdownItemStyle, color: '#6b6b74' }}
-                        {...itemHover}
-                      >
-                        Sem responsável
-                      </button>
-                      {mockMembros.map((m) => (
-                        <button
-                          key={m.id}
-                          type="button"
-                          onClick={() => { setResponsavelId(m.id); setOpenDropdown(null); }}
-                          data-selected={responsavelId === m.id ? '1' : '0'}
-                          style={{
-                            ...dropdownItemStyle,
-                            background: responsavelId === m.id ? 'rgba(255,255,255,0.06)' : 'none',
-                          }}
-                          {...itemHover}
-                        >
-                          <span style={{
-                            width: 20, height: 20, borderRadius: '50%',
-                            background: '#3d2a6b', color: '#d8ccff',
-                            fontSize: 10, fontWeight: 600,
-                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                            flexShrink: 0,
-                          }}>
-                            {m.iniciais}
-                          </span>
-                          {m.nome}
-                        </button>
-                      ))}
-                    </div>
-                  </DropdownPortal>
-                )}
-              </div>
-
-              {/* Data de vencimento */}
-              <div>
-                <button
-                  ref={dataBtnRef}
-                  type="button"
-                  onClick={() => setOpenDropdown(openDropdown === 'data' ? null : 'data')}
-                  style={propChipStyle}
-                >
-                  <CalendarDays size={13} />
-                  {dataVencimento
-                    ? new Date(dataVencimento + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-                    : 'Data de vencimento'}
-                </button>
-                {openDropdown === 'data' && (
-                  <DropdownPortal triggerRef={dataBtnRef} portalRef={dataPortalRef}>
-                    <div style={{ ...dropdownStyle, padding: '10px 12px', minWidth: 'unset' }}>
-                      <input
-                        type="date"
-                        value={dataVencimento}
-                        onChange={(e) => { setDataVencimento(e.target.value); setOpenDropdown(null); }}
-                        style={{
-                          background: 'rgba(255,255,255,0.05)',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: 6, color: '#e4e4e4',
-                          fontSize: 13, padding: '6px 10px',
-                          outline: 'none', colorScheme: 'dark',
-                        }}
-                        autoFocus
-                      />
-                    </div>
-                  </DropdownPortal>
-                )}
-              </div>
-
-              {/* Prioridade */}
-              <div>
-                <button
-                  ref={prioridadeBtnRef}
-                  type="button"
-                  onClick={() => setOpenDropdown(openDropdown === 'prioridade' ? null : 'prioridade')}
+              ) : (
+                <textarea
+                  autoFocus
+                  value={descricao}
+                  onChange={(e) => setDescricao(e.target.value)}
+                  placeholder="Adicionar descrição..."
                   style={{
-                    ...propChipStyle,
-                    color: prioCfg ? prioCfg.color : '#6b6b74',
+                    width: '100%', boxSizing: 'border-box',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                    borderRadius: 7, outline: 'none',
+                    color: '#c4c4c4', fontSize: 13,
+                    resize: 'none', lineHeight: 1.55,
+                    fontFamily: 'inherit', padding: '10px 12px',
+                    minHeight: 72, marginBottom: 8,
                   }}
-                >
-                  <Flag size={13} />
-                  {prioCfg ? prioCfg.label : 'Prioridade'}
-                </button>
-                {openDropdown === 'prioridade' && (
-                  <DropdownPortal triggerRef={prioridadeBtnRef} portalRef={prioridadePortalRef}>
-                    <div style={dropdownStyle}>
-                      <button
-                        type="button"
-                        onClick={() => { setPrioridade(null); setOpenDropdown(null); }}
-                        style={{ ...dropdownItemStyle, color: '#6b6b74' }}
-                        {...itemHover}
-                      >
-                        Sem prioridade
-                      </button>
-                      {prioList.map(([val, cfg]) => (
-                        <button
-                          key={val}
-                          type="button"
-                          onClick={() => { setPrioridade(val); setOpenDropdown(null); }}
-                          data-selected={prioridade === val ? '1' : '0'}
-                          style={{
-                            ...dropdownItemStyle,
-                            color: cfg.color,
-                            background: prioridade === val ? 'rgba(255,255,255,0.06)' : 'none',
-                          }}
-                          {...itemHover}
-                        >
-                          <Flag size={12} />
-                          {cfg.label}
-                        </button>
-                      ))}
-                    </div>
-                  </DropdownPortal>
-                )}
-              </div>
+                />
+              )}
 
-              {/* Mais */}
-              <button type="button" style={{ ...propChipStyle, padding: '0 8px' }}>
-                <MoreHorizontal size={14} />
+              <button
+                type="button"
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#6b6b74', fontSize: 13, padding: '4px 0', marginBottom: 18,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#a1a1aa'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#6b6b74'; }}
+              >
+                <Sparkles size={14} />
+                Escrever com IA
               </button>
+
             </div>
 
-          </div>
+            {/* ── Chips de propriedades (área fixa) ── */}
+            <div style={{ padding: '0 20px 12px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 16, position: 'relative' }}>
+
+                {/* Status */}
+                <div>
+                  <button
+                    ref={statusBtnRef}
+                    type="button"
+                    onClick={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6,
+                      height: 28, padding: '0 10px', borderRadius: 5,
+                      border: 'none', cursor: 'pointer',
+                      background: pillStyle.bg,
+                      color: pillStyle.color,
+                      fontSize: 12, fontWeight: 700,
+                      letterSpacing: '0.04em', textTransform: 'uppercase',
+                      transition: 'opacity 120ms',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = '0.85'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = '1'; }}
+                  >
+                    {statusCfg.label}
+                  </button>
+                  {openDropdown === 'status' && (
+                    <DropdownPortal triggerRef={statusBtnRef} portalRef={statusPortalRef}>
+                      <div style={dropdownStyle}>
+                        {ALL_STATUS_VISUAL.map((s) => {
+                          const cfg = STATUS_CONFIG[s];
+                          const pill = GROUP_PILL_STYLE[s];
+                          return (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => { setStatus(s); setOpenDropdown(null); }}
+                              data-selected={status === s ? '1' : '0'}
+                              style={{
+                                ...dropdownItemStyle,
+                                background: status === s ? 'rgba(255,255,255,0.06)' : 'none',
+                              }}
+                              {...itemHover}
+                            >
+                              <span style={{
+                                width: 8, height: 8, borderRadius: '50%',
+                                background: pill.bg === '#2a2a31' ? '#71717a' : pill.bg,
+                                display: 'inline-block', flexShrink: 0,
+                              }} />
+                              {cfg.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </DropdownPortal>
+                  )}
+                </div>
+
+                {/* Data de vencimento */}
+                <div>
+                  <button
+                    ref={dataBtnRef}
+                    type="button"
+                    onClick={() => setOpenDropdown(openDropdown === 'data' ? null : 'data')}
+                    style={propChipStyle}
+                  >
+                    <CalendarDays size={13} />
+                    {dataVencimento
+                      ? new Date(dataVencimento + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+                      : 'Data de vencimento'}
+                  </button>
+                  {openDropdown === 'data' && (
+                    <DropdownPortal triggerRef={dataBtnRef} portalRef={dataPortalRef}>
+                      <div style={{ ...dropdownStyle, padding: '10px 12px', minWidth: 'unset' }}>
+                        <input
+                          type="date"
+                          value={dataVencimento}
+                          onChange={(e) => { setDataVencimento(e.target.value); setOpenDropdown(null); }}
+                          style={{
+                            background: 'rgba(255,255,255,0.05)',
+                            border: '1px solid rgba(255,255,255,0.1)',
+                            borderRadius: 6, color: '#e4e4e4',
+                            fontSize: 13, padding: '6px 10px',
+                            outline: 'none', colorScheme: 'dark',
+                          }}
+                          autoFocus
+                        />
+                      </div>
+                    </DropdownPortal>
+                  )}
+                </div>
+
+                {/* Prioridade */}
+                <div>
+                  <button
+                    ref={prioridadeBtnRef}
+                    type="button"
+                    onClick={() => setOpenDropdown(openDropdown === 'prioridade' ? null : 'prioridade')}
+                    style={{
+                      ...propChipStyle,
+                      color: prioCfg ? prioCfg.color : '#6b6b74',
+                    }}
+                  >
+                    <Flag size={13} />
+                    {prioCfg ? prioCfg.label : 'Prioridade'}
+                  </button>
+                  {openDropdown === 'prioridade' && (
+                    <DropdownPortal triggerRef={prioridadeBtnRef} portalRef={prioridadePortalRef}>
+                      <div style={dropdownStyle}>
+                        <button
+                          type="button"
+                          onClick={() => { setPrioridade(null); setOpenDropdown(null); }}
+                          style={{ ...dropdownItemStyle, color: '#6b6b74' }}
+                          {...itemHover}
+                        >
+                          Sem prioridade
+                        </button>
+                        {ALL_PRIO_VISUAL.map((p) => {
+                          const cfg = PRIO_CONFIG[p];
+                          return (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => { setPrioridade(p); setOpenDropdown(null); }}
+                              data-selected={prioridade === p ? '1' : '0'}
+                              style={{
+                                ...dropdownItemStyle,
+                                color: cfg.color,
+                                background: prioridade === p ? 'rgba(255,255,255,0.06)' : 'none',
+                              }}
+                              {...itemHover}
+                            >
+                              <Flag size={12} />
+                              {cfg.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </DropdownPortal>
+                  )}
+                </div>
+
+                {/* Mais */}
+                <button type="button" style={{ ...propChipStyle, padding: '0 8px' }}>
+                  <MoreHorizontal size={14} />
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
         {/* ── Corpo: aba Documento ── */}
         {abaAtiva === 'documento' && (
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 8px' }}>
-
-            {/* Chip "Meus documentos" */}
             <div style={{ marginBottom: 20 }}>
               <button type="button" style={chipStyle}>
                 <span style={{ fontSize: 13, lineHeight: 1 }}>☰</span>
@@ -650,7 +516,6 @@ export function CreateTaskModal({
               </button>
             </div>
 
-            {/* Nome do documento */}
             <input
               autoFocus
               type="text"
@@ -667,26 +532,8 @@ export function CreateTaskModal({
               }}
             />
 
-            {/* Ações de conteúdo */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 24 }}>
-              <button
-                type="button"
-                style={docActionStyle}
-                {...docItemHover}
-                onClick={() => {
-                  const id = crypto.randomUUID();
-                  addDoc({
-                    id,
-                    idClasse: 'doc',
-                    nome: docNome.trim() || 'Sem título',
-                    idPai: null,
-                    criadoEm: new Date().toISOString(),
-                    atualizadoEm: new Date().toISOString(),
-                  });
-                  onClose();
-                  router.push(`/docs/${id}`);
-                }}
-              >
+              <button type="button" style={docActionStyle} {...docItemHover}>
                 <FileText size={15} style={{ color: '#71717a', flexShrink: 0 }} />
                 <span>Comece a escrever</span>
               </button>
@@ -696,7 +543,6 @@ export function CreateTaskModal({
               </button>
             </div>
 
-            {/* Add new */}
             <p style={{ fontSize: 12, color: '#4a4a54', margin: '0 0 8px', fontWeight: 400 }}>
               Add new
             </p>
@@ -712,11 +558,10 @@ export function CreateTaskModal({
                 </button>
               ))}
             </div>
-
           </div>
         )}
 
-        {/* ── Corpo: abas stub (Lembrete / Quadro / Painéis) ── */}
+        {/* ── Corpo: abas stub ── */}
         {(abaAtiva === 'lembrete' || abaAtiva === 'quadro' || abaAtiva === 'paineis') && (
           <div style={{
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -735,7 +580,6 @@ export function CreateTaskModal({
         }}>
           {abaAtiva === 'tarefa' ? (
             <>
-              {/* Esquerda: modelos + anexo + notificação */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <button type="button" style={footerBtnStyle}>
                   <span style={{ fontSize: 12 }}>≋</span>
@@ -749,23 +593,23 @@ export function CreateTaskModal({
                   <span style={{ fontSize: 11, color: '#6b6b74' }}>1</span>
                 </button>
               </div>
-              {/* Direita: Criar Tarefa split */}
               <div style={{ display: 'flex', alignItems: 'stretch', height: 32, borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
                 <button
                   type="button"
                   onClick={handleCriar}
+                  disabled={createTask.isPending}
                   style={{
                     padding: '0 16px',
-                    background: '#f0f0f0',
-                    border: 'none', cursor: 'pointer',
+                    background: createTask.isPending ? '#c4c4c4' : '#f0f0f0',
+                    border: 'none', cursor: createTask.isPending ? 'not-allowed' : 'pointer',
                     color: '#111', fontSize: 13, fontWeight: 600,
                     letterSpacing: '-0.01em',
                     transition: 'background 120ms',
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = '#fff'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = '#f0f0f0'; }}
+                  onMouseEnter={(e) => { if (!createTask.isPending) e.currentTarget.style.background = '#fff'; }}
+                  onMouseLeave={(e) => { if (!createTask.isPending) e.currentTarget.style.background = '#f0f0f0'; }}
                 >
-                  Criar Tarefa
+                  {createTask.isPending ? 'Criando...' : 'Criar Tarefa'}
                 </button>
                 <div style={{ width: 1, background: 'rgba(0,0,0,0.2)' }} />
                 <button
@@ -784,7 +628,6 @@ export function CreateTaskModal({
             </>
           ) : abaAtiva === 'documento' ? (
             <>
-              {/* Toggle Privado */}
               <button
                 type="button"
                 onClick={() => setDocPrivado((p) => !p)}
@@ -794,7 +637,6 @@ export function CreateTaskModal({
                   color: '#a1a1aa', fontSize: 13,
                 }}
               >
-                {/* Toggle pill */}
                 <span style={{
                   display: 'inline-flex', alignItems: 'center',
                   width: 34, height: 18, borderRadius: 9,
@@ -812,7 +654,6 @@ export function CreateTaskModal({
                 </span>
                 Privado
               </button>
-              {/* Criar documento */}
               <button
                 type="button"
                 onClick={() => { toast.success('Documento criado!'); onClose(); }}
@@ -837,7 +678,7 @@ export function CreateTaskModal({
   );
 }
 
-// ─── Estilos compartilhados ───────────────────────────────────────────────────
+/* ─── Estilos compartilhados ─────────────────────────────────────────────── */
 
 const docActionStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: 10,

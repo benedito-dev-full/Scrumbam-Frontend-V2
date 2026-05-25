@@ -11,6 +11,7 @@ import {
 import { STATUS_CONFIG, GROUP_PILL_STYLE } from "@/components/lists/config";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { TaskSheet } from "@/components/tasks/task-sheet";
+import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
@@ -42,7 +43,7 @@ export default function ListPage({
   const [view, setView] = useState<"list" | "board">("list");
   const [subtarefasMode, setSubtarefasMode] = useState<SubtarefasMode>("recolhidas");
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalDefaultStatus, setModalDefaultStatus] = useState<string | undefined>(undefined);
+  const [modalDefaultStatus, setModalDefaultStatus] = useState<StatusVisual | undefined>(undefined);
   const [selectedTask, setSelectedTask] = useState<TaskResponseDto | null>(null);
 
   if (loadingProjeto) {
@@ -61,7 +62,7 @@ export default function ListPage({
     );
   }
 
-  function openModal(defaultStatus?: string) {
+  function openModal(defaultStatus?: StatusVisual) {
     setModalDefaultStatus(defaultStatus);
     setModalOpen(true);
   }
@@ -98,6 +99,12 @@ export default function ListPage({
         />
       )}
       <TaskSheet task={selectedTask} onClose={() => setSelectedTask(null)} />
+      <CreateTaskModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        listId={id}
+        defaultStatus={modalDefaultStatus}
+      />
     </div>
   );
 }
@@ -160,7 +167,7 @@ function ListContent({
   grupos: { status: StatusVisual; tarefas: TaskResponseDto[] }[];
   isLoading: boolean;
   subtarefasMode: SubtarefasMode;
-  onAddTask: (defaultStatus?: string) => void;
+  onAddTask: (defaultStatus?: StatusVisual) => void;
   onOpenTask: (task: TaskResponseDto) => void;
 }) {
   return (
@@ -390,7 +397,7 @@ function GroupBlock({
   status: StatusVisual;
   tarefas: TaskResponseDto[];
   subtarefasMode: SubtarefasMode;
-  onAddTask: (defaultStatus?: string) => void;
+  onAddTask: (defaultStatus?: StatusVisual) => void;
   onOpenTask: (task: TaskResponseDto) => void;
 }) {
   const [open, setOpen] = useState(true);
@@ -451,7 +458,7 @@ function GroupBlock({
                 onOpen={() => onOpenTask(t)}
               />
             ))}
-            <AddRow onAddTask={() => onAddTask()} />
+            <AddRow onAddTask={() => onAddTask(status)} />
           </tbody>
         </table>
       )}
