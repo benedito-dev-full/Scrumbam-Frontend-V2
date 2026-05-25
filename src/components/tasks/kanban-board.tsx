@@ -102,8 +102,12 @@ export function KanbanBoard({
     updateStatus.mutate(
       { id: taskId, status: newIntention, projectId },
       {
+        onSuccess: () => {
+          // Revalida para garantir sincronia com a lista
+          void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
+        },
         onError: () => {
-          // Rollback: revalida a query do backend
+          // Rollback
           void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
         },
       },
