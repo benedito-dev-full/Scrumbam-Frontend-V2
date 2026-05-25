@@ -16,10 +16,9 @@ import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
 import { useTasksByProject, useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
-import { useOrgMembers } from "@/hooks/use-members";
-import { useMe } from "@/hooks/use-auth";
+import { useProjectMembers, type ProjectMemberDto } from "@/hooks/use-members";
 import { intentionToColumn, isOverdue, priorityToColor, priorityToLabel } from "@/lib/mappers/task-status.mapper";
-import type { TaskResponseDto, TaskPriority, V3Intention, OrgMemberDto } from "@/lib/types/api";
+import type { TaskResponseDto, TaskPriority, V3Intention } from "@/lib/types/api";
 
 // ─── Tipo de status visual (espelha StatusTarefa da main) ────────────────────
 type StatusVisual = "em-progresso" | "pendente" | "bloqueado" | "atrasado" | "concluido";
@@ -41,8 +40,7 @@ export default function ListPage({
   const { id } = use(params);
   const { data: projeto, isLoading: loadingProjeto } = useProject(id);
   const { data: tasks = [], isLoading: loadingTasks } = useTasksByProject(id);
-  const { data: me } = useMe();
-  const { data: members = [] } = useOrgMembers(me?.organizationId);
+  const { data: members = [] } = useProjectMembers(id);
 
   const [view, setView] = useState<"list" | "board">("list");
   const [subtarefasMode, setSubtarefasMode] = useState<SubtarefasMode>("recolhidas");
@@ -175,7 +173,7 @@ function ListContent({
   subtarefasMode: SubtarefasMode;
   onAddTask: (defaultStatus?: StatusVisual) => void;
   onOpenTask: (task: TaskResponseDto) => void;
-  members: OrgMemberDto[];
+  members: ProjectMemberDto[];
 }) {
   return (
     <div className="flex-1 overflow-y-auto overflow-x-auto" style={{ background: "#111111" }}>
@@ -408,7 +406,7 @@ function GroupBlock({
   subtarefasMode: SubtarefasMode;
   onAddTask: (defaultStatus?: StatusVisual) => void;
   onOpenTask: (task: TaskResponseDto) => void;
-  members: OrgMemberDto[];
+  members: ProjectMemberDto[];
 }) {
   const [open, setOpen] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -561,7 +559,7 @@ function TaskRowBackend({
   expanded: boolean;
   onToggle: () => void;
   onOpen: () => void;
-  members: OrgMemberDto[];
+  members: ProjectMemberDto[];
 }) {
   const updateTask = useUpdateTask();
   const updateStatus = useUpdateTaskStatus();
