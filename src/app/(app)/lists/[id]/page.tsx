@@ -413,9 +413,7 @@ function GroupBlock({
   const cfg = STATUS_CONFIG[status];
   const StatusIcon = cfg.Icon;
 
-  const tarefasVisiveis = subtarefasMode === "separar"
-    ? tarefas.filter((t) => !t.idPai)
-    : tarefas;
+  const tarefasVisiveis = tarefas.filter((t) => !t.idPai);
 
   return (
     <div style={{ marginBottom: 8, marginTop: 16 }}>
