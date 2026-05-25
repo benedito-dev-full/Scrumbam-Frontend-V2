@@ -705,10 +705,46 @@ function SpacePlusMenu({
           <div className="my-1.5 h-px bg-[#2a2a2f]" />
 
           <div className="px-2">
-            <MenuItem icon={<span className="flex size-4 items-center justify-center rounded bg-blue-600 text-[9px] font-bold text-white">D</span>} label="Documento" onClick={() => setMenuOpen(false)} />
-            <MenuItem icon={<span className="flex size-4 items-center justify-center rounded bg-purple-600 text-[9px] font-bold text-white">P</span>} label="Painéis" onClick={() => setMenuOpen(false)} />
-            <MenuItem icon={<span className="flex size-4 items-center justify-center rounded bg-orange-500 text-[9px] font-bold text-white">Q</span>} label="Quadro branco" onClick={() => setMenuOpen(false)} />
-            <MenuItem icon={<span className="flex size-4 items-center justify-center rounded bg-violet-600 text-[9px] font-bold text-white">F</span>} label="Formulário" onClick={() => setMenuOpen(false)} />
+            <MenuItem
+              icon={
+                <span className="flex size-5 items-center justify-center rounded-md bg-blue-600">
+                  {/* Documento — ícone página/doc */}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                </span>
+              }
+              label="Documento"
+              onClick={() => setMenuOpen(false)}
+            />
+            <MenuItem
+              icon={
+                <span className="flex size-5 items-center justify-center rounded-md bg-purple-600">
+                  {/* Painéis — ícone dashboard/grid */}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                </span>
+              }
+              label="Painéis"
+              onClick={() => setMenuOpen(false)}
+            />
+            <MenuItem
+              icon={
+                <span className="flex size-5 items-center justify-center rounded-md bg-orange-500">
+                  {/* Quadro branco — ícone pentágono/whiteboard */}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+                </span>
+              }
+              label="Quadro branco"
+              onClick={() => setMenuOpen(false)}
+            />
+            <MenuItem
+              icon={
+                <span className="flex size-5 items-center justify-center rounded-md bg-violet-600">
+                  {/* Formulário — ícone clipboard/form */}
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="12" y2="16"/></svg>
+                </span>
+              }
+              label="Formulário"
+              onClick={() => setMenuOpen(false)}
+            />
           </div>
 
           <div className="my-1.5 h-px bg-[#2a2a2f]" />
