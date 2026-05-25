@@ -176,7 +176,7 @@ export function useUpdateTaskStatus() {
     { id: string; status: string; projectId: string }
   >({
     mutationFn: async ({ id, status }) => {
-      const res = await api.patch<TaskResponseDto>(`/tasks/${id}/status`, { status });
+      const res = await api.put<TaskResponseDto>(`/tasks/${id}/status`, { status });
       return res.data;
     },
     onSuccess: (_data, variables) => {
@@ -230,7 +230,7 @@ export function useUpdateTask() {
         ...(titulo !== undefined ? { nome: titulo } : {}),
         ...(descricao !== undefined ? { descricao } : {}),
       };
-      const res = await api.patch<TaskResponseDto>(`/tasks/${id}`, body);
+      const res = await api.put<TaskResponseDto>(`/tasks/${id}`, body);
       return res.data;
     },
     onSuccess: (_data, variables) => {
