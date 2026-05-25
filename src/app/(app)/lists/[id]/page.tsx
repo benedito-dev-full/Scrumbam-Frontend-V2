@@ -669,8 +669,8 @@ function TaskRowBackend({
               <span style={{ fontSize: 12, color: "#d4d4dc" }}>{assignee.nome.split(" ")[0]}</span>
             </>
           ) : (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: hovered ? "#5a5a64" : "transparent" }}>
-              <IcUserInline size={13} color={hovered ? "#5a5a64" : "transparent"} />
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "#5a5a64" }}>
+              <IcUserInline size={13} color="#5a5a64" />
               <span style={{ fontSize: 12 }}>Atribuir</span>
             </span>
           )}
@@ -738,7 +738,7 @@ function TaskRowBackend({
                 {overdue && "⚠ "}{dateLabel}
               </span>
             ) : (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, opacity: hovered ? 1 : 0, transition: "opacity .1s" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                 <IcCalendarInline size={13} color="#5a5a64" />
                 <span style={{ fontSize: 12, color: "#5a5a64" }}>Definir data</span>
               </span>
@@ -761,7 +761,7 @@ function TaskRowBackend({
               <span style={{ fontSize: 12, color: prioColor }}>{prioLabel}</span>
             </>
           ) : (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, opacity: hovered ? 1 : 0, transition: "opacity .1s" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
               <IcFlagInline size={12} color="#5a5a64" />
               <span style={{ fontSize: 12, color: "#5a5a64" }}>Definir</span>
             </span>
