@@ -289,8 +289,8 @@ export function IconRail() {
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-        {navItems.map((item) => (
-          <RailButton key={item.label} item={item} active={isActive(item.href)} />
+        {navItems.map((item, i) => (
+          <RailButton key={item.label} item={item} active={i === 0 ? isHomeActive : isActive(item.href)} />
         ))}
       </div>
 
