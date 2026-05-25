@@ -163,6 +163,25 @@ function IcFolder({ className }: { className?: string }) {
   );
 }
 
+function IcFolderOpen({ className }: { className?: string }) {
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+    >
+      <path d="M5 19a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v1" />
+      <path d="M3 19l2.5-7H21l-2.5 7H3z" />
+    </svg>
+  );
+}
+
 function IcList({ className }: { className?: string }) {
   return (
     <svg
@@ -351,12 +370,21 @@ function FolderNode({
           className="relative mr-0.5 size-4 shrink-0"
         >
           <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-100 group-hover:opacity-0">
-            <IcFolder
-              className={cn(
-                "text-muted-foreground",
-                active && "text-sidebar-accent-foreground",
-              )}
-            />
+            {open ? (
+              <IcFolderOpen
+                className={cn(
+                  "text-muted-foreground",
+                  active && "text-sidebar-accent-foreground",
+                )}
+              />
+            ) : (
+              <IcFolder
+                className={cn(
+                  "text-muted-foreground",
+                  active && "text-sidebar-accent-foreground",
+                )}
+              />
+            )}
           </span>
           <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100">
             <Chevron open={open} />
