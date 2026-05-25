@@ -289,7 +289,7 @@ function TeamCard({
   onDelete: (id: string) => void;
 }) {
   const inicial = team.nome.trim().charAt(0).toUpperCase();
-  const iconEmoji = ICON_OPTIONS.find(i => i.name === team.icon)?.emoji;
+  const iconPath = TEAM_ICONS.find(i => i.name === team.icon)?.path;
   const [hovered, setHovered] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -386,10 +386,12 @@ function TeamCard({
               width: 34, height: 34, borderRadius: "50%",
               background: team.color,
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: iconEmoji ? 16 : 14, fontWeight: 700, color: "#fff", flexShrink: 0,
+              fontSize: 14, fontWeight: 700, color: "#fff", flexShrink: 0,
               marginTop: -22, boxShadow: "0 0 0 3px #1a1a1a",
             }}>
-              {iconEmoji ?? inicial}
+              {iconPath
+                ? <TeamIconSvg path={iconPath} size={16} color="#fff" />
+                : inicial}
             </div>
             <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -536,30 +538,37 @@ function TeamsListView({
    MODAL CRIAR EQUIPE
 ══════════════════════════════════════════════════════════════════ */
 
-/* paleta de cores e lista de ícones disponíveis para seleção */
 const COLOR_PALETTE = [
-  "#ef4444","#f97316","#eab308","#22c55e",
-  "#14b8a6","#3b82f6","#8b5cf6","#ec4899",
-  "#64748b","#06b6d4","#a3e635","#f43f5e",
+  "#8b5cf6","#6366f1","#3b82f6","#06b6d4","#22c55e","#eab308","#f97316","#ef4444",
+  "#ec4899","#f43f5e","#a3a3a3","#64748b",
 ];
 
-const ICON_OPTIONS: { name: string; emoji: string }[] = [
-  { name: "users",       emoji: "👥" },
-  { name: "rocket",      emoji: "🚀" },
-  { name: "star",        emoji: "⭐" },
-  { name: "lightning",   emoji: "⚡" },
-  { name: "fire",        emoji: "🔥" },
-  { name: "diamond",     emoji: "💎" },
-  { name: "target",      emoji: "🎯" },
-  { name: "shield",      emoji: "🛡️" },
-  { name: "code",        emoji: "💻" },
-  { name: "chart",       emoji: "📊" },
-  { name: "megaphone",   emoji: "📣" },
-  { name: "wrench",      emoji: "🔧" },
-  { name: "palette",     emoji: "🎨" },
-  { name: "globe",       emoji: "🌐" },
-  { name: "lock",        emoji: "🔒" },
-  { name: "heart",       emoji: "❤️" },
+/* Ícones SVG monocromáticos — paths Lucide */
+const TEAM_ICONS: { name: string; path: string }[] = [
+  { name: "users",      path: "M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" },
+  { name: "rocket",     path: "M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09zM12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2zM9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0M15 19v-5s3.03-.55 4-2c1.08-1.62 0-5 0-5" },
+  { name: "star",       path: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" },
+  { name: "zap",        path: "M13 2L3 14h9l-1 8 10-12h-9l1-8z" },
+  { name: "shield",     path: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
+  { name: "target",     path: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" },
+  { name: "code",       path: "M16 18l6-6-6-6M8 6l-6 6 6 6" },
+  { name: "bar-chart",  path: "M18 20V10M12 20V4M6 20v-6" },
+  { name: "globe",      path: "M12 2a10 10 0 1 0 0 20A10 10 0 0 0 12 2zM2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" },
+  { name: "wrench",     path: "M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" },
+  { name: "layers",     path: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" },
+  { name: "briefcase",  path: "M20 7H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zM16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" },
+  { name: "trending-up",path: "M23 6l-9.5 9.5-5-5L1 18M17 6h6v6" },
+  { name: "settings",   path: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" },
+  { name: "flag",       path: "M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7" },
+  { name: "cpu",        path: "M18 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM9 9h6v6H9zM9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3" },
+  { name: "package",    path: "M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16zM3.27 6.96L12 12.01l8.73-5.05M12 22.08V12" },
+  { name: "heart",      path: "M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" },
+  { name: "lock",       path: "M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2zM7 11V7a5 5 0 0 1 10 0v4" },
+  { name: "message",    path: "M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" },
+  { name: "database",   path: "M12 2C6.48 2 2 4.24 2 7v10c0 2.76 4.48 5 10 5s10-2.24 10-5V7c0-2.76-4.48-5-10-5zM2 12c0 2.76 4.48 5 10 5s10-2.24 10-5M2 7c0 2.76 4.48 5 10 5s10-2.24 10-5" },
+  { name: "compass",    path: "M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z" },
+  { name: "award",      path: "M12 15a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM8.21 13.89L7 23l5-3 5 3-1.21-9.12" },
+  { name: "map",        path: "M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4zM8 2v16M16 6v16" },
 ];
 
 interface CreateTeamPayloadLocal {
@@ -568,14 +577,26 @@ interface CreateTeamPayloadLocal {
   icon: string;
 }
 
+function TeamIconSvg({ path, size = 16, color = "currentColor" }: { path: string; size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d={path} />
+    </svg>
+  );
+}
+
 function CreateTeamModal({ onClose, onCreate }: { onClose: () => void; onCreate: (p: CreateTeamPayloadLocal) => void }) {
   const [nome, setNome] = useState("");
-  const [color, setColor] = useState(COLOR_PALETTE[5]); // azul padrão
-  const [icon, setIcon] = useState(ICON_OPTIONS[0].name);
-  const [colorOpen, setColorOpen] = useState(false);
-  const [iconOpen, setIconOpen] = useState(false);
+  const [color, setColor] = useState(COLOR_PALETTE[2]); // azul padrão
+  const [icon, setIcon] = useState(TEAM_ICONS[0].name);
+  const [panelOpen, setPanelOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"icone" | "cor">("icone");
+  const [search, setSearch] = useState("");
 
-  const selectedIcon = ICON_OPTIONS.find(i => i.name === icon) ?? ICON_OPTIONS[0];
+  const selectedIcon = TEAM_ICONS.find(i => i.name === icon) ?? TEAM_ICONS[0];
+  const filteredIcons = search.trim()
+    ? TEAM_ICONS.filter(i => i.name.includes(search.toLowerCase()))
+    : TEAM_ICONS;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -587,86 +608,120 @@ function CreateTeamModal({ onClose, onCreate }: { onClose: () => void; onCreate:
 
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)" }}
-      onClick={e => { if (e.target === e.currentTarget) { onClose(); } }}>
-      <div style={{ width: 440, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
+      <div style={{ width: 460, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: "#e4e4e4", marginBottom: 6 }}>Criar equipe</h2>
         <p style={{ fontSize: 13, color: "#666", marginBottom: 20, lineHeight: 1.5 }}>
-          Escolha um ícone, uma cor e dê um nome para sua nova equipe.
+          Uma equipe representa um grupo de pessoas com espaços e configurações próprias.
         </p>
 
         <form onSubmit={handleSubmit}>
-          <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 8 }}>Nome da equipe</label>
+          {/* label */}
+          <p style={{ fontSize: 12, color: "#888", fontWeight: 500, marginBottom: 8 }}>Ícone e nome</p>
 
-          {/* linha: ícone + cor + input */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-
-            {/* botão ícone */}
-            <div style={{ position: "relative", flexShrink: 0 }}>
-              <button type="button" onClick={() => { setIconOpen(v => !v); setColorOpen(false); }}
-                title="Escolher ícone"
-                style={{ width: 38, height: 38, borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "border-color .15s" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}>
-                {selectedIcon.emoji}
-              </button>
-
-              {/* dropdown ícones */}
-              {iconOpen && (
-                <div style={{ position: "absolute", top: 44, left: 0, zIndex: 10, background: "#252528", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 4, width: 168 }}>
-                  {ICON_OPTIONS.map(opt => (
-                    <button key={opt.name} type="button"
-                      onClick={() => { setIcon(opt.name); setIconOpen(false); }}
-                      style={{ width: 36, height: 36, borderRadius: 6, border: "1px solid", borderColor: icon === opt.name ? "rgba(255,255,255,0.3)" : "transparent", background: icon === opt.name ? "rgba(255,255,255,0.08)" : "none", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .1s" }}
-                      onMouseEnter={e => { if (icon !== opt.name) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
-                      onMouseLeave={e => { if (icon !== opt.name) e.currentTarget.style.background = "none"; }}>
-                      {opt.emoji}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* botão cor */}
-            <div style={{ position: "relative", flexShrink: 0 }}>
-              <button type="button" onClick={() => { setColorOpen(v => !v); setIconOpen(false); }}
-                title="Escolher cor"
-                style={{ width: 38, height: 38, borderRadius: 7, border: "2px solid rgba(255,255,255,0.15)", background: color, cursor: "pointer", transition: "border-color .15s" }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.4)"; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.15)"; }} />
-
-              {/* dropdown cores */}
-              {colorOpen && (
-                <div style={{ position: "absolute", top: 44, left: 0, zIndex: 10, background: "#252528", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, padding: 10, boxShadow: "0 8px 24px rgba(0,0,0,0.5)", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6, width: 148 }}>
-                  {COLOR_PALETTE.map(c => (
-                    <button key={c} type="button"
-                      onClick={() => { setColor(c); setColorOpen(false); }}
-                      style={{ width: 28, height: 28, borderRadius: 6, border: "2px solid", borderColor: color === c ? "#fff" : "transparent", background: c, cursor: "pointer", transition: "border-color .1s" }} />
-                  ))}
-                </div>
-              )}
-            </div>
+          {/* linha: avatar-botão + input nome */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: panelOpen ? 0 : 20 }}>
+            {/* quadrado avatar — clicável, abre painel */}
+            <button type="button"
+              onClick={() => setPanelOpen(v => !v)}
+              style={{
+                flexShrink: 0, width: 42, height: 42, borderRadius: 8,
+                background: color,
+                border: panelOpen ? "2px solid rgba(255,255,255,0.4)" : "2px solid transparent",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "border-color .15s",
+              }}>
+              <TeamIconSvg path={selectedIcon.path} size={18} color="#fff" />
+            </button>
 
             {/* input nome */}
             <input
               autoFocus
               value={nome}
               onChange={e => setNome(e.target.value)}
-              placeholder="Ex: Backend, Marketing, Design..."
-              style={{ flex: 1, height: 38, padding: "0 12px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#e4e4e4", fontSize: 13, outline: "none" }}
+              placeholder="por exemplo, marketing, engenharia, RH"
+              style={{ flex: 1, height: 42, padding: "0 14px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)", color: "#e4e4e4", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+              onFocus={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)"; }}
+              onBlur={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
             />
           </div>
 
-          {/* preview */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 16, padding: "10px 14px", borderRadius: 8, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>
-              {selectedIcon.emoji}
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 600, color: nome.trim() ? "#e4e4e4" : "#444" }}>
-              {nome.trim() || "Nome da equipe"}
-            </span>
-          </div>
+          {/* painel de ícone/cor — abre abaixo da linha */}
+          {panelOpen && (
+            <div style={{ marginTop: 2, marginBottom: 20, borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "#141416", overflow: "hidden" }}>
+              {/* abas */}
+              <div style={{ display: "flex", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+                {(["icone", "cor"] as const).map(tab => (
+                  <button key={tab} type="button" onClick={() => setActiveTab(tab)}
+                    style={{ flex: 1, height: 38, border: 0, background: "none", cursor: "pointer", fontSize: 13, fontWeight: 500, color: activeTab === tab ? "#e4e4e4" : "#666", borderBottom: activeTab === tab ? "2px solid #e4e4e4" : "2px solid transparent", transition: "all .15s" }}>
+                    {tab === "icone" ? "Ícone" : "Selecione a cor"}
+                  </button>
+                ))}
+              </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
+              {activeTab === "icone" && (
+                <div style={{ padding: "10px 10px 12px" }}>
+                  {/* barra pesquisa + bolinhas de cor rápida */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+                    <input
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      placeholder="Pesquisar..."
+                      style={{ flex: 1, height: 30, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", color: "#e4e4e4", fontSize: 12, outline: "none" }}
+                    />
+                    {/* bolinha da cor ativa */}
+                    <button type="button" onClick={() => setActiveTab("cor")}
+                      style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid rgba(255,255,255,0.25)", background: color, cursor: "pointer", flexShrink: 0 }} />
+                    {/* + (placeholder, sem ação por enquanto) */}
+                    <button type="button"
+                      style={{ width: 24, height: 24, borderRadius: "50%", border: "1px solid rgba(255,255,255,0.15)", background: "none", cursor: "pointer", color: "#666", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16, lineHeight: 1 }}>
+                      +
+                    </button>
+                  </div>
+
+                  {/* grid de ícones SVG */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(9, 1fr)", gap: 2, maxHeight: 220, overflowY: "auto" }}>
+                    {filteredIcons.map(opt => (
+                      <button key={opt.name} type="button"
+                        onClick={() => { setIcon(opt.name); setPanelOpen(false); }}
+                        title={opt.name}
+                        style={{
+                          width: 36, height: 36, borderRadius: 6, border: "1px solid",
+                          borderColor: icon === opt.name ? "rgba(255,255,255,0.35)" : "transparent",
+                          background: icon === opt.name ? "rgba(255,255,255,0.08)" : "none",
+                          cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                          color: icon === opt.name ? "#e4e4e4" : "#777", transition: "all .1s",
+                        }}
+                        onMouseEnter={e => { if (icon !== opt.name) { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "#c4c4c4"; }}}
+                        onMouseLeave={e => { if (icon !== opt.name) { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#777"; }}}>
+                        <TeamIconSvg path={opt.path} size={15} color="currentColor" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "cor" && (
+                <div style={{ padding: "12px 12px 14px" }}>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {COLOR_PALETTE.map(c => (
+                      <button key={c} type="button"
+                        onClick={() => { setColor(c); setActiveTab("icone"); }}
+                        style={{
+                          width: 28, height: 28, borderRadius: "50%",
+                          background: c, border: "2px solid",
+                          borderColor: color === c ? "#fff" : "transparent",
+                          cursor: "pointer", transition: "border-color .1s",
+                          boxShadow: color === c ? `0 0 0 1px ${c}` : "none",
+                        }} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
             <button type="button" onClick={onClose}
               style={{ height: 34, padding: "0 16px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#888", fontSize: 13 }}
               onMouseEnter={e => { e.currentTarget.style.color = "#e4e4e4"; }}
