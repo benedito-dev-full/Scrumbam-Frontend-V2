@@ -179,7 +179,7 @@ function TaskRow({ tarefa }: { tarefa: TaskResponseDto }) {
   let dataTone = "text-muted-foreground";
   let dataLabel = "—";
   if (tarefa.dueDate) {
-    const d = new Date(tarefa.dueDate);
+    const d = new Date(tarefa.dueDate.slice(0, 10) + "T12:00:00");
     dataLabel = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
     if (overdue) dataTone = "text-amber-400";
   }

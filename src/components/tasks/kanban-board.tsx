@@ -168,7 +168,7 @@ function TaskCard({ task, onClick }: { task: TaskResponseDto; onClick: () => voi
             )}
           >
             {overdue && '⚠ '}
-            {new Date(task.dueDate).toLocaleDateString('pt-BR', {
+            {new Date(task.dueDate!.slice(0, 10) + 'T12:00:00').toLocaleDateString('pt-BR', {
               day: '2-digit',
               month: 'short',
             })}

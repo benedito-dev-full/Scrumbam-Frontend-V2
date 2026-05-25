@@ -727,7 +727,7 @@ function TaskRow({ task, cfg, listId, onOpen }: {
 
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
   const dateLabel = task.dueDate
-    ? new Date(task.dueDate).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+    ? new Date(task.dueDate.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
     : null;
   const prioLabel = task.priority ? priorityToLabel(task.priority) : null;
   const prioColor = task.priority ? priorityToColor(task.priority) : null;
