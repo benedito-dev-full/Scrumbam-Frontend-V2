@@ -152,6 +152,7 @@ function BoardContent({
   return (
     <KanbanBoard
       projectId={listId}
+      tasks={tasks}
       onSelectTask={(taskId) => {
         const found = tasks.find((t) => t.id === taskId);
         if (found) onOpenTask(found);

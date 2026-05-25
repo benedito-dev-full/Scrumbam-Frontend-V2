@@ -44,12 +44,17 @@ const COLUMN_TO_INTENTION: Record<string, V3Intention> = {
 
 export function KanbanBoard({
   projectId,
+  tasks: tasksProp,
   onSelectTask,
 }: {
   projectId: string;
+  tasks?: TaskResponseDto[];
   onSelectTask?: (taskId: string) => void;
 }) {
-  const { data: tasks = [], isLoading } = useTasksByProject(projectId);
+  const { data: fetchedTasks = [], isLoading } = useTasksByProject(
+    tasksProp === undefined ? projectId : null,
+  );
+  const tasks = tasksProp ?? fetchedTasks;
   const updateStatus = useUpdateTaskStatus();
   const queryClient = useQueryClient();
   const [activeTask, setActiveTask] = useState<TaskResponseDto | null>(null);
