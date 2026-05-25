@@ -638,7 +638,7 @@ function SpacePlusMenu({
 
       {menuOpen && (
         <div
-          className="absolute left-0 top-5 z-50 min-w-[140px] rounded-md border border-border bg-popover py-1 shadow-md"
+          className="absolute right-0 top-5 z-50 min-w-[140px] rounded-md border border-border bg-popover py-1 shadow-md"
           role="menu"
         >
           <button
