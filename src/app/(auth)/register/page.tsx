@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,13 +19,27 @@ const registerSchema = z.object({
 
 type RegisterForm = z.infer<typeof registerSchema>;
 
-/**
- * Página de registro do Scrumban.
- *
- * Cria conta com nome, email, senha e organização opcional via Zod + RHF.
- * Em caso de sucesso, a mutation redireciona automaticamente para /.
- */
+const INPUT_BASE: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 14px',
+  borderRadius: 10,
+  background: 'rgba(255,255,255,0.04)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  color: '#e8e8f0',
+  fontSize: 14,
+  outline: 'none',
+  transition: 'border-color .15s, background .15s',
+  boxSizing: 'border-box',
+};
+
+const LABEL_STYLE: React.CSSProperties = {
+  fontSize: 11, fontWeight: 600, color: '#6366f1',
+  letterSpacing: '0.08em', textTransform: 'uppercase',
+};
+
 export default function RegisterPage() {
+  const [focused, setFocused] = useState<string | null>(null);
+
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: { name: '', email: '', password: '', organizationName: '' },
@@ -33,90 +48,79 @@ export default function RegisterPage() {
   const register = useRegister();
   const onSubmit = form.handleSubmit((data) => register.mutate(data));
 
-  const inputClass =
-    'w-full px-3.5 py-2.5 rounded-lg text-sm text-white bg-white/[0.04] border border-white/[0.07] placeholder-zinc-700 outline-none transition-all focus:border-white/20 focus:bg-white/[0.06]';
+  const inputStyle = (field: string): React.CSSProperties => ({
+    ...INPUT_BASE,
+    borderColor: focused === field ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.08)',
+    background: focused === field ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.04)',
+  });
 
   return (
     <div>
       {/* Cabeçalho */}
-      <div className="mb-8">
-        <h1 className="text-xl font-semibold text-white mb-1">
+      <div style={{ marginBottom: 28 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#f0f0f8', marginBottom: 6, letterSpacing: '-0.3px' }}>
           Crie sua conta
         </h1>
-        <div className="w-8 h-px bg-white/20 mt-2 mb-3" />
-        <p className="text-sm text-zinc-500">
+        <div style={{ width: 32, height: 2, borderRadius: 2, background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', marginBottom: 10 }} />
+        <p style={{ fontSize: 13, color: '#6b6b80' }}>
           Comece grátis, sem cartão de crédito
         </p>
       </div>
 
-      <form onSubmit={onSubmit} noValidate className="flex flex-col gap-5">
+      <form onSubmit={onSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         {/* Nome */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="name" className="text-xs font-medium text-zinc-400 tracking-wide uppercase">
-            Seu nome
-          </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label htmlFor="name" style={LABEL_STYLE}>Seu nome</label>
           <input
-            id="name"
-            type="text"
-            autoComplete="name"
-            placeholder="João Silva"
-            className={inputClass}
-            {...form.register('name')}
+            id="name" type="text" autoComplete="name" placeholder="João Silva"
+            style={inputStyle('name')}
+            onFocus={() => setFocused('name')}
+            {...form.register('name', { onBlur: () => setFocused(null) })}
           />
           {form.formState.errors.name && (
-            <p className="text-xs text-red-400">{form.formState.errors.name.message}</p>
+            <p style={{ fontSize: 12, color: '#f87171' }}>{form.formState.errors.name.message}</p>
           )}
         </div>
 
         {/* Email */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="email" className="text-xs font-medium text-zinc-400 tracking-wide uppercase">
-            Email
-          </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label htmlFor="email" style={LABEL_STYLE}>Email</label>
           <input
-            id="email"
-            type="email"
-            autoComplete="email"
-            placeholder="seu@email.com"
-            className={inputClass}
-            {...form.register('email')}
+            id="email" type="email" autoComplete="email" placeholder="seu@email.com"
+            style={inputStyle('email')}
+            onFocus={() => setFocused('email')}
+            {...form.register('email', { onBlur: () => setFocused(null) })}
           />
           {form.formState.errors.email && (
-            <p className="text-xs text-red-400">{form.formState.errors.email.message}</p>
+            <p style={{ fontSize: 12, color: '#f87171' }}>{form.formState.errors.email.message}</p>
           )}
         </div>
 
         {/* Senha */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="password" className="text-xs font-medium text-zinc-400 tracking-wide uppercase">
-            Senha
-          </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label htmlFor="password" style={LABEL_STYLE}>Senha</label>
           <input
-            id="password"
-            type="password"
-            autoComplete="new-password"
-            placeholder="Mínimo 8 caracteres"
-            className={inputClass}
-            {...form.register('password')}
+            id="password" type="password" autoComplete="new-password" placeholder="Mínimo 8 caracteres"
+            style={inputStyle('password')}
+            onFocus={() => setFocused('password')}
+            {...form.register('password', { onBlur: () => setFocused(null) })}
           />
           {form.formState.errors.password && (
-            <p className="text-xs text-red-400">{form.formState.errors.password.message}</p>
+            <p style={{ fontSize: 12, color: '#f87171' }}>{form.formState.errors.password.message}</p>
           )}
         </div>
 
         {/* Organização */}
-        <div className="flex flex-col gap-1.5">
-          <label htmlFor="organizationName" className="text-xs font-medium text-zinc-400 tracking-wide uppercase">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label htmlFor="organizationName" style={LABEL_STYLE}>
             Organização{' '}
-            <span className="text-zinc-700 normal-case font-normal">(opcional)</span>
+            <span style={{ color: '#3a3a4a', fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>(opcional)</span>
           </label>
           <input
-            id="organizationName"
-            type="text"
-            autoComplete="organization"
-            placeholder="Ex: Minha Empresa"
-            className={inputClass}
-            {...form.register('organizationName')}
+            id="organizationName" type="text" autoComplete="organization" placeholder="Ex: Minha Empresa"
+            style={inputStyle('org')}
+            onFocus={() => setFocused('org')}
+            {...form.register('organizationName', { onBlur: () => setFocused(null) })}
           />
         </div>
 
@@ -124,28 +128,45 @@ export default function RegisterPage() {
         <button
           type="submit"
           disabled={register.isPending}
-          className="w-full py-2.5 rounded-lg text-sm font-medium text-black bg-white hover:bg-zinc-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.99] mt-1"
+          style={{
+            width: '100%', padding: '11px 0', borderRadius: 10, border: 0,
+            background: register.isPending
+              ? 'rgba(99,102,241,0.4)'
+              : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+            color: '#fff', fontSize: 14, fontWeight: 600,
+            cursor: register.isPending ? 'not-allowed' : 'pointer',
+            marginTop: 4,
+            boxShadow: register.isPending ? 'none' : '0 0 24px rgba(99,102,241,0.3)',
+            letterSpacing: '-0.1px',
+          }}
         >
           {register.isPending ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              <svg className="animate-spin" width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" opacity="0.25" />
+                <path fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" opacity="0.75" />
               </svg>
               Criando conta...
             </span>
-          ) : (
-            'Criar conta grátis'
-          )}
+          ) : 'Criar conta grátis'}
         </button>
       </form>
 
-      {/* Link para login */}
-      <p className="text-center text-sm text-zinc-600 mt-8">
+      {/* Divisor */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '22px 0 18px' }}>
+        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+        <span style={{ fontSize: 11, color: '#3a3a4a' }}>ou</span>
+        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+      </div>
+
+      {/* Link login */}
+      <p style={{ textAlign: 'center', fontSize: 13, color: '#4b4b60' }}>
         Já tem conta?{' '}
         <Link
           href="/login"
-          className="text-zinc-400 hover:text-white transition-colors"
+          style={{ color: '#818cf8', fontWeight: 500, textDecoration: 'none' }}
+          onMouseEnter={e => { (e.target as HTMLElement).style.color = '#a5b4fc'; }}
+          onMouseLeave={e => { (e.target as HTMLElement).style.color = '#818cf8'; }}
         >
           Entrar
         </Link>
