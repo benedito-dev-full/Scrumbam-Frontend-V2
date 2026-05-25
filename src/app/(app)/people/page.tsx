@@ -180,87 +180,100 @@ export default function PeoplePage() {
         </div>
       </div>
 
-      {/* ── Tabela ─────────────────────────────────────────────────────────── */}
+      {/* ── Conteúdo ───────────────────────────────────────────────────────── */}
       <div className="flex-1 overflow-auto">
         {isLoading ? (
           <div className="flex items-center justify-center py-20 text-[13px] text-muted-foreground">
             Carregando...
           </div>
         ) : (
-          <table className="w-full text-[13px]">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="px-6 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[300px]">Nome</th>
-                <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[200px]">E-mail</th>
-                <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[140px]">Função</th>
-                <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[120px]">Membro desde</th>
-                <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[120px]">Status</th>
-                <th className="w-10" />
-              </tr>
-            </thead>
-            <tbody>
-              {/* Linha "Convidar pessoas" */}
-              <tr className="border-b border-border hover:bg-muted/30 transition-colors">
-                <td colSpan={6} className="px-6 py-2.5">
-                  <button
-                    type="button"
-                    onClick={openInvite}
-                    className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <span className="grid size-5 place-items-center rounded-full border border-dashed border-muted-foreground/40 text-muted-foreground/60">
-                      <Plus className="size-3" />
-                    </span>
-                    Convidar pessoas
-                  </button>
-                </td>
-              </tr>
-
-              {/* Membros reais */}
-              {(filter !== "Convidados") && filteredMembers.map((member) => (
-                <MemberRow
-                  key={member.userId}
-                  member={member}
-                  isMe={member.email === me?.email}
-                  onRemove={() => setRemoveTarget(member)}
-                />
-              ))}
-
-              {/* Convites pendentes */}
-              {(filter !== "Membros") && filteredInvites.map((invite) => (
-                <InviteRow
-                  key={invite.id}
-                  invite={invite}
-                  onCancel={() => cancelInvite.mutate(invite.id)}
-                  isCancelling={cancelInvite.isPending}
-                />
-              ))}
-
-              {/* Empty state */}
-              {totalCount === 0 && !isLoading && (
-                <tr>
-                  <td colSpan={6}>
-                    <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-                      <p className="text-[13px] text-muted-foreground">
-                        {search
-                          ? <>Nenhum resultado para <span className="text-foreground">"{search}"</span></>
-                          : "Nenhum membro encontrado"}
-                      </p>
-                      {search && (
-                        <button
-                          type="button"
-                          onClick={openInvite}
-                          className="flex items-center gap-1.5 text-[13px] text-primary hover:underline"
-                        >
-                          <Plus className="size-3.5" />
-                          Convidar {search} por e-mail
-                        </button>
-                      )}
-                    </div>
+          <>
+            {/* ── Tabela de membros ── */}
+            <table className="w-full text-[13px]">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="px-6 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[300px]">Nome</th>
+                  <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[200px]">E-mail</th>
+                  <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[140px]">Função</th>
+                  <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[120px]">Membro desde</th>
+                  <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[120px]">Status</th>
+                  <th className="w-10" />
+                </tr>
+              </thead>
+              <tbody>
+                {/* Linha "Convidar pessoas" */}
+                <tr className="border-b border-border hover:bg-muted/30 transition-colors">
+                  <td colSpan={6} className="px-6 py-2.5">
+                    <button
+                      type="button"
+                      onClick={openInvite}
+                      className="flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <span className="grid size-5 place-items-center rounded-full border border-dashed border-muted-foreground/40 text-muted-foreground/60">
+                        <Plus className="size-3" />
+                      </span>
+                      Convidar pessoas
+                    </button>
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
+
+                {filteredMembers.map((member) => (
+                  <MemberRow
+                    key={member.userId}
+                    member={member}
+                    isMe={member.email === me?.email}
+                    onRemove={() => setRemoveTarget(member)}
+                  />
+                ))}
+
+                {filteredMembers.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-8 text-center text-[13px] text-muted-foreground">
+                      {search ? <>Nenhum membro para <span className="text-foreground">"{search}"</span></> : "Nenhum membro encontrado"}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+
+            {/* ── Seção de convites pendentes ── */}
+            {invites.length > 0 && (
+              <div className="mt-6 px-6 pb-8">
+                <div className="flex items-center gap-3 mb-3">
+                  <h2 className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    Convites pendentes
+                  </h2>
+                  <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-400">
+                    {invites.length}
+                  </span>
+                </div>
+                <table className="w-full text-[13px]">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[300px]">E-mail convidado</th>
+                      <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[140px]">Função</th>
+                      <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[160px]">Expira em</th>
+                      <th className="w-10" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invites
+                      .filter((inv) =>
+                        !search || inv.email.toLowerCase().includes(search.toLowerCase())
+                      )
+                      .map((invite) => (
+                        <InviteRow
+                          key={invite.id}
+                          invite={invite}
+                          onCancel={() => cancelInvite.mutate(invite.id)}
+                          isCancelling={cancelInvite.isPending}
+                        />
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
       {/* Modal de confirmação de remoção */}
