@@ -43,7 +43,7 @@ export function useTasksByProject(projectId: string | null) {
     queryKey: qk.tasks.byProject(projectId ?? ''),
     queryFn: async () => {
       const res = await api.get<TasksPage>('/tasks', {
-        params: { projectId, limit: 200 },
+        params: { projectId, limit: 100 },
       });
       return res.data.items;
     },
@@ -100,7 +100,7 @@ export function useMyTasks(status?: string) {
     queryKey: [...qk.tasks.all, 'my', status],
     queryFn: async () => {
       const res = await api.get<TasksPage>('/tasks', {
-        params: { assignedToMe: true, status, limit: 200 },
+        params: { assignedToMe: true, status, limit: 100 },
       });
       return res.data.items;
     },
@@ -138,8 +138,12 @@ export function useCreateTask() {
       assigneeId?: string;
     }
   >({
-    mutationFn: async (dto) => {
-      const res = await api.post<TaskResponseDto>('/tasks', dto);
+    mutationFn: async ({ titulo, idProject, ...rest }) => {
+      const res = await api.post<TaskResponseDto>('/tasks', {
+        nome: titulo,
+        projectId: idProject,
+        ...rest,
+      });
       return res.data;
     },
     onSuccess: (_data, variables) => {
@@ -220,7 +224,13 @@ export function useUpdateTask() {
     }
   >({
     mutationFn: async ({ id, dto }) => {
-      const res = await api.patch<TaskResponseDto>(`/tasks/${id}`, dto);
+      const { titulo, descricao, ...rest } = dto;
+      const body = {
+        ...rest,
+        ...(titulo !== undefined ? { nome: titulo } : {}),
+        ...(descricao !== undefined ? { descricao } : {}),
+      };
+      const res = await api.patch<TaskResponseDto>(`/tasks/${id}`, body);
       return res.data;
     },
     onSuccess: (_data, variables) => {
