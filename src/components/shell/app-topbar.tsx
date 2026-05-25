@@ -18,6 +18,7 @@ import {
 import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
 import { useCommandPaletteStore } from "@/lib/stores/command-palette";
 import { useLogout } from "@/hooks/use-auth";
+import { useAuthStore } from "@/lib/stores/auth";
 
 /* ─── Topbar global — idêntica ao ClickUp ─────────────────────────────────
  * bg: #1a1a1a  (levemente mais claro que o fundo #0d0d0f)
@@ -122,8 +123,19 @@ export function AppTopbar() {
 }
 
 /* ─── Menu do usuário ─────────────────────────────────────────────────────── */
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 function UserMenu() {
   const logout = useLogout();
+  const user = useAuthStore((s) => s.user);
+
+  const name = user?.name ?? '?';
+  const email = user?.email ?? '';
+  const initials = getInitials(name);
 
   return (
     <DropdownMenu>
@@ -136,7 +148,6 @@ function UserMenu() {
           />
         }
       >
-        {/* avatar igual ao ClickUp: iniciais "BR" com fundo gradiente */}
         <div
           style={{
             width: 26,
@@ -153,14 +164,14 @@ function UserMenu() {
             flexShrink: 0,
           }}
         >
-          RB
+          {initials}
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={6} className="w-52">
         <DropdownMenuGroup>
           <DropdownMenuLabel>
-            <div className="text-[13px] font-semibold text-foreground">Robério</div>
-            <div className="text-[11px] text-muted-foreground">roberio@fortalshop.com</div>
+            <div className="text-[13px] font-semibold text-foreground">{name}</div>
+            <div className="text-[11px] text-muted-foreground">{email}</div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem className="text-[13px]">Perfil</DropdownMenuItem>
