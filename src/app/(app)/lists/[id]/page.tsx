@@ -3,7 +3,7 @@
 import React, { use, useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { LayoutGrid, ChevronDown, ChevronRight } from "lucide-react";
+import { LayoutGrid, ChevronDown, Star } from "lucide-react";
 
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { TaskDetailDrawer } from "@/components/tasks/task-detail-drawer";
@@ -116,14 +116,14 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
 
       {/* ── Linha 1: Breadcrumb + ações ─────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 pt-2 pb-0.5">
-        {/* Breadcrumb */}
+        {/* Breadcrumb com / como separador */}
         <div className="flex items-center gap-1 text-[12px] text-[#6a6a75]">
           {spaceData && (
             <>
               <Link href={`/spaces/${spaceData.id}`} className="transition-colors hover:text-[#b6b6bf]">
                 {spaceData.nome}
               </Link>
-              <ChevronRight size={10} className="text-[#3a3a45]" />
+              <span className="text-[#3a3a45]">/</span>
             </>
           )}
           {folderData && (
@@ -131,15 +131,20 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
               <Link href={`/folders/${folderData.id}`} className="transition-colors hover:text-[#b6b6bf]">
                 {folderData.nome}
               </Link>
-              <ChevronRight size={10} className="text-[#3a3a45]" />
+              <span className="text-[#3a3a45]">/</span>
             </>
           )}
-          <span className="flex items-center gap-1 text-[#7a7a85]">
+          {/* Ícone + nome da lista + chevron dropdown + estrela */}
+          <span className="flex items-center gap-1 text-[#b6b6bf]">
             <IcList size={12} />
-            List
+            <span className="font-medium">{listData.nome}</span>
+            <svg width={10} height={10} viewBox="0 0 12 12" fill="currentColor" className="text-[#5a5a65]" style={{ transform: "rotate(-90deg)" }}>
+              <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
           </span>
-          <ChevronRight size={10} className="text-[#3a3a45]" />
-          <span className="font-medium text-[#c8c8d0]">{listData.nome}</span>
+          <button type="button" className="ml-0.5 text-[#4a4a55] transition-colors hover:text-[#9a9aaa]">
+            <Star size={12} />
+          </button>
         </div>
 
         {/* Ações do lado direito */}
@@ -151,7 +156,11 @@ export default function ListPage({ params }: { params: Promise<{ id: string }> }
       </div>
 
       {/* ── Linha 2: Tabs de view ────────────────────────────────────────────── */}
-      <div className="flex items-center gap-0 border-b border-[#1e1e24] px-4">
+      <div className="flex items-center gap-0 border-b border-[#1e1e24] px-2">
+        {/* "Adicionar canal" só aparece no ClickUp — botão fantasma */}
+        <button type="button" className="flex h-9 items-center gap-1 px-3 text-[13px] text-[#5a5a65] transition-colors hover:text-[#b6b6bf]">
+          Adicionar canal
+        </button>
         <ViewTab label="Lista" icon={<IcList size={13} />} active={view === "lista"} onClick={() => setView("lista")} />
         <ViewTab label="Quadro" icon={<LayoutGrid size={13} />} active={view === "quadro"} onClick={() => setView("quadro")} />
         <button type="button" className="flex items-center gap-1 px-3 py-2 text-[13px] text-[#6a6a75] hover:text-[#b6b6bf]">
@@ -196,9 +205,6 @@ function ListView({ listId, onSelectTask }: { listId: string; onSelectTask: (id:
   return (
     <div className="flex-1 overflow-y-auto overflow-x-auto">
       <div style={{ minWidth: 720 }}>
-        {/* Cabeçalho único da tabela */}
-        <TableHead />
-
         {isLoading ? (
           <Skeleton />
         ) : (
@@ -226,30 +232,6 @@ function ListView({ listId, onSelectTask }: { listId: string; onSelectTask: (id:
             </button>
           </>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Cabeçalho da tabela ──────────────────────────────────────────────────────
-
-function TableHead() {
-  return (
-    <div
-      className="sticky top-0 z-10 flex items-center border-b border-[#232329] bg-[#111111]"
-      style={{ minWidth: 720, height: 32 }}
-    >
-      {/* Nome — ocupa todo o espaço restante */}
-      <div className="flex-1 px-4 text-[12px] font-medium text-[#4a4a55]">Nome</div>
-      {/* Colunas fixas */}
-      <div style={{ width: 140 }} className="px-3 text-[12px] font-medium text-[#4a4a55]">Responsável</div>
-      <div style={{ width: 150 }} className="px-3 text-[12px] font-medium text-[#4a4a55]">Data de vencimento</div>
-      <div style={{ width: 110 }} className="px-3 text-[12px] font-medium text-[#4a4a55]">Prioridade</div>
-      {/* Botão + coluna */}
-      <div style={{ width: 40 }} className="flex items-center justify-center">
-        <button type="button" className="flex size-5 items-center justify-center rounded text-[#4a4a55] hover:bg-[#1e1e24] hover:text-[#9a9aaa]">
-          <IcPlus size={12} />
-        </button>
       </div>
     </div>
   );
@@ -316,6 +298,24 @@ function GroupBlock({
         <span className="text-[12px] text-[#4a4a55]">{tasks.length}</span>
       </div>
 
+      {/* ── Cabeçalho de colunas (dentro do grupo, como no ClickUp) ── */}
+      {open && (
+        <div
+          className="flex items-center border-b border-[#232329]"
+          style={{ height: 30 }}
+        >
+          <div className="flex-1 px-4 text-[12px] font-medium text-[#4a4a55]">Nome</div>
+          <div style={{ width: 140 }} className="px-3 text-[12px] font-medium text-[#4a4a55]">Responsável</div>
+          <div style={{ width: 150 }} className="px-3 text-[12px] font-medium text-[#4a4a55]">Data de vencimento</div>
+          <div style={{ width: 110 }} className="px-3 text-[12px] font-medium text-[#4a4a55]">Prioridade</div>
+          <div style={{ width: 40 }} className="flex items-center justify-center">
+            <button type="button" className="flex size-5 items-center justify-center rounded text-[#4a4a55] hover:bg-[#1e1e24] hover:text-[#9a9aaa]">
+              <IcPlus size={11} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Linhas de tasks ── */}
       {open && (
         <div>
@@ -333,7 +333,7 @@ function GroupBlock({
           {addingInline ? (
             <div
               className="flex items-center gap-3 border-b border-[#1e1e24]"
-              style={{ height: 36, paddingLeft: 40 }}
+              style={{ height: 36, paddingLeft: 16 }}
             >
               <StatusIcon type={cfg.iconType} color={cfg.dotColor} size={13} />
               <input
@@ -354,7 +354,7 @@ function GroupBlock({
             <button
               type="button"
               onClick={() => setAddingInline(true)}
-              className="flex h-9 w-full items-center gap-2 border-b border-[#1a1a1f] px-10 text-[13px] text-[#4a4a55] transition-colors hover:bg-[#141418] hover:text-[#9a9aaa]"
+              className="flex h-9 w-full items-center gap-2 border-b border-[#1a1a1f] px-4 text-[13px] text-[#4a4a55] transition-colors hover:bg-[#141418] hover:text-[#9a9aaa]"
             >
               <IcPlus size={12} />
               Adicionar Tarefa
