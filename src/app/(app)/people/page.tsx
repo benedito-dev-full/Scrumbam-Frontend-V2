@@ -370,7 +370,7 @@ function RoleDropdown({ memberId, currentRole, disabled }: { memberId: string; c
         className="flex items-center gap-1 rounded px-2 py-1 text-[13px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
       >
         {roleLabel(optimisticRole)}
-        <ChevronDown className="size-3 opacity-50" />
+        <ChevronDown className="size-3 opacity-50" strokeWidth={4.5} />
       </button>
       {open && (
         <div style={{
