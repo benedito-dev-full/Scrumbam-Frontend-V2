@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import { Star, Share2, Bot, Sparkles } from "lucide-react";
 
 import { ViewSwitcher } from "@/components/shell/view-switcher";
@@ -455,6 +455,7 @@ function GroupBlock({
                 task={t}
                 onOpenTask={onOpenTask}
                 members={members}
+                subtarefasMode={subtarefasMode}
               />
             ))}
             <AddRow onAddTask={() => onAddTask(status)} />
@@ -543,11 +544,13 @@ function TaskRowBackend({
   onOpenTask,
   members,
   depth = 0,
+  subtarefasMode,
 }: {
   task: TaskResponseDto;
   onOpenTask: (t: TaskResponseDto) => void;
   members: ProjectMemberDto[];
   depth?: number;
+  subtarefasMode?: SubtarefasMode;
 }) {
   const updateTask = useUpdateTask();
   const updateStatus = useUpdateTaskStatus();
@@ -559,6 +562,16 @@ function TaskRowBackend({
   const [expanded, setExpanded] = useState(false);
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
+
+  useEffect(() => {
+    if (subtarefasMode === "expandidas") {
+      setExpanded(true);
+    } else if (subtarefasMode === "recolhidas") {
+      setExpanded(false);
+      setAddingSubtask(false);
+      setNewSubtaskName("");
+    }
+  }, [subtarefasMode]);
 
   const { data: subtasks = [], isLoading: loadingSubtasks } = useSubtasks(task.id, expanded);
 
@@ -915,6 +928,7 @@ function TaskRowBackend({
             onOpenTask={onOpenTask}
             members={members}
             depth={depth + 1}
+            subtarefasMode={subtarefasMode}
           />
         ))}
         {/* Linha de adicionar subtarefa */}
