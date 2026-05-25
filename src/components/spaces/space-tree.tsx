@@ -270,12 +270,14 @@ function ListNode({
       )}
       style={{ paddingLeft }}
     >
-      {/* espaço do chevron (sem filho = sem botão) */}
-      <span className="mr-0.5 size-4 shrink-0" />
-
-      {/* ícone de lista */}
-      <span className="mr-1.5 shrink-0">
-        <IcList className="text-violet-400" />
+      {/* ícone substitui chevron: no hover mostra chevron, senão mostra IcList */}
+      <span className="relative mr-0.5 size-4 shrink-0">
+        <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-100 group-hover:opacity-0">
+          <IcList className="text-violet-400" />
+        </span>
+        <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100">
+          <ChevronRight className="size-3 text-muted-foreground" />
+        </span>
       </span>
 
       {editing ? (
@@ -341,25 +343,25 @@ function FolderNode({
         )}
         style={{ paddingLeft }}
       >
-        {/* botão chevron */}
+        {/* ícone + chevron sobrepostos: hover substitui ícone pelo chevron */}
         <button
           type="button"
           aria-label={open ? "Colapsar folder" : "Expandir folder"}
           onClick={() => onToggle(folder.id)}
-          className="mr-0.5 grid size-4 shrink-0 place-items-center text-muted-foreground hover:text-foreground"
+          className="relative mr-0.5 size-4 shrink-0"
         >
-          <Chevron open={open} />
+          <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-100 group-hover:opacity-0">
+            <IcFolder
+              className={cn(
+                "text-muted-foreground",
+                active && "text-sidebar-accent-foreground",
+              )}
+            />
+          </span>
+          <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100">
+            <Chevron open={open} />
+          </span>
         </button>
-
-        {/* ícone de pasta */}
-        <span className="mr-1.5 shrink-0">
-          <IcFolder
-            className={cn(
-              "text-muted-foreground",
-              active && "text-sidebar-accent-foreground",
-            )}
-          />
-        </span>
 
         {editing ? (
           <input
@@ -483,24 +485,25 @@ function SpaceNode({
         )}
         style={{ paddingLeft }}
       >
-        {/* chevron expand/collapse */}
+        {/* chip + chevron sobrepostos: hover substitui chip pelo chevron */}
         <button
           type="button"
           aria-label={open ? "Colapsar space" : "Expandir space"}
           onClick={() => onToggle(space.id)}
-          className="mr-0.5 grid size-4 shrink-0 place-items-center text-muted-foreground hover:text-foreground"
+          className="relative mr-1.5 size-6 shrink-0"
         >
-          <Chevron open={open} />
+          <span className="absolute inset-0 flex items-center justify-center transition-opacity duration-100 group-hover:opacity-0">
+            <span
+              className="grid size-6 place-items-center rounded-md text-[11px] font-bold text-white"
+              style={{ background: chipColor }}
+            >
+              {iniciais}
+            </span>
+          </span>
+          <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100">
+            <Chevron open={open} />
+          </span>
         </button>
-
-        {/* chip colorido com iniciais */}
-        <span
-          className="mr-1.5 grid size-6 shrink-0 place-items-center rounded-md text-[11px] font-bold text-white"
-          style={{ background: chipColor }}
-          aria-hidden
-        >
-          {iniciais}
-        </span>
 
         {editing ? (
           <input
