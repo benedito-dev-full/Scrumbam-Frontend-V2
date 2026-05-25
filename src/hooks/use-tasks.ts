@@ -1,0 +1,235 @@
+'use client';
+
+// ─── Externos ─────────────────────────────────────────────────────────────────
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+
+// ─── Internos ─────────────────────────────────────────────────────────────────
+import { api } from '@/lib/api';
+import { qk } from '@/lib/query-keys';
+import { useAuthStore } from '@/lib/stores/auth';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+import type { TaskResponseDto } from '@/lib/types/api';
+
+// ─── Tipos de resposta paginada ───────────────────────────────────────────────
+
+interface TasksPage {
+  items: TaskResponseDto[];
+  pagination: { hasMore: boolean; nextCursor: string | null };
+}
+
+// ─── Hooks de leitura ─────────────────────────────────────────────────────────
+
+/**
+ * Lista tasks de um projeto (List, idClasse=-352) pelo seu ID.
+ *
+ * Mapeia para `GET /tasks?projectId={projectId}&limit=200`.
+ * Desabilitado automaticamente quando `projectId` é null.
+ *
+ * staleTime de 15 segundos — tasks mudam com frequência moderada;
+ * refetch manual via invalidateQueries é o fluxo principal após mutações.
+ *
+ * @param projectId - ID do DProject (List). Quando null, a query fica desabilitada.
+ * @returns Resultado do useQuery com `data: TaskResponseDto[]`
+ *
+ * @example
+ * ```tsx
+ * const { data: tasks = [], isLoading } = useTasksByProject(listId);
+ * ```
+ */
+export function useTasksByProject(projectId: string | null) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  return useQuery<TaskResponseDto[]>({
+    queryKey: qk.tasks.byProject(projectId ?? ''),
+    queryFn: async () => {
+      const res = await api.get<TasksPage>('/tasks', {
+        params: { projectId, limit: 200 },
+      });
+      return res.data.items;
+    },
+    enabled: !!accessToken && !!projectId,
+    staleTime: 15_000,
+  });
+}
+
+/**
+ * Busca uma task individual pelo ID.
+ *
+ * Mapeia para `GET /tasks/:id`.
+ * Desabilitado automaticamente quando `id` é null.
+ *
+ * @param id - ID da DTask. Quando null, a query fica desabilitada.
+ * @returns Resultado do useQuery com `data: TaskResponseDto`
+ *
+ * @example
+ * ```tsx
+ * const { data: task } = useTask(taskId);
+ * ```
+ */
+export function useTask(id: string | null) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  return useQuery<TaskResponseDto>({
+    queryKey: qk.tasks.byId(id ?? ''),
+    queryFn: async () => {
+      const res = await api.get<TaskResponseDto>(`/tasks/${id}`);
+      return res.data;
+    },
+    enabled: !!accessToken && !!id,
+    staleTime: 15_000,
+  });
+}
+
+/**
+ * Lista tasks atribuídas ao usuário logado.
+ *
+ * Mapeia para `GET /tasks?assignedToMe=true&status={status}&limit=200`.
+ * Quando `status` é omitido, retorna tasks em todos os estados.
+ *
+ * @param status - Filtro opcional de V3 Intention (ex: 'INBOX', 'EXECUTING').
+ * @returns Resultado do useQuery com `data: TaskResponseDto[]`
+ *
+ * @example
+ * ```tsx
+ * const { data: tasks = [] } = useMyTasks();
+ * const { data: active = [] } = useMyTasks('EXECUTING');
+ * ```
+ */
+export function useMyTasks(status?: string) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  return useQuery<TaskResponseDto[]>({
+    queryKey: [...qk.tasks.all, 'my', status],
+    queryFn: async () => {
+      const res = await api.get<TasksPage>('/tasks', {
+        params: { assignedToMe: true, status, limit: 200 },
+      });
+      return res.data.items;
+    },
+    enabled: !!accessToken,
+    staleTime: 15_000,
+  });
+}
+
+// ─── Mutations ────────────────────────────────────────────────────────────────
+
+/**
+ * Cria uma nova task em um projeto.
+ *
+ * Mapeia para `POST /tasks { titulo, idProject, priority?, dueDate?, assigneeId? }`.
+ * Após sucesso, invalida `qk.tasks.byProject(idProject)` para forçar refetch do Kanban.
+ *
+ * @returns Resultado do useMutation
+ *
+ * @example
+ * ```tsx
+ * const { mutate, isPending } = useCreateTask();
+ * mutate({ titulo: 'Nova task', idProject: listId });
+ * ```
+ */
+export function useCreateTask() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    TaskResponseDto,
+    Error,
+    {
+      titulo: string;
+      idProject: string;
+      priority?: string;
+      dueDate?: string;
+      assigneeId?: string;
+    }
+  >({
+    mutationFn: async (dto) => {
+      const res = await api.post<TaskResponseDto>('/tasks', dto);
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.byProject(variables.idProject),
+      });
+    },
+  });
+}
+
+/**
+ * Atualiza a V3 Intention (status) de uma task.
+ *
+ * Mapeia para `PATCH /tasks/:id/status { status }`.
+ * Após sucesso, invalida as queries do projeto e da task individual.
+ *
+ * @returns Resultado do useMutation
+ *
+ * @example
+ * ```tsx
+ * const { mutate } = useUpdateTaskStatus();
+ * mutate({ id: taskId, status: 'EXECUTING', projectId: listId });
+ * ```
+ */
+export function useUpdateTaskStatus() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    TaskResponseDto,
+    Error,
+    { id: string; status: string; projectId: string }
+  >({
+    mutationFn: async ({ id, status }) => {
+      const res = await api.patch<TaskResponseDto>(`/tasks/${id}/status`, { status });
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.byProject(variables.projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.byId(variables.id),
+      });
+    },
+  });
+}
+
+/**
+ * Atualiza campos editáveis de uma task (título, descrição, prioridade, dueDate, assignee).
+ *
+ * Mapeia para `PATCH /tasks/:id { titulo?, descricao?, priority?, dueDate?, assigneeId? }`.
+ * Semântica de `dueDate`: undefined = não toca; null = remove; string = nova data.
+ * Após sucesso, invalida as queries do projeto e da task individual.
+ *
+ * @returns Resultado do useMutation
+ *
+ * @example
+ * ```tsx
+ * const { mutate } = useUpdateTask();
+ * mutate({ id: taskId, projectId: listId, dto: { titulo: 'Novo título' } });
+ * mutate({ id: taskId, projectId: listId, dto: { dueDate: null } }); // remove data
+ * ```
+ */
+export function useUpdateTask() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    TaskResponseDto,
+    Error,
+    {
+      id: string;
+      projectId: string;
+      dto: {
+        titulo?: string;
+        descricao?: string;
+        priority?: string;
+        dueDate?: string | null;
+        assigneeId?: string | null;
+      };
+    }
+  >({
+    mutationFn: async ({ id, dto }) => {
+      const res = await api.patch<TaskResponseDto>(`/tasks/${id}`, dto);
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.byProject(variables.projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.byId(variables.id),
+      });
+    },
+  });
+}

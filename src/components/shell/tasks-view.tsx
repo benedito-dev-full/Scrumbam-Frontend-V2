@@ -1,5 +1,6 @@
 "use client";
 
+// ─── Externos ─────────────────────────────────────────────────────────────────
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -12,36 +13,61 @@ import {
   Plus,
   Filter,
 } from "lucide-react";
+
+// ─── Internos ─────────────────────────────────────────────────────────────────
 import { Button } from "@/components/ui/button";
 import { SpaceChip } from "@/components/shell/space-chip";
 import { cn } from "@/lib/utils";
-import { mockTarefas, diasUntil } from "@/lib/mocks/tarefas";
-import { mockEntidades } from "@/lib/mocks/entidades";
-import { PRIORIDADE_META, STATUS_META, type StatusTarefa, type Tarefa } from "@/lib/types/tarefa";
-import { isEspaco } from "@/lib/types/entidade";
+import { useMyTasks } from "@/hooks/use-tasks";
+import { isOverdue, priorityToColor, priorityToLabel } from "@/lib/mappers/task-status.mapper";
 
-const ME = "u1";
+// ─── Types ────────────────────────────────────────────────────────────────────
+import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
 
-const COL_GRID = "grid-cols-[minmax(0,1fr)_140px_140px_110px_110px_28px]";
+// ─── Constantes ───────────────────────────────────────────────────────────────
+
+const COL_GRID = "grid-cols-[minmax(0,1fr)_140px_110px_110px_28px]";
+
+/**
+ * Mapeamento de V3 Intention para label + classes CSS das tabs.
+ * Só usamos as intentions relevantes para "minhas tarefas".
+ */
+const STATUS_LABEL: Record<string, string> = {
+  INBOX: "Backlog",
+  READY: "Ready",
+  EXECUTING: "Em andamento",
+  VALIDATING: "Validando",
+  DONE: "Concluídas",
+  FAILED: "Falhou",
+  CANCELLED: "Canceladas",
+  DISCARDED: "Descartadas",
+  VALIDATED: "Validadas",
+};
+
+const STATUS_DOT: Record<string, string> = {
+  INBOX: "bg-gray-400",
+  READY: "bg-blue-400",
+  EXECUTING: "bg-violet-500",
+  VALIDATING: "bg-amber-400",
+  DONE: "bg-emerald-400",
+  FAILED: "bg-red-400",
+  CANCELLED: "bg-gray-500",
+  DISCARDED: "bg-gray-600",
+  VALIDATED: "bg-emerald-500",
+};
 
 const allTabs = [
-  { label: "Todas", href: "/tasks", filter: null as StatusTarefa | null },
-  { label: "Em andamento", href: "/tasks/in-progress", filter: "em-progresso" as StatusTarefa },
-  { label: "Pendentes", href: "/tasks/pending", filter: "pendente" as StatusTarefa },
-  { label: "Concluídas", href: "/tasks/done", filter: "concluido" as StatusTarefa },
+  { label: "Todas", href: "/tasks", filter: null as V3Intention | null },
+  { label: "Em andamento", href: "/tasks/in-progress", filter: "EXECUTING" as V3Intention },
+  { label: "Pendentes", href: "/tasks/pending", filter: "INBOX" as V3Intention },
+  { label: "Concluídas", href: "/tasks/done", filter: "DONE" as V3Intention },
 ];
 
-function contarPorFiltro(filtro: StatusTarefa | null): number {
-  return mockTarefas.filter(
-    (t) => t.responsavelId === ME && (filtro === null || t.status === filtro),
-  ).length;
-}
+// ─── Componente principal ─────────────────────────────────────────────────────
 
-export function TasksView({ filtro }: { filtro: StatusTarefa | null }) {
+export function TasksView({ filtro }: { filtro: V3Intention | null }) {
   const pathname = usePathname();
-  const tarefas = mockTarefas.filter(
-    (t) => t.responsavelId === ME && (filtro === null || t.status === filtro),
-  );
+  const { data: allTasks = [], isLoading } = useMyTasks(filtro ?? undefined);
 
   return (
     <>
@@ -50,7 +76,7 @@ export function TasksView({ filtro }: { filtro: StatusTarefa | null }) {
           <ListTodo className="size-4 text-muted-foreground" />
           <h1 className="text-sm font-semibold text-foreground">Minhas tarefas</h1>
           <span className="rounded bg-muted px-1.5 text-[11px] font-medium text-muted-foreground">
-            {tarefas.length}
+            {allTasks.length}
           </span>
         </div>
         <Button size="sm" className="gap-1.5">
@@ -62,7 +88,6 @@ export function TasksView({ filtro }: { filtro: StatusTarefa | null }) {
       <div className="flex h-10 items-center gap-px border-b border-border bg-background px-4">
         {allTabs.map((t) => {
           const active = pathname === t.href;
-          const count = contarPorFiltro(t.filter);
           return (
             <Link
               key={t.href}
@@ -74,18 +99,6 @@ export function TasksView({ filtro }: { filtro: StatusTarefa | null }) {
               )}
             >
               {t.label}
-              {count > 0 && (
-                <span
-                  className={cn(
-                    "rounded-full px-1.5 py-px text-[10px] font-semibold leading-none",
-                    active
-                      ? "bg-primary/15 text-primary"
-                      : "bg-muted text-muted-foreground",
-                  )}
-                >
-                  {count}
-                </span>
-              )}
             </Link>
           );
         })}
@@ -97,7 +110,7 @@ export function TasksView({ filtro }: { filtro: StatusTarefa | null }) {
           className="inline-flex h-7 items-center gap-1.5 rounded-md bg-primary/15 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
         >
           <span className="text-muted-foreground/80">Grupo:</span>
-          Espaço
+          Status
           <ChevronDown className="size-3" />
         </button>
         <button
@@ -115,12 +128,14 @@ export function TasksView({ filtro }: { filtro: StatusTarefa | null }) {
           Filtro
         </button>
         <span className="ml-auto text-[11px] text-muted-foreground">
-          {tarefas.length} tarefas
+          {allTasks.length} tarefas
         </span>
       </div>
 
       <div className="mx-auto w-full max-w-5xl px-4 py-4">
-        {tarefas.length === 0 ? (
+        {isLoading ? (
+          <TaskListSkeleton />
+        ) : allTasks.length === 0 ? (
           <EmptyState />
         ) : (
           <div className="overflow-hidden rounded-lg border border-border">
@@ -131,13 +146,12 @@ export function TasksView({ filtro }: { filtro: StatusTarefa | null }) {
               )}
             >
               <div className="py-2">Nome</div>
-              <div className="py-2">Espaço</div>
               <div className="py-2">Status</div>
               <div className="py-2">Prioridade</div>
               <div className="py-2">Vencimento</div>
               <div />
             </div>
-            {tarefas.map((t) => (
+            {allTasks.map((t) => (
               <TaskRow key={t.id} tarefa={t} />
             ))}
             <button
@@ -154,22 +168,21 @@ export function TasksView({ filtro }: { filtro: StatusTarefa | null }) {
   );
 }
 
-function TaskRow({ tarefa }: { tarefa: Tarefa }) {
-  const statusMeta = STATUS_META[tarefa.status];
-  const prioMeta = tarefa.prioridade ? PRIORIDADE_META[tarefa.prioridade] : null;
-  const espaco = mockEntidades.find((e) => isEspaco(e) && e.id === tarefa.espacoId);
-  const dias = diasUntil(tarefa.dataVencimento);
+// ─── TaskRow ──────────────────────────────────────────────────────────────────
+
+function TaskRow({ tarefa }: { tarefa: TaskResponseDto }) {
+  const dotClass = STATUS_DOT[tarefa.status] ?? "bg-gray-400";
+  const statusLabel = STATUS_LABEL[tarefa.status] ?? tarefa.status;
+  const prioLabel = priorityToLabel(tarefa.priority);
+  const prioColor = priorityToColor(tarefa.priority);
+  const overdue = isOverdue(tarefa.dueDate, tarefa.status as V3Intention);
 
   let dataTone = "text-muted-foreground";
   let dataLabel = "—";
-  if (tarefa.dataVencimento) {
-    const d = new Date(tarefa.dataVencimento + "T00:00:00.000Z");
+  if (tarefa.dueDate) {
+    const d = new Date(tarefa.dueDate);
     dataLabel = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
-    if (dias != null) {
-      if (dias < 0) dataTone = "text-amber-400";
-      else if (dias === 0) dataTone = "text-primary";
-      else if (dias <= 3) dataTone = "text-foreground";
-    }
+    if (overdue) dataTone = "text-amber-400";
   }
 
   return (
@@ -179,59 +192,49 @@ function TaskRow({ tarefa }: { tarefa: Tarefa }) {
         COL_GRID,
       )}
     >
+      {/* Nome / título */}
       <div className="flex h-9 items-center gap-2 truncate">
-        <span className={cn("size-1.5 shrink-0 rounded-full", statusMeta.dotClass)} />
-        <span className="truncate text-foreground">{tarefa.nome}</span>
-        {tarefa.subtarefas > 0 && (
+        <span className={cn("size-1.5 shrink-0 rounded-full", dotClass)} />
+        <span className="font-mono text-[11px] text-muted-foreground shrink-0">
+          {tarefa.identifier}
+        </span>
+        <span className="truncate text-foreground">{tarefa.title}</span>
+        {tarefa.idPai && (
           <span className="inline-flex h-4 items-center gap-0.5 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
             <GitFork className="size-3" />
-            {tarefa.subtarefas}
           </span>
         )}
       </div>
 
-      <div className="flex h-9 items-center gap-2">
-        {espaco && isEspaco(espaco) && (
-          <>
-            <SpaceChip
-              iniciais={espaco.meta.iniciais}
-              cor={espaco.meta.cor}
-              iconName={espaco.meta.iconName}
-              size="xs"
-            />
-            <span className="text-[12px] text-muted-foreground">{espaco.nome}</span>
-          </>
-        )}
-      </div>
-
+      {/* Status */}
       <div className="flex h-9 items-center">
-        <span
-          className={cn(
-            "inline-flex h-5 items-center gap-1.5 rounded-full px-2 text-[11px] font-medium uppercase tracking-wider",
-            statusMeta.bgClass,
-            statusMeta.textClass,
-          )}
-        >
-          <span className={cn("size-1.5 rounded-full", statusMeta.dotClass)} />
-          {statusMeta.label}
+        <span className="inline-flex h-5 items-center gap-1.5 rounded-full bg-muted px-2 text-[11px] font-medium">
+          <span className={cn("size-1.5 rounded-full", dotClass)} />
+          {statusLabel}
         </span>
       </div>
 
+      {/* Prioridade */}
       <div className="flex h-9 items-center gap-1.5">
-        {prioMeta ? (
+        {tarefa.priority ? (
           <>
-            <Flag className={cn("size-3.5", prioMeta.flagClass)} />
-            <span className="text-[12px] text-foreground">{prioMeta.label}</span>
+            <Flag className="size-3.5" style={{ color: prioColor }} />
+            <span className="text-[12px] text-foreground">{prioLabel}</span>
           </>
         ) : (
           <span className="text-[12px] text-muted-foreground/40">—</span>
         )}
       </div>
 
+      {/* Vencimento */}
       <div className="flex h-9 items-center">
-        <span className={cn("text-[12px]", dataTone)}>{dataLabel}</span>
+        <span className={cn("text-[12px]", dataTone)}>
+          {overdue && tarefa.dueDate ? "⚠ " : ""}
+          {dataLabel}
+        </span>
       </div>
 
+      {/* Ações */}
       <div className="grid h-9 place-items-center">
         <button
           type="button"
@@ -244,6 +247,27 @@ function TaskRow({ tarefa }: { tarefa: Tarefa }) {
     </div>
   );
 }
+
+// ─── TaskListSkeleton ─────────────────────────────────────────────────────────
+
+function TaskListSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      {[1, 2, 3, 4].map((i) => (
+        <div
+          key={i}
+          className="flex h-9 items-center gap-3 border-t border-border px-3 first:border-t-0"
+        >
+          <div className="size-1.5 animate-pulse rounded-full bg-muted" />
+          <div className="h-3 w-[180px] animate-pulse rounded bg-muted" />
+          <div className="ml-auto h-3 w-16 animate-pulse rounded bg-muted" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── EmptyState ───────────────────────────────────────────────────────────────
 
 function EmptyState() {
   return (

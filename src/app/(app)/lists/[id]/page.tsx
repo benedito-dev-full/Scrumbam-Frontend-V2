@@ -16,6 +16,7 @@ import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useProject } from "@/hooks/use-projects";
 import { useTasksStore } from "@/lib/stores/tasks";
 import { agruparPorStatus } from "@/lib/mocks/tarefas";
+// BoardContent já usa useTasksByProject internamente via KanbanBoard
 import { type StatusTarefa, type Tarefa } from "@/lib/types/tarefa";
 
 /* ─── Página ─────────────────────────────────────────────────────────────── */
@@ -78,6 +79,7 @@ export default function ListPage({
         />
       ) : (
         <BoardContent
+          listId={id}
           espacoId={espacoId}
           onAddTask={openModal}
           onOpenTask={setSelectedTask}
@@ -99,27 +101,16 @@ export default function ListPage({
 }
 
 /* ─── Conteúdo reativo do kanban ────────────────────────────────────────── */
-/** Lê do store de forma reativa e renderiza o KanbanBoard */
+/** Renderiza o KanbanBoard conectado ao backend via projectId (List). */
 function BoardContent({
-  espacoId,
-  onAddTask,
-  onOpenTask,
+  listId,
 }: {
+  listId: string;
   espacoId: string;
   onAddTask: (defaultStatus?: StatusTarefa) => void;
   onOpenTask: (tarefa: Tarefa) => void;
 }) {
-  const allTasks = useTasksStore((s) => s.tasks);
-  const tarefas = allTasks.filter((t) => t.espacoId === espacoId);
-
-  return (
-    <KanbanBoard
-      tarefas={tarefas}
-      espacoId={espacoId}
-      onOpenTask={onOpenTask}
-      onAddTask={onAddTask}
-    />
-  );
+  return <KanbanBoard projectId={listId} />;
 }
 
 /* ─── Conteúdo reativo da lista ──────────────────────────────────────────── */
