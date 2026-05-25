@@ -111,14 +111,29 @@ export interface UpdateProjectDto {
 
 // ─── Tasks ───────────────────────────────────────────────────────────────────
 
-export type TaskStatus =
+/**
+ * V3 Intentions — estados canônicos do workflow Scrumban (backend).
+ *
+ * Mapeadas para colunas Kanban via `intentionToColumn()` em
+ * `src/lib/mappers/task-status.mapper.ts`.
+ *
+ * @see ADR-V2-047 (V3 Intentions)
+ */
+export type V3Intention =
   | "INBOX"
-  | "TODO"
-  | "IN_PROGRESS"
-  | "IN_REVIEW"
-  | "VALIDATED"
+  | "READY"
+  | "EXECUTING"
   | "DONE"
-  | "CANCELLED";
+  | "FAILED"
+  | "CANCELLED"
+  | "DISCARDED"
+  | "VALIDATING"
+  | "VALIDATED";
+
+/**
+ * @deprecated Usar `V3Intention` — este tipo reflete estados legados incompatíveis com V3.
+ */
+export type TaskStatus = V3Intention;
 
 export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
@@ -129,18 +144,39 @@ export type TaskType =
   | "REVIEW"
   | "EXPLAIN";
 
+/**
+ * Representação canônica de uma DTask V2.
+ *
+ * Campo `status` contém a V3 Intention (ex: 'INBOX', 'EXECUTING').
+ * Campo `idClasse` distingue TASK (-154) de PHASE (-200).
+ *
+ * @see ADR-V2-047 (V3 Intentions)
+ * @see ADR-V2-050 (idClasse em TaskResponseDto)
+ */
 export interface TaskResponseDto {
   id: string;
-  nome: string;
-  descricao: string | null;
-  projectId: string;
+  /** Identificador legível (ex: 'DEV-1'). */
   identifier: string;
-  status: TaskStatus;
-  priority: TaskPriority | null;
-  taskType: TaskType | null;
-  assigneeId: string | null;
-  sprintId: string | null;
-  dados: Record<string, unknown> | null;
+  /** Título da task. */
+  title: string;
+  description?: string;
+  /** V3 Intention atual (estado do workflow). */
+  status: V3Intention;
+  statusId: string;
+  priority?: TaskPriority;
+  priorityId?: string;
+  /** ID do DProject (List, idClasse=-352) ao qual a task pertence. */
+  projectId: string;
+  assigneeId?: string;
+  /** ID da task pai (fase, idClasse=-200), ou undefined se task raiz. */
+  idPai?: string;
+  /**
+   * Data de vencimento em ISO 8601, null quando explicitamente removida,
+   * ou undefined quando o campo não foi definido.
+   */
+  dueDate?: string | null;
+  /** idClasse canônico: '-154' = TASK, '-200' = PHASE. */
+  idClasse: string;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -164,7 +200,7 @@ export interface UpdateTaskDto {
 
 export interface TaskFilters {
   projectId?: string;
-  status?: TaskStatus;
+  status?: V3Intention;
   assigneeId?: string;
   sprintId?: string;
 }
