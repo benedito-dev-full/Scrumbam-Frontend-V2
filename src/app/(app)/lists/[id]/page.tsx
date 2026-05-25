@@ -743,9 +743,10 @@ function TaskRow({ task, cfg, listId, onOpen }: {
   };
 
   const cellIconStyle: React.CSSProperties = {
-    color: hovered ? "#7a7a83" : "#5a5a62",
+    color: hovered ? "#b6b6bf" : "#6a6a75",
     fontSize: 14, display: "flex", alignItems: "center", gap: 4,
     cursor: "pointer", height: "100%",
+    transition: "color .1s",
   };
 
   return (
@@ -761,7 +762,7 @@ function TaskRow({ task, cfg, listId, onOpen }: {
           onMouseEnter={(e) => { e.currentTarget.style.color = "#cfc1ff"; e.currentTarget.style.textDecoration = "underline"; }}
           onMouseLeave={(e) => { e.currentTarget.style.color = C.text; e.currentTarget.style.textDecoration = "none"; }}
         >
-          {task.title}
+          {task.nome}
         </button>
         {task.identifier && (
           <span style={{ fontFamily: "monospace", fontSize: 11, color: "#5a5a64", opacity: hovered ? 1 : 0, transition: "opacity .15s", flexShrink: 0 }}>

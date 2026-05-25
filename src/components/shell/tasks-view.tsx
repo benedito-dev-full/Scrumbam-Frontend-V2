@@ -197,7 +197,7 @@ function TaskRow({ tarefa }: { tarefa: TaskResponseDto }) {
         <span className="font-mono text-[11px] text-muted-foreground shrink-0">
           {tarefa.identifier}
         </span>
-        <span className="truncate text-foreground">{tarefa.title}</span>
+        <span className="truncate text-foreground">{tarefa.nome}</span>
         {tarefa.idPai && (
           <span className="inline-flex h-4 items-center gap-0.5 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
             <GitFork className="size-3" />

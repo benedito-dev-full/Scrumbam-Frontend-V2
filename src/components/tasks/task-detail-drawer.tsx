@@ -80,7 +80,7 @@ export function TaskDetailDrawer({
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <span className="font-mono text-[11px] text-muted-foreground">{task.identifier}</span>
           <EditableTitle
-            value={task.title}
+            value={task.nome}
             onSave={(titulo) => updateTask({ id: taskId, projectId, dto: { titulo } })}
             disabled={isUpdating}
           />

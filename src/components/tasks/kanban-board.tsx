@@ -156,7 +156,7 @@ function TaskCard({ task, onClick }: { task: TaskResponseDto; onClick: () => voi
       </div>
 
       {/* Título */}
-      <p className="text-[13px] leading-snug text-foreground">{task.title}</p>
+      <p className="text-[13px] leading-snug text-foreground">{task.nome}</p>
 
       {/* dueDate + badge atrasado */}
       {task.dueDate && (

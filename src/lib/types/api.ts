@@ -157,8 +157,8 @@ export interface TaskResponseDto {
   id: string;
   /** Identificador legível (ex: 'DEV-1'). */
   identifier: string;
-  /** Título da task. */
-  title: string;
+  /** Título da task (campo retornado pelo backend como `nome`). */
+  nome: string;
   description?: string;
   /** V3 Intention atual (estado do workflow). */
   status: V3Intention;
