@@ -9,6 +9,7 @@ import {
   Plus,
   Star,
   MoreHorizontal,
+  Settings2,
   type LucideIcon,
 } from "lucide-react";
 
@@ -18,6 +19,7 @@ import { SpaceTree } from "@/components/spaces/space-tree";
 import { PlannerPanel } from "./planner-panel";
 import { FormsPanel } from "./forms-panel";
 import { DocsPanel } from "./docs-panel";
+import { useMe } from "@/hooks/use-auth";
 
 /* ─── Ícones SVG custom — pixel-perfect ClickUp ──────────────────────────── */
 
@@ -134,24 +136,27 @@ type Section = {
   showAddButton?: boolean;
 };
 
-const sections: Section[] = [
-  {
-    id: "favoritos",
-    label: "Favoritos",
-    items: [
-      { href: "/favorites", label: "Adicione à sua barra lateral", renderIcon: () => <IcStar /> },
-    ],
-  },
-  {
-    id: "canais",
-    label: "Canais",
-    showAddButton: true,
-    items: [
-      { href: "/channels/geral",   label: "Geral",   renderIcon: () => <IcChannel /> },
-      { href: "/channels/welcome", label: "Welcome", renderIcon: () => <IcHash /> },
-    ],
-  },
-];
+function buildSections(orgName?: string): Section[] {
+  const suffix = orgName ? ` - ${orgName}` : "";
+  return [
+    {
+      id: "favoritos",
+      label: "Favoritos",
+      items: [
+        { href: "/favorites", label: "Adicione à sua barra lateral", renderIcon: () => <IcStar /> },
+      ],
+    },
+    {
+      id: "canais",
+      label: "Canais",
+      showAddButton: true,
+      items: [
+        { href: "/channels/geral",   label: `Geral${suffix}`,   renderIcon: () => <IcChannel /> },
+        { href: "/channels/welcome", label: `Welcome${suffix}`, renderIcon: () => <IcHash /> },
+      ],
+    },
+  ];
+}
 
 /* ─── Item folha ──────────────────────────────────────────────────────────── */
 function Leaf({
@@ -298,10 +303,61 @@ function SectionBlock({ section }: { section: Section }) {
   );
 }
 
+/* ─── Seção Mensagens Diretas ─────────────────────────────────────────────── */
+function DirectMessagesSection({ userName }: { userName?: string }) {
+  const [open, setOpen] = useState(true);
+  const initials = userName
+    ? userName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+    : "?";
+
+  return (
+    <div>
+      <div className="mb-1 flex h-7 items-center justify-between px-3">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex flex-1 items-center gap-1 text-[12px] font-semibold text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
+        >
+          Mensagens diretas
+        </button>
+      </div>
+      {open && (
+        <ul className="space-y-1">
+          {userName && (
+            <li>
+              <div className="flex h-[34px] items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80">
+                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-indigo-600 text-[9px] font-bold text-white">
+                  {initials}
+                </span>
+                <span className="flex-1 truncate">
+                  {userName}
+                  <span className="ml-1 text-muted-foreground/50">— Você</span>
+                </span>
+              </div>
+            </li>
+          )}
+          <li>
+            <button
+              type="button"
+              className="flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-muted-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+            >
+              <Plus className="size-3.5 shrink-0" />
+              Nova mensagem
+            </button>
+          </li>
+        </ul>
+      )}
+    </div>
+  );
+}
+
 /* ─── Painel principal ────────────────────────────────────────────────────── */
 export function WorkspacePanel() {
   const pathname = usePathname();
   const [homeOpen, setHomeOpen] = useState(true);
+  const { data: me } = useMe();
+
+  const sections = buildSections(me?.organizationName);
 
   /* painéis alternativos por rota */
   if (pathname.startsWith("/planner")) {
@@ -386,8 +442,22 @@ export function WorkspacePanel() {
               {section.id === "favoritos" && <SpaceTree />}
             </Fragment>
           ))}
+
+          {/* Mensagens diretas */}
+          <DirectMessagesSection userName={me?.name} />
         </div>
       </ScrollArea>
+
+      {/* footer fixo — Personalizar a barra lateral */}
+      <div className="shrink-0 border-t border-border px-2 py-2">
+        <button
+          type="button"
+          className="flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[12px] text-muted-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+        >
+          <Settings2 className="size-3.5 shrink-0" />
+          Personalizar a barra lateral
+        </button>
+      </div>
     </aside>
   );
 }
