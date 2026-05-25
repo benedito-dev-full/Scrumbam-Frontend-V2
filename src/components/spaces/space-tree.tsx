@@ -12,7 +12,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronRight, Plus, Lock, MoreHorizontal } from "lucide-react";
+import { ChevronRight, Plus, Lock, MoreHorizontal, Star, Pencil, Copy, Trash2 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -20,6 +20,7 @@ import {
   useFolders,
   useLists,
   useRenameProject,
+  useArchiveProject,
 } from "@/hooks/use-projects";
 import { CreateSpaceDialog } from "./create-space-dialog";
 import { CreateFolderDialog } from "./create-folder-dialog";
@@ -318,6 +319,12 @@ function ListNode({
           <span className="truncate">{list.nome}</span>
         </Link>
       )}
+
+      {!editing && (
+        <div className="mr-1 flex shrink-0 items-center gap-0.5">
+          <MoreMenu project={list} onRename={startEdit} />
+        </div>
+      )}
     </div>
   );
 }
@@ -411,16 +418,9 @@ function FolderNode({
           </Link>
         )}
 
-        {/* ações: ... e + sempre visíveis */}
         {!editing && (
           <div className="mr-1 flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              aria-label="Mais ações"
-              className="grid size-4 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <MoreHorizontal className="size-3" />
-            </button>
+            <MoreMenu project={folder} onRename={startEdit} />
             <SpacePlusMenu
               spaceName={folder.nome}
               onCreateFolder={() => {}}
@@ -561,17 +561,9 @@ function SpaceNode({
           />
         )}
 
-        {/* ações: "..." aparece só no hover; "+" fica sempre visível no hover e é o gatilho do menu */}
         {!editing && (
           <div className="mr-1 flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              aria-label="Mais ações"
-              className="grid size-4 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-            >
-              <MoreHorizontal className="size-3" />
-            </button>
-            {/* "+" sempre visível no hover — só abre no clique */}
+            <MoreMenu project={space} onRename={startEdit} />
             <SpacePlusMenu
               spaceName={space.nome}
               onCreateFolder={() => setCreateFolderOpen(true)}
@@ -614,6 +606,118 @@ function SpaceNode({
         onOpenChange={setCreateListOpen}
       />
     </div>
+  );
+}
+
+// ─── MoreMenu ("...") ─────────────────────────────────────────────────────────
+
+function MoreMenu({
+  project,
+  onRename,
+}: {
+  project: DProjectDto;
+  onRename: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const { mutate: archive } = useArchiveProject();
+
+  useEffect(() => {
+    if (!open) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        menuRef.current && !menuRef.current.contains(e.target as Node) &&
+        btnRef.current && !btnRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  function openMenu(e: React.MouseEvent) {
+    e.stopPropagation();
+    e.preventDefault();
+    const rect = btnRef.current?.getBoundingClientRect();
+    if (rect) setPos({ top: rect.bottom + 4, left: rect.left });
+    setOpen((v) => !v);
+  }
+
+  function Item({
+    icon, label, onClick, danger,
+  }: {
+    icon: React.ReactNode; label: string; onClick: () => void; danger?: boolean;
+  }) {
+    return (
+      <button
+        type="button"
+        role="menuitem"
+        onClick={onClick}
+        className={cn(
+          "flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[#2a2a2f]",
+          danger ? "text-red-400 hover:text-red-300" : "text-[#e4e4e7]",
+        )}
+      >
+        <span className="shrink-0 text-[#71717a]">{icon}</span>
+        {label}
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        type="button"
+        aria-label="Mais ações"
+        aria-haspopup="true"
+        aria-expanded={open}
+        onClick={openMenu}
+        className="grid size-4 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+      >
+        <MoreHorizontal className="size-3" />
+      </button>
+
+      {open && typeof window !== "undefined" && (
+        <div
+          ref={menuRef}
+          role="menu"
+          style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}
+          className="w-[200px] overflow-hidden rounded-xl border border-[#2a2a2f] bg-[#1a1a1f] py-1.5 shadow-2xl"
+        >
+          <Item
+            icon={<Star className="size-3.5" />}
+            label="Favorito"
+            onClick={() => setOpen(false)}
+          />
+          <Item
+            icon={<Pencil className="size-3.5" />}
+            label="Renomear"
+            onClick={() => { setOpen(false); onRename(); }}
+          />
+          <Item
+            icon={<Copy className="size-3.5" />}
+            label="Duplicar"
+            onClick={() => setOpen(false)}
+          />
+
+          <div className="my-1 h-px bg-[#2a2a2f]" />
+
+          <Item
+            icon={<Trash2 className="size-3.5" />}
+            label="Excluir"
+            danger
+            onClick={() => {
+              setOpen(false);
+              archive({ id: project.id, idClasse: project.idClasse, idPai: project.idPai });
+            }}
+          />
+        </div>
+      )}
+    </>
   );
 }
 
