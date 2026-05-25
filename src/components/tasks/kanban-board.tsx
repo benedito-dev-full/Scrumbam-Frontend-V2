@@ -26,16 +26,33 @@ import type { TaskResponseDto, V3Intention } from '@/lib/types/api';
  * Agrupa tasks por V3 Intention via `intentionToColumn()`.
  * Tasks com `dueDate` no passado em estados não-terminais exibem badge "atrasado".
  *
- * @param projectId - ID do DProject (List, idClasse=-352) cujas tasks serão exibidas.
+ * @param projectId    - ID do DProject (List, idClasse=-352) cujas tasks serão exibidas.
+ * @param onSelectTask - Callback opcional para elevar o estado de seleção à página pai.
+ *                       Se fornecido, o drawer interno NÃO é renderizado (evita dois drawers).
+ *                       Se omitido, o KanbanBoard gerencia o drawer internamente.
  *
  * @example
  * ```tsx
- * <KanbanBoard projectId={selectedList.id} />
+ * // Modo standalone (drawer interno):
+ * <KanbanBoard projectId={listId} />
+ *
+ * // Modo controlado (drawer na página pai):
+ * <KanbanBoard projectId={listId} onSelectTask={setSelectedTaskId} />
  * ```
  */
-export function KanbanBoard({ projectId }: { projectId: string }) {
+export function KanbanBoard({
+  projectId,
+  onSelectTask,
+}: {
+  projectId: string;
+  onSelectTask?: (taskId: string) => void;
+}) {
   const { data: tasks = [], isLoading } = useTasksByProject(projectId);
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [internalSelectedTaskId, setInternalSelectedTaskId] = useState<string | null>(null);
+
+  // Quando onSelectTask é fornecido, o pai controla o drawer — não usamos estado interno.
+  const isControlled = onSelectTask !== undefined;
+  const handleSelectTask = isControlled ? onSelectTask : setInternalSelectedTaskId;
 
   if (isLoading) return <KanbanSkeleton />;
 
@@ -51,16 +68,17 @@ export function KanbanBoard({ projectId }: { projectId: string }) {
               key={col.id}
               config={col}
               tasks={colTasks}
-              onSelectTask={setSelectedTaskId}
+              onSelectTask={handleSelectTask}
             />
           );
         })}
       </div>
-      {selectedTaskId !== null && (
+      {/* Drawer interno: apenas quando não controlado pelo pai */}
+      {!isControlled && internalSelectedTaskId !== null && (
         <TaskDetailDrawer
-          taskId={selectedTaskId}
+          taskId={internalSelectedTaskId}
           projectId={projectId}
-          onClose={() => setSelectedTaskId(null)}
+          onClose={() => setInternalSelectedTaskId(null)}
         />
       )}
     </>

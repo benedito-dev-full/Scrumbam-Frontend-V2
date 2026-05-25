@@ -10,6 +10,7 @@ import {
 } from "@/components/lists/icons";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { CreateTaskModal } from "@/components/tasks/create-task-modal";
+import { TaskDetailDrawer } from "@/components/tasks/task-detail-drawer";
 import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useProject } from "@/hooks/use-projects";
 import { useTasksByProject, useCreateTask } from "@/hooks/use-tasks";
@@ -43,8 +44,11 @@ export default function ListPage({
   /* Quick create task inline */
   const [quickCreateOpen, setQuickCreateOpen] = useState(false);
 
-  /* Sheet de detalhe de tarefa */
+  /* Sheet de detalhe de tarefa (legado) */
   const [selectedTask, setSelectedTask] = useState<Tarefa | null>(null);
+
+  /* Drawer de detalhe de task (V2 — Kanban e Lista) */
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   if (listLoading) {
     return <div className="grid h-full place-items-center p-8 text-sm" style={{ color: "#7a7a85" }}>Carregando…</div>;
@@ -91,6 +95,7 @@ export default function ListPage({
         <ListContent
           listId={id}
           onAddTask={openModal}
+          onSelectTask={setSelectedTaskId}
         />
       ) : (
         <BoardContent
@@ -98,6 +103,14 @@ export default function ListPage({
           espacoId={espacoId}
           onAddTask={openModal}
           onOpenTask={setSelectedTask}
+          onSelectTask={setSelectedTaskId}
+        />
+      )}
+      {selectedTaskId !== null && (
+        <TaskDetailDrawer
+          taskId={selectedTaskId}
+          projectId={id}
+          onClose={() => setSelectedTaskId(null)}
         />
       )}
       <TaskSheet
@@ -198,13 +211,15 @@ function QuickCreateTask({ listId, onClose }: { listId: string; onClose: () => v
 /** Renderiza o KanbanBoard conectado ao backend via projectId (List). */
 function BoardContent({
   listId,
+  onSelectTask,
 }: {
   listId: string;
   espacoId: string;
   onAddTask: (defaultStatus?: StatusTarefa) => void;
   onOpenTask: (tarefa: Tarefa) => void;
+  onSelectTask: (taskId: string) => void;
 }) {
-  return <KanbanBoard projectId={listId} />;
+  return <KanbanBoard projectId={listId} onSelectTask={onSelectTask} />;
 }
 
 /* ─── Conteúdo reativo da lista ──────────────────────────────────────────── */
@@ -215,9 +230,11 @@ function BoardContent({
 function ListContent({
   listId,
   onAddTask,
+  onSelectTask,
 }: {
   listId: string;
   onAddTask: (defaultStatus?: StatusTarefa) => void;
+  onSelectTask: (taskId: string) => void;
 }) {
   const { data: tasks = [], isLoading } = useTasksByProject(listId);
 
@@ -241,7 +258,7 @@ function ListContent({
             </div>
             {/* Linhas */}
             {tasks.map((t) => (
-              <ListTaskRow key={t.id} task={t} colGrid={COL} />
+              <ListTaskRow key={t.id} task={t} colGrid={COL} onClick={() => onSelectTask(t.id)} />
             ))}
             {/* Adicionar task */}
             <button
@@ -260,7 +277,7 @@ function ListContent({
 }
 
 /** Linha de task para a view de lista simples (backend-connected). */
-function ListTaskRow({ task, colGrid }: { task: TaskResponseDto; colGrid: string }) {
+function ListTaskRow({ task, colGrid, onClick }: { task: TaskResponseDto; colGrid: string; onClick: () => void }) {
   const STATUS_DOT: Record<string, string> = {
     INBOX: "#6b7280", READY: "#3b82f6", EXECUTING: "#8b5cf6",
     VALIDATING: "#f59e0b", DONE: "#10b981", FAILED: "#ef4444",
@@ -283,7 +300,11 @@ function ListTaskRow({ task, colGrid }: { task: TaskResponseDto; colGrid: string
 
   return (
     <div
-      className={`group grid items-center border-t border-border px-3 text-[13px] transition-colors hover:bg-muted/40 ${colGrid}`}
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
+      className={`group grid cursor-pointer items-center border-t border-border px-3 text-[13px] transition-colors hover:bg-muted/40 ${colGrid}`}
     >
       {/* Título */}
       <div className="flex h-9 items-center gap-2 truncate">
