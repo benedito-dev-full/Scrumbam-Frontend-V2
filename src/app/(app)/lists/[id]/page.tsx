@@ -238,7 +238,7 @@ function ListContent({
     // Otimista
     queryClient.setQueryData<TaskResponseDto[]>(
       qk.tasks.byProject(projectId),
-      (prev) => prev?.map((t) => t.id === taskId ? { ...t, status: newIntention } : t) ?? [],
+      (prev) => prev?.map((t) => t.id === taskId ? { ...t, status: newIntention as V3Intention } : t) ?? [],
     );
 
     updateStatus.mutate(
