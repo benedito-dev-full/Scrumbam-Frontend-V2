@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Fragment, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Fragment, useState, useEffect, useRef } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -12,6 +12,9 @@ import {
   Settings2,
   type LucideIcon,
 } from "lucide-react";
+
+// necessário para o tipo React.ReactNode no MoreItem
+import type { ReactNode } from "react";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -127,7 +130,6 @@ const homeItems: TreeItem[] = [
   { href: "/replies",  label: "Respostas",              renderIcon: () => <IcReply /> },
   { href: "/mentions", label: "Comentários atribuídos", renderIcon: () => <IcMentions /> },
   { href: "/assigned", label: "Minhas tarefas",         renderIcon: () => <IcMyTasks /> },
-  { href: "/more",     label: "Mais",                   renderIcon: () => <IcMore /> },
 ];
 
 type Section = {
@@ -157,6 +159,150 @@ function buildSections(orgName?: string): Section[] {
       ],
     },
   ];
+}
+
+/* ─── Mais — dropdown ────────────────────────────────────────────────────── */
+
+type MoreEntry = {
+  id: string;
+  label: string;
+  renderIcon: () => React.ReactNode;
+  href?: string;
+};
+
+const MORE_ENTRIES: MoreEntry[] = [
+  {
+    id: "chat-activity",
+    label: "Atividade do chat",
+    href: "/chat-activity",
+    renderIcon: () => (
+      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+  },
+  {
+    id: "drafts",
+    label: "Rascunhos e enviadas",
+    href: "/drafts",
+    renderIcon: () => (
+      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 2L11 13" /><path d="M22 2L15 22l-4-9-9-4 20-7z" />
+      </svg>
+    ),
+  },
+  {
+    id: "posts",
+    label: "Posts",
+    href: "/posts",
+    renderIcon: () => (
+      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+      </svg>
+    ),
+  },
+  {
+    id: "all-channels",
+    label: "Todos os canais",
+    href: "/channels/geral",
+    renderIcon: () => (
+      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" />
+        <line x1="10" y1="3" x2="8" y2="21" /><line x1="16" y1="3" x2="14" y2="21" />
+      </svg>
+    ),
+  },
+  {
+    id: "all-spaces",
+    label: "Todos os Espaços",
+    href: "/spaces",
+    renderIcon: () => (
+      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+      </svg>
+    ),
+  },
+  {
+    id: "all-tasks",
+    label: "Todas as tarefas",
+    href: "/tasks",
+    renderIcon: () => (
+      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      </svg>
+    ),
+  },
+];
+
+function MoreItem() {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "group flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 transition-colors",
+          "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
+          open && "bg-sidebar-accent text-sidebar-accent-foreground",
+        )}
+      >
+        <span className="shrink-0 text-muted-foreground"><IcMore /></span>
+        <span className="flex-1 text-left">Mais</span>
+      </button>
+
+      {open && (
+        <div
+          className="absolute z-50 overflow-hidden rounded-lg border border-border bg-popover shadow-xl"
+          style={{ left: "100%", top: 0, marginLeft: 6, width: 240 }}
+        >
+          {/* itens principais */}
+          <div className="py-1.5">
+            {MORE_ENTRIES.map((entry) => (
+              <button
+                key={entry.id}
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  if (entry.href) router.push(entry.href);
+                }}
+                className="group flex h-9 w-full items-center gap-3 px-3 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              >
+                <span className="shrink-0">{entry.renderIcon()}</span>
+                <span className="flex-1 text-left">{entry.label}</span>
+                <Star className="size-3.5 shrink-0 opacity-0 group-hover:opacity-40 transition-opacity" />
+              </button>
+            ))}
+          </div>
+
+          {/* divisor + Personalizar */}
+          <div className="border-t border-border py-1.5">
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="flex h-9 w-full items-center gap-3 px-3 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Settings2 className="size-3.5 shrink-0" />
+              <span>Personalizar</span>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /* ─── Item folha ──────────────────────────────────────────────────────────── */
@@ -441,6 +587,7 @@ export function WorkspacePanel() {
                   activeHref={pathname}
                 />
               ))}
+              <MoreItem />
             </div>
           )}
 
