@@ -51,7 +51,7 @@ export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
   },
   {
     id: 'ready',
-    label: 'Ready',
+    label: 'Pronto',
     color: '#3b82f6',
     intentions: ['READY'],
   },

@@ -21,15 +21,7 @@ import { intentionToColumn, isOverdue, priorityToColor, priorityToLabel } from "
 import type { TaskResponseDto, TaskPriority, V3Intention } from "@/lib/types/api";
 
 // ─── Tipo de status visual (espelha StatusTarefa da main) ────────────────────
-type StatusVisual = "em-progresso" | "pendente" | "bloqueado" | "atrasado" | "concluido";
-
-const COLUMN_TO_STATUS: Record<string, StatusVisual> = {
-  backlog:        "pendente",
-  ready:          "pendente",
-  "em-progresso": "em-progresso",
-  concluido:      "concluido",
-  falhou:         "bloqueado",
-};
+type StatusVisual = "backlog" | "pronto" | "em-progresso" | "concluido" | "falhou" | "atrasado";
 
 // ─── Página ───────────────────────────────────────────────────────────────────
 export default function ListPage({
@@ -114,26 +106,39 @@ export default function ListPage({
 }
 
 // ─── Agrupamento de tasks do backend ─────────────────────────────────────────
+
+const INTENTION_TO_STATUS: Record<string, StatusVisual> = {
+  INBOX:      "backlog",
+  READY:      "pronto",
+  EXECUTING:  "em-progresso",
+  VALIDATING: "em-progresso",
+  DONE:       "concluido",
+  VALIDATED:  "concluido",
+  CANCELLED:  "concluido",
+  DISCARDED:  "concluido",
+  FAILED:     "falhou",
+};
+
 function agruparTasks(tasks: TaskResponseDto[]): { status: StatusVisual; tarefas: TaskResponseDto[] }[] {
   const mapa: Record<StatusVisual, TaskResponseDto[]> = {
+    backlog:        [],
+    pronto:         [],
     "em-progresso": [],
-    pendente:       [],
-    bloqueado:      [],
-    atrasado:       [],
     concluido:      [],
+    falhou:         [],
+    atrasado:       [],
   };
 
   for (const task of tasks) {
     if (isOverdue(task.dueDate, task.status as V3Intention)) {
       mapa["atrasado"].push(task);
     } else {
-      const col = intentionToColumn(task.status as V3Intention);
-      const sv = COLUMN_TO_STATUS[col] ?? "pendente";
+      const sv = INTENTION_TO_STATUS[task.status] ?? "backlog";
       mapa[sv].push(task);
     }
   }
 
-  const ORDER: StatusVisual[] = ["em-progresso", "pendente", "bloqueado", "atrasado", "concluido"];
+  const ORDER: StatusVisual[] = ["backlog", "pronto", "em-progresso", "concluido", "falhou", "atrasado"];
   return ORDER
     .filter((s) => mapa[s].length > 0)
     .map((s) => ({ status: s, tarefas: mapa[s] }));
@@ -491,26 +496,27 @@ function HeadRow() {
 
 // ─── Mapeamentos para dropdowns inline ───────────────────────────────────────
 
-type StatusVisualKey = "em-progresso" | "pendente" | "bloqueado" | "atrasado" | "concluido";
+type StatusVisualKey = "backlog" | "pronto" | "em-progresso" | "concluido" | "falhou" | "atrasado";
 
 const INTENTION_TO_VISUAL_ROW: Record<V3Intention, StatusVisualKey> = {
-  INBOX:      "pendente",
-  READY:      "pendente",
+  INBOX:      "backlog",
+  READY:      "pronto",
   EXECUTING:  "em-progresso",
   VALIDATING: "em-progresso",
   DONE:       "concluido",
   VALIDATED:  "concluido",
-  FAILED:     "bloqueado",
-  CANCELLED:  "bloqueado",
-  DISCARDED:  "bloqueado",
+  FAILED:     "falhou",
+  CANCELLED:  "concluido",
+  DISCARDED:  "concluido",
 };
 
 const VISUAL_TO_INTENTION_ROW: Record<StatusVisualKey, V3Intention> = {
-  pendente:       "INBOX",
+  backlog:        "INBOX",
+  pronto:         "READY",
   "em-progresso": "EXECUTING",
-  bloqueado:      "FAILED",
-  atrasado:       "INBOX",
   concluido:      "DONE",
+  falhou:         "FAILED",
+  atrasado:       "INBOX",
 };
 
 const PRIO_VISUAL_MAP: Record<TaskPriority, keyof typeof PRIO_CONFIG_MAP> = {
@@ -520,7 +526,7 @@ const PRIO_CONFIG_MAP = { urgente: { label: "Urgente", color: "#ef4444" }, alta:
 const VISUAL_TO_BACKEND_PRIO: Record<keyof typeof PRIO_CONFIG_MAP, TaskPriority> = {
   urgente: "URGENT", alta: "HIGH", media: "MEDIUM", baixa: "LOW",
 };
-const ALL_STATUS_VISUAL_ROW: StatusVisualKey[] = ["em-progresso", "pendente", "bloqueado", "concluido"];
+const ALL_STATUS_VISUAL_ROW: StatusVisualKey[] = ["backlog", "pronto", "em-progresso", "concluido", "falhou"];
 const ALL_PRIO_VISUAL_ROW = Object.keys(PRIO_CONFIG_MAP) as (keyof typeof PRIO_CONFIG_MAP)[];
 
 // ─── Ícones inline das células ────────────────────────────────────────────────
@@ -581,7 +587,7 @@ function TaskRowBackend({
   const prioLabel = priorityToLabel(task.priority);
   const statusVisual: StatusVisualKey = overdue
     ? "atrasado"
-    : (INTENTION_TO_VISUAL_ROW[task.status as V3Intention] ?? "pendente");
+    : (INTENTION_TO_VISUAL_ROW[task.status as V3Intention] ?? "backlog");
   const statusCfg = STATUS_CONFIG[statusVisual];
   const StatusIcon = statusCfg.Icon;
 

@@ -56,13 +56,6 @@ export function KanbanBoard({
   );
   const tasks = tasksProp ?? fetchedTasks;
 
-  const rootTasks = tasks.filter((t) => !t.idPai);
-  console.log('[KanbanBoard] render', {
-    source: tasksProp !== undefined ? 'prop' : 'fetch',
-    total: tasks.length,
-    rootOnly: rootTasks.length,
-    allTasks: tasks.map((t) => ({ id: t.id, nome: t.nome, status: t.status, idPai: t.idPai, idPaiType: typeof t.idPai, filterPasses: !t.idPai })),
-  });
   const updateStatus = useUpdateTaskStatus();
   const queryClient = useQueryClient();
   const [activeTask, setActiveTask] = useState<TaskResponseDto | null>(null);

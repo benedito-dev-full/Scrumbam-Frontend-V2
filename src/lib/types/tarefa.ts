@@ -1,9 +1,10 @@
 export type StatusTarefa =
+  | "backlog"
+  | "pronto"
   | "em-progresso"
-  | "pendente"
   | "concluido"
-  | "atrasado"
-  | "bloqueado";
+  | "falhou"
+  | "atrasado";
 
 export type Prioridade = "baixa" | "media" | "alta" | "urgente";
 
@@ -34,54 +35,36 @@ export type StatusMeta = {
   order: number;
 };
 
-/**
- * Cores exatamente como o ClickUp:
- * em-progresso → roxo/violeta
- * pendente     → cinza
- * bloqueado    → vermelho
- * atrasado     → âmbar/laranja
- * concluido    → verde
- */
 export const STATUS_META: Record<StatusTarefa, StatusMeta> = {
+  backlog: {
+    label: "Backlog",
+    dotClass: "bg-zinc-400",
+    dotColor: "#6b7280",
+    pillText: "text-zinc-300",
+    pillBg: "bg-zinc-500/20",
+    textClass: "text-zinc-400",
+    bgClass: "bg-zinc-500/15",
+    order: 1,
+  },
+  pronto: {
+    label: "Pronto",
+    dotClass: "bg-blue-400",
+    dotColor: "#3b82f6",
+    pillText: "text-blue-200",
+    pillBg: "bg-blue-500/25",
+    textClass: "text-blue-300",
+    bgClass: "bg-blue-500/20",
+    order: 2,
+  },
   "em-progresso": {
-    label: "Em progresso",
+    label: "Em Progresso",
     dotClass: "bg-violet-400",
     dotColor: "#a78bfa",
     pillText: "text-violet-200",
     pillBg: "bg-violet-500/25",
     textClass: "text-violet-300",
     bgClass: "bg-violet-500/20",
-    order: 1,
-  },
-  pendente: {
-    label: "Pendente",
-    dotClass: "bg-zinc-400",
-    dotColor: "#a1a1aa",
-    pillText: "text-zinc-300",
-    pillBg: "bg-zinc-500/20",
-    textClass: "text-zinc-400",
-    bgClass: "bg-zinc-500/15",
-    order: 2,
-  },
-  bloqueado: {
-    label: "Bloqueado",
-    dotClass: "bg-red-500",
-    dotColor: "#ef4444",
-    pillText: "text-red-200",
-    pillBg: "bg-red-500/25",
-    textClass: "text-red-400",
-    bgClass: "bg-red-500/20",
     order: 3,
-  },
-  atrasado: {
-    label: "Atrasado",
-    dotClass: "bg-amber-400",
-    dotColor: "#fbbf24",
-    pillText: "text-amber-200",
-    pillBg: "bg-amber-500/25",
-    textClass: "text-amber-400",
-    bgClass: "bg-amber-500/20",
-    order: 4,
   },
   concluido: {
     label: "Concluído",
@@ -91,7 +74,27 @@ export const STATUS_META: Record<StatusTarefa, StatusMeta> = {
     pillBg: "bg-emerald-500/25",
     textClass: "text-emerald-400",
     bgClass: "bg-emerald-500/20",
+    order: 4,
+  },
+  falhou: {
+    label: "Falhou",
+    dotClass: "bg-red-500",
+    dotColor: "#ef4444",
+    pillText: "text-red-200",
+    pillBg: "bg-red-500/25",
+    textClass: "text-red-400",
+    bgClass: "bg-red-500/20",
     order: 5,
+  },
+  atrasado: {
+    label: "Atrasado",
+    dotClass: "bg-amber-400",
+    dotColor: "#fbbf24",
+    pillText: "text-amber-200",
+    pillBg: "bg-amber-500/25",
+    textClass: "text-amber-400",
+    bgClass: "bg-amber-500/20",
+    order: 6,
   },
 };
 
