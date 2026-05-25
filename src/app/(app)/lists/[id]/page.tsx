@@ -745,7 +745,7 @@ function TaskRow({ task, cfg, listId, onOpen }: {
   const cellIconStyle: React.CSSProperties = {
     color: hovered ? "#b6b6bf" : "#6a6a75",
     fontSize: 14, display: "flex", alignItems: "center", gap: 4,
-    cursor: "pointer", height: "100%",
+    cursor: "pointer", height: "100%", paddingLeft: 8,
     transition: "color .1s",
   };
 
