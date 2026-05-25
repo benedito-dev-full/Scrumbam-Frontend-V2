@@ -15,14 +15,15 @@ import type { TaskPriority, V3Intention } from '@/lib/types/api';
 
 /* ─── Mapeamentos StatusVisual ↔ V3Intention ─────────────────────────────── */
 
-type StatusVisual = 'em-progresso' | 'pendente' | 'bloqueado' | 'atrasado' | 'concluido';
+type StatusVisual = 'backlog' | 'pronto' | 'em-progresso' | 'concluido' | 'falhou' | 'atrasado';
 
 const VISUAL_TO_INTENTION: Record<StatusVisual, V3Intention> = {
-  pendente:       'INBOX',
+  backlog:        'INBOX',
+  pronto:         'READY',
   'em-progresso': 'EXECUTING',
-  bloqueado:      'FAILED',
-  atrasado:       'INBOX',
   concluido:      'DONE',
+  falhou:         'FAILED',
+  atrasado:       'INBOX',
 };
 
 const PRIO_BACKEND_TO_VISUAL: Record<TaskPriority, keyof typeof PRIO_CONFIG> = {
@@ -39,7 +40,7 @@ const VISUAL_TO_BACKEND_PRIO: Record<keyof typeof PRIO_CONFIG, TaskPriority> = {
   baixa:   'LOW',
 };
 
-const ALL_STATUS_VISUAL: StatusVisual[] = ['em-progresso', 'pendente', 'bloqueado', 'atrasado', 'concluido'];
+const ALL_STATUS_VISUAL: StatusVisual[] = ['backlog', 'pronto', 'em-progresso', 'concluido', 'falhou'];
 const ALL_PRIO_VISUAL = Object.keys(PRIO_CONFIG) as (keyof typeof PRIO_CONFIG)[];
 
 /* ─── Portal de dropdown ─────────────────────────────────────────────────── */
@@ -90,7 +91,7 @@ export function CreateTaskModal({
 
   const [nome, setNome] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [status, setStatus] = useState<StatusVisual>(defaultStatus ?? 'pendente');
+  const [status, setStatus] = useState<StatusVisual>(defaultStatus ?? 'backlog');
   const [prioridade, setPrioridade] = useState<keyof typeof PRIO_CONFIG | null>(null);
   const [dataVencimento, setDataVencimento] = useState<string>('');
   const [abaAtiva, setAbaAtiva] = useState<'tarefa' | 'documento' | 'lembrete' | 'quadro' | 'paineis'>('tarefa');
@@ -115,7 +116,7 @@ export function CreateTaskModal({
     setAbaAtiva('tarefa');
     setNome('');
     setDescricao('');
-    setStatus(defaultStatus ?? 'pendente');
+    setStatus(defaultStatus ?? 'backlog');
     setPrioridade(null);
     setDataVencimento('');
     setOpenDropdown(null);
