@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { X, ChevronUp, ChevronDown, Check, Plus } from "lucide-react";
 import { useInviteDialogStore } from "@/lib/stores/invite-dialog";
+import { useCreateInvite } from "@/hooks/use-org-members";
 
 function IcMember() {
   return (
@@ -47,7 +48,10 @@ export function InviteDialog() {
   const [focused, setFocused] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState(ROLES[0]);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const createInvite = useCreateInvite();
 
   useEffect(() => {
     if (open) {
@@ -56,6 +60,8 @@ export function InviteDialog() {
       setEmail("");
       setRoleOpen(false);
       setSelectedRole(ROLES[0]);
+      setError(null);
+      setSuccess(false);
     }
   }, [open]);
 
@@ -70,6 +76,32 @@ export function InviteDialog() {
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [open, roleOpen, closeDialog]);
+
+  const handleSend = async () => {
+    setError(null);
+    const trimmed = email.trim();
+    if (!trimmed) { setError("Informe pelo menos um e-mail."); return; }
+
+    const roleMap: Record<string, "MEMBER" | "VIEWER"> = {
+      membro: "MEMBER",
+      "membro-limitado": "MEMBER",
+      convidado: "VIEWER",
+      administrador: "MEMBER",
+    };
+    const backendRole = roleMap[selectedRole.id] ?? "MEMBER";
+
+    const emails = trimmed.split(/[\s,;]+/).filter(Boolean);
+    try {
+      for (const e of emails) {
+        await createInvite.mutateAsync({ email: e, role: backendRole });
+      }
+      setSuccess(true);
+      setTimeout(() => closeDialog(), 1500);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setError(typeof msg === "string" ? msg : "Falha ao enviar convite. Tente novamente.");
+    }
+  };
 
   if (!open) return null;
 
@@ -233,8 +265,16 @@ export function InviteDialog() {
           )}
         </div>
 
+        {/* erro / sucesso */}
+        {error && (
+          <p style={{ fontSize: 12, color: "#f87171", marginTop: 12 }}>{error}</p>
+        )}
+        {success && (
+          <p style={{ fontSize: 12, color: "#4ade80", marginTop: 12 }}>Convite enviado com sucesso!</p>
+        )}
+
         {/* botões */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, marginTop: 24 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
           <button type="button" onClick={closeDialog} style={{
             height: 36, padding: "0 18px", borderRadius: 7,
             border: 0, background: "none", cursor: "pointer",
@@ -245,15 +285,20 @@ export function InviteDialog() {
           >
             Cancelar
           </button>
-          <button type="button" style={{
-            height: 36, padding: "0 20px", borderRadius: 7,
-            border: 0, background: "#e4e4e4", cursor: "pointer",
-            color: "#111", fontSize: 13, fontWeight: 700,
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#fff"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "#e4e4e4"; }}
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={createInvite.isPending || success || !email.trim()}
+            style={{
+              height: 36, padding: "0 20px", borderRadius: 7,
+              border: 0,
+              background: createInvite.isPending || success || !email.trim() ? "#2a2a2a" : "#e4e4e4",
+              cursor: createInvite.isPending || success || !email.trim() ? "not-allowed" : "pointer",
+              color: createInvite.isPending || success || !email.trim() ? "#555" : "#111",
+              fontSize: 13, fontWeight: 700, transition: "all .15s",
+            }}
           >
-            Enviar convite gratuito
+            {createInvite.isPending ? "Enviando..." : success ? "Enviado!" : "Enviar convite gratuito"}
           </button>
         </div>
       </div>

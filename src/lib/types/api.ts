@@ -268,10 +268,11 @@ export interface OrganizationResponseDto {
 }
 
 export interface OrgMemberDto {
-  id: string;
-  name: string;
-  email: string;
+  userId: string;
+  nome: string;
+  email?: string | null;
   role: "ADMIN" | "MEMBER" | "VIEWER";
+  idClasse?: string;
 }
 
 // ─── Invites ─────────────────────────────────────────────────────────────────
