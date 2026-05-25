@@ -15,8 +15,9 @@ import {
   X,
   ArrowLeft,
   Loader2,
+  UserMinus,
 } from "lucide-react";
-import { useTeams, useTeamMembers } from "@/hooks/use-teams";
+import { useTeams, useTeamMembers, useRemoveTeamMember } from "@/hooks/use-teams";
 import type { TeamMemberDto } from "@/lib/types/api";
 
 /* ══════════════════════════════════════════════════════════════════
@@ -159,6 +160,42 @@ function avatarColor(str: string) {
   return colors[Math.abs(h) % colors.length];
 }
 
+function MemberRow({ member, onRemove, isRemoving }: { member: TeamMemberDto; onRemove: () => void; isRemoving: boolean }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px", borderRadius: 6, background: hovered ? "rgba(255,255,255,0.04)" : "none", transition: "background .12s" }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div style={{ width: 28, height: 28, borderRadius: "50%", background: avatarColor(member.nome), flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>
+        {member.nome.charAt(0).toUpperCase()}
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: 12, color: "#e4e4e4", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.nome}</p>
+        <p style={{ fontSize: 10, color: "#555" }}>{member.cargo === "LEAD" ? "Lead" : "Membro"}</p>
+      </div>
+      <button
+        type="button"
+        title="Remover do time"
+        disabled={isRemoving}
+        onClick={onRemove}
+        style={{
+          width: 22, height: 22, borderRadius: 5, border: "none", background: "none",
+          cursor: isRemoving ? "not-allowed" : "pointer",
+          color: "#555", display: "flex", alignItems: "center", justifyContent: "center",
+          flexShrink: 0, opacity: hovered ? 1 : 0, transition: "opacity .15s, color .15s, background .12s",
+        }}
+        onMouseEnter={e => { e.currentTarget.style.color = "#ef4444"; e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
+        onMouseLeave={e => { e.currentTarget.style.color = "#555"; e.currentTarget.style.background = "none"; }}
+      >
+        <UserMinus size={12} strokeWidth={2} />
+      </button>
+    </div>
+  );
+}
+
 function MembersPanel({
   teamId,
   onAddMember,
@@ -167,6 +204,7 @@ function MembersPanel({
   onAddMember: () => void;
 }) {
   const { data: members = [], isLoading } = useTeamMembers(teamId);
+  const removeMember = useRemoveTeamMember(teamId);
 
   return (
     <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "14px 16px" }}>
@@ -190,17 +228,14 @@ function MembersPanel({
       ) : members.length === 0 ? (
         <p style={{ fontSize: 12, color: "#444", marginTop: 6 }}>Nenhum membro ainda.</p>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {members.map((m: TeamMemberDto) => (
-            <div key={m.userId} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", background: avatarColor(m.nome), flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "#fff" }}>
-                {m.nome.charAt(0).toUpperCase()}
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: 12, color: "#e4e4e4", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.nome}</p>
-                <p style={{ fontSize: 10, color: "#555" }}>{m.cargo === "LEAD" ? "Lead" : "Membro"}</p>
-              </div>
-            </div>
+            <MemberRow
+              key={m.userId}
+              member={m}
+              onRemove={() => removeMember.mutate(m.userId)}
+              isRemoving={removeMember.isPending}
+            />
           ))}
         </div>
       )}

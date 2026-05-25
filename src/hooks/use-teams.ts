@@ -83,6 +83,19 @@ export function useAddTeamMember(teamId: string) {
   });
 }
 
+export function useRemoveTeamMember(teamId: string) {
+  const qc = useQueryClient();
+
+  return useMutation<void, Error, string>({
+    mutationFn: async (userId) => {
+      await api.delete(`/teams/${teamId}/members/${userId}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.teams.members(teamId) });
+    },
+  });
+}
+
 export function useTeams() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
