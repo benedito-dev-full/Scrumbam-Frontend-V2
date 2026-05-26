@@ -111,28 +111,22 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
           />
 
           {/* Tipo de evento */}
-          <div className="flex flex-col gap-1.5">
-            <label className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              <Tag size={11} />
-              Tipo
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {EVENT_TYPES.map(({ value, label, Icon, color }) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setEventType(value)}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] transition-all",
-                    eventType === value
-                      ? "border-primary bg-primary/10 text-foreground"
-                      : "border-border text-muted-foreground hover:border-border/80 hover:bg-secondary",
-                  )}
-                >
-                  <Icon size={12} className={eventType === value ? color : undefined} />
-                  <span>{label}</span>
-                </button>
-              ))}
+          <div className="flex items-center gap-2.5">
+            <Tag size={13} className="flex-shrink-0 text-muted-foreground" />
+            <div className="relative flex-1">
+              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
+                <SelectedIcon size={13} className={selectedType.color} />
+              </div>
+              <select
+                value={eventType}
+                onChange={(e) => setEventType(e.target.value as EventTypeValue)}
+                className={cn(inputClass, "appearance-none cursor-pointer pl-8 pr-8")}
+              >
+                {EVENT_TYPES.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             </div>
           </div>
 
