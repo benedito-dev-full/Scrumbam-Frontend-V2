@@ -6,18 +6,16 @@ import {
   Settings, ChevronLeft, ChevronRight, List, Calendar,
   Filter, CheckCheck, Search, Layers, Link2,
 } from "lucide-react";
-import { mockEntidades } from "@/lib/mocks/entidades";
-import { mockTarefas } from "@/lib/mocks/tarefas";
-import { isEspaco } from "@/lib/types/entidade";
-import { STATUS_META } from "@/lib/types/tarefa";
-import { SpaceChip } from "@/components/shell/space-chip";
+import { useMyTasks } from "@/hooks/use-tasks";
+import { useSpaces } from "@/hooks/use-projects";
+import { useAuthStore } from "@/lib/stores/auth";
+import type { DProjectDto, V3Intention } from "@/lib/types/api";
 
-const ME = "u1";
-const USER_NAME = "Benedito";
+const TERMINAL_STATUSES: V3Intention[] = ["DONE", "CANCELLED", "DISCARDED", "FAILED"];
 
-/* ─── Ícones por classe ──────────────────────────────────────────────────── */
-function ClassIcon({ classe }: { classe: string }) {
-  if (classe === "doc") {
+/* ─── Ícones por idClasse ────────────────────────────────────────────────── */
+function ClassIcon({ idClasse }: { idClasse: string }) {
+  if (idClasse === "-353") {
     return (
       <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -25,13 +23,14 @@ function ClassIcon({ classe }: { classe: string }) {
       </svg>
     );
   }
-  if (classe === "pasta") {
+  if (idClasse === "-351") {
     return (
       <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
       </svg>
     );
   }
+  // LIST (-352) ou SPACE (-350)
   return (
     <svg width={13} height={13} viewBox="0 0 18 18" fill="none">
       <path d="M2 5 L4.5 7.5 L7 3.5" stroke="#7c6ff7" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
@@ -50,30 +49,47 @@ function saudacao() {
   return "Boa noite";
 }
 
-function hrefDe(item: { id: string; idClasse: string }) {
-  if (item.idClasse === "doc") return `/docs/${item.id}`;
-  if (item.idClasse === "pasta") return `/folders/${item.id}`;
-  if (item.idClasse === "espaco") return `/spaces/${item.id}`;
+function hrefDeProject(item: DProjectDto) {
+  if (item.idClasse === "-353") return `/docs/${item.id}`;
+  if (item.idClasse === "-351") return `/folders/${item.id}`;
+  if (item.idClasse === "-350") return `/spaces/${item.id}`;
   return `/lists/${item.id}`;
 }
 
 const HOURS = ["O dia todo", "1 am", "2 am", "3 am", "4 am", "5 am", "6 am", "7 am", "8 am", "9 am", "10 am", "11 am", "12 pm"];
+
+const STATUS_DOT: Record<string, string> = {
+  INBOX: "#6b7280",
+  READY: "#3b82f6",
+  EXECUTING: "#f59e0b",
+  VALIDATING: "#8b5cf6",
+  VALIDATED: "#10b981",
+  DONE: "#10b981",
+  FAILED: "#ef4444",
+  CANCELLED: "#6b7280",
+  DISCARDED: "#6b7280",
+};
 
 /* ─── Página ─────────────────────────────────────────────────────────────── */
 export default function MinhasTarefasPage() {
   const [agendaDia, setAgendaDia] = useState(() => new Date());
   const [agendaView, setAgendaView] = useState<"lista" | "calendario">("lista");
 
+  const user = useAuthStore((s) => s.user);
+  const userName = user?.name ?? "você";
+
+  const { data: myTasks = [], isLoading: loadingTasks } = useMyTasks();
+  const { data: spaces = [], isLoading: loadingSpaces } = useSpaces();
+
   const recentes = useMemo(() => {
-    return [...mockEntidades]
-      .filter((e) => !isEspaco(e))
+    return [...spaces]
       .sort((a, b) => (b.atualizadoEm > a.atualizadoEm ? 1 : -1))
       .slice(0, 8);
-  }, []);
+  }, [spaces]);
 
   const minhas = useMemo(
-    () => mockTarefas.filter((t) => t.responsavelId === ME && t.status !== "concluido").slice(0, 6),
-    [],
+    () => myTasks.filter((t) => !TERMINAL_STATUSES.includes(t.status)).slice(0, 6),
+    [myTasks],
   );
 
   const diaLabel = agendaDia.toLocaleDateString("en-US", {
@@ -129,7 +145,7 @@ export default function MinhasTarefasPage() {
           fontSize: 26, fontWeight: 700, color: "#f4f4f5",
           margin: 0, marginBottom: 20, letterSpacing: "-0.02em",
         }}>
-          {saudacao()}, {USER_NAME}
+          {saudacao()}, {userName}
         </h1>
 
         {/* Grid 2x2 */}
@@ -137,11 +153,18 @@ export default function MinhasTarefasPage() {
 
           {/* ─── Recentes ─── */}
           <Card title="Recentes">
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {recentes.map((item) => {
-                const pai = item.idPai ? mockEntidades.find((e) => e.id === item.idPai) : null;
-                return (
-                  <Link key={item.id} href={hrefDe(item)} style={{
+            {loadingSpaces ? (
+              <div style={{ color: "#505058", fontSize: 12, padding: "8px 0" }}>Carregando...</div>
+            ) : recentes.length === 0 ? (
+              <EmptyArea
+                icon={<Layers size={20} />}
+                text="Nenhum espaço ainda"
+                hint="Crie um espaço para começar a organizar seu trabalho."
+              />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {recentes.map((item) => (
+                  <Link key={item.id} href={hrefDeProject(item)} style={{
                     display: "flex", alignItems: "center", gap: 8,
                     padding: "7px 10px", margin: "0 -10px", borderRadius: 6,
                     textDecoration: "none", transition: "background 120ms",
@@ -149,13 +172,15 @@ export default function MinhasTarefasPage() {
                     onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#242428"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
-                    <ClassIcon classe={item.idClasse} />
-                    <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{item.nome}</span>
-                    {pai && <span style={{ fontSize: 12, color: "#505058" }}>• em {pai.nome}</span>}
+                    <ClassIcon idClasse={item.idClasse} />
+                    <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.nome}</span>
+                    {item.memberCount > 0 && (
+                      <span style={{ fontSize: 11, color: "#505058" }}>{item.memberCount} membro{item.memberCount !== 1 ? "s" : ""}</span>
+                    )}
                   </Link>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
 
           {/* ─── Agenda ─── */}
@@ -253,26 +278,27 @@ export default function MinhasTarefasPage() {
               </button>
             </div>
 
-            {minhas.length > 0 ? (
+            {loadingTasks ? (
+              <div style={{ color: "#505058", fontSize: 12, padding: "8px 0" }}>Carregando...</div>
+            ) : minhas.length > 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 {minhas.map((t) => {
-                  const meta = STATUS_META[t.status];
-                  const esp = mockEntidades.find((e) => e.id === t.espacoId);
+                  const dotColor = STATUS_DOT[t.status] ?? "#6b7280";
                   return (
-                    <div key={t.id} style={{
+                    <Link key={t.id} href={`/lists/${t.projectId}`} style={{
                       display: "flex", alignItems: "center", gap: 8,
                       padding: "7px 10px", margin: "0 -10px", borderRadius: 6,
-                      cursor: "pointer", transition: "background 120ms",
+                      cursor: "pointer", transition: "background 120ms", textDecoration: "none",
                     }}
-                      onMouseEnter={e => { e.currentTarget.style.background = "#242428"; }}
-                      onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#242428"; }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                     >
-                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: meta.dotColor, flexShrink: 0 }} />
+                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
                       <span style={{ fontSize: 13, color: "#c4c4c4", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.nome}</span>
-                      {esp && isEspaco(esp) && (
-                        <SpaceChip iniciais={esp.meta.iniciais} cor={esp.meta.cor} iconName={esp.meta.iconName} size="xs" />
+                      {t.identifier && (
+                        <span style={{ fontSize: 11, color: "#505058", flexShrink: 0 }}>{t.identifier}</span>
                       )}
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
