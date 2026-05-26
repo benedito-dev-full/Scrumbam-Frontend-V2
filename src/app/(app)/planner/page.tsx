@@ -23,11 +23,15 @@ export default function PlannerPage() {
   const [view, setView] = useState<PlannerView>("week");
   const [cursorDate, setCursorDate] = useState<Date>(new Date());
 
-  const { dragOffset, isDragging, pointerHandlers } = useDragNavigation({
-    view,
-    cursorDate,
-    onCursorChange: setCursorDate,
-  });
+  const {
+    slideDates,
+    railOffset,
+    isSnapping,
+    isDragging,
+    containerWidth,
+    containerRef,
+    pointerHandlers,
+  } = useDragNavigation(view, cursorDate, setCursorDate);
 
   return (
     <div
@@ -41,30 +45,49 @@ export default function PlannerPage() {
         onCursorChange={setCursorDate}
       />
 
-      {/* Wrapper de drag: captura pointer events e aplica translacao fluida */}
+      {/* Container do carrossel: overflow hidden, captura pointer events */}
       <div
+        ref={containerRef}
         className="relative flex-1 overflow-hidden"
         {...pointerHandlers}
-        style={{ touchAction: "pan-y" }}
+        style={{ touchAction: "pan-y", cursor: isDragging ? "grabbing" : "default" }}
       >
+        {/* Trilho: 3 slides lado a lado, se move como um bloco */}
         <div
-          className="h-full"
+          className="flex h-full"
           style={{
-            transform: `translateX(${dragOffset}px)`,
-            transition: isDragging ? "none" : "transform 0.2s ease-out",
-            cursor: isDragging ? "grabbing" : "default",
+            width: containerWidth ? `${containerWidth * 3}px` : "300%",
+            transform: `translateX(${-containerWidth + railOffset}px)`,
+            transition: isSnapping ? `transform ${280}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)` : "none",
             userSelect: isDragging ? "none" : undefined,
+            willChange: "transform",
           }}
         >
-          {view === "day" && <DayView cursorDate={cursorDate} events={mockPlannerEvents} />}
-          {view === "week" && <WeekView cursorDate={cursorDate} events={mockPlannerEvents} />}
-          {view === "month" && <MonthView cursorDate={cursorDate} events={mockPlannerEvents} />}
+          {/* Slide anterior */}
+          <div className="h-full flex-shrink-0" style={{ width: containerWidth || "33.333%" }}>
+            <SlideContent view={view} date={slideDates[-1]} />
+          </div>
+          {/* Slide atual */}
+          <div className="h-full flex-shrink-0" style={{ width: containerWidth || "33.333%" }}>
+            <SlideContent view={view} date={slideDates[0]} />
+          </div>
+          {/* Slide proximo */}
+          <div className="h-full flex-shrink-0" style={{ width: containerWidth || "33.333%" }}>
+            <SlideContent view={view} date={slideDates[1]} />
+          </div>
         </div>
       </div>
 
       <PlannerSearchBar />
     </div>
   );
+}
+
+/** Renderiza a view correta para um slide do carrossel. */
+function SlideContent({ view, date }: { view: PlannerView; date: Date }) {
+  if (view === "day") return <DayView cursorDate={date} events={mockPlannerEvents} />;
+  if (view === "week") return <WeekView cursorDate={date} events={mockPlannerEvents} />;
+  return <MonthView cursorDate={date} events={mockPlannerEvents} />;
 }
 
 /**

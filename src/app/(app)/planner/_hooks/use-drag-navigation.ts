@@ -1,31 +1,35 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-import { addDays } from "date-fns";
+import { addDays, addMonths, addWeeks } from "date-fns";
 
 import type { PlannerView } from "@/lib/types/planner-event";
 
-import { stepDate } from "../_lib/date";
+/** Fracao da largura do container que precisa ser arrastada para acionar snap. */
+const SNAP_RATIO = 0.25;
 
-/** Largura minima (px) de arrasto para acionar navegacao de 1 periodo. */
-const SNAP_THRESHOLD = 80;
+/** Resistencia elastica durante o drag (1 = sem resistencia, 0 = sem movimento). */
+const DRAG_RESISTANCE = 0.5;
 
-/** Pixels por dia no modo Semana (usado para calcular quantos dias passar). */
-const PX_PER_DAY_WEEK = 120;
+/** Duracao da animacao de snap em ms. */
+const SNAP_DURATION_MS = 280;
 
-/** Pixels por dia no modo Dia (limiar menor — scroll de 1 dia). */
-const PX_PER_DAY_DAY = 120;
-
-interface UseDragNavigationOptions {
-  view: PlannerView;
-  cursorDate: Date;
-  onCursorChange: (date: Date) => void;
-}
+export type SlideOffset = -1 | 0 | 1;
 
 interface UseDragNavigationResult {
-  /** Offset horizontal atual (px) — aplicar via `transform: translateX`. */
-  dragOffset: number;
+  /** Data dos 3 slides: [-1] prev, [0] current, [1] next */
+  slideDates: Record<SlideOffset, Date>;
+  /** Offset horizontal atual do trilho (px, inclui posicao base + drag). */
+  railOffset: number;
+  /** Se true, a animacao de snap esta rodando (desabilita transicao CSS manual). */
+  isSnapping: boolean;
+  /** Se true, o usuario esta arrastando (cursor grabbing, sem select). */
+  isDragging: boolean;
+  /** Largura do container (px) — necessaria para posicionar os slides. */
+  containerWidth: number;
+  /** Ref para o container — necessaria para medir a largura. */
+  containerRef: React.RefObject<HTMLDivElement | null>;
   /** Bind nos eventos de pointer do container. */
   pointerHandlers: {
     onPointerDown: (e: React.PointerEvent) => void;
@@ -33,98 +37,156 @@ interface UseDragNavigationResult {
     onPointerUp: (e: React.PointerEvent) => void;
     onPointerCancel: (e: React.PointerEvent) => void;
   };
-  /** True enquanto o usuario esta arrastando (para desabilitar clicks acidentais). */
-  isDragging: boolean;
 }
 
 /**
- * Controla navegacao de periodo via drag horizontal (swipe/arrasto).
- *
- * No modo Semana, cada `PX_PER_DAY_WEEK` pixels equivale a 1 dia.
- * No modo Dia, cada `PX_PER_DAY_DAY` pixels equivale a 1 dia.
- * Ao soltar, calcula quantos dias passar e chama `onCursorChange`.
- * Se o arrasto for menor que `SNAP_THRESHOLD`, cancela sem navegar.
+ * Calcula a data do slide adjacente com base na view ativa.
+ * - Dia: +/- 1 dia
+ * - Semana: +/- 1 semana
+ * - Mes: +/- 1 mes
  */
-export function useDragNavigation({
-  view,
-  cursorDate,
-  onCursorChange,
-}: UseDragNavigationOptions): UseDragNavigationResult {
-  const [dragOffset, setDragOffset] = useState(0);
+function shiftDate(view: PlannerView, base: Date, dir: 1 | -1): Date {
+  if (view === "day") return addDays(base, dir);
+  if (view === "week") return addWeeks(base, dir);
+  return addMonths(base, dir);
+}
+
+/**
+ * Gerencia o carrossel de 3 slides para navegacao fluida por drag horizontal.
+ *
+ * Mantem sempre 3 periodos pre-renderizados (anterior, atual, proximo).
+ * Ao arrastar, o trilho inteiro se move. Ao soltar alem do limiar, faz snap
+ * para o slide adjacente e recalcula os 3 periodos. Janela deslizante —
+ * sem acumulo de slides.
+ */
+export function useDragNavigation(
+  view: PlannerView,
+  cursorDate: Date,
+  onCursorChange: (date: Date) => void,
+): UseDragNavigationResult {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(0);
+
+  // Offset base do trilho sem drag (0 = slide atual centralizado)
+  const baseOffsetRef = useRef(0);
+  // Offset total incluindo drag
+  const [railOffset, setRailOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [isSnapping, setIsSnapping] = useState(false);
 
   const startXRef = useRef<number | null>(null);
-  const currentOffsetRef = useRef(0);
+  const dragActiveRef = useRef(false);
+
+  // Mede o container e atualiza em resize
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const ro = new ResizeObserver(([entry]) => {
+      setContainerWidth(entry.contentRect.width);
+    });
+    ro.observe(el);
+    setContainerWidth(el.getBoundingClientRect().width);
+    return () => ro.disconnect();
+  }, []);
+
+  // Datas dos 3 slides
+  const slideDates: Record<SlideOffset, Date> = {
+    [-1]: shiftDate(view, cursorDate, -1),
+    [0]: cursorDate,
+    [1]: shiftDate(view, cursorDate, 1),
+  };
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
-    // Apenas arrasto com dedo ou botao esquerdo do mouse
     if (e.button !== 0 && e.pointerType === "mouse") return;
-    // Nao interceptar se o alvo e um botao/input/link
     const tag = (e.target as HTMLElement).closest("button, a, input, [role='button']");
     if (tag) return;
 
     startXRef.current = e.clientX;
-    currentOffsetRef.current = 0;
-    setIsDragging(false);
+    dragActiveRef.current = false;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   }, []);
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    if (startXRef.current === null) return;
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (startXRef.current === null) return;
 
-    const delta = e.clientX - startXRef.current;
+      const delta = e.clientX - startXRef.current;
 
-    // So ativa o modo "arrastando" apos 5px para nao conflitar com clicks
-    if (!isDragging && Math.abs(delta) < 5) return;
+      if (!dragActiveRef.current && Math.abs(delta) < 5) return;
+      if (!dragActiveRef.current) {
+        dragActiveRef.current = true;
+        setIsDragging(true);
+      }
 
-    if (!isDragging) setIsDragging(true);
+      const offset = baseOffsetRef.current + delta * DRAG_RESISTANCE;
+      setRailOffset(offset);
+    },
+    [],
+  );
 
-    // Resistencia elastica: reduz o offset nas bordas para dar feedback de limite
-    const resistance = 0.45;
-    const offset = delta * resistance;
+  const commit = useCallback(
+    (e: React.PointerEvent) => {
+      if (startXRef.current === null) return;
 
-    currentOffsetRef.current = offset;
-    setDragOffset(offset);
-  }, [isDragging]);
+      const totalDelta = e.clientX - startXRef.current;
+      startXRef.current = null;
+      dragActiveRef.current = false;
+      setIsDragging(false);
 
-  const commit = useCallback((e: React.PointerEvent) => {
-    if (startXRef.current === null) return;
+      const w = containerRef.current?.getBoundingClientRect().width ?? containerWidth;
+      const threshold = w * SNAP_RATIO;
 
-    const totalDelta = e.clientX - startXRef.current;
+      if (Math.abs(totalDelta) < threshold) {
+        // Nao passou do limiar — volta para o slide atual
+        setIsSnapping(true);
+        setRailOffset(baseOffsetRef.current);
+        setTimeout(() => setIsSnapping(false), SNAP_DURATION_MS);
+        return;
+      }
+
+      const dir = totalDelta < 0 ? 1 : -1;
+      const newDate = shiftDate(view, cursorDate, dir as 1 | -1);
+
+      // Snap visual para o slide adjacente antes de trocar a data
+      const snapTarget = baseOffsetRef.current + dir * -1 * w;
+      setIsSnapping(true);
+      setRailOffset(snapTarget);
+
+      setTimeout(() => {
+        // Troca a data (remonta os 3 slides sem animacao)
+        baseOffsetRef.current = 0;
+        setRailOffset(0);
+        setIsSnapping(false);
+        onCursorChange(newDate);
+      }, SNAP_DURATION_MS);
+    },
+    [view, cursorDate, containerWidth, onCursorChange],
+  );
+
+  const onPointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      commit(e);
+    },
+    [commit],
+  );
+
+  const onPointerCancel = useCallback(() => {
     startXRef.current = null;
-
-    setDragOffset(0);
+    dragActiveRef.current = false;
     setIsDragging(false);
-    currentOffsetRef.current = 0;
-
-    if (Math.abs(totalDelta) < SNAP_THRESHOLD) return;
-
-    const pxPerDay = view === "day" ? PX_PER_DAY_DAY : PX_PER_DAY_WEEK;
-    // Calcula quantos dias navegar (minimo 1)
-    const days = Math.max(1, Math.round(Math.abs(totalDelta) / pxPerDay));
-    const dir = totalDelta < 0 ? 1 : -1;
-
-    if (view === "day" || view === "week") {
-      onCursorChange(addDays(cursorDate, days * dir));
-    } else {
-      // Modo mes: navega 1 periodo (mes) independente da distancia
-      onCursorChange(stepDate(view, cursorDate, dir as 1 | -1));
-    }
-  }, [view, cursorDate, onCursorChange]);
-
-  const onPointerUp = useCallback((e: React.PointerEvent) => {
-    commit(e);
-  }, [commit]);
-
-  const onPointerCancel = useCallback((e: React.PointerEvent) => {
-    startXRef.current = null;
-    setDragOffset(0);
-    setIsDragging(false);
+    setIsSnapping(true);
+    setRailOffset(baseOffsetRef.current);
+    setTimeout(() => setIsSnapping(false), SNAP_DURATION_MS);
   }, []);
 
   return {
-    dragOffset,
+    slideDates,
+    railOffset,
+    isSnapping,
     isDragging,
+    containerWidth,
+    containerRef,
     pointerHandlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel },
   };
 }
