@@ -2,6 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  Zap, Rocket, Target, Lightbulb, Flame, Star, Sparkles, Trophy,
+  Palette, Drama, Music, Film, Mic, Guitar, Radio, Headphones,
+  Smartphone, Laptop, Monitor, Keyboard, Mouse, Printer, Camera, ScanLine,
+  BarChart2, TrendingUp, TrendingDown, ClipboardList, Pin, MapPin, Map, Calendar,
+  Key, Lock, Unlock, Bell, BellOff, Megaphone, Volume2, VolumeX,
+  Medal, Award, Ribbon, Gift,
+  Globe, Compass, Mountain, Home, Building2, Hospital, Store, Hotel,
+  Car, Plane, Ship, Anchor, Bike, Bus,
+  Pizza, Apple, Coffee, ShoppingCart, Package, Boxes,
+  Dumbbell, Gamepad2, Puzzle, Swords, Shield, Flag,
+  Leaf, Flower, Trees, Sun, Moon, Cloud, Umbrella, Snowflake,
+  Diamond, Crown, Heart, Smile, Users, User, Baby, Dog,
+  Microscope, FlaskConical, Atom, Cpu, Database, Code, Terminal, GitBranch,
+  BookOpen, BookMarked, Pen, FileText, Folder, Archive, Paperclip, Search,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import {
   Dialog,
@@ -23,7 +40,7 @@ interface CreateSpaceDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// ─── Dados do picker ──────────────────────────────────────────────────────────
+// ─── Paleta & ícones ──────────────────────────────────────────────────────────
 
 const COLOR_PALETTE = [
   "#ef4444", "#f97316", "#f59e0b", "#84cc16",
@@ -32,23 +49,111 @@ const COLOR_PALETTE = [
   "#f43f5e", "#64748b", "#78716c", "#0ea5e9",
 ];
 
-const ICON_LIST = [
-  "⚡","🚀","🎯","💡","🔥","⭐","🌟","💫",
-  "🎨","🎭","🎪","🎬","🎤","🎵","🎶","🎸",
-  "📱","💻","🖥️","⌨️","🖱️","🖨️","📷","📸",
-  "📊","📈","📉","📋","📌","📍","🗺️","🗓️",
-  "🔑","🔒","🔓","🔔","🔕","📣","📢","🔊",
-  "🏆","🥇","🏅","🎖️","🏵️","🎗️","🎀","🎁",
-  "🌍","🌎","🌏","🌐","🗾","🧭","🌋","🏔️",
-  "🏠","🏢","🏣","🏤","🏥","🏦","🏨","🏩",
-  "🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑",
-  "✈️","🚀","🛸","🚁","⛵","🚢","🛳️","⚓",
-  "🍕","🍔","🍟","🌮","🌯","🥗","🍜","🍣",
-  "⚽","🏀","🏈","⚾","🎾","🏐","🏉","🎱",
-  "🌸","🌺","🌻","🌹","🌷","🌿","🍀","🍃",
-  "💎","💍","👑","🏆","🎭","🎨","🖼️","🎠",
-  "🔬","🔭","🧬","⚗️","🧪","🧫","🧲","💊",
-  "📚","📖","📝","✏️","🖊️","🖋️","📓","📔",
+interface IconEntry { id: string; label: string; Icon: LucideIcon }
+
+const ICON_LIST: IconEntry[] = [
+  { id: "zap",         label: "Zap",         Icon: Zap },
+  { id: "rocket",      label: "Rocket",      Icon: Rocket },
+  { id: "target",      label: "Target",      Icon: Target },
+  { id: "lightbulb",   label: "Lightbulb",   Icon: Lightbulb },
+  { id: "flame",       label: "Flame",       Icon: Flame },
+  { id: "star",        label: "Star",        Icon: Star },
+  { id: "sparkles",    label: "Sparkles",    Icon: Sparkles },
+  { id: "trophy",      label: "Trophy",      Icon: Trophy },
+  { id: "palette",     label: "Palette",     Icon: Palette },
+  { id: "drama",       label: "Drama",       Icon: Drama },
+  { id: "music",       label: "Music",       Icon: Music },
+  { id: "film",        label: "Film",        Icon: Film },
+  { id: "mic",         label: "Mic",         Icon: Mic },
+  { id: "guitar",      label: "Guitar",      Icon: Guitar },
+  { id: "radio",       label: "Radio",       Icon: Radio },
+  { id: "headphones",  label: "Headphones",  Icon: Headphones },
+  { id: "smartphone",  label: "Smartphone",  Icon: Smartphone },
+  { id: "laptop",      label: "Laptop",      Icon: Laptop },
+  { id: "monitor",     label: "Monitor",     Icon: Monitor },
+  { id: "keyboard",    label: "Keyboard",    Icon: Keyboard },
+  { id: "mouse",       label: "Mouse",       Icon: Mouse },
+  { id: "printer",     label: "Printer",     Icon: Printer },
+  { id: "camera",      label: "Camera",      Icon: Camera },
+  { id: "scanline",    label: "Scan",        Icon: ScanLine },
+  { id: "barchart",    label: "Bar Chart",   Icon: BarChart2 },
+  { id: "trending-up", label: "Trending Up", Icon: TrendingUp },
+  { id: "trending-dn", label: "Trending Dn", Icon: TrendingDown },
+  { id: "clipboard",   label: "Clipboard",   Icon: ClipboardList },
+  { id: "pin",         label: "Pin",         Icon: Pin },
+  { id: "map-pin",     label: "Map Pin",     Icon: MapPin },
+  { id: "map",         label: "Map",         Icon: Map },
+  { id: "calendar",    label: "Calendar",    Icon: Calendar },
+  { id: "key",         label: "Key",         Icon: Key },
+  { id: "lock",        label: "Lock",        Icon: Lock },
+  { id: "unlock",      label: "Unlock",      Icon: Unlock },
+  { id: "bell",        label: "Bell",        Icon: Bell },
+  { id: "bell-off",    label: "Bell Off",    Icon: BellOff },
+  { id: "megaphone",   label: "Megaphone",   Icon: Megaphone },
+  { id: "volume",      label: "Volume",      Icon: Volume2 },
+  { id: "volume-x",    label: "Mute",        Icon: VolumeX },
+  { id: "medal",       label: "Medal",       Icon: Medal },
+  { id: "award",       label: "Award",       Icon: Award },
+  { id: "ribbon",      label: "Ribbon",      Icon: Ribbon },
+  { id: "gift",        label: "Gift",        Icon: Gift },
+  { id: "globe",       label: "Globe",       Icon: Globe },
+  { id: "compass",     label: "Compass",     Icon: Compass },
+  { id: "mountain",    label: "Mountain",    Icon: Mountain },
+  { id: "home",        label: "Home",        Icon: Home },
+  { id: "building",    label: "Building",    Icon: Building2 },
+  { id: "hospital",    label: "Hospital",    Icon: Hospital },
+  { id: "store",       label: "Store",       Icon: Store },
+  { id: "hotel",       label: "Hotel",       Icon: Hotel },
+  { id: "car",         label: "Car",         Icon: Car },
+  { id: "plane",       label: "Plane",       Icon: Plane },
+  { id: "ship",        label: "Ship",        Icon: Ship },
+  { id: "anchor",      label: "Anchor",      Icon: Anchor },
+  { id: "bike",        label: "Bike",        Icon: Bike },
+  { id: "bus",         label: "Bus",         Icon: Bus },
+  { id: "pizza",       label: "Pizza",       Icon: Pizza },
+  { id: "apple",       label: "Apple",       Icon: Apple },
+  { id: "coffee",      label: "Coffee",      Icon: Coffee },
+  { id: "cart",        label: "Cart",        Icon: ShoppingCart },
+  { id: "package",     label: "Package",     Icon: Package },
+  { id: "boxes",       label: "Boxes",       Icon: Boxes },
+  { id: "dumbbell",    label: "Dumbbell",    Icon: Dumbbell },
+  { id: "gamepad",     label: "Gamepad",     Icon: Gamepad2 },
+  { id: "puzzle",      label: "Puzzle",      Icon: Puzzle },
+  { id: "swords",      label: "Swords",      Icon: Swords },
+  { id: "shield",      label: "Shield",      Icon: Shield },
+  { id: "flag",        label: "Flag",        Icon: Flag },
+  { id: "leaf",        label: "Leaf",        Icon: Leaf },
+  { id: "flower",      label: "Flower",      Icon: Flower },
+  { id: "trees",       label: "Trees",       Icon: Trees },
+  { id: "sun",         label: "Sun",         Icon: Sun },
+  { id: "moon",        label: "Moon",        Icon: Moon },
+  { id: "cloud",       label: "Cloud",       Icon: Cloud },
+  { id: "umbrella",    label: "Umbrella",    Icon: Umbrella },
+  { id: "snowflake",   label: "Snowflake",   Icon: Snowflake },
+  { id: "diamond",     label: "Diamond",     Icon: Diamond },
+  { id: "crown",       label: "Crown",       Icon: Crown },
+  { id: "heart",       label: "Heart",       Icon: Heart },
+  { id: "smile",       label: "Smile",       Icon: Smile },
+  { id: "users",       label: "Users",       Icon: Users },
+  { id: "user",        label: "User",        Icon: User },
+  { id: "baby",        label: "Baby",        Icon: Baby },
+  { id: "dog",         label: "Dog",         Icon: Dog },
+  { id: "microscope",  label: "Microscope",  Icon: Microscope },
+  { id: "flask",       label: "Flask",       Icon: FlaskConical },
+  { id: "atom",        label: "Atom",        Icon: Atom },
+  { id: "cpu",         label: "CPU",         Icon: Cpu },
+  { id: "database",    label: "Database",    Icon: Database },
+  { id: "code",        label: "Code",        Icon: Code },
+  { id: "terminal",    label: "Terminal",    Icon: Terminal },
+  { id: "git",         label: "Git",         Icon: GitBranch },
+  { id: "book",        label: "Book",        Icon: BookOpen },
+  { id: "bookmark",    label: "Bookmark",    Icon: BookMarked },
+  { id: "pen",         label: "Pen",         Icon: Pen },
+  { id: "file",        label: "File",        Icon: FileText },
+  { id: "folder",      label: "Folder",      Icon: Folder },
+  { id: "archive",     label: "Archive",     Icon: Archive },
+  { id: "paperclip",   label: "Paperclip",   Icon: Paperclip },
+  { id: "search",      label: "Search",      Icon: Search },
 ];
 
 // ─── Switch ───────────────────────────────────────────────────────────────────
@@ -85,20 +190,20 @@ function Switch({
   );
 }
 
-// ─── IconColorPicker (popover inline) ─────────────────────────────────────────
+// ─── IconColorPicker ──────────────────────────────────────────────────────────
 
 function IconColorPicker({
   color,
-  icon,
+  iconId,
   nome,
   onColorChange,
   onIconChange,
 }: {
   color: string;
-  icon: string;
+  iconId: string;
   nome: string;
   onColorChange: (c: string) => void;
-  onIconChange: (i: string) => void;
+  onIconChange: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"icon" | "color">("icon");
@@ -106,13 +211,13 @@ function IconColorPicker({
   const ref = useRef<HTMLDivElement>(null);
 
   const letter = nome.trim().charAt(0).toUpperCase() || "S";
-  const display = icon || letter;
+  const selectedEntry = ICON_LIST.find((e) => e.id === iconId);
+  const SelectedIcon = selectedEntry?.Icon ?? null;
 
   const filtered = search.trim()
-    ? ICON_LIST.filter((ic) => ic.includes(search.trim()))
+    ? ICON_LIST.filter((e) => e.label.toLowerCase().includes(search.toLowerCase()))
     : ICON_LIST;
 
-  // Fecha ao clicar fora
   useEffect(() => {
     function handle(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
@@ -129,115 +234,107 @@ function IconColorPicker({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-md text-lg font-semibold text-white select-none",
-          "transition-all hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-        )}
+        className="flex h-11 w-11 items-center justify-center rounded-md text-white font-bold text-lg select-none transition-all hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         style={{ backgroundColor: color }}
         aria-label="Escolher ícone e cor"
       >
-        {display}
+        {SelectedIcon
+          ? <SelectedIcon size={20} color="white" strokeWidth={1.75} />
+          : letter
+        }
       </button>
 
       {/* Popover */}
       {open && (
-        <div className="absolute left-0 top-13 z-50 w-[300px] rounded-lg border border-border bg-popover shadow-xl">
+        <div className="absolute left-0 top-[48px] z-50 w-[320px] rounded-lg border border-border bg-popover shadow-2xl">
           {/* Tabs */}
           <div className="flex border-b border-border">
-            <button
-              type="button"
-              onClick={() => setTab("icon")}
-              className={cn(
-                "flex-1 py-2.5 text-xs font-semibold transition-colors",
-                tab === "icon"
-                  ? "border-b-2 border-primary text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Ícone
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab("color")}
-              className={cn(
-                "flex-1 py-2.5 text-xs font-semibold transition-colors",
-                tab === "color"
-                  ? "border-b-2 border-primary text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              Cor
-            </button>
+            {(["icon", "color"] as const).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={cn(
+                  "flex-1 py-2.5 text-xs font-semibold capitalize transition-colors",
+                  tab === t
+                    ? "border-b-2 border-primary text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {t === "icon" ? "Ícone" : "Cor"}
+              </button>
+            ))}
           </div>
 
+          {/* ── Tab Ícone ── */}
           {tab === "icon" && (
             <div className="p-3 space-y-2">
-              {/* Search + botão limpar */}
-              <div className="flex gap-2">
+              {/* Barra de pesquisa */}
+              <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3">
+                <Search size={13} className="text-muted-foreground shrink-0" />
                 <input
                   type="text"
                   placeholder="Pesquisar..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className={cn(
-                    "flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-xs",
-                    "placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring",
-                  )}
+                  className="flex-1 bg-transparent py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
-                <button
-                  type="button"
-                  title="Limpar ícone"
-                  onClick={() => { onIconChange(""); setSearch(""); }}
-                  className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground text-xs transition-colors"
-                >
-                  ✕
-                </button>
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <span className="text-xs">✕</span>
+                  </button>
+                )}
               </div>
 
-              {/* Grid de ícones */}
-              <div className="grid grid-cols-8 gap-0.5 max-h-[220px] overflow-y-auto pr-0.5">
-                {/* Letra/inicial como primeira opção */}
+              {/* Grid */}
+              <div className="grid grid-cols-8 gap-0.5 max-h-[240px] overflow-y-auto">
+                {/* Inicial (sem ícone) */}
                 <button
                   type="button"
+                  title="Usar inicial"
                   onClick={() => { onIconChange(""); setOpen(false); }}
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded text-sm font-bold transition-colors",
-                    "hover:bg-muted text-white",
-                    !icon ? "ring-2 ring-primary" : "",
+                    "flex h-8 w-8 items-center justify-center rounded text-sm font-bold text-white transition-colors hover:opacity-80",
+                    !iconId && "ring-2 ring-offset-1 ring-offset-popover",
                   )}
-                  style={{ backgroundColor: color }}
-                  title="Usar inicial"
+                  style={{ backgroundColor: color, ...((!iconId) ? { ringColor: color } : {}) }}
                 >
                   {letter}
                 </button>
 
-                {filtered.map((ic, i) => (
+                {filtered.map(({ id, label, Icon }) => (
                   <button
-                    key={i}
+                    key={id}
                     type="button"
-                    onClick={() => { onIconChange(ic); setOpen(false); }}
+                    title={label}
+                    onClick={() => { onIconChange(id); setOpen(false); }}
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded text-base transition-colors hover:bg-muted",
-                      icon === ic && "bg-muted ring-1 ring-primary",
+                      "flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-muted/60",
+                      iconId === id && "bg-muted/60 ring-1 ring-offset-1 ring-offset-popover",
                     )}
-                    title={ic}
+                    style={iconId === id ? { outlineColor: color } : {}}
                   >
-                    {ic}
+                    <Icon size={15} strokeWidth={1.75} style={{ color }} />
                   </button>
                 ))}
               </div>
             </div>
           )}
 
+          {/* ── Tab Cor ── */}
           {tab === "color" && (
-            <div className="p-4 space-y-3">
-              <p className="text-xs text-muted-foreground">Cor do espaço</p>
+            <div className="p-4 space-y-2">
+              <p className="text-xs text-muted-foreground mb-3">Cor do espaço</p>
               <div className="grid grid-cols-8 gap-2">
                 {COLOR_PALETTE.map((c) => (
                   <button
                     key={c}
                     type="button"
-                    onClick={() => { onColorChange(c); }}
+                    onClick={() => onColorChange(c)}
                     className={cn(
                       "h-7 w-7 rounded-full transition-transform hover:scale-110 focus:outline-none",
                       color === c && "ring-2 ring-white ring-offset-2 ring-offset-popover scale-110",
@@ -261,8 +358,8 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [privado, setPrivado] = useState(false);
-  const [color, setColor] = useState(COLOR_PALETTE[7]); // rosa padrão igual ClickUp
-  const [icon, setIcon] = useState("");
+  const [color, setColor] = useState(COLOR_PALETTE[7]);
+  const [iconId, setIconId] = useState("");
   const [nomeError, setNomeError] = useState<string | null>(null);
 
   const { mutate, isPending } = useCreateSpace();
@@ -273,7 +370,7 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
       setDescricao("");
       setPrivado(false);
       setColor(COLOR_PALETTE[7]);
-      setIcon("");
+      setIconId("");
       setNomeError(null);
     }
   }, [open]);
@@ -292,7 +389,7 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
     if (!validate()) return;
 
     mutate(
-      { nome: nome.trim(), privado, color, icon: icon || undefined },
+      { nome: nome.trim(), privado, color, icon: iconId || undefined },
       {
         onSuccess: (created) => {
           toast.success(`Space "${created.nome}" criado`, {
@@ -312,7 +409,6 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-visible">
-        {/* Cabeçalho */}
         <div className="px-7 pt-7 pb-5">
           <DialogHeader className="space-y-1.5">
             <DialogTitle className="text-xl font-semibold">Criar espaço</DialogTitle>
@@ -334,10 +430,10 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
               <div className="flex items-center gap-3">
                 <IconColorPicker
                   color={color}
-                  icon={icon}
+                  iconId={iconId}
                   nome={nome}
                   onColorChange={setColor}
-                  onIconChange={setIcon}
+                  onIconChange={setIconId}
                 />
                 <div className="flex-1 space-y-1">
                   <Input
@@ -345,10 +441,7 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
                     autoFocus
                     placeholder="por exemplo, marketing, engenharia, RH"
                     value={nome}
-                    onChange={(e) => {
-                      setNome(e.target.value);
-                      if (nomeError) setNomeError(null);
-                    }}
+                    onChange={(e) => { setNome(e.target.value); if (nomeError) setNomeError(null); }}
                     aria-invalid={!!nomeError}
                     className="h-10 text-sm"
                   />
