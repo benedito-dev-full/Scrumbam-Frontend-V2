@@ -1,41 +1,52 @@
-'use client';
+"use client";
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
-import { useState } from 'react';
-import { X, Calendar, Bot, Play, ChevronDown, CheckCircle2, AlertCircle, Loader2, User } from 'lucide-react';
+import { useState } from "react";
+import {
+  X,
+  Calendar,
+  Bot,
+  Play,
+  ChevronDown,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  User,
+  Lock,
+} from "lucide-react";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
-import { useTask, useUpdateTask, useUpdateTaskStatus } from '@/hooks/use-tasks';
+import { useTask, useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
 import {
   KANBAN_COLUMNS,
   priorityToLabel,
   priorityToColor,
   isOverdue,
-} from '@/lib/mappers/task-status.mapper';
-import { cn } from '@/lib/utils';
+} from "@/lib/mappers/task-status.mapper";
+import { cn } from "@/lib/utils";
 import {
   useTaskExecution,
   detectTaskType,
   TASK_TYPE_LABELS,
   TASK_TYPE_COLORS,
   AI_ASSIGNEE_ID,
-} from '@/hooks/use-task-execution';
-import { useProjectMembers } from '@/hooks/use-members';
+} from "@/hooks/use-task-execution";
+import { useProjectMembers } from "@/hooks/use-members";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-import type { V3Intention } from '@/lib/types/api';
+import type { V3Intention } from "@/lib/types/api";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
-const PRIORITIES = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const;
+const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
 
 /** Mapeia coluna Kanban → V3 Intention primária para o PATCH de status. */
 const COLUMN_TO_INTENTION: Record<string, string> = {
-  backlog: 'INBOX',
-  ready: 'READY',
-  'em-progresso': 'EXECUTING',
-  concluido: 'DONE',
-  falhou: 'FAILED',
+  backlog: "INBOX",
+  ready: "READY",
+  "em-progresso": "EXECUTING",
+  concluido: "DONE",
+  falhou: "FAILED",
 };
 
 // ─── TaskDetailDrawer ─────────────────────────────────────────────────────────
@@ -80,17 +91,40 @@ export function TaskDetailDrawer({
   if (!task) return null;
 
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
+  // Lock UI — `activeExecution` é a verdade canônica do backend.
+  // Quando não-null: campos viram read-only enquanto a execução IA roda.
+  const isLocked = task.activeExecution != null;
+  const lockTitle = isLocked
+    ? "Em execução pela IA — aguarde a conclusão para editar"
+    : undefined;
 
   return (
     <DrawerShell onClose={onClose}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3 border-b border-border p-4">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
-          <span className="font-mono text-[11px] text-muted-foreground">{task.identifier}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {task.identifier}
+            </span>
+            {isLocked && (
+              <span
+                title={lockTitle}
+                className="inline-flex items-center gap-1 rounded-sm bg-violet-500/15 px-1.5 py-px text-[10px] font-semibold uppercase tracking-wide text-violet-300"
+              >
+                <Lock className="size-2.5" />
+                {task.activeExecution?.status === "awaiting_approval"
+                  ? "aguardando aprovação"
+                  : "em execução pela IA"}
+              </span>
+            )}
+          </div>
           <EditableTitle
             value={task.nome}
-            onSave={(titulo) => updateTask({ id: taskId, projectId, dto: { titulo } })}
-            disabled={isUpdating}
+            onSave={(titulo) =>
+              updateTask({ id: taskId, projectId, dto: { titulo } })
+            }
+            disabled={isUpdating || isLocked}
           />
         </div>
         <button
@@ -109,7 +143,10 @@ export function TaskDetailDrawer({
         <Field label="Status">
           <StatusPicker
             current={task.status}
-            onChange={(status) => updateStatus({ id: taskId, status, projectId })}
+            disabled={isLocked}
+            onChange={(status) =>
+              updateStatus({ id: taskId, status, projectId })
+            }
           />
         </Field>
 
@@ -117,24 +154,33 @@ export function TaskDetailDrawer({
         <Field label="Prioridade">
           <PriorityPicker
             current={task.priority}
-            onChange={(priority) => updateTask({ id: taskId, projectId, dto: { priority } })}
+            disabled={isLocked}
+            onChange={(priority) =>
+              updateTask({ id: taskId, projectId, dto: { priority } })
+            }
           />
         </Field>
 
         {/* Data de entrega */}
         <Field label="Data de entrega">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2" title={lockTitle}>
             <Calendar className="size-3.5 text-muted-foreground" />
             <input
               type="date"
-              defaultValue={task.dueDate ? task.dueDate.slice(0, 10) : ''}
+              defaultValue={task.dueDate ? task.dueDate.slice(0, 10) : ""}
+              disabled={isLocked}
               className={cn(
-                'bg-transparent text-[13px] outline-none',
-                overdue ? 'text-red-400' : 'text-foreground',
+                "bg-transparent text-[13px] outline-none",
+                overdue ? "text-red-400" : "text-foreground",
+                isLocked && "cursor-not-allowed opacity-60",
               )}
               onChange={(e) => {
                 const val = e.target.value;
-                updateTask({ id: taskId, projectId, dto: { dueDate: val || null } });
+                updateTask({
+                  id: taskId,
+                  projectId,
+                  dto: { dueDate: val || null },
+                });
               }}
             />
             {overdue && (
@@ -148,10 +194,12 @@ export function TaskDetailDrawer({
         {/* Descrição */}
         <Field label="Descrição">
           <EditableTextarea
-            value={task.description ?? ''}
+            value={task.description ?? ""}
             placeholder="Adicionar descrição..."
-            onSave={(descricao) => updateTask({ id: taskId, projectId, dto: { descricao } })}
-            disabled={isUpdating}
+            onSave={(descricao) =>
+              updateTask({ id: taskId, projectId, dto: { descricao } })
+            }
+            disabled={isUpdating || isLocked}
           />
         </Field>
 
@@ -160,13 +208,20 @@ export function TaskDetailDrawer({
           <AssigneePicker
             projectId={projectId}
             current={task.assigneeId ?? null}
-            onChange={(id) => updateTask({ id: taskId, projectId, dto: { assigneeId: id } })}
+            disabled={isLocked}
+            onChange={(id) =>
+              updateTask({ id: taskId, projectId, dto: { assigneeId: id } })
+            }
           />
         </Field>
 
         {/* Execução IA — só aparece quando responsável = IA */}
         {task.assigneeId === AI_ASSIGNEE_ID && (
-          <AiExecutionPanel taskId={taskId} taskName={task.nome} projectId={projectId} />
+          <AiExecutionPanel
+            taskId={taskId}
+            taskName={task.nome}
+            projectId={projectId}
+          />
         )}
       </div>
     </DrawerShell>
@@ -179,10 +234,12 @@ function AssigneePicker({
   projectId,
   current,
   onChange,
+  disabled = false,
 }: {
   projectId: string;
   current: string | null;
   onChange: (id: string | null) => void;
+  disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const { data: members = [] } = useProjectMembers(projectId);
@@ -194,8 +251,18 @@ function AssigneePicker({
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-[13px] transition-colors hover:border-ring/60"
+        onClick={() => {
+          if (disabled) return;
+          setOpen((v) => !v);
+        }}
+        disabled={disabled}
+        title={
+          disabled ? "Em execução pela IA — não é possível alterar" : undefined
+        }
+        className={cn(
+          "flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-[13px] transition-colors",
+          disabled ? "cursor-not-allowed opacity-60" : "hover:border-ring/60",
+        )}
       >
         {isAi ? (
           <div className="flex items-center gap-2">
@@ -212,7 +279,9 @@ function AssigneePicker({
             <div className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-foreground">
               {assignedMember.nome.charAt(0).toUpperCase()}
             </div>
-            <span className="font-medium text-foreground">{assignedMember.nome}</span>
+            <span className="font-medium text-foreground">
+              {assignedMember.nome}
+            </span>
           </div>
         ) : (
           <span className="text-muted-foreground">Sem responsável</span>
@@ -226,10 +295,13 @@ function AssigneePicker({
             {/* Opção IA */}
             <button
               type="button"
-              onClick={() => { onChange(AI_ASSIGNEE_ID); setOpen(false); }}
+              onClick={() => {
+                onChange(AI_ASSIGNEE_ID);
+                setOpen(false);
+              }}
               className={cn(
-                'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted',
-                isAi && 'bg-violet-500/10',
+                "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted",
+                isAi && "bg-violet-500/10",
               )}
             >
               <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-violet-500/15">
@@ -237,23 +309,30 @@ function AssigneePicker({
               </div>
               <div className="flex flex-1 flex-col">
                 <span className="font-semibold text-foreground">IA</span>
-                <span className="text-[11px] text-muted-foreground">Executar automaticamente</span>
+                <span className="text-[11px] text-muted-foreground">
+                  Executar automaticamente
+                </span>
               </div>
               {isAi && <span className="size-1.5 rounded-full bg-violet-400" />}
             </button>
 
             {/* Divisor */}
-            {members.length > 0 && <div className="my-1 border-t border-border" />}
+            {members.length > 0 && (
+              <div className="my-1 border-t border-border" />
+            )}
 
             {/* Membros do projeto */}
             {members.map((m) => (
               <button
                 key={m.userId}
                 type="button"
-                onClick={() => { onChange(m.userId); setOpen(false); }}
+                onClick={() => {
+                  onChange(m.userId);
+                  setOpen(false);
+                }}
                 className={cn(
-                  'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted',
-                  current === m.userId && 'bg-muted',
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted",
+                  current === m.userId && "bg-muted",
                 )}
               >
                 <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-foreground">
@@ -262,10 +341,14 @@ function AssigneePicker({
                 <div className="flex flex-1 flex-col">
                   <span className="font-medium text-foreground">{m.nome}</span>
                   {m.cargo && (
-                    <span className="text-[11px] text-muted-foreground">{m.cargo}</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {m.cargo}
+                    </span>
                   )}
                 </div>
-                {current === m.userId && <span className="size-1.5 rounded-full bg-foreground/40" />}
+                {current === m.userId && (
+                  <span className="size-1.5 rounded-full bg-foreground/40" />
+                )}
               </button>
             ))}
 
@@ -275,7 +358,10 @@ function AssigneePicker({
                 <div className="my-1 border-t border-border" />
                 <button
                   type="button"
-                  onClick={() => { onChange(null); setOpen(false); }}
+                  onClick={() => {
+                    onChange(null);
+                    setOpen(false);
+                  }}
                   className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-[12px] text-muted-foreground transition-colors hover:bg-muted"
                 >
                   <User className="size-3.5" />
@@ -292,17 +378,29 @@ function AssigneePicker({
 
 // ─── AiExecutionPanel ─────────────────────────────────────────────────────────
 
-function AiExecutionPanel({ taskId, taskName, projectId }: { taskId: string; taskName: string; projectId: string }) {
-  const { execution, startExecution, clearExecution, isSubmitting } = useTaskExecution(taskId, projectId);
+function AiExecutionPanel({
+  taskId,
+  taskName,
+  projectId,
+}: {
+  taskId: string;
+  taskName: string;
+  projectId: string;
+}) {
+  const { execution, startExecution, clearExecution, isSubmitting } =
+    useTaskExecution(taskId, projectId);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const taskType = detectTaskType(taskName);
   const typeColor = TASK_TYPE_COLORS[taskType];
   const typeLabel = TASK_TYPE_LABELS[taskType];
-  const isRunning = execution?.status === 'running' || execution?.status === 'awaiting_approval' || isSubmitting;
-  const isDone = execution?.status === 'done';
-  const isFailed = execution?.status === 'failed';
-  const isAwaiting = execution?.status === 'awaiting_approval';
+  const isRunning =
+    execution?.status === "running" ||
+    execution?.status === "awaiting_approval" ||
+    isSubmitting;
+  const isDone = execution?.status === "done";
+  const isFailed = execution?.status === "failed";
+  const isAwaiting = execution?.status === "awaiting_approval";
 
   return (
     <>
@@ -310,7 +408,9 @@ function AiExecutionPanel({ taskId, taskName, projectId }: { taskId: string; tas
         {/* Header */}
         <div className="flex items-center gap-2">
           <Bot className="size-3.5 text-violet-400" />
-          <span className="text-[12px] font-semibold text-violet-300">Execução IA</span>
+          <span className="text-[12px] font-semibold text-violet-300">
+            Execução IA
+          </span>
           <span
             className="rounded-full px-1.5 py-px text-[10px] font-semibold"
             style={{ background: `${typeColor}20`, color: typeColor }}
@@ -325,10 +425,10 @@ function AiExecutionPanel({ taskId, taskName, projectId }: { taskId: string; tas
             <Loader2 className="size-3.5 shrink-0 animate-spin text-violet-400" />
             <span className="text-[12px] text-violet-300">
               {isSubmitting
-                ? 'Enviando para o agente...'
+                ? "Enviando para o agente..."
                 : isAwaiting
-                  ? 'Aguardando aprovação (risco ALTO)...'
-                  : 'Agente processando a task...'}
+                  ? "Aguardando aprovação (risco ALTO)..."
+                  : "Agente processando a task..."}
             </span>
           </div>
         )}
@@ -337,18 +437,22 @@ function AiExecutionPanel({ taskId, taskName, projectId }: { taskId: string; tas
           <div className="flex flex-col gap-2 rounded-lg border border-green-500/20 bg-green-500/5 p-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="size-3.5 shrink-0 text-green-400" />
-              <span className="text-[12px] font-semibold text-green-300">Concluído</span>
+              <span className="text-[12px] font-semibold text-green-300">
+                Concluído
+              </span>
               {execution.finishedAt && (
                 <span className="ml-auto text-[11px] text-muted-foreground">
-                  {new Date(execution.finishedAt).toLocaleTimeString('pt-BR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
+                  {new Date(execution.finishedAt).toLocaleTimeString("pt-BR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
                   })}
                 </span>
               )}
             </div>
             {execution.output && (
-              <p className="text-[12px] leading-relaxed text-muted-foreground">{execution.output}</p>
+              <p className="text-[12px] leading-relaxed text-muted-foreground">
+                {execution.output}
+              </p>
             )}
             <button
               type="button"
@@ -382,7 +486,11 @@ function AiExecutionPanel({ taskId, taskName, projectId }: { taskId: string; tas
             onClick={() => setConfirmOpen(true)}
             className="flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-3 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {isSubmitting ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
+            {isSubmitting ? (
+              <Loader2 className="size-3.5 animate-spin" />
+            ) : (
+              <Play className="size-3.5" />
+            )}
             Executar com IA
           </button>
         )}
@@ -390,7 +498,10 @@ function AiExecutionPanel({ taskId, taskName, projectId }: { taskId: string; tas
         {isDone && (
           <button
             type="button"
-            onClick={() => { clearExecution(); setConfirmOpen(true); }}
+            onClick={() => {
+              clearExecution();
+              setConfirmOpen(true);
+            }}
             className="flex items-center justify-center gap-2 rounded-lg border border-violet-500/30 px-3 py-2 text-[12px] text-violet-400 transition-colors hover:bg-violet-500/10"
           >
             <Play className="size-3.5" />
@@ -403,7 +514,10 @@ function AiExecutionPanel({ taskId, taskName, projectId }: { taskId: string; tas
         <AiConfirmModal
           taskName={taskName}
           taskType={taskType}
-          onConfirm={() => { setConfirmOpen(false); startExecution(); }}
+          onConfirm={() => {
+            setConfirmOpen(false);
+            startExecution();
+          }}
           onCancel={() => setConfirmOpen(false)}
         />
       )}
@@ -444,7 +558,9 @@ function AiConfirmModal({
             <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-violet-500/10">
               <Bot className="size-5 text-violet-400" />
             </div>
-            <h2 className="text-[16px] font-bold text-foreground">Confirmar execução</h2>
+            <h2 className="text-[16px] font-bold text-foreground">
+              Confirmar execução
+            </h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
               O agente do projeto vai executar esta task automaticamente.
             </p>
@@ -456,7 +572,9 @@ function AiConfirmModal({
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Task
                 </span>
-                <span className="truncate text-[13px] font-medium text-foreground">{taskName}</span>
+                <span className="truncate text-[13px] font-medium text-foreground">
+                  {taskName}
+                </span>
               </div>
               <span
                 className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold"
@@ -525,7 +643,13 @@ function DrawerSkeleton() {
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -560,8 +684,8 @@ function EditableTitle({
           if (draft.trim() && draft !== value) onSave(draft.trim());
         }}
         onKeyDown={(e) => {
-          if (e.key === 'Enter') e.currentTarget.blur();
-          if (e.key === 'Escape') {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
             setEditing(false);
             setDraft(value);
           }
@@ -613,36 +737,49 @@ function EditableTextarea({
 function StatusPicker({
   current,
   onChange,
+  disabled = false,
 }: {
   current: string;
   onChange: (s: string) => void;
+  disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div
+      className={cn(
+        "flex flex-wrap gap-1.5",
+        disabled && "cursor-not-allowed opacity-60",
+      )}
+      title={
+        disabled ? "Em execução pela IA — não é possível alterar" : undefined
+      }
+    >
       {KANBAN_COLUMNS.map((col) => {
         const intention = COLUMN_TO_INTENTION[col.id];
         const isActive =
           current === intention ||
-          (col.id === 'em-progresso' && (current === 'EXECUTING' || current === 'VALIDATING')) ||
-          (col.id === 'concluido' &&
-            ['DONE', 'VALIDATED', 'CANCELLED', 'DISCARDED'].includes(current));
+          (col.id === "em-progresso" &&
+            (current === "EXECUTING" || current === "VALIDATING")) ||
+          (col.id === "concluido" &&
+            ["DONE", "VALIDATED", "CANCELLED", "DISCARDED"].includes(current));
 
         return (
           <button
             key={col.id}
             type="button"
+            disabled={disabled}
             onClick={() => onChange(intention)}
             className={cn(
-              'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors',
+              "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors",
               isActive
-                ? 'border-transparent text-white'
-                : 'border-border text-muted-foreground hover:border-border/60 hover:text-foreground',
+                ? "border-transparent text-white"
+                : "border-border text-muted-foreground hover:border-border/60 hover:text-foreground",
+              disabled && "pointer-events-none",
             )}
             style={isActive ? { background: col.color } : {}}
           >
             <span
               className="size-1.5 rounded-full"
-              style={{ background: isActive ? 'white' : col.color }}
+              style={{ background: isActive ? "white" : col.color }}
             />
             {col.label}
           </button>
@@ -655,24 +792,36 @@ function StatusPicker({
 function PriorityPicker({
   current,
   onChange,
+  disabled = false,
 }: {
   current?: string;
   onChange: (p: string) => void;
+  disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div
+      className={cn(
+        "flex flex-wrap gap-1.5",
+        disabled && "cursor-not-allowed opacity-60",
+      )}
+      title={
+        disabled ? "Em execução pela IA — não é possível alterar" : undefined
+      }
+    >
       {PRIORITIES.map((p) => {
         const isActive = current === p;
         return (
           <button
             key={p}
             type="button"
+            disabled={disabled}
             onClick={() => onChange(p)}
             className={cn(
-              'rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors',
+              "rounded-full border px-2.5 py-1 text-[12px] font-medium transition-colors",
               isActive
-                ? 'border-transparent text-white'
-                : 'border-border text-muted-foreground hover:text-foreground',
+                ? "border-transparent text-white"
+                : "border-border text-muted-foreground hover:text-foreground",
+              disabled && "pointer-events-none",
             )}
             style={isActive ? { background: priorityToColor(p) } : {}}
           >

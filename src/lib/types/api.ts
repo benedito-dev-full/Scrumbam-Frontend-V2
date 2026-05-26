@@ -37,7 +37,7 @@ export interface AuthResponseDto {
  *
  * Backend serializa BigInt como string — por isso `string`.
  */
-export type DProjectIdClasse = '-350' | '-351' | '-352' | '-353' | string;
+export type DProjectIdClasse = "-350" | "-351" | "-352" | "-353" | string;
 
 /**
  * Representação canônica de um DProject V2 (ADR-V2-051).
@@ -153,12 +153,37 @@ export type TaskStatus = V3Intention;
 
 export type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "URGENT";
 
-export type TaskType =
-  | "FEATURE"
-  | "BUG"
-  | "IMPROVEMENT"
-  | "REVIEW"
-  | "EXPLAIN";
+export type TaskType = "FEATURE" | "BUG" | "IMPROVEMENT" | "REVIEW" | "EXPLAIN";
+
+/**
+ * Estado de execução IA ativa (DPedido idClasse=-300..-304 com `baixado=false`).
+ *
+ * Quando uma task tem `activeExecution !== null`, o usuário clicou em
+ * "Executar" e o trabalho está rodando no agente VPS — a janela é
+ * irreversível (consome tokens da assinatura Claude Max). Por isso a UI
+ * deve tratar a task como **read-only** enquanto este campo estiver
+ * populado: sem drag-and-drop, sem edição inline, sem mover de coluna.
+ *
+ * O backend só inclui o objeto quando há uma execução **viva** (baixado=false).
+ * Quando o agente conclui (sucesso/falha/expira/rejeita), o campo volta a
+ * `null` no próximo refresh — o frontend deve invalidar `['tasks']` ao
+ * detectar status terminal no polling para destravar a UI sem reload.
+ */
+export interface ActiveExecutionDto {
+  /** ID do DPedido (BigInt como string) — usado como chave do polling. */
+  id: string;
+  /**
+   * Estado simplificado derivado dos campos `aprovado`/`baixado` do DPedido.
+   * - `awaiting_approval`: aprovado=false (gate de risco MEDIUM/HIGH pendente)
+   * - `running`: aprovado=true, baixado=false (executando no agente VPS)
+   * - `queued`: reservado para variantes futuras
+   */
+  status: "queued" | "running" | "awaiting_approval";
+  /** Risco derivado de idClasse: -301=LOW, -302=MEDIUM, -303=HIGH. */
+  riskLevel: "LOW" | "MEDIUM" | "HIGH";
+  /** Data ISO 8601 de criação do DPedido. */
+  startedAt: string;
+}
 
 /**
  * Representação canônica de uma DTask V2.
@@ -193,6 +218,11 @@ export interface TaskResponseDto {
   dueDate?: string | null;
   /** idClasse canônico: '-154' = TASK, '-200' = PHASE. */
   idClasse: string;
+  /**
+   * Execução IA ativa associada à task. `null` quando não há execução
+   * em andamento. Quando presente, a UI deve travar a task (read-only).
+   */
+  activeExecution?: ActiveExecutionDto | null;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -258,7 +288,7 @@ export interface TeamResponseDto {
   color?: string | null;
   icon?: string | null;
   memberCount?: number;
-  myCargo?: 'LEAD' | 'MEMBER' | null;
+  myCargo?: "LEAD" | "MEMBER" | null;
   canEdit?: boolean;
   canDelete?: boolean;
   criadoEm: string;
@@ -269,7 +299,7 @@ export interface TeamMemberDto {
   userId: string;
   nome: string;
   email?: string | null;
-  cargo: 'LEAD' | 'MEMBER';
+  cargo: "LEAD" | "MEMBER";
 }
 
 // ─── Organizations ───────────────────────────────────────────────────────────
