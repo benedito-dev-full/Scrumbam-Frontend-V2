@@ -31,10 +31,10 @@ export default function InboxPage() {
   const router = useRouter();
   const [tab, setTab] = useState<TabId>("all");
 
-  // Carrega "todas" para os contadores das abas (filtra localmente). Quando
-  // tab='unread' usamos a query 'unread' que vai com unreadOnly=true ao servidor.
+  // Carrega "todas" uma única vez e filtra client-side para cada aba. A
+  // contagem de não lidas vem do endpoint dedicado `/notifications/unread-count`
+  // (já pollado pelo sino), com fallback para `all.filter(!n.read)`.
   const allQuery = useNotifications("all");
-  const unreadQuery = useNotifications("unread");
   const unreadCountQuery = useUnreadCount();
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
@@ -42,7 +42,7 @@ export default function InboxPage() {
 
   const all = useMemo(() => allQuery.data ?? [], [allQuery.data]);
   const unreadCount =
-    unreadCountQuery.data?.count ?? unreadQuery.data?.length ?? 0;
+    unreadCountQuery.data?.count ?? all.filter((n) => !n.read).length;
 
   const counts: Record<TabId, number | undefined> = {
     all: all.length,
@@ -70,7 +70,9 @@ export default function InboxPage() {
   function handleRowClick(n: NotificationDto) {
     const target = resolveNotificationTarget(n);
     if (!n.read) markAsRead.mutate(n.id);
-    if (target) router.push(target);
+    // Fallback consistente com o popover do sino: quando não há rota
+    // representativa (target === null), permanece em /inbox.
+    router.push(target ?? "/inbox");
   }
 
   return (

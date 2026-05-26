@@ -182,11 +182,20 @@ export function useDeleteNotification() {
 /**
  * Decide o destino de navegação ao clicar numa notificação.
  *
- * Prioridade: taskId → `/tasks/:id`; projectId → `/spaces/:id`; senão null
- * (o consumidor pode levar para `/inbox` como fallback).
+ * Regras (atualizadas após remoção das rotas `/tasks/*` standalone — task
+ * sempre vive dentro de uma list = project filho):
+ *
+ * - `taskId` + `projectId` → `/lists/:projectId` (rota canônica de tasks).
+ * - `taskId` sem `projectId` → `null` (raro; não há rota representativa).
+ * - `projectId` sem `taskId` → `/spaces/:projectId`.
+ * - `executionId` → `null` (ainda não há rota de execução isolada).
+ *
+ * Caller deve usar fallback (ex.: `/inbox`) quando o retorno for `null`.
  */
 export function resolveNotificationTarget(n: NotificationDto): string | null {
-  if (n.taskId) return `/tasks/${n.taskId}`;
+  if (n.taskId && n.projectId) return `/lists/${n.projectId}`;
+  if (n.taskId) return null;
   if (n.projectId) return `/spaces/${n.projectId}`;
+  if (n.executionId) return null;
   return null;
 }

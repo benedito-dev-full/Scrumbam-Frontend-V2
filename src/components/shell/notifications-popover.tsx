@@ -66,7 +66,8 @@ export function NotificationsPopover() {
               border: 0,
               cursor: "pointer",
               color: "var(--muted-foreground)",
-              transition: "background .12s, color .12s",
+              transition: "background .12s, color .12s, box-shadow .12s",
+              outline: "none",
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.background = "var(--accent)";
@@ -75,6 +76,15 @@ export function NotificationsPopover() {
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "none";
               e.currentTarget.style.color = "var(--muted-foreground)";
+            }}
+            onFocus={(e) => {
+              // A11y: anel visível apenas quando navegando via teclado.
+              if (e.currentTarget.matches(":focus-visible")) {
+                e.currentTarget.style.boxShadow = "0 0 0 2px var(--primary)";
+              }
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.boxShadow = "none";
             }}
           >
             <Bell size={15} strokeWidth={1.6} />
