@@ -14,7 +14,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { useQueryClient } from '@tanstack/react-query';
-import { Play, Bot, Loader2 } from 'lucide-react';
+import { Play, Bot, Loader2, User } from 'lucide-react';
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { useTasksByProject, useUpdateTaskStatus } from '@/hooks/use-tasks';
@@ -27,7 +27,7 @@ import {
 import { qk } from '@/lib/query-keys';
 import { cn } from '@/lib/utils';
 import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer';
-import { useTaskExecution } from '@/hooks/use-task-execution';
+import { useTaskExecution, AI_ASSIGNEE_ID } from '@/hooks/use-task-execution';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { KanbanColumnConfig } from '@/lib/mappers/task-status.mapper';
@@ -225,7 +225,8 @@ function TaskCard({
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id });
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
   const prioColor = priorityToColor(task.priority);
-  const { assignedAgent, execution, startExecution } = useTaskExecution(task.id);
+  const isAiAssigned = task.assigneeId === AI_ASSIGNEE_ID;
+  const { execution, startExecution } = useTaskExecution(task.id);
   const isRunning = execution?.status === 'running';
   const isDone = execution?.status === 'done';
 
@@ -242,8 +243,8 @@ function TaskCard({
         isDragging && !isDragOverlay && 'opacity-40',
         isDragOverlay && 'rotate-1 shadow-xl ring-1 ring-violet-500/40',
         !isDragging && !isDragOverlay && 'hover:border-border/80 hover:bg-muted/30',
-        isRunning && 'border-violet-500/30 bg-violet-500/5',
-        isDone && 'border-green-500/20',
+        isAiAssigned && isRunning && 'border-violet-500/30 bg-violet-500/5',
+        isAiAssigned && isDone && 'border-green-500/20',
       )}
     >
       {/* Identifier + prioridade */}
@@ -281,13 +282,14 @@ function TaskCard({
         </div>
       )}
 
-      {/* Footer: agente + botão executar */}
-      {(assignedAgent || isRunning || isDone) && (
+      {/* Footer: IA assignee + botão executar */}
+      {isAiAssigned && (
         <div className="mt-2.5 flex items-center justify-between border-t border-border pt-2">
-          {/* Badge do agente */}
           <div className="flex items-center gap-1.5">
-            <Bot className="size-3 text-muted-foreground" />
-            <span className="text-[11px] text-muted-foreground">{assignedAgent?.name ?? '—'}</span>
+            <div className="flex size-4 items-center justify-center rounded-full bg-violet-500/15">
+              <Bot className="size-2.5 text-violet-400" />
+            </div>
+            <span className="text-[11px] text-violet-400">IA</span>
             {(isRunning || isDone) && (
               <span
                 className={cn(
@@ -301,14 +303,10 @@ function TaskCard({
             )}
           </div>
 
-          {/* Botão executar rápido — só aparece no hover se idle */}
-          {assignedAgent && !execution && (
+          {!execution && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                startExecution();
-              }}
+              onClick={(e) => { e.stopPropagation(); startExecution(); }}
               title="Executar com IA"
               className="flex items-center gap-1 rounded-md bg-violet-600/80 px-2 py-1 text-[11px] font-semibold text-white opacity-0 transition-all hover:bg-violet-500 group-hover:opacity-100"
             >
@@ -317,9 +315,17 @@ function TaskCard({
             </button>
           )}
 
-          {isRunning && (
-            <Loader2 className="size-3.5 animate-spin text-violet-400" />
-          )}
+          {isRunning && <Loader2 className="size-3.5 animate-spin text-violet-400" />}
+        </div>
+      )}
+
+      {/* Footer: responsável humano */}
+      {task.assigneeId && !isAiAssigned && (
+        <div className="mt-2.5 flex items-center gap-1.5 border-t border-border pt-2">
+          <div className="flex size-4 items-center justify-center rounded-full bg-muted text-[9px] font-bold text-foreground">
+            <User className="size-2.5 text-muted-foreground" />
+          </div>
+          <span className="text-[11px] text-muted-foreground">Atribuído</span>
         </div>
       )}
     </div>

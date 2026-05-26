@@ -2,7 +2,7 @@
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
 import { useState } from 'react';
-import { X, Calendar, Bot, Play, ChevronDown, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Calendar, Bot, Play, ChevronDown, CheckCircle2, AlertCircle, Loader2, User } from 'lucide-react';
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { useTask, useUpdateTask, useUpdateTaskStatus } from '@/hooks/use-tasks';
@@ -18,9 +18,9 @@ import {
   detectTaskType,
   TASK_TYPE_LABELS,
   TASK_TYPE_COLORS,
-  MOCK_AGENTS,
+  AI_ASSIGNEE_ID,
 } from '@/hooks/use-task-execution';
-import type { MockAgent } from '@/hooks/use-task-execution';
+import { useProjectMembers } from '@/hooks/use-members';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { V3Intention } from '@/lib/types/api';
@@ -155,140 +155,178 @@ export function TaskDetailDrawer({
           />
         </Field>
 
-        {/* Execução IA */}
-        <ExecutionSection taskId={taskId} taskName={task.nome} />
+        {/* Responsável */}
+        <Field label="Responsável">
+          <AssigneePicker
+            projectId={projectId}
+            current={task.assigneeId ?? null}
+            onChange={(id) => updateTask({ id: taskId, projectId, dto: { assigneeId: id } })}
+          />
+        </Field>
+
+        {/* Execução IA — só aparece quando responsável = IA */}
+        {task.assigneeId === AI_ASSIGNEE_ID && (
+          <AiExecutionPanel taskId={taskId} taskName={task.nome} />
+        )}
       </div>
     </DrawerShell>
   );
 }
 
-// ─── ExecutionSection ─────────────────────────────────────────────────────────
+// ─── AssigneePicker ───────────────────────────────────────────────────────────
 
-function ExecutionSection({ taskId, taskName }: { taskId: string; taskName: string }) {
-  const { assignedAgent, execution, assignAgent, startExecution, clearExecution } =
-    useTaskExecution(taskId);
+function AssigneePicker({
+  projectId,
+  current,
+  onChange,
+}: {
+  projectId: string;
+  current: string | null;
+  onChange: (id: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { data: members = [] } = useProjectMembers(projectId);
+
+  const isAi = current === AI_ASSIGNEE_ID;
+  const assignedMember = members.find((m) => m.userId === current) ?? null;
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-[13px] transition-colors hover:border-ring/60"
+      >
+        {isAi ? (
+          <div className="flex items-center gap-2">
+            <div className="flex size-5 items-center justify-center rounded-full bg-violet-500/15">
+              <Bot className="size-3 text-violet-400" />
+            </div>
+            <span className="font-medium text-foreground">IA</span>
+            <span className="rounded-full bg-violet-500/10 px-1.5 py-px text-[10px] font-semibold text-violet-400">
+              automático
+            </span>
+          </div>
+        ) : assignedMember ? (
+          <div className="flex items-center gap-2">
+            <div className="flex size-5 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-foreground">
+              {assignedMember.nome.charAt(0).toUpperCase()}
+            </div>
+            <span className="font-medium text-foreground">{assignedMember.nome}</span>
+          </div>
+        ) : (
+          <span className="text-muted-foreground">Sem responsável</span>
+        )}
+        <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border bg-popover shadow-lg">
+          <div className="flex flex-col gap-0.5 p-1">
+            {/* Opção IA */}
+            <button
+              type="button"
+              onClick={() => { onChange(AI_ASSIGNEE_ID); setOpen(false); }}
+              className={cn(
+                'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted',
+                isAi && 'bg-violet-500/10',
+              )}
+            >
+              <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-violet-500/15">
+                <Bot className="size-3 text-violet-400" />
+              </div>
+              <div className="flex flex-1 flex-col">
+                <span className="font-semibold text-foreground">IA</span>
+                <span className="text-[11px] text-muted-foreground">Executar automaticamente</span>
+              </div>
+              {isAi && <span className="size-1.5 rounded-full bg-violet-400" />}
+            </button>
+
+            {/* Divisor */}
+            {members.length > 0 && <div className="my-1 border-t border-border" />}
+
+            {/* Membros do projeto */}
+            {members.map((m) => (
+              <button
+                key={m.userId}
+                type="button"
+                onClick={() => { onChange(m.userId); setOpen(false); }}
+                className={cn(
+                  'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted',
+                  current === m.userId && 'bg-muted',
+                )}
+              >
+                <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-foreground">
+                  {m.nome.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex flex-1 flex-col">
+                  <span className="font-medium text-foreground">{m.nome}</span>
+                  {m.cargo && (
+                    <span className="text-[11px] text-muted-foreground">{m.cargo}</span>
+                  )}
+                </div>
+                {current === m.userId && <span className="size-1.5 rounded-full bg-foreground/40" />}
+              </button>
+            ))}
+
+            {/* Remover */}
+            {current && (
+              <>
+                <div className="my-1 border-t border-border" />
+                <button
+                  type="button"
+                  onClick={() => { onChange(null); setOpen(false); }}
+                  className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-[12px] text-muted-foreground transition-colors hover:bg-muted"
+                >
+                  <User className="size-3.5" />
+                  Remover responsável
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── AiExecutionPanel ─────────────────────────────────────────────────────────
+
+function AiExecutionPanel({ taskId, taskName }: { taskId: string; taskName: string }) {
+  const { execution, startExecution, clearExecution } = useTaskExecution(taskId);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [agentPickerOpen, setAgentPickerOpen] = useState(false);
 
   const taskType = detectTaskType(taskName);
   const typeColor = TASK_TYPE_COLORS[taskType];
   const typeLabel = TASK_TYPE_LABELS[taskType];
+  const isRunning = execution?.status === 'running';
+  const isDone = execution?.status === 'done';
+  const isFailed = execution?.status === 'failed';
 
   return (
     <>
-      <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-muted/10 p-3.5">
-        {/* Header da seção */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Bot className="size-3.5 text-muted-foreground" />
-            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-              Execução IA
-            </span>
-            <span
-              className="rounded-full px-1.5 py-px text-[10px] font-semibold"
-              style={{ background: `${typeColor}20`, color: typeColor }}
-            >
-              {typeLabel}
-            </span>
-          </div>
+      <div className="flex flex-col gap-2.5 rounded-xl border border-violet-500/20 bg-violet-500/5 p-3.5">
+        {/* Header */}
+        <div className="flex items-center gap-2">
+          <Bot className="size-3.5 text-violet-400" />
+          <span className="text-[12px] font-semibold text-violet-300">Execução IA</span>
+          <span
+            className="rounded-full px-1.5 py-px text-[10px] font-semibold"
+            style={{ background: `${typeColor}20`, color: typeColor }}
+          >
+            {typeLabel}
+          </span>
         </div>
 
-        {/* Agente atribuído */}
-        <div className="flex flex-col gap-1.5">
-          <span className="text-[11px] text-muted-foreground">Agente</span>
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setAgentPickerOpen((v) => !v)}
-              className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-[13px] transition-colors hover:border-ring/60"
-            >
-              {assignedAgent ? (
-                <div className="flex items-center gap-2">
-                  <span
-                    className="size-2 rounded-full"
-                    style={{
-                      background: assignedAgent.status === 'online' ? '#22c55e' : '#71717a',
-                    }}
-                  />
-                  <span className="font-medium text-foreground">{assignedAgent.name}</span>
-                  <span className="text-muted-foreground">{assignedAgent.hostname}</span>
-                </div>
-              ) : (
-                <span className="text-muted-foreground">Nenhum agente atribuído</span>
-              )}
-              <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
-            </button>
-
-            {agentPickerOpen && (
-              <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border bg-popover shadow-lg">
-                <div className="flex flex-col gap-0.5 p-1">
-                  {MOCK_AGENTS.map((agent) => (
-                    <button
-                      key={agent.id}
-                      type="button"
-                      onClick={() => {
-                        assignAgent(agent.id);
-                        setAgentPickerOpen(false);
-                        clearExecution();
-                      }}
-                      className={cn(
-                        'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted',
-                        assignedAgent?.id === agent.id && 'bg-muted',
-                        agent.status === 'offline' && 'opacity-50',
-                      )}
-                      disabled={agent.status === 'offline'}
-                    >
-                      <span
-                        className="size-2 shrink-0 rounded-full"
-                        style={{
-                          background: agent.status === 'online' ? '#22c55e' : '#71717a',
-                        }}
-                      />
-                      <div className="flex flex-1 flex-col">
-                        <span className="font-medium text-foreground">{agent.name}</span>
-                        <span className="text-[11px] text-muted-foreground">{agent.hostname}</span>
-                      </div>
-                      {agent.status === 'offline' && (
-                        <span className="text-[10px] text-muted-foreground">offline</span>
-                      )}
-                    </button>
-                  ))}
-                  {assignedAgent && (
-                    <>
-                      <div className="my-1 border-t border-border" />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          assignAgent(null);
-                          setAgentPickerOpen(false);
-                          clearExecution();
-                        }}
-                        className="rounded-md px-2.5 py-2 text-left text-[12px] text-red-400 transition-colors hover:bg-red-500/10"
-                      >
-                        Remover agente
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Estado da execução */}
-        {execution?.status === 'running' && (
-          <div className="flex items-center gap-2 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2.5">
+        {/* Estado */}
+        {isRunning && (
+          <div className="flex items-center gap-2 rounded-lg bg-violet-500/10 px-3 py-2.5">
             <Loader2 className="size-3.5 shrink-0 animate-spin text-violet-400" />
-            <div className="flex flex-col gap-0.5">
-              <span className="text-[12px] font-semibold text-violet-300">Executando...</span>
-              <span className="text-[11px] text-muted-foreground">
-                {assignedAgent?.name} está processando a task
-              </span>
-            </div>
+            <span className="text-[12px] text-violet-300">Agente processando a task...</span>
           </div>
         )}
 
-        {execution?.status === 'done' && (
+        {isDone && (
           <div className="flex flex-col gap-2 rounded-lg border border-green-500/20 bg-green-500/5 p-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="size-3.5 shrink-0 text-green-400" />
@@ -315,7 +353,7 @@ function ExecutionSection({ taskId, taskName }: { taskId: string; taskName: stri
           </div>
         )}
 
-        {execution?.status === 'failed' && (
+        {isFailed && (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
             <AlertCircle className="size-3.5 shrink-0 text-red-400" />
             <span className="text-[12px] text-red-300">Execução falhou</span>
@@ -330,7 +368,7 @@ function ExecutionSection({ taskId, taskName }: { taskId: string; taskName: stri
         )}
 
         {/* Botão executar */}
-        {assignedAgent && !execution && (
+        {!execution && (
           <button
             type="button"
             onClick={() => setConfirmOpen(true)}
@@ -341,11 +379,11 @@ function ExecutionSection({ taskId, taskName }: { taskId: string; taskName: stri
           </button>
         )}
 
-        {assignedAgent && execution?.status === 'done' && (
+        {isDone && (
           <button
             type="button"
             onClick={() => { clearExecution(); setConfirmOpen(true); }}
-            className="flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-[12px] text-muted-foreground transition-colors hover:border-ring/60 hover:text-foreground"
+            className="flex items-center justify-center gap-2 rounded-lg border border-violet-500/30 px-3 py-2 text-[12px] text-violet-400 transition-colors hover:bg-violet-500/10"
           >
             <Play className="size-3.5" />
             Executar novamente
@@ -353,16 +391,11 @@ function ExecutionSection({ taskId, taskName }: { taskId: string; taskName: stri
         )}
       </div>
 
-      {/* Modal de confirmação */}
-      {confirmOpen && assignedAgent && (
-        <ExecutionConfirmModal
+      {confirmOpen && (
+        <AiConfirmModal
           taskName={taskName}
           taskType={taskType}
-          agent={assignedAgent}
-          onConfirm={() => {
-            setConfirmOpen(false);
-            startExecution();
-          }}
+          onConfirm={() => { setConfirmOpen(false); startExecution(); }}
           onCancel={() => setConfirmOpen(false)}
         />
       )}
@@ -370,18 +403,16 @@ function ExecutionSection({ taskId, taskName }: { taskId: string; taskName: stri
   );
 }
 
-// ─── ExecutionConfirmModal ────────────────────────────────────────────────────
+// ─── AiConfirmModal ───────────────────────────────────────────────────────────
 
-function ExecutionConfirmModal({
+function AiConfirmModal({
   taskName,
   taskType,
-  agent,
   onConfirm,
   onCancel,
 }: {
   taskName: string;
   taskType: ReturnType<typeof detectTaskType>;
-  agent: MockAgent;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -401,22 +432,19 @@ function ExecutionConfirmModal({
         className="fixed left-1/2 top-1/2 z-[61] w-full max-w-[400px] -translate-x-1/2 -translate-y-1/2 px-4"
       >
         <div className="rounded-2xl border border-border bg-background shadow-2xl">
-          {/* Header */}
           <div className="border-b border-border p-5">
             <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-violet-500/10">
               <Bot className="size-5 text-violet-400" />
             </div>
             <h2 className="text-[16px] font-bold text-foreground">Confirmar execução</h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              O agente vai executar esta task automaticamente.
+              O agente do projeto vai executar esta task automaticamente.
             </p>
           </div>
 
-          {/* Detalhes */}
-          <div className="flex flex-col gap-3 p-5">
-            {/* Task */}
+          <div className="p-5">
             <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3">
-              <div className="flex flex-col gap-1 min-w-0">
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Task
                 </span>
@@ -429,21 +457,8 @@ function ExecutionConfirmModal({
                 {typeLabel}
               </span>
             </div>
-
-            {/* Agente */}
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
-              <span className="size-2 shrink-0 rounded-full bg-green-500" />
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Agente
-                </span>
-                <span className="text-[13px] font-medium text-foreground">{agent.name}</span>
-                <span className="text-[11px] text-muted-foreground">{agent.hostname}</span>
-              </div>
-            </div>
           </div>
 
-          {/* Ações */}
           <div className="flex gap-2 border-t border-border p-4">
             <button
               type="button"
