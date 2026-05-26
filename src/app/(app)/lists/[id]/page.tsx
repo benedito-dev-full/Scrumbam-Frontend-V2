@@ -868,6 +868,30 @@ function TaskRowBackend({
             {task.nome}
           </span>
           {task.idPai && <IcGitFork size={12} />}
+          {/* Botão Executar — só em tasks atribuídas ao Claude */}
+          {isAiAssignee && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); /* TODO: trigger execution */ }}
+              title="Executar com Claude"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 5,
+                padding: "3px 9px", borderRadius: 6, border: 0, cursor: "pointer",
+                background: "rgba(34,197,94,0.18)",
+                color: "#4ade80",
+                fontSize: 11, fontWeight: 600,
+                flexShrink: 0,
+                transition: "background .15s",
+              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(34,197,94,0.30)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "rgba(34,197,94,0.18)"; }}
+            >
+              <svg width="9" height="10" viewBox="0 0 9 10" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M1 1.5L8 5L1 8.5V1.5Z" fill="#4ade80" />
+              </svg>
+              Executar
+            </button>
+          )}
           {/* "+" no final da célula Nome, antes de Responsável — só no hover */}
           {hovered && (
             <button
