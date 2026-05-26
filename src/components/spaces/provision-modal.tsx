@@ -1,21 +1,23 @@
 'use client';
 
-// Modal de 2 passos para vincular um agente VPS a um Espaço.
-// Passo 1: selecionar agente. Passo 2: configurar repositório.
+// Modal de 3 passos para vincular um agente VPS a um Espaço.
+// Passo 1: selecionar agente.
+// Passo 2: configurar URL do repositório.
+// Passo 3 (SSH): copiar deploy key e adicionar no GitHub antes de provisionar.
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
 import { useState, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Server, X, ChevronRight, Check, AlertCircle, Globe, Lock } from 'lucide-react';
+import { Server, X, ChevronRight, Check, AlertCircle, Globe, Lock, Copy, ExternalLink, Loader2 } from 'lucide-react';
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 import { useAgents } from '@/hooks/use-agents';
-import { useLinkSpaceAgent } from '@/hooks/use-space-agent-link';
+import { useLinkSpaceAgent, useGenerateDeployKey, useProvisionProject } from '@/hooks/use-space-agent-link';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-import type { AgentDto } from '@/lib/types/api';
+import type { AgentDto, DeployKeyResponseDto } from '@/lib/types/api';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface ProvisionModalProps {
@@ -24,13 +26,11 @@ interface ProvisionModalProps {
   open: boolean;
   onClose: () => void;
   initialStep?: 1 | 2;
-  /** Para re-configurar: pré-seleciona o agente atual */
   initialAgentId?: string;
-  /** Para re-configurar: pré-preenche a URL do repo */
   initialRepoUrl?: string;
 }
 
-// ─── Validação do passo 2 ─────────────────────────────────────────────────────
+// ─── Constantes ───────────────────────────────────────────────────────────────
 
 const REPO_URL_REGEX =
   /^(git@(github\.com|gitlab\.com|bitbucket\.org):[A-Za-z0-9_.\-]+\/[A-Za-z0-9_.\-]+(\.git)?|https:\/\/(github\.com|gitlab\.com|bitbucket\.org)\/[A-Za-z0-9_.\-]+\/[A-Za-z0-9_.\-]+(\.git)?)$/;
@@ -50,9 +50,6 @@ function detectProtocol(url: string): 'ssh' | 'https' | null {
   return null;
 }
 
-// ─── Utilitários ──────────────────────────────────────────────────────────────
-
-/** Converte nome em kebab-case para sugestão de path */
 function toKebab(str: string): string {
   return str
     .trim()
@@ -64,7 +61,6 @@ function toKebab(str: string): string {
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
-/** Badge de status rápido para o card do agente */
 function AgentStatusBadge({ status }: { status: AgentDto['status'] }) {
   const online = status === 'online';
   return (
@@ -92,7 +88,6 @@ function AgentStatusBadge({ status }: { status: AgentDto['status'] }) {
   );
 }
 
-/** Card de seleção de agente (radio visual) */
 function AgentCard({
   agent,
   selected,
@@ -129,7 +124,6 @@ function AgentCard({
         textAlign: 'left',
       }}
     >
-      {/* Ícone */}
       <div style={{
         width: 32,
         height: 32,
@@ -144,7 +138,6 @@ function AgentCard({
         <Server size={15} style={{ color: selected ? '#22d3ee' : '#71717a' }} />
       </div>
 
-      {/* Texto */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: '#e4e4e4', marginBottom: 3 }}>
           {agent.name}
@@ -154,7 +147,6 @@ function AgentCard({
         </div>
       </div>
 
-      {/* Status + check */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
         <AgentStatusBadge status={agent.status} />
         {selected && (
@@ -175,7 +167,6 @@ function AgentCard({
   );
 }
 
-/** Campo de formulário com label e mensagem de erro */
 function FormField({
   label,
   error,
@@ -199,17 +190,202 @@ function FormField({
   );
 }
 
+// ─── Passo 3: Deploy Key ──────────────────────────────────────────────────────
+
+function Step3DeployKey({
+  deployKey,
+  isLoading,
+  error,
+  onProvision,
+  isProvisioning,
+}: {
+  deployKey: DeployKeyResponseDto | null;
+  isLoading: boolean;
+  error: boolean;
+  onProvision: () => void;
+  isProvisioning: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    if (!deployKey?.publicKey) return;
+    navigator.clipboard.writeText(deployKey.publicKey).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '32px 0', color: '#71717a' }}>
+        <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
+        <span style={{ fontSize: 13 }}>Gerando deploy key no agente...</span>
+        <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  if (error || !deployKey) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '12px 14px',
+        borderRadius: 8,
+        background: 'rgba(239,68,68,0.07)',
+        border: '1px solid rgba(239,68,68,0.25)',
+        fontSize: 13,
+        color: '#f87171',
+      }}>
+        <AlertCircle size={14} style={{ flexShrink: 0 }} />
+        Erro ao gerar deploy key. Verifique se o agente está online e tente novamente.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Explicação */}
+      <div style={{
+        padding: '10px 14px',
+        borderRadius: 8,
+        background: 'rgba(251,191,36,0.05)',
+        border: '1px solid rgba(251,191,36,0.2)',
+        fontSize: 12,
+        color: '#a3a3a3',
+        lineHeight: 1.6,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+          <Lock size={12} style={{ color: '#fbbf24', flexShrink: 0 }} />
+          <span style={{ fontWeight: 700, color: '#fbbf24', fontSize: 12 }}>Repositório privado — adicione a deploy key</span>
+        </div>
+        O agente gerou um par de chaves SSH exclusivo para este projeto. Copie a chave pública abaixo e adicione como <strong style={{ color: '#e4e4e4' }}>Deploy Key</strong> no repositório do GitHub antes de provisionar.
+      </div>
+
+      {/* Chave pública */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#888892' }}>Chave pública (copie e cole no GitHub)</span>
+          {deployKey.alreadyExisted && (
+            <span style={{ fontSize: 10, color: '#71717a', fontStyle: 'italic' }}>chave já existia</span>
+          )}
+        </div>
+        <div style={{ position: 'relative' }}>
+          <div style={{
+            padding: '10px 44px 10px 12px',
+            borderRadius: 7,
+            border: '1px solid rgba(255,255,255,0.1)',
+            background: 'rgba(0,0,0,0.3)',
+            fontFamily: 'monospace',
+            fontSize: 11,
+            color: '#a3a3a3',
+            wordBreak: 'break-all',
+            lineHeight: 1.5,
+            minHeight: 60,
+          }}>
+            {deployKey.publicKey}
+          </div>
+          <button
+            type="button"
+            onClick={handleCopy}
+            title="Copiar"
+            style={{
+              position: 'absolute',
+              top: 8,
+              right: 8,
+              width: 28,
+              height: 28,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 6,
+              border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`,
+              background: copied ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.04)',
+              cursor: 'pointer',
+              transition: 'all 150ms',
+              color: copied ? '#4ade80' : '#71717a',
+            }}
+          >
+            {copied ? <Check size={13} /> : <Copy size={13} />}
+          </button>
+        </div>
+        <span style={{ fontSize: 11, color: '#52525b', fontFamily: 'monospace' }}>
+          {deployKey.fingerprint}
+        </span>
+      </div>
+
+      {/* Passos */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: '#888892' }}>Como adicionar</span>
+        <ol style={{ margin: 0, padding: '0 0 0 18px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+          {deployKey.instructions.map((step, i) => (
+            <li key={i} style={{ fontSize: 12, color: '#71717a', lineHeight: 1.5 }}>{step}</li>
+          ))}
+        </ol>
+      </div>
+
+      {/* Link direto */}
+      <a
+        href="https://github.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          fontSize: 12,
+          color: '#22d3ee',
+          textDecoration: 'none',
+        }}
+      >
+        <ExternalLink size={12} />
+        Abrir GitHub
+      </a>
+
+      {/* Botão confirmar */}
+      <button
+        type="button"
+        onClick={onProvision}
+        disabled={isProvisioning}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 8,
+          width: '100%',
+          height: 40,
+          borderRadius: 8,
+          border: 'none',
+          background: isProvisioning
+            ? 'rgba(34,211,238,0.3)'
+            : 'linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%)',
+          color: '#0a0a0a',
+          fontSize: 13,
+          fontWeight: 700,
+          cursor: isProvisioning ? 'not-allowed' : 'pointer',
+          transition: 'opacity 150ms',
+          marginTop: 4,
+        }}
+      >
+        {isProvisioning ? (
+          <>
+            <Loader2 size={14} style={{ animation: 'spin 1s linear infinite' }} />
+            Provisionando...
+          </>
+        ) : (
+          <>
+            <Check size={14} />
+            Adicionei a key — Provisionar repositório
+          </>
+        )}
+      </button>
+    </div>
+  );
+}
+
 // ─── Componente principal ─────────────────────────────────────────────────────
 
-/**
- * Modal de 2 passos para vincular um agente VPS ao Espaço.
- *
- * Passo 1: lista agentes disponíveis para seleção (radio visual).
- * Passo 2: formulário RHF+Zod para URL, branch e caminho na VPS.
- *
- * @example
- * <ProvisionModal spaceId={id} spaceName="Meu Projeto" open={open} onClose={() => setOpen(false)} />
- */
 export function ProvisionModal({
   spaceId,
   spaceName,
@@ -219,11 +395,15 @@ export function ProvisionModal({
   initialAgentId,
   initialRepoUrl,
 }: ProvisionModalProps) {
-  const [step, setStep] = useState<1 | 2>(initialStep);
+  const [step, setStep] = useState<1 | 2 | 3>(initialStep);
   const [selectedAgentId, setSelectedAgentId] = useState<string>(initialAgentId ?? '');
+  const [deployKey, setDeployKey] = useState<DeployKeyResponseDto | null>(null);
+  const [deployKeyError, setDeployKeyError] = useState(false);
 
   const { data: agents = [], isLoading: loadingAgents } = useAgents();
   const linkMutation = useLinkSpaceAgent(spaceId);
+  const generateKeyMutation = useGenerateDeployKey();
+  const provisionMutation = useProvisionProject();
 
   const form = useForm<Step2Data>({
     resolver: zodResolver(step2Schema),
@@ -233,12 +413,13 @@ export function ProvisionModal({
   const repoUrlValue = useWatch({ control: form.control, name: 'remoteRepoUrl' }) ?? '';
   const protocol = detectProtocol(repoUrlValue);
 
-  // Reset ao abrir
   useEffect(() => {
     if (!open) return;
     const id = setTimeout(() => {
       setStep(initialStep);
       setSelectedAgentId(initialAgentId ?? '');
+      setDeployKey(null);
+      setDeployKeyError(false);
       form.reset({ remoteRepoUrl: initialRepoUrl ?? '' });
     }, 0);
     return () => clearTimeout(id);
@@ -250,19 +431,55 @@ export function ProvisionModal({
   const onlineAgents = agents.filter((a) => a.status === 'online');
   const hasOnlineAgents = onlineAgents.length > 0;
 
-  async function handleConfirm(data: Step2Data) {
+  async function handleStep2Confirm(data: Step2Data) {
     if (!selectedAgentId) return;
+    const detectedProtocol = detectProtocol(data.remoteRepoUrl);
+
     await linkMutation.mutateAsync({
       agentId: selectedAgentId,
       remoteRepoUrl: data.remoteRepoUrl,
       remoteBranch: 'main',
       remotePath: `/home/dev/projetos/${toKebab(spaceName)}`,
     });
+
+    if (detectedProtocol === 'ssh') {
+      // Repositório privado: vai para passo 3 para gerar e exibir deploy key
+      setStep(3);
+      setDeployKey(null);
+      setDeployKeyError(false);
+      try {
+        const key = await generateKeyMutation.mutateAsync({ projectId: spaceId, agentId: selectedAgentId });
+        setDeployKey(key);
+      } catch {
+        setDeployKeyError(true);
+      }
+    } else {
+      // Repositório público: provisiona direto
+      try {
+        await provisionMutation.mutateAsync({ projectId: spaceId, agentId: selectedAgentId });
+      } catch {
+        // Provisioning fire-and-forget — modal fecha mesmo assim
+      }
+      onClose();
+    }
+  }
+
+  async function handleProvision() {
+    try {
+      await provisionMutation.mutateAsync({ projectId: spaceId, agentId: selectedAgentId });
+    } catch {
+      // Fire-and-forget — fecha mesmo com erro
+    }
     onClose();
   }
 
+  const stepLabels: Record<1 | 2 | 3, string> = {
+    1: 'Selecionar VPS',
+    2: 'Configurar repositório',
+    3: 'Deploy key',
+  };
+
   return (
-    /* Backdrop */
     <div
       style={{
         position: 'fixed',
@@ -277,10 +494,9 @@ export function ProvisionModal({
       }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      {/* Modal */}
       <div style={{
         width: '100%',
-        maxWidth: 480,
+        maxWidth: 500,
         background: '#171717',
         borderRadius: 12,
         border: '1px solid rgba(255,255,255,0.07)',
@@ -288,7 +504,7 @@ export function ProvisionModal({
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        maxHeight: '85vh',
+        maxHeight: '88vh',
       }}>
 
         {/* Header */}
@@ -302,41 +518,35 @@ export function ProvisionModal({
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {/* Steps indicator */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <div style={{
-                width: 22,
-                height: 22,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 11,
-                fontWeight: 700,
-                background: step === 1 ? '#22d3ee' : 'rgba(34,211,238,0.15)',
-                color: step === 1 ? '#0a0a0a' : '#22d3ee',
-                border: step === 1 ? 'none' : '1px solid rgba(34,211,238,0.3)',
-              }}>
-                {step > 1 ? <Check size={12} /> : '1'}
-              </div>
-              <div style={{ width: 20, height: 1, background: 'rgba(255,255,255,0.1)' }} />
-              <div style={{
-                width: 22,
-                height: 22,
-                borderRadius: '50%',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: 11,
-                fontWeight: 700,
-                background: step === 2 ? '#22d3ee' : 'rgba(255,255,255,0.05)',
-                color: step === 2 ? '#0a0a0a' : '#555',
-                border: step === 2 ? 'none' : '1px solid rgba(255,255,255,0.08)',
-              }}>
-                2
-              </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {([1, 2, 3] as const).map((s, idx) => (
+                <>
+                  <div
+                    key={s}
+                    style={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      background: step === s ? '#22d3ee' : step > s ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.05)',
+                      color: step === s ? '#0a0a0a' : step > s ? '#22d3ee' : '#555',
+                      border: step === s ? 'none' : step > s ? '1px solid rgba(34,211,238,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                    }}
+                  >
+                    {step > s ? <Check size={12} /> : s}
+                  </div>
+                  {idx < 2 && (
+                    <div key={`sep-${s}`} style={{ width: 16, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+                  )}
+                </>
+              ))}
             </div>
-            <span style={{ fontSize: 14, fontWeight: 600, color: '#e4e4e4' }}>
-              {step === 1 ? 'Selecionar VPS' : 'Configurar repositório'}
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#e4e4e4', marginLeft: 6 }}>
+              {stepLabels[step]}
             </span>
           </div>
 
@@ -355,7 +565,6 @@ export function ProvisionModal({
               background: 'none',
               cursor: 'pointer',
               color: '#71717a',
-              transition: 'background 120ms, color 120ms',
             }}
             onMouseEnter={e => { e.currentTarget.style.background = '#252525'; e.currentTarget.style.color = '#c4c4c4'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#71717a'; }}
@@ -365,7 +574,7 @@ export function ProvisionModal({
         </div>
 
         {/* Corpo scrollável */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
 
           {/* ── Passo 1: selecionar agente ── */}
           {step === 1 && (
@@ -375,18 +584,9 @@ export function ProvisionModal({
                   Carregando agentes...
                 </div>
               ) : agents.length === 0 ? (
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '24px 0',
-                  textAlign: 'center',
-                }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '24px 0', textAlign: 'center' }}>
                   <Server size={32} style={{ color: '#404048' }} />
-                  <p style={{ fontSize: 13, color: '#555', margin: 0 }}>
-                    Nenhum agente cadastrado.
-                  </p>
+                  <p style={{ fontSize: 13, color: '#555', margin: 0 }}>Nenhum agente cadastrado.</p>
                   <p style={{ fontSize: 12, color: '#404048', margin: 0 }}>
                     Vá em <strong style={{ color: '#888' }}>IA → Agentes</strong> para cadastrar um VPS.
                   </p>
@@ -410,7 +610,6 @@ export function ProvisionModal({
                       </span>
                     </div>
                   )}
-
                   {agents.map((agent) => (
                     <AgentCard
                       key={agent.id}
@@ -428,15 +627,11 @@ export function ProvisionModal({
           {step === 2 && (
             <form
               id="step2-form"
-              onSubmit={form.handleSubmit(handleConfirm)}
+              onSubmit={form.handleSubmit(handleStep2Confirm)}
               style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
             >
-              {/* Instrução de protocolo */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 8,
-              }}>
+              {/* Cards de instrução */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <div style={{
                   padding: '10px 12px',
                   borderRadius: 8,
@@ -494,7 +689,7 @@ export function ProvisionModal({
                 />
               </FormField>
 
-              {/* Badge dinâmico conforme protocolo digitado */}
+              {/* Badge dinâmico */}
               {protocol === 'https' && (
                 <div style={{
                   display: 'flex',
@@ -508,7 +703,7 @@ export function ProvisionModal({
                   color: '#4ade80',
                 }}>
                   <Globe size={13} style={{ flexShrink: 0 }} />
-                  Repositório público detectado — confirme que o repositório é de fato público antes de continuar.
+                  Repositório público detectado — o clone será feito automaticamente.
                 </div>
               )}
               {protocol === 'ssh' && (
@@ -524,7 +719,7 @@ export function ProvisionModal({
                   color: '#fbbf24',
                 }}>
                   <Lock size={13} style={{ flexShrink: 0 }} />
-                  Repositório privado detectado — confirme que a deploy key do agente foi adicionada ao repositório.
+                  Repositório privado — você precisará adicionar a deploy key no próximo passo.
                 </div>
               )}
 
@@ -546,9 +741,20 @@ export function ProvisionModal({
               )}
             </form>
           )}
+
+          {/* ── Passo 3: deploy key (apenas SSH) ── */}
+          {step === 3 && (
+            <Step3DeployKey
+              deployKey={deployKey}
+              isLoading={generateKeyMutation.isPending}
+              error={deployKeyError}
+              onProvision={handleProvision}
+              isProvisioning={provisionMutation.isPending}
+            />
+          )}
         </div>
 
-        {/* Footer com ações */}
+        {/* Footer */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -559,7 +765,7 @@ export function ProvisionModal({
           flexShrink: 0,
           background: '#171717',
         }}>
-          {/* Botão Voltar (passo 2 → passo 1) */}
+          {/* Voltar (passo 2 → 1) */}
           {step === 2 && (
             <button
               type="button"
@@ -573,7 +779,6 @@ export function ProvisionModal({
                 color: '#888892',
                 fontSize: 13,
                 cursor: 'pointer',
-                transition: 'background 120ms',
               }}
               onMouseEnter={e => { e.currentTarget.style.background = '#252525'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
@@ -582,29 +787,30 @@ export function ProvisionModal({
             </button>
           )}
 
-          {/* Botão Cancelar */}
-          <button
-            type="button"
-            onClick={onClose}
-            style={{
-              height: 34,
-              padding: '0 16px',
-              borderRadius: 7,
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'none',
-              color: '#888892',
-              fontSize: 13,
-              cursor: 'pointer',
-              transition: 'background 120ms',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#252525'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
-          >
-            Cancelar
-          </button>
+          {/* Cancelar (passos 1 e 2) */}
+          {step !== 3 && (
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                height: 34,
+                padding: '0 16px',
+                borderRadius: 7,
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'none',
+                color: '#888892',
+                fontSize: 13,
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#252525'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+            >
+              Cancelar
+            </button>
+          )}
 
-          {/* Botão Próximo (passo 1) ou Confirmar (passo 2) */}
-          {step === 1 ? (
+          {/* Próximo (passo 1) */}
+          {step === 1 && (
             <button
               type="button"
               disabled={!selectedAgentId}
@@ -625,15 +831,15 @@ export function ProvisionModal({
                 fontSize: 13,
                 fontWeight: 600,
                 opacity: selectedAgentId ? 1 : 0.6,
-                transition: 'opacity 150ms',
               }}
-              onMouseEnter={e => { if (selectedAgentId) e.currentTarget.style.opacity = '0.9'; }}
-              onMouseLeave={e => { if (selectedAgentId) e.currentTarget.style.opacity = '1'; }}
             >
               Próximo
               <ChevronRight size={14} />
             </button>
-          ) : (
+          )}
+
+          {/* Confirmar (passo 2) */}
+          {step === 2 && (
             <button
               type="submit"
               form="step2-form"
@@ -653,13 +859,12 @@ export function ProvisionModal({
                 color: '#0a0a0a',
                 fontSize: 13,
                 fontWeight: 600,
-                transition: 'opacity 150ms',
               }}
             >
               {linkMutation.isPending ? 'Salvando...' : (
                 <>
-                  <Check size={13} />
-                  Confirmar vínculo
+                  <ChevronRight size={13} />
+                  {protocol === 'ssh' ? 'Salvar e gerar deploy key' : 'Salvar e provisionar'}
                 </>
               )}
             </button>

@@ -380,6 +380,15 @@ export interface InstallTokenDto {
   expiresAt: string;
 }
 
+export interface DeployKeyResponseDto {
+  publicKey: string;
+  fingerprint: string;
+  sshConfigSnippet: string;
+  instructions: string[];
+  generatedAt: string;
+  alreadyExisted: boolean;
+}
+
 export interface ExecutionDto {
   id: string;
   agentId: string;

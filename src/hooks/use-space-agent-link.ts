@@ -7,7 +7,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-import type { AgentDto, DProjectDto } from '@/lib/types/api';
+import type { AgentDto, DProjectDto, DeployKeyResponseDto } from '@/lib/types/api';
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 
@@ -85,6 +85,24 @@ export function useLinkSpaceAgent(spaceId: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: linkKeys.bySpace(spaceId) });
     },
+  });
+}
+
+export function useGenerateDeployKey() {
+  return useMutation({
+    mutationFn: ({ projectId, agentId }: { projectId: string; agentId: string }) =>
+      api
+        .post<DeployKeyResponseDto>(`/projects/${projectId}/agent/${agentId}/deploy-key`)
+        .then((r) => r.data),
+  });
+}
+
+export function useProvisionProject() {
+  return useMutation({
+    mutationFn: ({ projectId, agentId }: { projectId: string; agentId: string }) =>
+      api
+        .post<{ dispatched: boolean }>(`/projects/${projectId}/agent/${agentId}/provision`)
+        .then((r) => r.data),
   });
 }
 
