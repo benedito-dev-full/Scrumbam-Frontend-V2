@@ -19,6 +19,7 @@ import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
 import { useCommandPaletteStore } from "@/lib/stores/command-palette";
 import { useLogout } from "@/hooks/use-auth";
 import { useAuthStore } from "@/lib/stores/auth";
+import { useRouter } from "next/navigation";
 
 /* ─── Topbar global — idêntica ao ClickUp ─────────────────────────────────
  * bg: #1a1a1a  (levemente mais claro que o fundo #0d0d0f)
@@ -130,6 +131,7 @@ function getInitials(name: string): string {
 }
 
 function UserMenu() {
+  const router = useRouter();
   const logout = useLogout();
   const user = useAuthStore((s) => s.user);
 
@@ -174,8 +176,8 @@ function UserMenu() {
             <div className="text-[11px] text-muted-foreground">{email}</div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-[13px]">Perfil</DropdownMenuItem>
-          <DropdownMenuItem className="text-[13px]">Configurações</DropdownMenuItem>
+          <DropdownMenuItem className="text-[13px]" onClick={() => router.push("/profile")}>Perfil</DropdownMenuItem>
+          <DropdownMenuItem className="text-[13px]" onClick={() => router.push("/settings")}>Configurações</DropdownMenuItem>
           <DropdownMenuItem className="text-[13px]">Atalhos de teclado</DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" className="text-[13px]" onClick={() => logout.mutate()}>Sair</DropdownMenuItem>
