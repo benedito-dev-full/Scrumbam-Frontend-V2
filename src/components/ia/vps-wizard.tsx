@@ -8,10 +8,13 @@ import { z } from 'zod';
 import { Copy, Check, X, Server, CheckCircle2, ArrowRight } from 'lucide-react';
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
-import { useCreateAgent, useSimulateAgentOnline } from '@/hooks/use-agents';
+import { useCreateAgent } from '@/hooks/use-agents';
+
+// ─── Internos ─────────────────────────────────────────────────────────────────
+import { api } from '@/lib/api';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-import type { AgentDto } from '@/lib/types/api';
+import type { AgentDto, InstallTokenDto } from '@/lib/types/api';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -207,7 +210,6 @@ export function VpsWizard({ open, onClose, onSuccess }: VpsWizardProps) {
   const pollingRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const createAgent = useCreateAgent();
-  const simulateOnline = useSimulateAgentOnline();
 
   // ─── Forms ─────────────────────────────────────────────────────────────────
 
@@ -276,34 +278,44 @@ export function VpsWizard({ open, onClose, onSuccess }: VpsWizardProps) {
     });
     setCreatedAgent(agent);
 
-    const token = `sk-agent-${agent.id.slice(0, 8)}-${Date.now().toString(36)}`;
-    setInstallCommand(
-      `curl -sSL https://scrumban.com.br/install | bash -s -- --token=${token}`
-    );
+    const tokenData = await api
+      .post<InstallTokenDto>(`/agents/${agent.id}/install-token`)
+      .then((r) => r.data);
+    setInstallCommand(tokenData.installCommand);
 
     localStorage.removeItem(DRAFT_KEY);
     setStep(2);
   });
 
-  // ─── Passo 3 — polling simulado ────────────────────────────────────────────
+  // ─── Passo 3 — polling real de status ────────────────────────────────────────
 
   useEffect(() => {
     if (step !== 3 || !createdAgent) return;
 
-    pollingRef.current = setTimeout(async () => {
-      await simulateOnline.mutateAsync(createdAgent.id);
-      setCreatedAgent((prev) =>
-        prev
-          ? { ...prev, status: 'online', lastHeartbeat: new Date().toISOString() }
-          : prev
-      );
-      setStep(4); // passo 4 = sucesso
-    }, 3000);
+    function poll() {
+      pollingRef.current = setTimeout(async () => {
+        try {
+          const updated = await api
+            .get<AgentDto>(`/agents/${createdAgent!.id}`)
+            .then((r) => r.data);
+          if (updated.status === 'online') {
+            setCreatedAgent(updated);
+            setStep(4);
+          } else {
+            poll();
+          }
+        } catch {
+          poll();
+        }
+      }, 3000);
+    }
+
+    poll();
 
     return () => {
       if (pollingRef.current) clearTimeout(pollingRef.current);
     };
-  }, [step, createdAgent, simulateOnline]);
+  }, [step, createdAgent]);
 
   // ─── Copy to clipboard ─────────────────────────────────────────────────────
 

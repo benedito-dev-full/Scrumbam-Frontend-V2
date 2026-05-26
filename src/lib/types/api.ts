@@ -83,6 +83,14 @@ export interface DProjectDto {
   color?: string | null;
   /** Ícone do espaço (emoji ou slug), lido de dados.icon. Null se não definido. */
   icon?: string | null;
+  /** ID do agente VPS vinculado a este projeto. Null se não vinculado. */
+  idAgent?: string | null;
+  /** URL do repositório remoto no agente vinculado. */
+  remoteRepoUrl?: string | null;
+  /** Branch remota no agente vinculado. */
+  remoteBranch?: string | null;
+  /** Caminho no servidor do agente vinculado. */
+  remotePath?: string | null;
   criadoEm: string;
   atualizadoEm: string;
 }
