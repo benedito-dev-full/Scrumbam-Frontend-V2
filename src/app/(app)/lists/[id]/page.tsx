@@ -1478,22 +1478,26 @@ function TaskRowBackend({
                   gap: 5,
                   padding: "3px 9px",
                   borderRadius: 6,
-                  border: 0,
+                  border: "1px solid rgba(34,197,94,0.35)",
                   cursor: "pointer",
                   background: "rgba(34,197,94,0.18)",
-                  color: "#4ade80",
+                  color: "#86efac",
                   fontSize: 11,
                   fontWeight: 600,
                   flexShrink: 0,
-                  transition: "background .15s",
+                  transition: "background .15s, border-color .15s",
                 }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.background =
-                    "rgba(34,197,94,0.30)";
+                    "rgba(34,197,94,0.32)";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor =
+                    "rgba(34,197,94,0.55)";
                 }}
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.background =
                     "rgba(34,197,94,0.18)";
+                  (e.currentTarget as HTMLButtonElement).style.borderColor =
+                    "rgba(34,197,94,0.35)";
                 }}
               >
                 <svg
@@ -1503,7 +1507,7 @@ function TaskRowBackend({
                   fill="none"
                   xmlns="http://www.w3.org/2000/svg"
                 >
-                  <path d="M1 1.5L8 5L1 8.5V1.5Z" fill="#4ade80" />
+                  <path d="M1 1.5L8 5L1 8.5V1.5Z" fill="#86efac" />
                 </svg>
                 Executar
               </button>

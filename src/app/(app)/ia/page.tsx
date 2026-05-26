@@ -242,7 +242,7 @@ export default function IAPage() {
         {/* logo Nexus */}
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 32 }}>
           <NexusIcon size={40} />
-          <span style={{ fontSize: 36, fontWeight: 700, color: "#ffffff", letterSpacing: "-0.02em", lineHeight: 1 }}>
+          <span style={{ fontSize: 36, fontWeight: 700, color: "var(--foreground)", letterSpacing: "-0.02em", lineHeight: 1 }}>
             Nexus
             <sup style={{ fontSize: 12, fontWeight: 400, color: "var(--muted-foreground)", verticalAlign: "super", marginLeft: 2 }}>™</sup>
           </span>
@@ -268,8 +268,11 @@ export default function IAPage() {
                     height: 30, padding: "0 14px", borderRadius: 7,
                     border: 0, cursor: "pointer", fontSize: 13, fontWeight: 500,
                     background: tab === "pergunta" ? "#2563eb" : "transparent",
-                    color: tab === "pergunta" ? "#fff" : "var(--muted-foreground)",
+                    color: tab === "pergunta" ? "#fff" : "var(--foreground)",
+                    transition: "background .12s, color .12s",
                   }}
+                  onMouseEnter={e => { if (tab !== "pergunta") e.currentTarget.style.background = "var(--accent)"; }}
+                  onMouseLeave={e => { if (tab !== "pergunta") e.currentTarget.style.background = "transparent"; }}
                 >
                   <NexusMiniIcon />
                   Faça uma pergunta
@@ -282,8 +285,11 @@ export default function IAPage() {
                     height: 30, padding: "0 14px", borderRadius: 7,
                     border: 0, cursor: "pointer", fontSize: 13, fontWeight: 500,
                     background: "transparent",
-                    color: "var(--muted-foreground)",
+                    color: "var(--foreground)",
+                    transition: "background .12s",
                   }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
                 >
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
                     <path d="M12 12c-2-2.5-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.5 6-4z" />
@@ -315,7 +321,7 @@ export default function IAPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   {/* botão + */}
                   <button type="button" style={{
-                    width: 28, height: 28, borderRadius: 6, border: "1px solid #333",
+                    width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)",
                     background: "none", cursor: "pointer", color: "var(--muted-foreground)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
