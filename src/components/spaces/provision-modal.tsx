@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Server, X, ChevronRight, Check, AlertCircle, Globe, Lock, Copy, ExternalLink, Loader2 } from 'lucide-react';
+import { Server, X, ChevronRight, Check, AlertCircle, Globe, Lock, Copy, ExternalLink, Loader2, GitBranch } from 'lucide-react';
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 import { useAgents } from '@/hooks/use-agents';
@@ -390,6 +390,7 @@ export function ProvisionModal({
   const [selectedAgentId, setSelectedAgentId] = useState<string>(initialAgentId ?? '');
   const [deployKey, setDeployKey] = useState<DeployKeyResponseDto | null>(null);
   const [deployKeyError, setDeployKeyError] = useState(false);
+  const [done, setDone] = useState(false);
 
   const { data: agents = [], isLoading: loadingAgents } = useAgents();
   const linkMutation = useLinkSpaceAgent(spaceId);
@@ -411,6 +412,7 @@ export function ProvisionModal({
       setSelectedAgentId(initialAgentId ?? '');
       setDeployKey(null);
       setDeployKeyError(false);
+      setDone(false);
       form.reset({ remoteRepoUrl: initialRepoUrl ?? '' });
     }, 0);
     return () => clearTimeout(id);
@@ -447,9 +449,9 @@ export function ProvisionModal({
       try {
         await provisionMutation.mutateAsync({ projectId: spaceId, agentId: selectedAgentId });
       } catch {
-        // Provisioning fire-and-forget — modal fecha mesmo assim
+        // Fire-and-forget — mostra sucesso mesmo assim
       }
-      onClose();
+      setDone(true);
     }
   }
 
@@ -457,9 +459,9 @@ export function ProvisionModal({
     try {
       await provisionMutation.mutateAsync({ projectId: spaceId, agentId: selectedAgentId });
     } catch {
-      // Fire-and-forget — fecha mesmo com erro
+      // Fire-and-forget — mostra sucesso mesmo assim
     }
-    onClose();
+    setDone(true);
   }
 
   const stepLabels: Record<1 | 2 | 3, string> = {
@@ -566,7 +568,7 @@ export function ProvisionModal({
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
 
           {/* ── Passo 1: selecionar agente ── */}
-          {step === 1 && (
+          {!done && step === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {loadingAgents ? (
                 <div style={{ fontSize: 13, color: '#555', textAlign: 'center', padding: '20px 0' }}>
@@ -613,7 +615,7 @@ export function ProvisionModal({
           )}
 
           {/* ── Passo 2: configurar repositório ── */}
-          {step === 2 && (
+          {!done && step === 2 && (
             <form
               id="step2-form"
               onSubmit={form.handleSubmit(handleStep2Confirm)}
@@ -731,8 +733,52 @@ export function ProvisionModal({
             </form>
           )}
 
+          {/* ── Tela de sucesso ── */}
+          {done && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '32px 8px', textAlign: 'center' }}>
+              <div style={{
+                width: 64,
+                height: 64,
+                borderRadius: '50%',
+                background: 'rgba(34,197,94,0.12)',
+                border: '1px solid rgba(34,197,94,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <GitBranch size={28} style={{ color: '#4ade80' }} />
+              </div>
+              <div>
+                <p style={{ fontSize: 16, fontWeight: 700, color: '#e4e4e4', margin: '0 0 8px' }}>
+                  Repositório clonado com sucesso!
+                </p>
+                <p style={{ fontSize: 13, color: '#71717a', margin: 0, lineHeight: 1.6 }}>
+                  O projeto <strong style={{ color: '#a3a3a3' }}>{spaceName}</strong> foi provisionado na VPS.<br />
+                  O agente já pode executar tarefas neste repositório.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                style={{
+                  height: 40,
+                  padding: '0 32px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%)',
+                  color: '#0a0a0a',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Concluído
+              </button>
+            </div>
+          )}
+
           {/* ── Passo 3: deploy key (apenas SSH) ── */}
-          {step === 3 && (
+          {!done && step === 3 && (
             <Step3DeployKey
               deployKey={deployKey}
               isLoading={generateKeyMutation.isPending}
@@ -743,8 +789,8 @@ export function ProvisionModal({
           )}
         </div>
 
-        {/* Footer */}
-        <div style={{
+        {/* Footer — oculto na tela de sucesso */}
+        {!done && <div style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-end',
@@ -858,7 +904,7 @@ export function ProvisionModal({
               )}
             </button>
           )}
-        </div>
+        </div>}
       </div>
     </div>
   );
