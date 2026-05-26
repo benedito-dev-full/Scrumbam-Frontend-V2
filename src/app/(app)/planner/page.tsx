@@ -11,6 +11,7 @@ import { MonthView } from "./_components/month-view";
 import { PlannerToolbar } from "./_components/planner-toolbar";
 import { WeekView } from "./_components/week-view";
 import { useDragNavigation } from "./_hooks/use-drag-navigation";
+import { useKeyboardNavigation } from "./_hooks/use-keyboard-navigation";
 
 /**
  * Pagina /planner — orquestra view ativa + data de referencia.
@@ -22,6 +23,8 @@ import { useDragNavigation } from "./_hooks/use-drag-navigation";
 export default function PlannerPage() {
   const [view, setView] = useState<PlannerView>("week");
   const [cursorDate, setCursorDate] = useState<Date>(new Date());
+
+  useKeyboardNavigation(view, cursorDate, setCursorDate);
 
   const {
     slideDates,
