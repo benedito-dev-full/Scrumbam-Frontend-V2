@@ -1,9 +1,10 @@
 "use client";
 
-import { Plus, Flag, Users, Search, PanelLeftClose } from "lucide-react";
+import { Plus, Users, Search, PanelLeftClose } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AtribuidasAMimSection } from "@/components/shell/planner/atribuidas-a-mim-section";
 import { HojeEAtrasadasSection } from "@/components/shell/planner/hoje-e-atrasadas-section";
+import { PrioridadesSection } from "@/components/shell/planner/prioridades-section";
 
 function Divider() {
   return <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />;
@@ -50,28 +51,7 @@ export function PlannerPanel() {
 
           {/* Prioridades */}
           <div style={{ paddingBottom: 10 }}>
-            <SectionLabel>Prioridades</SectionLabel>
-            <div style={{
-              margin: "6px 12px 8px", padding: "18px 12px", borderRadius: 8,
-              border: "1px dashed #2a2a2a", textAlign: "center",
-            }}>
-              <Flag size={16} style={{ color: "#ef4444", margin: "0 auto 8px", display: "block" }} />
-              <p style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.6 }}>
-                Priorize uma tarefa para vê-la aqui
-              </p>
-            </div>
-            <button type="button" style={{
-              display: "flex", alignItems: "center", gap: 6,
-              width: "calc(100% - 24px)", margin: "0 12px",
-              padding: "5px 8px", borderRadius: 6, border: 0,
-              background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 13,
-            }}
-              onMouseEnter={e => { e.currentTarget.style.background = "var(--secondary)"; e.currentTarget.style.color = "var(--foreground)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
-            >
-              <Plus size={13} strokeWidth={2} />
-              Adicionar prioridade
-            </button>
+            <PrioridadesSection />
           </div>
 
           <Divider />
