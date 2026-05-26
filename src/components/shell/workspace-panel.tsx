@@ -587,7 +587,8 @@ export function WorkspacePanel() {
                   activeHref={pathname}
                 />
               ))}
-              <MoreItem />
+              {/* MoreItem oculto até as rotas filhas existirem (chat-activity, drafts, posts). */}
+              {/* <MoreItem /> */}
             </div>
           )}
 
