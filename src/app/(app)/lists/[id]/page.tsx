@@ -719,7 +719,8 @@ function TaskRowBackend({
   const statusCfg = STATUS_CONFIG[statusVisual];
   const StatusIcon = statusCfg.Icon;
 
-  const assignee = task.assigneeId ? members.find((m) => m.userId === task.assigneeId) : null;
+  const isAiAssignee = task.assigneeId === AI_ASSIGNEE_ID;
+  const assignee = task.assigneeId && !isAiAssignee ? members.find((m) => m.userId === task.assigneeId) : null;
   const assigneeInitials = assignee
     ? assignee.nome.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
     : null;
@@ -874,7 +875,16 @@ function TaskRowBackend({
           style={{ background: "none", border: 0, cursor: "pointer", padding: 0, display: "inline-flex", alignItems: "center", gap: 6 }}
           title="Alterar responsável"
         >
-          {assignee ? (
+          {isAiAssignee ? (
+            <>
+              <span style={{
+                width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                background: "#1a1a4e", fontSize: 13,
+                display: "inline-flex", alignItems: "center", justifyContent: "center",
+              }}>🤖</span>
+              <span style={{ fontSize: 12, color: "#818cf8" }}>IA</span>
+            </>
+          ) : assignee ? (
             <>
               <span style={{
                 width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
