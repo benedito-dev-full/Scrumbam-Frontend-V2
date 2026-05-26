@@ -184,10 +184,10 @@ function RailButton({ item, active }: { item: RailItem; active?: boolean }) {
     borderRadius: 10,
     border: 0,
     background: active
-      ? "radial-gradient(ellipse 70% 80% at 50% 35%, #3b5bdb40 0%, #4c6ef528 45%, transparent 72%)"
+      ? "radial-gradient(ellipse 70% 80% at 50% 35%, color-mix(in oklab, var(--primary) 28%, transparent) 0%, color-mix(in oklab, var(--primary) 14%, transparent) 45%, transparent 72%)"
       : "none",
     cursor: "pointer",
-    color: active ? "#ffffff" : "#b0b0c4",
+    color: active ? "var(--foreground)" : "var(--muted-foreground)",
     transition: "background .15s, color .15s",
     textDecoration: "none",
     flexShrink: 0,
@@ -198,7 +198,7 @@ function RailButton({ item, active }: { item: RailItem; active?: boolean }) {
     fontSize: 10,
     fontWeight: 500,
     lineHeight: 1,
-    color: active ? "#ffffff" : "#b0b0c4",
+    color: active ? "var(--foreground)" : "var(--muted-foreground)",
     maxWidth: 52,
     textAlign: "center",
     overflow: "hidden",
@@ -208,14 +208,14 @@ function RailButton({ item, active }: { item: RailItem; active?: boolean }) {
 
   const onEnter = (e: React.MouseEvent<HTMLElement>) => {
     if (!active) {
-      e.currentTarget.style.background = "#1e1e20";
-      e.currentTarget.style.color = "#d8d8e8";
+      e.currentTarget.style.background = "var(--accent)";
+      e.currentTarget.style.color = "var(--foreground)";
     }
   };
   const onLeave = (e: React.MouseEvent<HTMLElement>) => {
     if (!active) {
       e.currentTarget.style.background = "none";
-      e.currentTarget.style.color = "#7a7a90";
+      e.currentTarget.style.color = "var(--muted-foreground)";
     }
   };
 
@@ -277,8 +277,8 @@ export function IconRail() {
         width: 60,
         flexShrink: 0,
         height: "100%",
-        background: "#111111",
-        borderRight: "1px solid rgba(255,255,255,0.07)",
+        background: "var(--background)",
+        borderRight: "1px solid var(--border)",
         padding: "6px 0",
       }}
     >

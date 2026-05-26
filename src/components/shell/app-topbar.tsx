@@ -39,8 +39,8 @@ export function AppTopbar() {
         alignItems: "center",
         height: 40,
         flexShrink: 0,
-        background: "#1a1a1a",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
+        background: "var(--card)",
+        borderBottom: "1px solid var(--border)",
         padding: "0 10px 0 8px",
         gap: 8,
         position: "relative",
@@ -51,7 +51,7 @@ export function AppTopbar() {
       <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
         <WorkspaceSwitcher />
         <TopbarIconBtn aria-label="Calendário">
-          <CalendarDays size={16} strokeWidth={1.6} style={{ color: "#7a7a85" }} />
+          <CalendarDays size={16} strokeWidth={1.6} style={{ color: "var(--muted-foreground)" }} />
         </TopbarIconBtn>
       </div>
 
@@ -67,25 +67,23 @@ export function AppTopbar() {
             width: "100%",
             maxWidth: 480,
             height: 28,
-            background: "#0d0d0f",
-            border: "1px solid rgba(255,255,255,0.10)",
+            background: "var(--background)",
+            border: "1px solid var(--border)",
             borderRadius: 8,
             padding: "0 10px",
             cursor: "pointer",
-            color: "#7a7a85",
+            color: "var(--muted-foreground)",
             fontSize: 13,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = "#34343d";
-            e.currentTarget.style.background = "#121216";
+            e.currentTarget.style.background = "var(--accent)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)";
-            e.currentTarget.style.background = "#0d0d0f";
+            e.currentTarget.style.background = "var(--background)";
           }}
         >
-          <Search size={14} strokeWidth={1.8} style={{ color: "#5a5a64", flexShrink: 0 }} />
-          <span style={{ flex: 1, textAlign: "left", color: "#7a7a85" }}>Pesquisar</span>
+          <Search size={14} strokeWidth={1.8} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+          <span style={{ flex: 1, textAlign: "left", color: "var(--muted-foreground)" }}>Pesquisar</span>
           {/* shortcut Ctrl K */}
           <span
             style={{
@@ -93,7 +91,8 @@ export function AppTopbar() {
               alignItems: "center",
               gap: 2,
               fontSize: 11,
-              color: "#5a5a64",
+              color: "var(--muted-foreground)",
+              opacity: 0.7,
               fontFamily: "monospace",
               flexShrink: 0,
             }}
@@ -110,10 +109,10 @@ export function AppTopbar() {
       {/* ── Direita: ícones de ação + avatar ── */}
       <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
         <TopbarIconBtn aria-label="Sincronizar">
-          <RefreshCw size={15} strokeWidth={1.6} style={{ color: "#7a7a85" }} />
+          <RefreshCw size={15} strokeWidth={1.6} style={{ color: "var(--muted-foreground)" }} />
         </TopbarIconBtn>
         <TopbarIconBtn aria-label="Notificações">
-          <Bell size={15} strokeWidth={1.6} style={{ color: "#7a7a85" }} />
+          <Bell size={15} strokeWidth={1.6} style={{ color: "var(--muted-foreground)" }} />
         </TopbarIconBtn>
 
         {/* avatar do usuário */}
@@ -209,16 +208,16 @@ function TopbarIconBtn({
         background: "none",
         border: 0,
         cursor: "pointer",
-        color: "#7a7a85",
+        color: "var(--muted-foreground)",
         transition: "background .12s, color .12s",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.background = "#1e1e20";
-        e.currentTarget.style.color = "#e6e6ea";
+        e.currentTarget.style.background = "var(--accent)";
+        e.currentTarget.style.color = "var(--foreground)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "none";
-        e.currentTarget.style.color = "#7a7a85";
+        e.currentTarget.style.color = "var(--muted-foreground)";
       }}
     >
       {children}

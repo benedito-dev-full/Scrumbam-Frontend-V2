@@ -53,10 +53,10 @@ export function WorkspaceSwitcher() {
               background: "none",
               border: 0,
               cursor: "pointer",
-              color: "#e6e6ea",
+              color: "var(--foreground)",
               transition: "background .12s",
             }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#252528"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
           />
         }
@@ -84,7 +84,7 @@ export function WorkspaceSwitcher() {
           style={{
             fontSize: 13,
             fontWeight: 600,
-            color: "#e6e6ea",
+            color: "var(--foreground)",
             letterSpacing: "-0.1px",
             maxWidth: 120,
             overflow: "hidden",
@@ -97,7 +97,7 @@ export function WorkspaceSwitcher() {
         <ChevronDown
           size={13}
           strokeWidth={2}
-          style={{ color: "#7a7a85", flexShrink: 0 }}
+          style={{ color: "var(--muted-foreground)", flexShrink: 0 }}
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" sideOffset={4} style={{ width: 260, padding: "8px 0" }}>
