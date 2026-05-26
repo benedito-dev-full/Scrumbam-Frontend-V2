@@ -226,7 +226,7 @@ function TaskCard({
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
   const prioColor = priorityToColor(task.priority);
   const isAiAssigned = task.assigneeId === AI_ASSIGNEE_ID;
-  const { execution, startExecution } = useTaskExecution(task.id);
+  const { execution, startExecution } = useTaskExecution(task.id, task.projectId);
   const isRunning = execution?.status === 'running';
   const isDone = execution?.status === 'done';
 

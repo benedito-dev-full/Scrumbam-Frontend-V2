@@ -166,7 +166,7 @@ export function TaskDetailDrawer({
 
         {/* Execução IA — só aparece quando responsável = IA */}
         {task.assigneeId === AI_ASSIGNEE_ID && (
-          <AiExecutionPanel taskId={taskId} taskName={task.nome} />
+          <AiExecutionPanel taskId={taskId} taskName={task.nome} projectId={projectId} />
         )}
       </div>
     </DrawerShell>
@@ -292,16 +292,17 @@ function AssigneePicker({
 
 // ─── AiExecutionPanel ─────────────────────────────────────────────────────────
 
-function AiExecutionPanel({ taskId, taskName }: { taskId: string; taskName: string }) {
-  const { execution, startExecution, clearExecution } = useTaskExecution(taskId);
+function AiExecutionPanel({ taskId, taskName, projectId }: { taskId: string; taskName: string; projectId: string }) {
+  const { execution, startExecution, clearExecution, isSubmitting } = useTaskExecution(taskId, projectId);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const taskType = detectTaskType(taskName);
   const typeColor = TASK_TYPE_COLORS[taskType];
   const typeLabel = TASK_TYPE_LABELS[taskType];
-  const isRunning = execution?.status === 'running';
+  const isRunning = execution?.status === 'running' || execution?.status === 'awaiting_approval' || isSubmitting;
   const isDone = execution?.status === 'done';
   const isFailed = execution?.status === 'failed';
+  const isAwaiting = execution?.status === 'awaiting_approval';
 
   return (
     <>
@@ -322,7 +323,13 @@ function AiExecutionPanel({ taskId, taskName }: { taskId: string; taskName: stri
         {isRunning && (
           <div className="flex items-center gap-2 rounded-lg bg-violet-500/10 px-3 py-2.5">
             <Loader2 className="size-3.5 shrink-0 animate-spin text-violet-400" />
-            <span className="text-[12px] text-violet-300">Agente processando a task...</span>
+            <span className="text-[12px] text-violet-300">
+              {isSubmitting
+                ? 'Enviando para o agente...'
+                : isAwaiting
+                  ? 'Aguardando aprovação (risco ALTO)...'
+                  : 'Agente processando a task...'}
+            </span>
           </div>
         )}
 
@@ -371,10 +378,11 @@ function AiExecutionPanel({ taskId, taskName }: { taskId: string; taskName: stri
         {!execution && (
           <button
             type="button"
+            disabled={isSubmitting}
             onClick={() => setConfirmOpen(true)}
-            className="flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-3 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-violet-500"
+            className="flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-3 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-violet-500 disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <Play className="size-3.5" />
+            {isSubmitting ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
             Executar com IA
           </button>
         )}

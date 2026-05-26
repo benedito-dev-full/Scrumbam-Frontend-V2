@@ -24,7 +24,7 @@ import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
 import { useTasksByProject, useUpdateTask, useUpdateTaskStatus, useCreateTask, useSubtasks } from "@/hooks/use-tasks";
-import { AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
+import { AI_ASSIGNEE_ID, useTaskExecution } from "@/hooks/use-task-execution";
 import { useProjectMembers, type ProjectMemberDto } from "@/hooks/use-members";
 import { useOrgMembers } from "@/hooks/use-org-members";
 import { intentionToColumn, isOverdue, priorityToColor, priorityToLabel } from "@/lib/mappers/task-status.mapper";
@@ -743,6 +743,7 @@ function TaskRowBackend({
   const StatusIcon = statusCfg.Icon;
 
   const isAiAssignee = task.assigneeId === AI_ASSIGNEE_ID;
+  const { execution: aiExecution, startExecution: startAiExecution, isSubmitting: isAiSubmitting } = useTaskExecution(task.id, task.projectId);
   const assignee = task.assigneeId && !isAiAssignee ? members.find((m) => m.userId === task.assigneeId) : null;
   const assigneeInitials = assignee
     ? assignee.nome.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
@@ -872,8 +873,9 @@ function TaskRowBackend({
           {isAiAssignee && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); /* TODO: trigger execution */ }}
-              title="Executar com Claude"
+              onClick={(e) => { e.stopPropagation(); startAiExecution(); }}
+              disabled={isAiSubmitting || !!aiExecution}
+              title={aiExecution ? `Status: ${aiExecution.status}` : 'Executar com Claude'}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 5,
                 padding: "3px 9px", borderRadius: 6, border: 0, cursor: "pointer",
