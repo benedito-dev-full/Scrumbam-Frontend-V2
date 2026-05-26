@@ -311,6 +311,8 @@ type MockBlockTask = {
   id: string;
   nome: string;
   status: "DONE" | "FAILED" | "INBOX" | "EXECUTING" | "READY";
+  dueDate: string | null;
+  createdAt: string;
 };
 
 type MockBlock = {
@@ -320,6 +322,40 @@ type MockBlock = {
   endDate: string;
   cor: string;
   tasks: MockBlockTask[];
+};
+
+type BlockSortKey = "recent" | "oldest" | "deadline_asc" | "deadline_desc" | "status";
+
+const SORT_OPTIONS: { key: BlockSortKey; label: string }[] = [
+  { key: "recent",       label: "Mais recentes"         },
+  { key: "oldest",       label: "Mais antigas"           },
+  { key: "deadline_asc", label: "Prazo mais próximo"     },
+  { key: "deadline_desc",label: "Prazo mais distante"    },
+  { key: "status",       label: "Status"                 },
+];
+
+const STATUS_ORDER: Record<MockBlockTask["status"], number> = {
+  EXECUTING: 0,
+  READY: 1,
+  INBOX: 2,
+  FAILED: 3,
+  DONE: 4,
+};
+
+const STATUS_LABEL: Record<MockBlockTask["status"], string> = {
+  EXECUTING: "Em progresso",
+  READY: "Pronto",
+  INBOX: "Backlog",
+  FAILED: "Falhou",
+  DONE: "Concluído",
+};
+
+const STATUS_COLOR: Record<MockBlockTask["status"], string> = {
+  EXECUTING: "#f59e0b",
+  READY: "#60a5fa",
+  INBOX: "#6b7280",
+  FAILED: "#ef4444",
+  DONE: "#22c55e",
 };
 
 const TODAY_MOCK = new Date("2026-05-26T12:00:00");
@@ -332,10 +368,10 @@ const MOCK_BLOCKS: MockBlock[] = [
     endDate: "2026-05-23",
     cor: "#7c5cff",
     tasks: [
-      { id: "t1", nome: "Configurar banco de dados", status: "DONE" },
-      { id: "t2", nome: "Setup do repositório V2", status: "DONE" },
-      { id: "t3", nome: "Estrutura de pastas NestJS", status: "DONE" },
-      { id: "t4", nome: "Migrations iniciais", status: "DONE" },
+      { id: "t1", nome: "Configurar banco de dados",  status: "DONE",      dueDate: "2026-05-14", createdAt: "2026-05-12" },
+      { id: "t2", nome: "Setup do repositório V2",    status: "DONE",      dueDate: "2026-05-15", createdAt: "2026-05-12" },
+      { id: "t3", nome: "Estrutura de pastas NestJS", status: "DONE",      dueDate: "2026-05-19", createdAt: "2026-05-13" },
+      { id: "t4", nome: "Migrations iniciais",        status: "DONE",      dueDate: "2026-05-23", createdAt: "2026-05-14" },
     ],
   },
   {
@@ -345,11 +381,11 @@ const MOCK_BLOCKS: MockBlock[] = [
     endDate: "2026-06-06",
     cor: "#0ea5e9",
     tasks: [
-      { id: "t5", nome: "Login com JWT", status: "DONE" },
-      { id: "t6", nome: "Refresh token", status: "DONE" },
-      { id: "t7", nome: "Permissões via DVincula", status: "EXECUTING" },
-      { id: "t8", nome: "Testes de autenticação", status: "INBOX" },
-      { id: "t9", nome: "Guard de organização", status: "INBOX" },
+      { id: "t5", nome: "Login com JWT",              status: "DONE",      dueDate: "2026-05-28", createdAt: "2026-05-26" },
+      { id: "t6", nome: "Refresh token",              status: "DONE",      dueDate: "2026-05-28", createdAt: "2026-05-26" },
+      { id: "t7", nome: "Permissões via DVincula",    status: "EXECUTING", dueDate: "2026-06-02", createdAt: "2026-05-27" },
+      { id: "t8", nome: "Testes de autenticação",     status: "INBOX",     dueDate: "2026-06-05", createdAt: "2026-05-27" },
+      { id: "t9", nome: "Guard de organização",       status: "INBOX",     dueDate: "2026-06-06", createdAt: "2026-05-28" },
     ],
   },
   {
@@ -359,9 +395,9 @@ const MOCK_BLOCKS: MockBlock[] = [
     endDate: "2026-06-20",
     cor: "#f59e0b",
     tasks: [
-      { id: "t10", nome: "OperacaoExecucaoClaude", status: "INBOX" },
-      { id: "t11", nome: "Risk Gate (-301/-302/-303)", status: "INBOX" },
-      { id: "t12", nome: "Polling de DPedido", status: "INBOX" },
+      { id: "t10", nome: "OperacaoExecucaoClaude",       status: "INBOX", dueDate: "2026-06-13", createdAt: "2026-06-09" },
+      { id: "t11", nome: "Risk Gate (-301/-302/-303)",   status: "INBOX", dueDate: "2026-06-17", createdAt: "2026-06-09" },
+      { id: "t12", nome: "Polling de DPedido",           status: "INBOX", dueDate: "2026-06-20", createdAt: "2026-06-10" },
     ],
   },
   {
@@ -371,13 +407,388 @@ const MOCK_BLOCKS: MockBlock[] = [
     endDate: "2026-07-04",
     cor: "#22c55e",
     tasks: [
-      { id: "t13", nome: "DEvento outbound HMAC", status: "INBOX" },
-      { id: "t14", nome: "Retry logic exponencial", status: "INBOX" },
-      { id: "t15", nome: "Inbox de notificações", status: "INBOX" },
-      { id: "t16", nome: "Testes de webhook", status: "INBOX" },
+      { id: "t13", nome: "DEvento outbound HMAC",      status: "INBOX", dueDate: "2026-06-26", createdAt: "2026-06-23" },
+      { id: "t14", nome: "Retry logic exponencial",    status: "INBOX", dueDate: "2026-06-28", createdAt: "2026-06-23" },
+      { id: "t15", nome: "Inbox de notificações",      status: "INBOX", dueDate: "2026-07-01", createdAt: "2026-06-24" },
+      { id: "t16", nome: "Testes de webhook",          status: "INBOX", dueDate: "2026-07-04", createdAt: "2026-06-24" },
     ],
   },
 ];
+
+function sortTasks(tasks: MockBlockTask[], key: BlockSortKey): MockBlockTask[] {
+  const copy = [...tasks];
+  switch (key) {
+    case "recent":
+      return copy.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    case "oldest":
+      return copy.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    case "deadline_asc":
+      return copy.sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return a.dueDate.localeCompare(b.dueDate);
+      });
+    case "deadline_desc":
+      return copy.sort((a, b) => {
+        if (!a.dueDate && !b.dueDate) return 0;
+        if (!a.dueDate) return 1;
+        if (!b.dueDate) return -1;
+        return b.dueDate.localeCompare(a.dueDate);
+      });
+    case "status":
+      return copy.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
+  }
+}
+
+// ─── Drawer de tasks do bloco ─────────────────────────────────────────────────
+function BlockDrawer({
+  block,
+  onClose,
+}: {
+  block: MockBlock;
+  onClose: () => void;
+}) {
+  const [sortKey, setSortKey] = useState<BlockSortKey>("recent");
+  const [sortOpen, setSortOpen] = useState(false);
+  const { done, total, percent } = calcProgress(block.tasks);
+  const dl = deadlineInfo(block.endDate, percent);
+  const sorted = sortTasks(block.tasks, sortKey);
+  const currentSort = SORT_OPTIONS.find((o) => o.key === sortKey)!;
+
+  return (
+    <>
+      {/* backdrop */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 200,
+          background: "rgba(0,0,0,0.45)",
+        }}
+        onClick={onClose}
+      />
+
+      {/* painel lateral */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 201,
+          width: 480,
+          maxWidth: "90vw",
+          background: "var(--card)",
+          borderLeft: "1px solid #26262d",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "-8px 0 40px rgba(0,0,0,0.5)",
+        }}
+      >
+        {/* header do drawer */}
+        <div
+          style={{
+            padding: "18px 20px 16px",
+            borderBottom: "1px solid #26262d",
+            flexShrink: 0,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            {/* dot de cor */}
+            <span
+              style={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                background: block.cor,
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", flex: 1 }}>
+              {block.nome}
+            </span>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: 28,
+                height: 28,
+                display: "grid",
+                placeItems: "center",
+                borderRadius: 6,
+                background: "none",
+                border: 0,
+                color: "var(--muted-foreground)",
+                cursor: "pointer",
+                fontSize: 18,
+                lineHeight: 1,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--accent)";
+                e.currentTarget.style.color = "var(--foreground)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "none";
+                e.currentTarget.style.color = "var(--muted-foreground)";
+              }}
+            >
+              ×
+            </button>
+          </div>
+
+          {/* métricas rápidas */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
+              <span style={{ fontWeight: 700, color: "var(--foreground)" }}>{done}/{total}</span> tarefas
+            </span>
+            <span style={{ color: "#26262d" }}>·</span>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "2px 8px",
+                borderRadius: 5,
+                background: dl.bg,
+                fontSize: 12,
+                fontWeight: 600,
+                color: dl.color,
+              }}
+            >
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: dl.color }} />
+              {dl.label}
+            </span>
+            <span style={{ color: "#26262d" }}>·</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: percent === 100 ? "#22c55e" : "var(--foreground)" }}>
+              {percent}%
+            </span>
+          </div>
+
+          {/* barra de progresso */}
+          <div style={{ marginTop: 10, height: 4, borderRadius: 99, background: "#1f1f25", overflow: "hidden" }}>
+            <div
+              style={{
+                height: "100%",
+                width: `${percent}%`,
+                borderRadius: 99,
+                background: percent === 100 ? "#22c55e" : percent > 60 ? "#7c5cff" : "#60a5fa",
+                transition: "width .4s ease",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* toolbar de ordenação */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 20px",
+            borderBottom: "1px solid #26262d",
+            flexShrink: 0,
+          }}
+        >
+          <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+            {total} tarefa{total !== 1 ? "s" : ""}
+          </span>
+
+          {/* dropdown de ordenação */}
+          <div style={{ position: "relative" }}>
+            <button
+              type="button"
+              onClick={() => setSortOpen((v) => !v)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                height: 28,
+                padding: "0 10px",
+                borderRadius: 6,
+                border: "1px solid #2a2a32",
+                background: "var(--background)",
+                color: "var(--foreground)",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#3a3a45")}
+              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#2a2a32")}
+            >
+              <IcLayers size={12} />
+              {currentSort.label}
+              <ChevronDown size={11} style={{ color: "var(--muted-foreground)" }} />
+            </button>
+
+            {sortOpen && (
+              <>
+                <div
+                  style={{ position: "fixed", inset: 0, zIndex: 300 }}
+                  onClick={() => setSortOpen(false)}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 4px)",
+                    right: 0,
+                    zIndex: 301,
+                    background: "var(--card)",
+                    border: "1px solid #2e2e38",
+                    borderRadius: 8,
+                    padding: "4px",
+                    minWidth: 200,
+                    boxShadow: "0 8px 24px rgba(0,0,0,.6)",
+                  }}
+                >
+                  {SORT_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => { setSortKey(opt.key); setSortOpen(false); }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        width: "100%",
+                        padding: "7px 10px",
+                        borderRadius: 5,
+                        background: "none",
+                        border: 0,
+                        color: sortKey === opt.key ? "var(--foreground)" : "var(--muted-foreground)",
+                        fontSize: 13,
+                        cursor: "pointer",
+                        fontWeight: sortKey === opt.key ? 600 : 400,
+                        textAlign: "left",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                    >
+                      {opt.label}
+                      {sortKey === opt.key && <IcCheck size={13} />}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* lista de tasks */}
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {sorted.map((task, idx) => (
+            <div
+              key={task.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "11px 20px",
+                borderBottom: idx < sorted.length - 1 ? "1px solid #1f1f25" : "none",
+                cursor: "default",
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              {/* status dot */}
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: STATUS_COLOR[task.status],
+                  flexShrink: 0,
+                }}
+                title={STATUS_LABEL[task.status]}
+              />
+
+              {/* nome */}
+              <span
+                style={{
+                  flex: 1,
+                  fontSize: 13,
+                  color: task.status === "DONE" ? "var(--muted-foreground)" : "var(--foreground)",
+                  textDecoration: task.status === "DONE" ? "line-through" : "none",
+                }}
+              >
+                {task.nome}
+              </span>
+
+              {/* dueDate */}
+              {task.dueDate && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "var(--muted-foreground)",
+                    flexShrink: 0,
+                  }}
+                >
+                  {new Date(task.dueDate + "T12:00:00").toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "short",
+                  })}
+                </span>
+              )}
+
+              {/* status badge */}
+              <span
+                style={{
+                  fontSize: 11,
+                  padding: "2px 8px",
+                  borderRadius: 4,
+                  background: STATUS_COLOR[task.status] + "20",
+                  color: STATUS_COLOR[task.status],
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}
+              >
+                {STATUS_LABEL[task.status]}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* rodapé — adicionar task */}
+        <div
+          style={{
+            padding: "14px 20px",
+            borderTop: "1px solid #26262d",
+            flexShrink: 0,
+          }}
+        >
+          <button
+            type="button"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              height: 32,
+              padding: "0 14px",
+              borderRadius: 6,
+              border: "1px solid #2a2a32",
+              background: "var(--background)",
+              color: "var(--muted-foreground)",
+              fontSize: 13,
+              cursor: "pointer",
+              width: "100%",
+              justifyContent: "center",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "var(--foreground)";
+              e.currentTarget.style.borderColor = "#3a3a45";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--muted-foreground)";
+              e.currentTarget.style.borderColor = "#2a2a32";
+            }}
+          >
+            <IcPlus size={13} />
+            Adicionar tarefa neste bloco
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
 
 function calcProgress(tasks: MockBlockTask[]) {
   if (tasks.length === 0) return { done: 0, total: 0, percent: 0 };
@@ -412,7 +823,7 @@ function deadlineInfo(isoEnd: string, percent: number): {
   return { label: `${days}d restantes`, color: "#22c55e", bg: "rgba(34,197,94,0.12)" };
 }
 
-function BlockCard({ block }: { block: MockBlock }) {
+function BlockCard({ block, onClick }: { block: MockBlock; onClick: () => void }) {
   const { done, total, percent } = calcProgress(block.tasks);
   const dl = deadlineInfo(block.endDate, percent);
   const barColor =
@@ -420,6 +831,7 @@ function BlockCard({ block }: { block: MockBlock }) {
 
   return (
     <div
+      onClick={onClick}
       style={{
         borderRadius: 12,
         border: "1px solid #26262d",
@@ -577,6 +989,7 @@ function BlocksContent({
 }) {
   const [creating, setCreating] = useState(false);
   const [newBlockName, setNewBlockName] = useState("");
+  const [selectedBlock, setSelectedBlock] = useState<MockBlock | null>(null);
 
   return (
     <div
@@ -681,9 +1094,14 @@ function BlocksContent({
         }}
       >
         {MOCK_BLOCKS.map((block) => (
-          <BlockCard key={block.id} block={block} />
+          <BlockCard key={block.id} block={block} onClick={() => setSelectedBlock(block)} />
         ))}
       </div>
+
+      {/* drawer de detalhes do bloco */}
+      {selectedBlock && (
+        <BlockDrawer block={selectedBlock} onClose={() => setSelectedBlock(null)} />
+      )}
     </div>
   );
 }
