@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   AlignLeft,
   Calendar,
+  CalendarDays,
+  CheckSquare,
+  ChevronDown,
   Clock,
   Coffee,
   Link2,
@@ -17,39 +20,113 @@ import {
   Users,
   Video,
   X,
-  CheckSquare,
-  CalendarDays,
 } from "lucide-react";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import { cn } from "@/lib/utils";
 
 const EVENT_TYPES = [
-  { value: "meeting", label: "Reunião",  Icon: Video,        color: "text-blue-400" },
-  { value: "event",   label: "Evento",   Icon: CalendarDays, color: "text-violet-400" },
-  { value: "task",    label: "Tarefa",   Icon: CheckSquare,  color: "text-emerald-400" },
-  { value: "lunch",   label: "Almoço",   Icon: Coffee,       color: "text-amber-400" },
-  { value: "call",    label: "Ligação",  Icon: Phone,        color: "text-cyan-400" },
-  { value: "other",   label: "Outro",    Icon: Pin,          color: "text-slate-400" },
+  { value: "meeting", label: "Reunião", Icon: Video,        color: "text-blue-400" },
+  { value: "event",   label: "Evento",  Icon: CalendarDays, color: "text-violet-400" },
+  { value: "task",    label: "Tarefa",  Icon: CheckSquare,  color: "text-emerald-400" },
+  { value: "lunch",   label: "Almoço",  Icon: Coffee,       color: "text-amber-400" },
+  { value: "call",    label: "Ligação", Icon: Phone,        color: "text-cyan-400" },
+  { value: "other",   label: "Outro",   Icon: Pin,          color: "text-slate-400" },
 ] as const;
 
 type EventTypeValue = typeof EVENT_TYPES[number]["value"];
 
 const PRIORITIES = [
-  { value: "urgent", label: "Urgente" },
-  { value: "high",   label: "Alta" },
-  { value: "medium", label: "Média" },
-  { value: "low",    label: "Baixa" },
+  { value: "urgent", label: "Urgente", color: "text-red-400" },
+  { value: "high",   label: "Alta",    color: "text-orange-400" },
+  { value: "medium", label: "Média",   color: "text-yellow-400" },
+  { value: "low",    label: "Baixa",   color: "text-slate-400" },
 ] as const;
 
 type PriorityValue = typeof PRIORITIES[number]["value"];
+
+interface DropdownOption {
+  value: string;
+  label: string;
+  color?: string;
+  Icon?: React.ElementType;
+}
+
+/** Dropdown customizado — abre sempre abaixo do trigger, sem portal. */
+function CustomDropdown({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: DropdownOption[];
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const selected = options.find((o) => o.value === value)!;
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative flex-1">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={cn(
+          "flex w-full items-center gap-2 rounded-lg border border-border bg-transparent px-3 py-2 text-[13px] text-foreground transition-colors",
+          "hover:border-primary/50 focus:outline-none",
+          open && "border-primary ring-1 ring-primary/30",
+        )}
+      >
+        {selected.Icon && (
+          <selected.Icon size={13} className={cn("flex-shrink-0", selected.color)} />
+        )}
+        <span className="flex-1 text-left">{selected.label}</span>
+        <ChevronDown
+          size={12}
+          className={cn("flex-shrink-0 text-muted-foreground transition-transform", open && "rotate-180")}
+        />
+      </button>
+
+      {/* Lista — posicionada abaixo do trigger via margin-top */}
+      {open && (
+        <div
+          className="absolute left-0 right-0 top-full z-[60] mt-1 overflow-hidden rounded-lg border border-border shadow-xl"
+          style={{ background: "var(--background)" }}
+        >
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={cn(
+                "flex w-full items-center gap-2.5 px-3 py-2 text-[13px] transition-colors hover:bg-secondary",
+                value === opt.value ? "bg-primary/10 text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {opt.Icon && (
+                <opt.Icon size={13} className={cn("flex-shrink-0", opt.color)} />
+              )}
+              <span>{opt.label}</span>
+              {value === opt.value && (
+                <span className="ml-auto text-primary">✓</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface CreateEventModalProps {
   date: Date;
@@ -66,7 +143,7 @@ const inputClass = cn(
 /**
  * Modal de criacao de evento do Planner.
  *
- * Campos alinhados com DTask (Scrumban-Backend-V2):
+ * Campos mapeados para DTask (Scrumban-Backend-V2):
  * nome, idTaskType, dueDate, descricao, idAssignee, idPriority,
  * dados.meetLink, dados.location.
  */
@@ -113,29 +190,18 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
           <input
             autoFocus
             type="text"
-            placeholder="Titulo do evento"
+            placeholder="Título do evento"
             className={cn(inputClass, "text-[14px] py-2.5")}
           />
 
-          {/* Tipo de evento */}
+          {/* Tipo */}
           <div className="flex items-center gap-2.5">
             <Tag size={13} className="flex-shrink-0 text-muted-foreground" />
-            <Select value={eventType} onValueChange={(v) => setEventType(v as EventTypeValue)}>
-              <SelectTrigger className="flex-1 gap-2 text-[13px]">
-                <SelectedIcon size={13} className={selectedType.color} />
-                <SelectValue placeholder="Selecionar tipo" />
-              </SelectTrigger>
-              <SelectContent side="bottom" sideOffset={4}>
-                {EVENT_TYPES.map(({ value, label, Icon, color }) => (
-                  <SelectItem key={value} value={value}>
-                    <div className="flex items-center gap-2">
-                      <Icon size={13} className={color} />
-                      <span>{label}</span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CustomDropdown
+              value={eventType}
+              options={EVENT_TYPES as unknown as DropdownOption[]}
+              onChange={(v) => setEventType(v as EventTypeValue)}
+            />
           </div>
 
           {/* Data e hora */}
@@ -172,21 +238,14 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
               <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
               <line x1="4" x2="4" y1="22" y2="15" />
             </svg>
-            <Select value={priority} onValueChange={(v) => setPriority(v as PriorityValue)}>
-              <SelectTrigger className="flex-1 text-[13px]">
-                <SelectValue placeholder="Selecionar prioridade" />
-              </SelectTrigger>
-              <SelectContent side="bottom" sideOffset={4}>
-                {PRIORITIES.map(({ value, label }) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CustomDropdown
+              value={priority}
+              options={PRIORITIES as unknown as DropdownOption[]}
+              onChange={(v) => setPriority(v as PriorityValue)}
+            />
           </div>
 
-          {/* Link de reuniao — só aparece para Reunião e Ligação */}
+          {/* Link de reuniao — so para Reuniao e Ligacao */}
           {isMeeting && (
             <div className="flex items-center gap-2.5">
               <Link2 size={13} className="flex-shrink-0 text-muted-foreground" />
