@@ -115,13 +115,28 @@ export function getColumnConfig(columnId: KanbanColumn): KanbanColumnConfig | un
  * Intentions terminais — tasks nestes estados nunca são consideradas atrasadas,
  * mesmo que `dueDate` já tenha passado.
  */
-const TERMINAL_INTENTIONS: V3Intention[] = [
+export const TERMINAL_INTENTIONS: V3Intention[] = [
   'DONE',
   'VALIDATED',
   'CANCELLED',
   'DISCARDED',
   'FAILED',
 ];
+
+/**
+ * Verifica se uma V3 Intention representa estado terminal (concluido,
+ * cancelado, descartado, falhou).
+ *
+ * Util para filtrar fora tasks "fechadas" em listas como "Atribuidas a
+ * mim" do PlannerPanel.
+ *
+ * @example
+ * isTerminalIntention('DONE')      // true
+ * isTerminalIntention('EXECUTING') // false
+ */
+export function isTerminalIntention(intention: V3Intention): boolean {
+  return TERMINAL_INTENTIONS.includes(intention);
+}
 
 /**
  * Verifica se uma task está atrasada em relação ao `dueDate`.

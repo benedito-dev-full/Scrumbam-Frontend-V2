@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronRight, Plus, Flag, Users, Search, PanelLeftClose } from "lucide-react";
+import { Plus, Flag, Users, Search, PanelLeftClose } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AtribuidasAMimSection } from "@/components/shell/planner/atribuidas-a-mim-section";
 import { HojeEAtrasadasSection } from "@/components/shell/planner/hoje-e-atrasadas-section";
 
 function Divider() {
@@ -17,30 +17,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
     }}>
       {children}
     </p>
-  );
-}
-
-function CollapsibleRow({ label }: { label: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <button
-      type="button"
-      onClick={() => setOpen(v => !v)}
-      style={{
-        display: "flex", alignItems: "center", gap: 6,
-        width: "100%", padding: "6px 14px",
-        border: 0, background: "none", cursor: "pointer",
-        fontSize: 13, fontWeight: 600, color: "var(--foreground)", textAlign: "left",
-      }}
-      onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
-    >
-      <ChevronRight
-        size={13} strokeWidth={2.5}
-        style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .15s", color: "var(--muted-foreground)" }}
-      />
-      {label}
-    </button>
   );
 }
 
@@ -117,7 +93,7 @@ export function PlannerPanel() {
 
           {/* Atribuídas a mim */}
           <div style={{ padding: "6px 0" }}>
-            <CollapsibleRow label="Atribuídas a mim" />
+            <AtribuidasAMimSection />
           </div>
 
           <Divider />
