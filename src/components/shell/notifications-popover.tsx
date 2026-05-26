@@ -26,6 +26,24 @@ import type { NotificationDto } from "@/lib/types/api";
 
 const MAX_PREVIEW = 5;
 
+/**
+ * Popover do sino de notificações do topbar.
+ *
+ * Comportamento:
+ * - **Badge:** Exibe contagem (capped 99+) de não lidas, atualizado a cada 30s.
+ * - **Preview:** Mostra 5 últimas notificações não lidas; vazio mostra estado "Tudo em dia".
+ * - **Click:** Marca como lida + navega para destino (task/project/fallback /inbox).
+ * - **Marcar todas:** Botão no header (visível se há não lidas); toast de confirmação.
+ * - **Link "Ver todas":** Navega para `/inbox` (lista 4 tabs completa).
+ *
+ * Polling: `useUnreadCount()` refetch a cada 30s (mantém badge sincronizado mesmo em background).
+ *
+ * @example
+ * ```tsx
+ * // No topbar:
+ * <NotificationsPopover />
+ * ```
+ */
 export function NotificationsPopover() {
   const router = useRouter();
   const unreadCountQuery = useUnreadCount();
@@ -235,6 +253,17 @@ export function NotificationsPopover() {
 }
 
 /* ─── Linha do popover ─────────────────────────────────────────────────────── */
+
+/**
+ * Linha renderizada no popover para cada notificação.
+ *
+ * Exibe avatar com iniciais, título, mensagem (2 linhas truncadas),
+ * timestamp relativo, e bolinha indicadora se não lida.
+ *
+ * @param notification - NotificationDto com id, title, message, eventType, createdAt, read, etc.
+ * @param isLast - Se é última linha (omite divider border).
+ * @param onClick - Handler disparado ao clicar (navegação + mark-as-read ocorrem no caller).
+ */
 function NotificationRow({
   notification: n,
   isLast,
@@ -332,6 +361,11 @@ function NotificationRow({
 }
 
 /* ─── Estados auxiliares ──────────────────────────────────────────────────── */
+
+/**
+ * Estado vazio do popover (nenhuma notificação não lida).
+ * Exibe sino cinzento + mensagem "Tudo em dia".
+ */
 function PopoverEmpty() {
   return (
     <div
@@ -369,6 +403,10 @@ function PopoverEmpty() {
   );
 }
 
+/**
+ * Estado genérico do popover (ex.: carregando).
+ * @param label - Mensagem a exibir (ex.: "Carregando...").
+ */
 function PopoverState({ label }: { label: string }) {
   return (
     <div
@@ -385,6 +423,26 @@ function PopoverState({ label }: { label: string }) {
 }
 
 /* ─── Utils ───────────────────────────────────────────────────────────────── */
+
+/**
+ * Extrai 2 iniciais de um nome para exibição no avatar.
+ *
+ * Regras:
+ * - Remove caracteres não-alfabéticos.
+ * - 1 palavra → primeiras 2 letras.
+ * - 2+ palavras → primeira letra da primeira + última palavra.
+ * - Sem caracteres válidos → retorna `??`.
+ *
+ * @param text - Nome completo (ex.: "João Silva").
+ * @returns 2 iniciais em MAIÚSCULAS (ex.: "JS").
+ *
+ * @example
+ * ```ts
+ * getInitials("João Silva") // "JS"
+ * getInitials("Pedro") // "PE"
+ * getInitials("@@@") // "??"
+ * ```
+ */
 function getInitials(text: string): string {
   const cleaned = text.trim().replace(/[^a-zA-Z\s]/g, "");
   if (!cleaned) return "??";
@@ -394,6 +452,20 @@ function getInitials(text: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/**
+ * Formata timestamp ISO para representação relativa em português.
+ *
+ * Retorna:
+ * - "agora" se < 1 min
+ * - "há X min" se < 1 h
+ * - "há X h" se < 24 h
+ * - "ontem" se < 48 h
+ * - "há X dias" se < 7 dias
+ * - Data completa em pt-BR caso contrário
+ *
+ * @param iso - Timestamp ISO (ex.: "2026-05-26T14:30:00Z").
+ * @returns String formatada (ex.: "há 5 min").
+ */
 function formatRelative(iso: string): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "";
