@@ -35,6 +35,12 @@ export const qk = {
     bySprint: (sprintId: string) => ["tasks", "sprint", sprintId] as const,
     assigned: (userId: string) => ["tasks", "assigned", userId] as const,
     filtered: (filters: TaskFilters) => ["tasks", "filtered", filters] as const,
+    /**
+     * Lista de Blocks (DTask idClasse=-200) de um projeto.
+     *
+     * @param projectId - ID do DProject (List, idClasse=-352).
+     */
+    blocks: (projectId: string) => ["tasks", "blocks", projectId] as const,
   },
   sprints: {
     byProject: (projectId: string) =>

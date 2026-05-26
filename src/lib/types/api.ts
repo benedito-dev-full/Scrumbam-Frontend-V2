@@ -223,8 +223,32 @@ export interface TaskResponseDto {
    * em andamento. Quando presente, a UI deve travar a task (read-only).
    */
   activeExecution?: ActiveExecutionDto | null;
+  /**
+   * Dados livres armazenados em DTask.dados (JSON).
+   * Usado por Blocks para `startDate`, `endDate` e `cor`.
+   */
+  dados?: Record<string, unknown> | null;
   criadoEm: string;
   atualizadoEm: string;
+}
+
+/**
+ * Bloco de planejamento visual (DTask idClasse=-200) com campos de período e cor.
+ *
+ * Estende `TaskResponseDto` tipando o campo `dados` de forma estrita para
+ * garantir que os componentes de Blocks consumam apenas os campos esperados.
+ *
+ * @see ADR-V2-050 (idClasse em TaskResponseDto)
+ */
+export interface BlockDto extends TaskResponseDto {
+  dados: {
+    /** Data de início do bloco (ISO 8601, ex: '2026-06-01'). */
+    startDate?: string;
+    /** Data de fim do bloco (ISO 8601, ex: '2026-06-30'). */
+    endDate?: string;
+    /** Cor hex do bloco (ex: '#3B82F6'). */
+    cor?: string;
+  } | null;
 }
 
 export interface CreateTaskDto {

@@ -9,7 +9,7 @@ import { qk } from "@/lib/query-keys";
 import { useAuthStore } from "@/lib/stores/auth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-import type { TaskResponseDto } from "@/lib/types/api";
+import type { BlockDto, TaskResponseDto } from "@/lib/types/api";
 
 // ─── Tipos de resposta paginada ───────────────────────────────────────────────
 
@@ -269,6 +269,83 @@ export function useUpdateTask() {
       });
       void queryClient.invalidateQueries({
         queryKey: qk.tasks.byId(variables.id),
+      });
+    },
+  });
+}
+
+/**
+ * Lista Blocks (DTask idClasse=-200) de um projeto para a aba Blocks.
+ *
+ * Mapeia para `GET /tasks?projectId={projectId}&idClasse=-200&limit=100`.
+ * Retorna os blocos tipados como `BlockDto`, garantindo acesso type-safe
+ * ao campo `dados` (startDate, endDate, cor).
+ *
+ * Desabilitado automaticamente quando `projectId` é null.
+ *
+ * staleTime de 15 segundos — consistente com os demais hooks de tasks.
+ *
+ * @param projectId - ID do DProject (List, idClasse=-352). Quando null, a query fica desabilitada.
+ * @returns Resultado do useQuery com `data: BlockDto[]`
+ *
+ * @example
+ * ```tsx
+ * const { data: blocks = [], isLoading } = useBlocks(listId);
+ * ```
+ */
+export function useBlocks(projectId: string | null) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  return useQuery<BlockDto[]>({
+    queryKey: qk.tasks.blocks(projectId ?? ""),
+    queryFn: async () => {
+      const res = await api.get<TasksPage>("/tasks", {
+        params: { projectId, idClasse: "-200", limit: 100 },
+      });
+      return res.data.items as BlockDto[];
+    },
+    enabled: !!accessToken && !!projectId,
+    staleTime: 15_000,
+  });
+}
+
+/**
+ * Cria um novo Block (DTask idClasse=-200) em um projeto.
+ *
+ * Mapeia para `POST /tasks { nome, projectId, idClasse: '-200', dados? }`.
+ * O campo `dados` permite definir `startDate`, `endDate` e `cor` na criação.
+ * Após sucesso, invalida `qk.tasks.blocks(projectId)` para forçar refetch da aba Blocks.
+ *
+ * @returns Resultado do useMutation
+ *
+ * @example
+ * ```tsx
+ * const { mutate, isPending } = useCreateBlock();
+ * mutate({ nome: 'Sprint Bloco', projectId: listId, dados: { startDate: '2026-06-01', cor: '#3B82F6' } });
+ * ```
+ */
+export function useCreateBlock() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    BlockDto,
+    Error,
+    {
+      nome: string;
+      projectId: string;
+      dados?: { startDate?: string; endDate?: string; cor?: string };
+    }
+  >({
+    mutationFn: async ({ nome, projectId, dados }) => {
+      const res = await api.post<BlockDto>("/tasks", {
+        nome,
+        projectId,
+        idClasse: "-200",
+        dados,
+      });
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.blocks(variables.projectId),
       });
     },
   });
