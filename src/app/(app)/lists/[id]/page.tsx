@@ -405,6 +405,8 @@ function BlockDrawer({
   const [addMode, setAddMode] = useState<"new" | "link" | null>(null);
   const [newTaskName, setNewTaskName] = useState("");
   const [linkSearch, setLinkSearch] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [linking, setLinking] = useState(false);
 
   const createTask = useCreateTask();
   const queryClient = useQueryClient();
@@ -419,7 +421,20 @@ function BlockDrawer({
       )
     : unassigned;
 
-  const [linking, setLinking] = useState(false);
+  function toggleSelect(taskId: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  }
+
+  function handleCancelLink() {
+    setAddMode(null);
+    setLinkSearch("");
+    setSelected(new Set());
+  }
 
   function handleCreateTask() {
     const nome = newTaskName.trim();
@@ -435,14 +450,18 @@ function BlockDrawer({
     );
   }
 
-  async function handleLinkTask(taskId: string) {
+  async function handleLinkSelected() {
+    if (selected.size === 0) return;
     setLinking(true);
     try {
-      await api.put(`/tasks/${taskId}`, { idPai: block.id });
+      await Promise.all(
+        [...selected].map((taskId) =>
+          api.put(`/tasks/${taskId}`, { idPai: block.id }),
+        ),
+      );
       void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
       void queryClient.invalidateQueries({ queryKey: qk.tasks.children(block.id) });
-      setAddMode(null);
-      setLinkSearch("");
+      handleCancelLink();
     } finally {
       setLinking(false);
     }
@@ -837,14 +856,15 @@ function BlockDrawer({
             </div>
           )}
 
-          {/* painel: vincular tarefa existente */}
+          {/* painel: vincular tarefa existente — seleção múltipla */}
           {addMode === "link" && (
-            <div style={{ padding: "12px 20px", borderBottom: "1px solid #26262d" }}>
+            <div style={{ padding: "12px 20px 14px", borderBottom: "1px solid #26262d" }}>
+              {/* busca */}
               <input
                 autoFocus
                 value={linkSearch}
                 onChange={(e) => setLinkSearch(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Escape") { setAddMode(null); setLinkSearch(""); } }}
+                onKeyDown={(e) => { if (e.key === "Escape") handleCancelLink(); }}
                 placeholder="Buscar tarefa existente…"
                 style={{
                   width: "100%",
@@ -859,9 +879,11 @@ function BlockDrawer({
                   boxSizing: "border-box",
                 }}
               />
+
+              {/* lista — altura para ~25 tasks */}
               <div
                 style={{
-                  maxHeight: 180,
+                  maxHeight: 360,
                   overflowY: "auto",
                   borderRadius: 6,
                   border: "1px solid #26262d",
@@ -869,65 +891,140 @@ function BlockDrawer({
                 }}
               >
                 {filtered.length === 0 ? (
-                  <div style={{ padding: "12px 14px", fontSize: 13, color: "var(--muted-foreground)" }}>
+                  <div style={{ padding: "14px 16px", fontSize: 13, color: "var(--muted-foreground)" }}>
                     {unassigned.length === 0
                       ? "Todas as tarefas já estão em um bloco."
                       : "Nenhuma tarefa encontrada."}
                   </div>
                 ) : (
-                  filtered.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      onClick={() => handleLinkTask(t.id)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        width: "100%",
-                        padding: "8px 14px",
-                        background: "none",
-                        border: 0,
-                        borderBottom: "1px solid #1f1f25",
-                        color: "var(--foreground)",
-                        fontSize: 13,
-                        cursor: "pointer",
-                        textAlign: "left",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-                    >
-                      <span
+                  filtered.map((t) => {
+                    const isChecked = selected.has(t.id);
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => toggleSelect(t.id)}
                         style={{
-                          width: 7,
-                          height: 7,
-                          borderRadius: "50%",
-                          background: STATUS_COLOR[t.status as V3Intention] ?? "#6b7280",
-                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "9px 14px",
+                          borderBottom: "1px solid #1f1f25",
+                          cursor: "pointer",
+                          background: isChecked ? "rgba(124,92,255,0.10)" : "transparent",
+                          transition: "background .1s",
                         }}
-                      />
-                      <span className="truncate">{t.nome}</span>
-                    </button>
-                  ))
+                        onMouseEnter={(e) => {
+                          if (!isChecked)
+                            (e.currentTarget as HTMLDivElement).style.background = "var(--accent)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLDivElement).style.background =
+                            isChecked ? "rgba(124,92,255,0.10)" : "transparent";
+                        }}
+                      >
+                        {/* checkbox visual */}
+                        <span
+                          style={{
+                            width: 16,
+                            height: 16,
+                            borderRadius: 4,
+                            border: isChecked ? "none" : "1.5px solid #3a3a45",
+                            background: isChecked ? "#7c5cff" : "transparent",
+                            flexShrink: 0,
+                            display: "grid",
+                            placeItems: "center",
+                            transition: "background .1s",
+                          }}
+                        >
+                          {isChecked && (
+                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                              <path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          )}
+                        </span>
+
+                        {/* status dot */}
+                        <span
+                          style={{
+                            width: 7,
+                            height: 7,
+                            borderRadius: "50%",
+                            background: STATUS_COLOR[t.status as V3Intention] ?? "#6b7280",
+                            flexShrink: 0,
+                          }}
+                        />
+
+                        {/* nome */}
+                        <span
+                          style={{
+                            flex: 1,
+                            fontSize: 13,
+                            color: "var(--foreground)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {t.nome}
+                        </span>
+                      </div>
+                    );
+                  })
                 )}
               </div>
-              <button
-                type="button"
-                onClick={() => { setAddMode(null); setLinkSearch(""); }}
-                style={{
-                  marginTop: 8,
-                  height: 28,
-                  padding: "0 12px",
-                  borderRadius: 6,
-                  border: "1px solid #2a2a32",
-                  background: "none",
-                  color: "var(--muted-foreground)",
-                  fontSize: 12,
-                  cursor: "pointer",
-                }}
-              >
-                Cancelar
-              </button>
+
+              {/* rodapé do painel: contador + confirmar + cancelar */}
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+                {selected.size > 0 && (
+                  <span style={{ fontSize: 12, color: "#7c5cff", fontWeight: 600, flex: 1 }}>
+                    {selected.size} selecionada{selected.size !== 1 ? "s" : ""}
+                  </span>
+                )}
+                {selected.size === 0 && (
+                  <span style={{ fontSize: 12, color: "var(--muted-foreground)", flex: 1 }}>
+                    Clique para selecionar
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleCancelLink}
+                  style={{
+                    height: 30,
+                    padding: "0 12px",
+                    borderRadius: 6,
+                    border: "1px solid #2a2a32",
+                    background: "none",
+                    color: "var(--muted-foreground)",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLinkSelected}
+                  disabled={selected.size === 0 || linking}
+                  style={{
+                    height: 30,
+                    padding: "0 14px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: selected.size > 0 ? "#7c5cff" : "#2a2a32",
+                    color: selected.size > 0 ? "#fff" : "var(--muted-foreground)",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: selected.size > 0 ? "pointer" : "default",
+                    transition: "background .15s",
+                  }}
+                >
+                  {linking
+                    ? "Vinculando…"
+                    : selected.size > 0
+                      ? `Vincular ${selected.size}`
+                      : "Vincular"}
+                </button>
+              </div>
             </div>
           )}
 
