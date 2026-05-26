@@ -56,6 +56,7 @@ import {
   useUpdateTaskStatus,
   useCreateTask,
   useSubtasks,
+  useBlockTasks,
   useBlocks,
   useCreateBlock,
 } from "@/hooks/use-tasks";
@@ -425,11 +426,11 @@ function BlockDrawer({
     try {
       await Promise.all(
         [...unlinkSelected].map((taskId) =>
-          api.put(`/tasks/${taskId}`, { idPai: null }),
+          api.put(`/tasks/${taskId}`, { dados: { idBloco: null } }),
         ),
       );
       void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
-      void queryClient.invalidateQueries({ queryKey: qk.tasks.children(block.id) });
+      void queryClient.invalidateQueries({ queryKey: qk.tasks.blockTasks(block.id) });
       setUnlinkSelected(new Set());
     } finally {
       setUnlinking(false);
@@ -439,9 +440,11 @@ function BlockDrawer({
   const createTask = useCreateTask();
   const queryClient = useQueryClient();
 
-  // tasks da lista sem bloco (idPai null) — para vincular existente
+  // tasks da lista sem bloco (dados.idBloco ausente) — para vincular existente
   const { data: allTasks = [] } = useTasksByProject(projectId);
-  const unassigned = allTasks.filter((t) => !t.idPai && t.idClasse !== "-200");
+  const unassigned = allTasks.filter(
+    (t) => !t.dados?.idBloco && t.idClasse !== "-200",
+  );
 
   const filtered = linkSearch.trim()
     ? unassigned.filter((t) =>
@@ -468,11 +471,19 @@ function BlockDrawer({
     const nome = newTaskName.trim();
     if (!nome) return;
     createTask.mutate(
-      { titulo: nome, idProject: projectId, idPai: block.id },
+      {
+        titulo: nome,
+        idProject: projectId,
+        idPai: projectId,
+        dados: { idBloco: block.id },
+      },
       {
         onSuccess: () => {
           setNewTaskName("");
           setAddMode(null);
+          void queryClient.invalidateQueries({
+            queryKey: qk.tasks.blockTasks(block.id),
+          });
         },
       },
     );
@@ -484,18 +495,18 @@ function BlockDrawer({
     try {
       await Promise.all(
         [...selected].map((taskId) =>
-          api.put(`/tasks/${taskId}`, { idPai: block.id }),
+          api.put(`/tasks/${taskId}`, { dados: { idBloco: block.id } }),
         ),
       );
       void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
-      void queryClient.invalidateQueries({ queryKey: qk.tasks.children(block.id) });
+      void queryClient.invalidateQueries({ queryKey: qk.tasks.blockTasks(block.id) });
       handleCancelLink();
     } finally {
       setLinking(false);
     }
   }
 
-  const { data: tasks = [], isLoading: loadingTasks } = useSubtasks(block.id, true);
+  const { data: tasks = [], isLoading: loadingTasks } = useBlockTasks(block.id, true);
   const { done, total, percent } = calcBlockProgress(tasks);
   const endDate = block.dados?.endDate ?? null;
   const dl = deadlineInfo(endDate, percent);
@@ -1226,7 +1237,7 @@ function deadlineInfo(
 }
 
 function BlockCard({ block, onClick }: { block: BlockDto; onClick: () => void }) {
-  const { data: subtasks = [] } = useSubtasks(block.id, true);
+  const { data: subtasks = [] } = useBlockTasks(block.id, true);
   const { done, total, percent } = calcBlockProgress(subtasks);
   const cor = block.dados?.cor ?? "#7c5cff";
   const endDate = block.dados?.endDate ?? null;

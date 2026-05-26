@@ -131,6 +131,29 @@ export function useSubtasks(parentId: string, enabled: boolean) {
   });
 }
 
+/**
+ * Lista tasks vinculadas a um bloco via dados.idBloco (Opção A).
+ *
+ * Tasks permanecem com idPai=null (raiz) — aparecem normalmente em List/Kanban.
+ * A vinculação ao bloco é armazenada em dados.idBloco (não via idPai).
+ *
+ * Mapeia para `GET /tasks?idBloco={blockId}&limit=100`.
+ */
+export function useBlockTasks(blockId: string, enabled: boolean) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  return useQuery<TaskResponseDto[]>({
+    queryKey: qk.tasks.blockTasks(blockId),
+    queryFn: async () => {
+      const res = await api.get<TasksPage>("/tasks", {
+        params: { idBloco: blockId, limit: 100 },
+      });
+      return res.data.items;
+    },
+    enabled: !!accessToken && !!blockId && enabled,
+    staleTime: 15_000,
+  });
+}
+
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 /**
@@ -159,6 +182,7 @@ export function useCreateTask() {
       dueDate?: string;
       assigneeId?: string;
       idPai?: string;
+      dados?: Record<string, unknown>;
     }
   >({
     mutationFn: async ({ titulo, idProject, ...rest }) => {

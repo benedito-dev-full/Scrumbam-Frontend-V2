@@ -41,6 +41,12 @@ export const qk = {
      * @param projectId - ID do DProject (List, idClasse=-352).
      */
     blocks: (projectId: string) => ["tasks", "blocks", projectId] as const,
+    /**
+     * Tasks vinculadas a um bloco via dados.idBloco (Opção A).
+     *
+     * @param blockId - ID do Block (DTask idClasse=-200).
+     */
+    blockTasks: (blockId: string) => ["tasks", "block-tasks", blockId] as const,
   },
   sprints: {
     byProject: (projectId: string) =>
