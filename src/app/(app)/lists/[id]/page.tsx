@@ -407,6 +407,34 @@ function BlockDrawer({
   const [linkSearch, setLinkSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [linking, setLinking] = useState(false);
+  const [unlinkSelected, setUnlinkSelected] = useState<Set<string>>(new Set());
+  const [unlinking, setUnlinking] = useState(false);
+
+  function toggleUnlink(taskId: string) {
+    setUnlinkSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  }
+
+  async function handleUnlinkSelected() {
+    if (unlinkSelected.size === 0) return;
+    setUnlinking(true);
+    try {
+      await Promise.all(
+        [...unlinkSelected].map((taskId) =>
+          api.put(`/tasks/${taskId}`, { idPai: null }),
+        ),
+      );
+      void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
+      void queryClient.invalidateQueries({ queryKey: qk.tasks.children(block.id) });
+      setUnlinkSelected(new Set());
+    } finally {
+      setUnlinking(false);
+    }
+  }
 
   const createTask = useCreateTask();
   const queryClient = useQueryClient();
@@ -711,6 +739,7 @@ function BlockDrawer({
             const taskColor = STATUS_COLOR[task.status as V3Intention] ?? "#6b7280";
             const taskLabel = STATUS_LABEL[task.status as V3Intention] ?? task.status;
             const isTerminal = ["DONE", "VALIDATED", "CANCELLED"].includes(task.status);
+            const isUnlinkChecked = unlinkSelected.has(task.id);
             return (
               <div
                 key={task.id}
@@ -721,10 +750,42 @@ function BlockDrawer({
                   padding: "11px 20px",
                   borderBottom: idx < sorted.length - 1 ? "1px solid #1f1f25" : "none",
                   cursor: "default",
+                  background: isUnlinkChecked ? "rgba(239,68,68,0.07)" : "transparent",
+                  transition: "background .1s",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                onMouseEnter={(e) => {
+                  if (!isUnlinkChecked)
+                    (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.03)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.background =
+                    isUnlinkChecked ? "rgba(239,68,68,0.07)" : "transparent";
+                }}
               >
+                {/* checkbox de desvincular */}
+                <span
+                  onClick={() => toggleUnlink(task.id)}
+                  title={isUnlinkChecked ? "Desmarcar" : "Marcar para desvincular"}
+                  style={{
+                    width: 16,
+                    height: 16,
+                    borderRadius: 4,
+                    border: isUnlinkChecked ? "none" : "1.5px solid #3a3a45",
+                    background: isUnlinkChecked ? "#ef4444" : "transparent",
+                    flexShrink: 0,
+                    display: "grid",
+                    placeItems: "center",
+                    cursor: "pointer",
+                    transition: "background .1s",
+                  }}
+                >
+                  {isUnlinkChecked && (
+                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                      <path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                  )}
+                </span>
+
                 {/* status dot */}
                 <span
                   style={{
@@ -751,13 +812,7 @@ function BlockDrawer({
 
                 {/* dueDate */}
                 {task.dueDate && (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      color: "var(--muted-foreground)",
-                      flexShrink: 0,
-                    }}
-                  >
+                  <span style={{ fontSize: 11, color: "var(--muted-foreground)", flexShrink: 0 }}>
                     {new Date(task.dueDate + "T12:00:00").toLocaleDateString("pt-BR", {
                       day: "2-digit",
                       month: "short",
@@ -783,6 +838,59 @@ function BlockDrawer({
             );
           })}
         </div>
+
+        {/* barra de desvincular — aparece quando há seleção */}
+        {unlinkSelected.size > 0 && (
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "10px 20px",
+              borderTop: "1px solid #ef444430",
+              background: "rgba(239,68,68,0.07)",
+              flexShrink: 0,
+            }}
+          >
+            <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "#ef4444" }}>
+              {unlinkSelected.size} selecionada{unlinkSelected.size !== 1 ? "s" : ""} para desvincular
+            </span>
+            <button
+              type="button"
+              onClick={() => setUnlinkSelected(new Set())}
+              style={{
+                height: 28,
+                padding: "0 10px",
+                borderRadius: 6,
+                border: "1px solid #ef444440",
+                background: "none",
+                color: "var(--muted-foreground)",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleUnlinkSelected}
+              disabled={unlinking}
+              style={{
+                height: 28,
+                padding: "0 14px",
+                borderRadius: 6,
+                border: "none",
+                background: "#ef4444",
+                color: "#fff",
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {unlinking ? "Desvinculando…" : `Desvincular ${unlinkSelected.size}`}
+            </button>
+          </div>
+        )}
 
         {/* rodapé — adicionar task */}
         <div
