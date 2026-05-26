@@ -96,62 +96,6 @@ const TAB_ICONS: Record<TabId, React.ReactNode> = {
 
 const MEMBER_COLORS = ["#e74c3c","#e67e22","#f1c40f","#2ecc71","#3498db","#9b59b6","#e91e63","#1abc9c"];
 
-function AddMemberModal({
-  onClose,
-  onAdd,
-}: {
-  onClose: () => void;
-  onAdd: (nome: string, cargo: string) => void;
-}) {
-  const [nome, setNome] = useState("");
-  const [cargo, setCargo] = useState("MEMBER");
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!nome.trim()) return;
-    onAdd(nome.trim(), cargo);
-    onClose();
-  };
-
-  return (
-    <div
-      style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)" }}
-      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{ width: 400, borderRadius: 12, background: "var(--card)", border: "1px solid var(--border)", padding: "26px 26px 22px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)", marginBottom: 18 }}>Adicionar membro</h2>
-        <form onSubmit={handleSubmit}>
-          <label style={{ display: "block", fontSize: 12, color: "var(--muted-foreground)", marginBottom: 5 }}>Nome</label>
-          <input
-            autoFocus
-            value={nome}
-            onChange={e => setNome(e.target.value)}
-            placeholder="Nome do membro"
-            style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--border)", color: "var(--foreground)", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 14 }}
-          />
-          <label style={{ display: "block", fontSize: 12, color: "var(--muted-foreground)", marginBottom: 5 }}>Cargo</label>
-          <select
-            value={cargo}
-            onChange={e => setCargo(e.target.value)}
-            style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--accent)", color: "var(--foreground)", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-          >
-            <option value="LEAD">Lead</option>
-            <option value="MEMBER">Membro</option>
-          </select>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-            <button type="button" onClick={onClose} style={{ height: 32, padding: "0 14px", borderRadius: 7, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 13 }}>
-              Cancelar
-            </button>
-            <button type="submit" disabled={!nome.trim()} style={{ height: 32, padding: "0 18px", borderRadius: 7, border: "none", background: nome.trim() ? "var(--primary)" : "var(--accent)", cursor: nome.trim() ? "pointer" : "not-allowed", color: nome.trim() ? "var(--primary-foreground)" : "var(--muted-foreground)", fontSize: 13, fontWeight: 600 }}>
-              Adicionar
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
 /* ══════════════════════════════════════════════════════════════════
    ABA VISÃO GERAL
 ══════════════════════════════════════════════════════════════════ */
@@ -590,8 +534,10 @@ export default function TeamDetailPage() {
   const [team, setTeam]           = useState<TeamLocal | null>(null);
   const [teams, setTeams]         = useState<TeamLocal[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>("visao-geral");
-  const [modalOpen, setModalOpen] = useState(false);
+  const [topPopoverOpen, setTopPopoverOpen] = useState(false);
   const [hydrated, setHydrated]   = useState(false);
+  const addMemberBtnRef = useRef<HTMLButtonElement>(null);
+  const { data: teamMembers = [] } = useTeamMembers(teamId);
 
   useEffect(() => {
     const all = loadTeams();
@@ -611,18 +557,6 @@ export default function TeamDetailPage() {
   const handleDescricao = (v: string) => {
     if (!team) return;
     persist({ ...team, descricao: v });
-  };
-
-  const handleAddMember = (nome: string, cargo: string) => {
-    if (!team) return;
-    const novo: MemberLocal = {
-      id: Date.now().toString(),
-      nome,
-      cargo,
-      color: ["#e74c3c","#3498db","#2ecc71","#9b59b6","#f59e0b","#e91e63"][Math.floor(Math.random() * 6)],
-    };
-    const membros = [...(team.membros ?? []), novo];
-    persist({ ...team, membros, memberCount: membros.length });
   };
 
   if (!hydrated) return null;
@@ -699,11 +633,24 @@ export default function TeamDetailPage() {
             </button>
           </div>
 
-          <button type="button" onClick={() => setModalOpen(true)} style={{ height: 30, padding: "0 14px", borderRadius: 7, background: "var(--primary)", border: "none", cursor: "pointer", color: "var(--primary-foreground)", fontSize: 13, fontWeight: 600 }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#fff"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "var(--foreground)"; }}>
+          <button
+            ref={addMemberBtnRef}
+            type="button"
+            onClick={() => setTopPopoverOpen(v => !v)}
+            style={{ height: 30, padding: "0 14px", borderRadius: 7, background: "var(--primary)", border: "none", cursor: "pointer", color: "var(--primary-foreground)", fontSize: 13, fontWeight: 600, transition: "filter 120ms" }}
+            onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+            onMouseLeave={e => { e.currentTarget.style.filter = "none"; }}
+          >
             Adicionar membro
           </button>
+          {topPopoverOpen && (
+            <AddMemberPopover
+              teamId={teamId}
+              currentMembers={teamMembers}
+              anchorRef={addMemberBtnRef}
+              onClose={() => setTopPopoverOpen(false)}
+            />
+          )}
         </div>
 
         {/* abas */}
@@ -735,7 +682,7 @@ export default function TeamDetailPage() {
             <TabVisaoGeral
               team={team}
               onDescricaoChange={handleDescricao}
-              onAddMember={() => setModalOpen(true)}
+              onAddMember={() => setTopPopoverOpen(true)}
             />
           ) : (
             <TabPlaceholder label={TABS.find(t => t.id === activeTab)?.label ?? ""} />
@@ -743,13 +690,6 @@ export default function TeamDetailPage() {
         </div>
       </div>
 
-      {/* modal adicionar membro */}
-      {modalOpen && (
-        <AddMemberModal
-          onClose={() => setModalOpen(false)}
-          onAdd={handleAddMember}
-        />
-      )}
     </div>
   );
 }
