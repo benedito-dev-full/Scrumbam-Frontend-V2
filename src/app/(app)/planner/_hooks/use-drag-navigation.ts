@@ -13,7 +13,7 @@ const SNAP_RATIO = 0.25;
 const DRAG_RESISTANCE = 0.5;
 
 /** Duracao da animacao de snap em ms — valor alto para o spring ser perceptivel. */
-const SNAP_DURATION_MS = 650;
+const SNAP_DURATION_MS = 1950;
 
 /**
  * Spring easing: dispara em velocidade maxima e desacelera
@@ -33,6 +33,8 @@ interface UseDragNavigationResult {
   isSnapping: boolean;
   /** Easing CSS a aplicar na transition durante snap. */
   snapEasing: string;
+  /** Duracao da animacao de snap em ms. */
+  snapDuration: number;
   /** Se true, o usuario esta arrastando (cursor grabbing). */
   isDragging: boolean;
   /** Largura do container (px) — necessaria para posicionar os slides. */
@@ -191,6 +193,7 @@ export function useDragNavigation(
     railOffset,
     isSnapping,
     snapEasing: SNAP_EASING,
+    snapDuration: SNAP_DURATION_MS,
     isDragging,
     containerWidth,
     containerRef,
