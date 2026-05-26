@@ -64,10 +64,10 @@ export function TopBtn({ icon, label }: { icon: React.ReactNode; label?: string 
     <button type="button" style={{
       display: "flex", alignItems: "center", gap: 5,
       height: 28, padding: label ? "0 10px" : "0 7px", borderRadius: 6,
-      border: 0, background: "none", cursor: "pointer", color: "#888892", fontSize: 12,
+      border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12,
     }}
-      onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.color = "#c4c4c4"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#888892"; }}
+      onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
     >
       {icon}{label}
     </button>
@@ -92,26 +92,26 @@ export function ListRow({ id, nome }: { id: string; nome: string }) {
     >
       <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
         <IcList />
-        <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{nome}</span>
+        <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>{nome}</span>
       </div>
-      <div style={{ fontSize: 12, color: "#404048" }}>-</div>
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>-</div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{ flex: 1, height: 4, borderRadius: 2, background: "#2a2a2a" }}>
+        <div style={{ flex: 1, height: 4, borderRadius: 2, background: "var(--accent)" }}>
           <div style={{ width: "0%", height: "100%", borderRadius: 2, background: "#7c3aed" }} />
         </div>
-        <span style={{ fontSize: 11, color: "#505058", whiteSpace: "nowrap" }}>0/0</span>
+        <span style={{ fontSize: 11, color: "var(--muted-foreground)", whiteSpace: "nowrap" }}>0/0</span>
       </div>
-      <div style={{ fontSize: 12, color: "#404048", display: "flex", alignItems: "center" }}>
-        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)", display: "flex", alignItems: "center" }}>
+        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="var(--muted-foreground)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
       </div>
-      <div style={{ fontSize: 12, color: "#404048", display: "flex", alignItems: "center" }}>
-        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-      </div>
-      <div>
-        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V4"/><path d="M5 4h13l-2 4 2 4H5"/></svg>
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)", display: "flex", alignItems: "center" }}>
+        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="var(--muted-foreground)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
       </div>
       <div>
-        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#404048" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="var(--muted-foreground)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><path d="M5 21V4"/><path d="M5 4h13l-2 4 2 4H5"/></svg>
+      </div>
+      <div>
+        <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="var(--muted-foreground)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
       </div>
       <div />
     </Link>
@@ -129,7 +129,7 @@ export function AddListRow() {
         display: "flex", alignItems: "center", gap: 7,
         width: "100%", height: 36, padding: "0 16px",
         border: 0, background: hovered ? "rgba(255,255,255,0.025)" : "transparent",
-        cursor: "pointer", color: hovered ? "#888892" : "#505058", fontSize: 13,
+        cursor: "pointer", color: hovered ? "var(--muted-foreground)" : "var(--muted-foreground)", fontSize: 13,
       }}
     >
       <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">

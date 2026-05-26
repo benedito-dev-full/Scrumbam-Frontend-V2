@@ -52,11 +52,11 @@ export function FormsPanel() {
         <span style={{ fontSize: 14, fontWeight: 700, color: "#e4e4e6" }}>Formulários</span>
         <button type="button" style={{
           width: 22, height: 22, borderRadius: 5, border: 0,
-          background: "none", cursor: "pointer", color: "#606068",
+          background: "none", cursor: "pointer", color: "var(--muted-foreground)",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
           onMouseEnter={e => { e.currentTarget.style.background = "#202022"; e.currentTarget.style.color = "#c0c0c4"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
         >
           <Plus size={14} strokeWidth={2} />
         </button>
@@ -79,19 +79,19 @@ export function FormsPanel() {
                     width: "100%", height: 34, padding: "0 8px",
                     borderRadius: 5, border: 0, cursor: "pointer", textAlign: "left",
                     background: isActive ? "#202022" : "none",
-                    color: isActive ? "#e4e4e6" : "#888892",
+                    color: isActive ? "#e4e4e6" : "var(--muted-foreground)",
                     fontSize: 13, fontWeight: isActive ? 500 : 400,
                   }}
                   onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "#1a1a1c"; }}
                   onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "none"; }}
                 >
-                  <span style={{ color: isActive ? "#c0c0c4" : "#505058", flexShrink: 0 }}>
+                  <span style={{ color: isActive ? "#c0c0c4" : "var(--muted-foreground)", flexShrink: 0 }}>
                     {item.renderIcon()}
                   </span>
                   <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
                   {item.badge !== undefined && (
                     <span style={{
-                      fontSize: 11, fontWeight: 600, color: "#606068",
+                      fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)",
                       background: "#202022", borderRadius: 4, padding: "0 5px", lineHeight: "18px",
                     }}>
                       {item.badge}
@@ -104,7 +104,7 @@ export function FormsPanel() {
 
           {/* Favoritos */}
           <div style={{ padding: "4px 0 8px" }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: "#505058", textTransform: "uppercase", letterSpacing: "0.06em", padding: "0 14px", marginBottom: 4 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", padding: "0 14px", marginBottom: 4 }}>
               Favoritos
             </p>
             <div style={{
@@ -115,7 +115,7 @@ export function FormsPanel() {
                 <Star size={14} style={{ color: "#f59e0b", fill: "#f59e0b" }} />
                 <Star size={10} style={{ color: "#f59e0b", fill: "#f59e0b", opacity: 0.5 }} />
               </div>
-              <p style={{ fontSize: 12, color: "#505058", lineHeight: 1.6 }}>
+              <p style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.6 }}>
                 Marque um Formulário com estrela<br />para que apareça aqui
               </p>
             </div>
@@ -123,7 +123,7 @@ export function FormsPanel() {
 
           {/* Recentes */}
           <div style={{ padding: "4px 0" }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: "#505058", textTransform: "uppercase", letterSpacing: "0.06em", padding: "0 14px", marginBottom: 4 }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", padding: "0 14px", marginBottom: 4 }}>
               Recentes
             </p>
             <div style={{ padding: "0 6px" }}>
@@ -131,7 +131,7 @@ export function FormsPanel() {
                 display: "flex", alignItems: "center", gap: 8,
                 width: "100%", height: 34, padding: "0 8px",
                 borderRadius: 5, border: 0, background: "none", cursor: "pointer",
-                color: "#888892", fontSize: 13, textAlign: "left",
+                color: "var(--muted-foreground)", fontSize: 13, textAlign: "left",
               }}
                 onMouseEnter={e => { e.currentTarget.style.background = "#1a1a1c"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "none"; }}

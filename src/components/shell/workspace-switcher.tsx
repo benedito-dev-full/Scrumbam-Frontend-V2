@@ -113,10 +113,10 @@ export function WorkspaceSwitcher() {
             {meLoading ? "…" : orgInitial}
           </div>
           <div>
-            <p style={{ fontSize: 14, fontWeight: 600, color: "#e4e4e4", lineHeight: 1.3 }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", lineHeight: 1.3 }}>
               {meLoading ? "Carregando…" : currentOrgName}
             </p>
-            <p style={{ fontSize: 12, color: "#606068", lineHeight: 1.3 }}>
+            <p style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.3 }}>
               Free Forever •{" "}
               <span style={{ color: "#7c6ff7", cursor: "pointer" }}>Fazer upgrade</span>
             </p>
@@ -135,9 +135,9 @@ export function WorkspaceSwitcher() {
                 flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
                 gap: 5, height: 30, borderRadius: 6,
                 border: "1px solid rgba(255,255,255,0.09)", background: "none",
-                cursor: "pointer", color: "#c4c4c4", fontSize: 12,
+                cursor: "pointer", color: "var(--foreground)", fontSize: 12,
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
             >
               {icon}{label}
@@ -148,7 +148,7 @@ export function WorkspaceSwitcher() {
         <DropdownMenuSeparator />
 
         {/* Gerenciar */}
-        <p style={{ fontSize: 11, color: "#505058", padding: "8px 14px 4px", fontWeight: 500 }}>Gerenciar</p>
+        <p style={{ fontSize: 11, color: "var(--muted-foreground)", padding: "8px 14px 4px", fontWeight: 500 }}>Gerenciar</p>
         {[
           { icon: <LayoutGrid size={14} style={{ color: "#e879f9" }} />,        label: "Aplicativos" },
           { icon: <FileText size={14} style={{ color: "#9ca3af" }} />,           label: "Modelos" },
@@ -159,9 +159,9 @@ export function WorkspaceSwitcher() {
             display: "flex", alignItems: "center", gap: 10,
             width: "100%", height: 34, padding: "0 14px",
             border: 0, background: "none", cursor: "pointer",
-            color: "#c4c4c4", fontSize: 13, textAlign: "left",
+            color: "var(--foreground)", fontSize: 13, textAlign: "left",
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
           >
             {icon}{label}
@@ -171,7 +171,7 @@ export function WorkspaceSwitcher() {
         <DropdownMenuSeparator style={{ margin: "6px 0" }} />
 
         {/* Alternar Espaços de trabalho */}
-        <p style={{ fontSize: 11, color: "#505058", padding: "4px 14px", fontWeight: 500 }}>
+        <p style={{ fontSize: 11, color: "var(--muted-foreground)", padding: "4px 14px", fontWeight: 500 }}>
           Alternar Espaços de trabalho
         </p>
 
@@ -188,7 +188,7 @@ export function WorkspaceSwitcher() {
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 11, fontWeight: 700, color: "#fff",
             }}>{orgInitial}</div>
-            <span style={{ fontSize: 13, color: "#e4e4e4", fontWeight: 500, flex: 1 }}>
+            <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500, flex: 1 }}>
               {currentOrgName}
             </span>
             {/* indicador de org ativa */}
@@ -217,7 +217,7 @@ export function WorkspaceSwitcher() {
                 opacity: isPending ? 0.6 : 1,
               }}
               onMouseEnter={e => {
-                if (!isPending) e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+                if (!isPending) e.currentTarget.style.background = "var(--border)";
               }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
             >
@@ -227,11 +227,11 @@ export function WorkspaceSwitcher() {
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: 11, fontWeight: 700, color: "#fff",
               }}>{initial}</div>
-              <span style={{ fontSize: 13, color: "#c4c4c4", flex: 1, textAlign: "left" }}>
+              <span style={{ fontSize: 13, color: "var(--foreground)", flex: 1, textAlign: "left" }}>
                 {org.nome}
               </span>
               {isPending && (
-                <Loader2 size={13} style={{ color: "#7a7a85", animation: "spin 1s linear infinite" }} />
+                <Loader2 size={13} style={{ color: "var(--muted-foreground)", animation: "spin 1s linear infinite" }} />
               )}
             </button>
           );
@@ -241,7 +241,7 @@ export function WorkspaceSwitcher() {
         {meLoading && (
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center",
-            height: 36, color: "#505058", fontSize: 13, gap: 6,
+            height: 36, color: "var(--muted-foreground)", fontSize: 13, gap: 6,
           }}>
             <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
             Carregando orgs…
@@ -256,9 +256,9 @@ export function WorkspaceSwitcher() {
           width: "calc(100% - 20px)", margin: "4px 10px 6px",
           height: 32, borderRadius: 6,
           border: "1px solid rgba(255,255,255,0.09)", background: "none",
-          cursor: "pointer", color: "#c4c4c4", fontSize: 13,
+          cursor: "pointer", color: "var(--foreground)", fontSize: 13,
         }}
-          onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+          onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}
           onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
         >
           + Criar Espaço de trabalho

@@ -78,7 +78,7 @@ const recentPages = ["Sem título", "Sem título", "Documento teste"];
 function SectionLabel({ label }: { label: string }) {
   return (
     <p style={{
-      fontSize: 12, fontWeight: 500, color: "#7a7a8a",
+      fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)",
       padding: "12px 14px 6px",
     }}>
       {label}
@@ -95,16 +95,16 @@ export function DocsPanel() {
         padding: "0 14px", height: 44,
         borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0,
       }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: "#e4e4e4" }}>Documentos</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)" }}>Documentos</span>
         <div style={{ display: "flex", gap: 4 }}>
           {/* collapse icon — ClickUp tem << */}
           <button type="button" style={{
             width: 24, height: 24, borderRadius: 5, border: 0,
-            background: "none", cursor: "pointer", color: "#606068",
+            background: "none", cursor: "pointer", color: "var(--muted-foreground)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#222"; e.currentTarget.style.color = "#c0c0c4"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--secondary)"; e.currentTarget.style.color = "var(--foreground)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
           >
             <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
               <polyline points="11 17 6 12 11 7" /><polyline points="18 17 13 12 18 7" />
@@ -112,11 +112,11 @@ export function DocsPanel() {
           </button>
           <button type="button" style={{
             width: 24, height: 24, borderRadius: 5, border: 0,
-            background: "none", cursor: "pointer", color: "#606068",
+            background: "none", cursor: "pointer", color: "var(--muted-foreground)",
             display: "flex", alignItems: "center", justifyContent: "center",
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#222"; e.currentTarget.style.color = "#c0c0c4"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--secondary)"; e.currentTarget.style.color = "var(--foreground)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
           >
             <Plus size={14} strokeWidth={2} />
           </button>
@@ -130,15 +130,15 @@ export function DocsPanel() {
             display: "flex", alignItems: "center", gap: 8,
             width: "100%", height: 34, padding: "0 8px", borderRadius: 5,
             border: 0, cursor: "pointer", textAlign: "left",
-            background: item.active ? "#2a2a2a" : "none",
-            color: item.active ? "#f0f0f0" : item.accent ? "#a78bfa" : "#b0b0b8",
+            background: item.active ? "var(--accent)" : "none",
+            color: item.active ? "#f0f0f0" : item.accent ? "#a78bfa" : "var(--foreground)",
             fontSize: 13, fontWeight: item.active ? 600 : 400,
           }}
-            onMouseEnter={e => { if (!item.active) e.currentTarget.style.background = "#1e1e1e"; }}
+            onMouseEnter={e => { if (!item.active) e.currentTarget.style.background = "var(--accent)"; }}
             onMouseLeave={e => { if (!item.active) e.currentTarget.style.background = "none"; }}
           >
             <span style={{
-              color: item.active ? "#e4e4e4" : item.accent ? "#a78bfa" : "#606068",
+              color: item.active ? "var(--foreground)" : item.accent ? "#a78bfa" : "var(--muted-foreground)",
               flexShrink: 0, display: "flex", alignItems: "center",
             }}>
               {item.icon}
@@ -146,7 +146,7 @@ export function DocsPanel() {
             <span style={{ flex: 1 }}>{item.label}</span>
             {item.badge && (
               <span style={{
-                fontSize: 11, color: "#7a7a8a", background: "#252525",
+                fontSize: 11, color: "var(--muted-foreground)", background: "var(--secondary)",
                 borderRadius: 4, padding: "0 5px", lineHeight: "18px",
               }}>{item.badge}</span>
             )}
@@ -156,14 +156,14 @@ export function DocsPanel() {
 
       {/* Favoritos */}
       <SectionLabel label="Favoritos" />
-      <div style={{ margin: "0 10px 4px", borderRadius: 8, background: "#141414", overflow: "hidden", position: "relative", minHeight: 80 }}>
+      <div style={{ margin: "0 10px 4px", borderRadius: 8, background: "var(--background)", overflow: "hidden", position: "relative", minHeight: 80 }}>
         {/* estrelas decorativas nos cantos — igual ClickUp */}
         <Star size={20} style={{ position: "absolute", top: 8, left: 10, color: "#f59e0b", opacity: 0.15, transform: "rotate(-15deg)" }} />
         <Star size={14} style={{ position: "absolute", top: 14, right: 16, color: "#f59e0b", opacity: 0.12, transform: "rotate(10deg)" }} />
         <Star size={10} style={{ position: "absolute", bottom: 12, right: 28, color: "#f59e0b", opacity: 0.10 }} />
         <div style={{ padding: "16px 12px", textAlign: "center" }}>
           <Star size={16} style={{ color: "#f59e0b", margin: "0 auto 6px", display: "block" }} />
-          <p style={{ fontSize: 11, color: "#606068", lineHeight: 1.7 }}>
+          <p style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.7 }}>
             Marque um Documento com<br />estrela para que apareça aqui
           </p>
         </div>
@@ -177,12 +177,12 @@ export function DocsPanel() {
             display: "flex", alignItems: "center", gap: 8,
             width: "100%", height: 32, padding: "0 8px", borderRadius: 5,
             border: 0, background: "none", cursor: "pointer",
-            color: "#b0b0b8", fontSize: 13, textAlign: "left",
+            color: "var(--foreground)", fontSize: 13, textAlign: "left",
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.color = "#e4e4e4"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#b0b0b8"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--foreground)"; }}
           >
-            <span style={{ color: "#606068", flexShrink: 0 }}><IcDocOutline /></span>
+            <span style={{ color: "var(--muted-foreground)", flexShrink: 0 }}><IcDocOutline /></span>
             <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
           </button>
         ))}
@@ -190,12 +190,12 @@ export function DocsPanel() {
 
       {/* Wikis populares */}
       <SectionLabel label="Wikis populares" />
-      <div style={{ margin: "0 10px 8px", borderRadius: 8, background: "#141414", padding: "16px 12px", textAlign: "center" }}>
+      <div style={{ margin: "0 10px 8px", borderRadius: 8, background: "var(--background)", padding: "16px 12px", textAlign: "center" }}>
         <svg width={16} height={16} viewBox="0 0 24 24" fill="none" style={{ margin: "0 auto 6px", display: "block" }}>
-          <circle cx="12" cy="12" r="10" fill="#2a2a2a" />
-          <polyline points="9 11 12 14 22 4" fill="none" stroke="#505058" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="12" cy="12" r="10" fill="var(--accent)" />
+          <polyline points="9 11 12 14 22 4" fill="none" stroke="var(--muted-foreground)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <p style={{ fontSize: 11, color: "#606068", lineHeight: 1.7 }}>
+        <p style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.7 }}>
           As wikis mais vistas e ativas<br />aparecem aqui
         </p>
       </div>

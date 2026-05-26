@@ -40,21 +40,21 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
   const recentes = [...pastas, ...listas].slice(0, 6);
 
   if (isLoading) {
-    return <div style={{ color: "#7a7a85", padding: 40 }}>Carregando…</div>;
+    return <div style={{ color: "var(--muted-foreground)", padding: 40 }}>Carregando…</div>;
   }
 
   if (!entidade) {
-    return <div style={{ color: "#7a7a85", padding: 40 }}>Espaço não encontrado.</div>;
+    return <div style={{ color: "var(--muted-foreground)", padding: 40 }}>Espaço não encontrado.</div>;
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#111111", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--background)", overflow: "hidden" }}>
 
       {/* ── Topbar do espaço ── */}
       <header style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 16px", height: 44, flexShrink: 0,
-        borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
+        borderBottom: "1px solid rgba(255,255,255,0.07)", background: "var(--background)",
       }}>
         {/* esquerda: chip + nome + estrela + menu */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -65,15 +65,15 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
             size="sm"
           />
           <SpaceSwitcher currentSpaceId={id} currentSpaceName={entidade.nome} />
-          <button type="button" style={{ display: "grid", width: 24, height: 24, placeItems: "center", borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "#606068" }}
+          <button type="button" style={{ display: "grid", width: 24, height: 24, placeItems: "center", borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)" }}
             onMouseEnter={e => { e.currentTarget.style.color = "#f59e0b"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#606068"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
           >
             <Star size={14} />
           </button>
-          <button type="button" style={{ display: "grid", width: 24, height: 24, placeItems: "center", borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "#606068" }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#c4c4c4"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#606068"; }}
+          <button type="button" style={{ display: "grid", width: 24, height: 24, placeItems: "center", borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)" }}
+            onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
           >
             <IcMenu />
           </button>
@@ -82,18 +82,18 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
         {/* direita: ações */}
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <TopBtn icon={<IcVoice />} />
-          <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)", margin: "0 4px" }} />
+          <div style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
           <AgentPopover projectId={id} projectName={entidade.nome} />
           <TopBtn icon={<Sparkles size={14} />} />
           <TopBtn icon={<span style={{ fontSize: 13 }}>✦</span>} label="Pergunte à IA" />
-          <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)", margin: "0 4px" }} />
+          <div style={{ width: 1, height: 16, background: "var(--border)", margin: "0 4px" }} />
           <button type="button" style={{
             display: "flex", alignItems: "center", gap: 5,
             height: 28, padding: "0 12px", borderRadius: 6,
             border: "1px solid rgba(255,255,255,0.12)", background: "none",
-            cursor: "pointer", color: "#c4c4c4", fontSize: 12,
+            cursor: "pointer", color: "var(--foreground)", fontSize: 12,
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
           >
             <Share2 size={13} />
@@ -106,35 +106,35 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
       <div style={{
         display: "flex", alignItems: "center", gap: 2,
         padding: "0 16px", height: 38, flexShrink: 0,
-        borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
+        borderBottom: "1px solid rgba(255,255,255,0.07)", background: "var(--background)",
         overflowX: "auto",
       }}>
         {/* Adicionar canal */}
         <button type="button" style={{
           display: "flex", alignItems: "center", gap: 5, height: 36, padding: "0 10px",
-          border: 0, background: "none", cursor: "pointer", color: "#606068", fontSize: 12, whiteSpace: "nowrap",
+          border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12, whiteSpace: "nowrap",
         }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#c4c4c4"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "#606068"; }}
+          onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
         >
           <Plus size={12} />
           Adicionar canal
         </button>
 
-        <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.07)", margin: "0 2px" }} />
+        <div style={{ width: 1, height: 16, background: "var(--border)", margin: "0 2px" }} />
 
         {TABS.map((tab) => (
           <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} style={{
             display: "flex", alignItems: "center", gap: 5,
             height: 36, padding: "0 10px", borderRadius: 0,
             border: 0, background: "none", cursor: "pointer",
-            color: activeTab === tab.id ? "#e4e4e4" : "#888892",
+            color: activeTab === tab.id ? "var(--foreground)" : "var(--muted-foreground)",
             fontSize: 12, fontWeight: activeTab === tab.id ? 600 : 400,
             borderBottom: activeTab === tab.id ? "2px solid #7c3aed" : "2px solid transparent",
             whiteSpace: "nowrap",
           }}
-            onMouseEnter={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "#c4c4c4"; }}
-            onMouseLeave={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "#888892"; }}
+            onMouseEnter={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "var(--foreground)"; }}
+            onMouseLeave={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "var(--muted-foreground)"; }}
           >
             {tab.icon && <span>{tab.icon}</span>}
             {tab.label}
@@ -143,10 +143,10 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
 
         <button type="button" style={{
           display: "flex", alignItems: "center", gap: 4, height: 36, padding: "0 10px",
-          border: 0, background: "none", cursor: "pointer", color: "#606068", fontSize: 12, whiteSpace: "nowrap",
+          border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12, whiteSpace: "nowrap",
         }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#c4c4c4"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "#606068"; }}
+          onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
         >
           <Plus size={12} />
           Visualização
@@ -161,8 +161,8 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
           display: "flex", alignItems: "center", justifyContent: "space-between",
           height: 44, borderBottom: "1px solid rgba(255,255,255,0.05)",
         }}>
-          <button type="button" style={{ display: "flex", alignItems: "center", gap: 5, height: 28, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.09)", background: "none", cursor: "pointer", color: "#888892", fontSize: 12 }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+          <button type="button" style={{ display: "flex", alignItems: "center", gap: 5, height: 28, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.09)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12 }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
           >
             <Filter size={11} />
@@ -170,22 +170,23 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
           </button>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--muted-foreground)" }}>
               <RefreshCw size={11} />
               Atualização: 10 minutos atrás
             </span>
-            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#555" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--muted-foreground)" }}>
               <RefreshCw size={11} style={{ color: "#22c55e" }} />
               Atualização automática: Ligado
             </span>
-            <button type="button" style={{ fontSize: 12, color: "#888892", border: 0, background: "none", cursor: "pointer", padding: "0 6px" }}>Personalizar</button>
+            <button type="button" style={{ fontSize: 12, color: "var(--muted-foreground)", border: 0, background: "none", cursor: "pointer", padding: "0 6px" }}>Personalizar</button>
             <button type="button" style={{
               height: 28, padding: "0 12px", borderRadius: 6,
-              border: 0, background: "#e4e4e4", cursor: "pointer",
-              color: "#111", fontSize: 12, fontWeight: 600,
+              border: 0, background: "var(--primary)", cursor: "pointer",
+              color: "var(--primary-foreground)", fontSize: 12, fontWeight: 600,
+              transition: "filter 120ms",
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#fff"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#e4e4e4"; }}
+              onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+              onMouseLeave={e => { e.currentTarget.style.filter = "none"; }}
             >
               Adicionar cartão
             </button>
@@ -196,8 +197,8 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 16, marginBottom: 16 }}>
 
           {/* Recent */}
-          <div style={{ background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#888892", marginBottom: 12 }}>Recent</p>
+          <div style={{ background: "var(--card)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", marginBottom: 12 }}>Recent</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {recentes.map((item) => {
                 const href = item.idClasse === "-351"
@@ -211,14 +212,14 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
                     padding: "5px 8px", margin: "0 -8px", borderRadius: 6,
                     textDecoration: "none", transition: "background 120ms",
                   }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#242428"; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
                     <span style={{ flexShrink: 0 }}>
                       {item.idClasse === "-351" ? <IcFolder /> :
                        item.idClasse === "-352" ? <IcList /> : <IcDoc />}
                     </span>
-                    <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{item.nome}</span>
+                    <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>{item.nome}</span>
                   </Link>
                 );
               })}
@@ -226,8 +227,8 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
           </div>
 
           {/* Docs */}
-          <div style={{ background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#888892", marginBottom: 12 }}>Docs</p>
+          <div style={{ background: "var(--card)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", marginBottom: 12 }}>Docs</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {docs.length > 0 ? docs.map((doc) => (
                   <Link key={doc.id} href={`/docs/${doc.id}`} style={{
@@ -235,38 +236,38 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
                     padding: "5px 8px", margin: "0 -8px", borderRadius: 6,
                     textDecoration: "none", transition: "background 120ms",
                   }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#242428"; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
                     <IcDoc />
-                    <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{doc.nome}</span>
+                    <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>{doc.nome}</span>
                   </Link>
               )) : (
-                <p style={{ fontSize: 12, color: "#404048" }}>Nenhum documento ainda</p>
+                <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Nenhum documento ainda</p>
               )}
             </div>
           </div>
 
           {/* Bookmarks */}
-          <div style={{ background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#888892", marginBottom: 12 }}>Bookmarks</p>
+          <div style={{ background: "var(--card)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", marginBottom: 12 }}>Bookmarks</p>
             {docs.length > 0 ? (
               <div style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "8px 10px", borderRadius: 8,
-                background: "#222", border: "1px solid rgba(255,255,255,0.06)",
+                background: "var(--secondary)", border: "1px solid rgba(255,255,255,0.06)",
                 cursor: "pointer", transition: "background 120ms, border-color 120ms",
               }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#2a2a30"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#222"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"; }}
+                onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "var(--secondary)"; e.currentTarget.style.borderColor = "var(--border)"; }}
               >
                 <div style={{ width: 32, height: 32, borderRadius: 7, background: "#3b82f6", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <IcDoc color="#ffffff" size={16} strokeWidth={2} />
                 </div>
-                <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{docs[0].nome}</span>
+                <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>{docs[0].nome}</span>
               </div>
             ) : (
-              <p style={{ fontSize: 12, color: "#404048" }}>Nenhum favorito ainda</p>
+              <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Nenhum favorito ainda</p>
             )}
           </div>
         </div>
@@ -277,40 +278,40 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
               padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)",
-              background: "#1a1a1a",
+              background: "var(--card)",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <LayoutGrid size={13} style={{ color: "#606068" }} />
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#c4c4c4" }}>Folders</span>
+                <LayoutGrid size={13} style={{ color: "var(--muted-foreground)" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>Folders</span>
               </div>
               <div style={{ display: "flex", gap: 4 }}>
-                <button type="button" style={{ width: 24, height: 24, display: "grid", placeItems: "center", border: 0, background: "none", cursor: "pointer", color: "#606068", borderRadius: 5 }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.color = "#c4c4c4"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+                <button type="button" style={{ width: 24, height: 24, display: "grid", placeItems: "center", border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)", borderRadius: 5 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
                 >
                   <Maximize2 size={12} />
                 </button>
-                <button type="button" style={{ width: 24, height: 24, display: "grid", placeItems: "center", border: 0, background: "none", cursor: "pointer", color: "#606068", borderRadius: 5 }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.color = "#c4c4c4"; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+                <button type="button" style={{ width: 24, height: 24, display: "grid", placeItems: "center", border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)", borderRadius: 5 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
                 >
                   <Plus size={13} />
                 </button>
               </div>
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, padding: "14px 16px", background: "#111111", minHeight: "28vh", maxHeight: "33vh", overflowY: "auto", alignContent: "flex-start" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 10, padding: "14px 16px", background: "var(--background)", minHeight: "28vh", maxHeight: "33vh", overflowY: "auto", alignContent: "flex-start" }}>
               {pastas.map((pasta) => (
                 <Link key={pasta.id} href={`/folders/${pasta.id}`} style={{
                   display: "flex", alignItems: "center", gap: 8,
                   width: 200, padding: "10px 14px", borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.07)", background: "#1a1a1a",
+                  border: "1px solid rgba(255,255,255,0.07)", background: "var(--card)",
                   textDecoration: "none",
                 }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#1e1e1e"; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "#1a1a1a"; }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "var(--card)"; }}
                 >
                   <IcFolder color="#9ca3af" />
-                  <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{pasta.nome}</span>
+                  <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>{pasta.nome}</span>
                 </Link>
               ))}
             </div>
@@ -322,30 +323,30 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
             padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)",
-            background: "#1a1a1a",
+            background: "var(--card)",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <LayoutGrid size={13} style={{ color: "#606068" }} />
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#c4c4c4" }}>Lists</span>
+              <LayoutGrid size={13} style={{ color: "var(--muted-foreground)" }} />
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>Lists</span>
             </div>
           </div>
 
-          <div style={{ background: "#111111", minHeight: "28vh", maxHeight: "33vh", overflowY: "auto" }}>
+          <div style={{ background: "var(--background)", minHeight: "28vh", maxHeight: "33vh", overflowY: "auto" }}>
             <div style={{
               display: "grid",
               gridTemplateColumns: "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
               height: 34, borderBottom: "1px solid rgba(255,255,255,0.06)",
-              padding: "0 16px", background: "#1a1a1a",
+              padding: "0 16px", background: "var(--card)",
             }}>
               {["Nome","Cor","Progresso","Início","Término","Prioridade","Proprietário",""].map((col, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", fontSize: 11, color: "#505058", fontWeight: 500 }}>{col}</div>
+                <div key={i} style={{ display: "flex", alignItems: "center", fontSize: 11, color: "var(--muted-foreground)", fontWeight: 500 }}>{col}</div>
               ))}
             </div>
 
             {listas.length > 0 ? listas.map((lista) => (
               <ListRow key={lista.id} id={lista.id} nome={lista.nome} />
             )) : (
-              <div style={{ padding: "20px 16px", fontSize: 12, color: "#404048" }}>Nenhuma lista ainda</div>
+              <div style={{ padding: "20px 16px", fontSize: 12, color: "var(--muted-foreground)" }}>Nenhuma lista ainda</div>
             )}
 
             <AddListRow />

@@ -36,7 +36,7 @@ function CollapsibleRow({ label }: { label: string }) {
     >
       <ChevronRight
         size={13} strokeWidth={2.5}
-        style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .15s", color: "#7a7a90" }}
+        style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .15s", color: "var(--muted-foreground)" }}
       />
       {label}
     </button>
@@ -51,16 +51,16 @@ export function PlannerPanel() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 12px", height: 44, borderBottom: "1px solid #1c1c1f", flexShrink: 0,
       }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: "#e6e6ea" }}>Planejador</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)" }}>Planejador</span>
         <div style={{ display: "flex", gap: 2 }}>
           {([Search, PanelLeftClose, Plus] as React.ElementType[]).map((Icon, i) => (
             <button key={i} type="button" style={{
               width: 26, height: 26, borderRadius: 5, border: 0,
-              background: "none", cursor: "pointer", color: "#7a7a90",
+              background: "none", cursor: "pointer", color: "var(--muted-foreground)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#1e1e20"; e.currentTarget.style.color = "#c4c4cc"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#7a7a90"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "#c4c4cc"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
             >
               <Icon size={14} strokeWidth={1.7} />
             </button>
@@ -79,7 +79,7 @@ export function PlannerPanel() {
               border: "1px dashed #2a2a2a", textAlign: "center",
             }}>
               <Flag size={16} style={{ color: "#ef4444", margin: "0 auto 8px", display: "block" }} />
-              <p style={{ fontSize: 12, color: "#7a7a90", lineHeight: 1.6 }}>
+              <p style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.6 }}>
                 Priorize uma tarefa para vê-la aqui
               </p>
             </div>
@@ -87,10 +87,10 @@ export function PlannerPanel() {
               display: "flex", alignItems: "center", gap: 6,
               width: "calc(100% - 24px)", margin: "0 12px",
               padding: "5px 8px", borderRadius: 6, border: 0,
-              background: "none", cursor: "pointer", color: "#7a7a90", fontSize: 13,
+              background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 13,
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#222222"; e.currentTarget.style.color = "#c4c4cc"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#7a7a90"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--secondary)"; e.currentTarget.style.color = "#c4c4cc"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
             >
               <Plus size={13} strokeWidth={2} />
               Adicionar prioridade
@@ -105,10 +105,10 @@ export function PlannerPanel() {
             <div style={{
               display: "flex", alignItems: "center", gap: 6,
               margin: "6px 12px 0", padding: "7px 10px",
-              borderRadius: 6, border: "1px solid rgba(255,255,255,0.10)", background: "#111111",
+              borderRadius: 6, border: "1px solid rgba(255,255,255,0.10)", background: "var(--background)",
             }}>
-              <Users size={13} style={{ color: "#5a5a64", flexShrink: 0 }} />
-              <span style={{ fontSize: 12, color: "#5a5a64" }}>Pesquisar pessoas...</span>
+              <Users size={13} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Pesquisar pessoas...</span>
             </div>
           </div>
 
@@ -133,9 +133,9 @@ export function PlannerPanel() {
             <SectionLabel>Lista de pendências</SectionLabel>
             <div style={{
               margin: "6px 12px 0", padding: "16px 12px", borderRadius: 8,
-              background: "#1a1a1a", textAlign: "center",
+              background: "var(--card)", textAlign: "center",
             }}>
-              <p style={{ fontSize: 12, color: "#7a7a90", lineHeight: 1.6 }}>
+              <p style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.6 }}>
                 Nenhuma tarefa corresponde a esses filtros
               </p>
             </div>

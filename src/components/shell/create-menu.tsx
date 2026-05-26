@@ -133,15 +133,15 @@ function MenuItem({
         border: 0, background: "none", cursor: "pointer", textAlign: "left",
         borderRadius: 6,
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+      onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}
       onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
     >
       <div style={{ marginTop: desc ? 1 : 0 }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 13, fontWeight: 500, color: "#e4e4e4", lineHeight: 1.3 }}>{label}</p>
-        {desc && <p style={{ fontSize: 11, color: "#606068", marginTop: 2, lineHeight: 1.4 }}>{desc}</p>}
+        <p style={{ fontSize: 13, fontWeight: 500, color: "var(--foreground)", lineHeight: 1.3 }}>{label}</p>
+        {desc && <p style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2, lineHeight: 1.4 }}>{desc}</p>}
       </div>
-      {hasArrow && <ChevronRight size={13} style={{ color: "#606068", flexShrink: 0, marginTop: desc ? 2 : 0 }} />}
+      {hasArrow && <ChevronRight size={13} style={{ color: "var(--muted-foreground)", flexShrink: 0, marginTop: desc ? 2 : 0 }} />}
     </button>
   );
 }
@@ -173,7 +173,7 @@ export function CreateMenu({
         className="w-72 p-1.5"
       >
         {/* label */}
-        <p style={{ fontSize: 11, fontWeight: 600, color: "#505058", textTransform: "uppercase", letterSpacing: "0.06em", padding: "4px 12px 6px" }}>
+        <p style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", padding: "4px 12px 6px" }}>
           Criar
         </p>
 

@@ -118,7 +118,7 @@ export function InviteDialog() {
         onClick={e => e.stopPropagation()}
         style={{
           width: 480, borderRadius: 12,
-          background: "#1e1e1e",
+          background: "var(--accent)",
           border: "1px solid rgba(255,255,255,0.09)",
           boxShadow: "0 24px 60px rgba(0,0,0,0.6)",
           padding: "24px 24px 20px",
@@ -131,21 +131,21 @@ export function InviteDialog() {
           width: 28, height: 28, borderRadius: 7,
           border: 0, background: "none", cursor: "pointer",
           display: "flex", alignItems: "center", justifyContent: "center",
-          color: "#606068",
+          color: "var(--muted-foreground)",
         }}
-          onMouseEnter={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.color = "#c4c4c4"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+          onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
+          onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
         >
           <X size={15} />
         </button>
 
         {/* título */}
-        <h2 style={{ fontSize: 16, color: "#e4e4e4", marginBottom: 20, lineHeight: 1.3 }}>
+        <h2 style={{ fontSize: 16, color: "var(--foreground)", marginBottom: 20, lineHeight: 1.3 }}>
           Convide pessoas <strong style={{ fontWeight: 800 }}>gratuitamente</strong>
         </h2>
 
         {/* email */}
-        <label style={{ fontSize: 12, fontWeight: 500, color: "#888892", display: "block", marginBottom: 8 }}>
+        <label style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", display: "block", marginBottom: 8 }}>
           Convidar por e-mail
         </label>
         <input
@@ -159,14 +159,14 @@ export function InviteDialog() {
           style={{
             width: "100%", height: 42, borderRadius: 8,
             border: focused ? "1.5px solid #4f7ef7" : "1.5px solid rgba(255,255,255,0.12)",
-            background: "#111111", color: "#e4e4e4", fontSize: 13,
+            background: "var(--background)", color: "var(--foreground)", fontSize: 13,
             padding: "0 14px", outline: "none", boxSizing: "border-box",
             transition: "border-color .15s",
           }}
         />
 
         {/* Adicionar como */}
-        <p style={{ fontSize: 12, fontWeight: 500, color: "#888892", marginTop: 18, marginBottom: 10 }}>
+        <p style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)", marginTop: 18, marginBottom: 10 }}>
           Adicionar como
         </p>
 
@@ -175,15 +175,15 @@ export function InviteDialog() {
           <div style={{
             display: "flex", alignItems: "flex-start", gap: 12,
             padding: "12px 14px", borderRadius: roleOpen ? "8px 8px 0 0" : 8,
-            background: "#1e1e1e",
+            background: "var(--accent)",
             border: "1px solid rgba(255,255,255,0.07)",
             borderBottom: roleOpen ? "1px solid rgba(255,255,255,0.04)" : "1px solid rgba(255,255,255,0.07)",
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 8, flexShrink: 0,
-              background: "#252530",
+              background: "var(--secondary)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              color: "#8888a8",
+              color: "var(--muted-foreground)",
             }}>
               <IcMember />
             </div>
@@ -191,10 +191,10 @@ export function InviteDialog() {
               <button type="button" onClick={() => setRoleOpen(v => !v)} style={{
                 display: "flex", alignItems: "center", gap: 4,
                 border: 0, background: "none", cursor: "pointer", padding: 0,
-                color: "#e4e4e4", fontSize: 14, fontWeight: 600,
+                color: "var(--foreground)", fontSize: 14, fontWeight: 600,
               }}
                 onMouseEnter={e => { e.currentTarget.style.color = "#fff"; }}
-                onMouseLeave={e => { e.currentTarget.style.color = "#e4e4e4"; }}
+                onMouseLeave={e => { e.currentTarget.style.color = "var(--foreground)"; }}
               >
                 {selectedRole.label}
                 {roleOpen
@@ -202,7 +202,7 @@ export function InviteDialog() {
                   : <ChevronDown size={13} strokeWidth={2.5} />
                 }
               </button>
-              <p style={{ fontSize: 12, color: "#606068", marginTop: 3, lineHeight: 1.5 }}>
+              <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 3, lineHeight: 1.5 }}>
                 {selectedRole.desc}
               </p>
             </div>
@@ -212,7 +212,7 @@ export function InviteDialog() {
           {roleOpen && (
             <div style={{
               position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10,
-              background: "#1e1e1e",
+              background: "var(--accent)",
               border: "1px solid rgba(255,255,255,0.07)",
               borderTop: "none",
               borderRadius: "0 0 8px 8px",
@@ -230,7 +230,7 @@ export function InviteDialog() {
                 >
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4" }}>{role.label}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>{role.label}</span>
                       {role.badge && (
                         <span style={{
                           fontSize: 10, fontWeight: 600, color: "#a78bfa",
@@ -239,7 +239,7 @@ export function InviteDialog() {
                         }}>{role.badge}</span>
                       )}
                     </div>
-                    <p style={{ fontSize: 11, color: "#606068", lineHeight: 1.5 }}>{role.desc}</p>
+                    <p style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.5 }}>{role.desc}</p>
                   </div>
                   {selectedRole.id === role.id && (
                     <Check size={14} strokeWidth={2.5} style={{ color: "#4f7ef7", marginTop: 2, flexShrink: 0 }} />
@@ -253,10 +253,10 @@ export function InviteDialog() {
                 display: "flex", alignItems: "center", gap: 6,
                 width: "100%", padding: "10px 14px",
                 border: 0, background: "none", cursor: "pointer",
-                color: "#888892", fontSize: 13,
+                color: "var(--muted-foreground)", fontSize: 13,
               }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "#e4e4e4"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#888892"; }}
+                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "var(--foreground)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
               >
                 <Plus size={13} strokeWidth={2.5} />
                 Adicionar função personalizada
@@ -278,10 +278,10 @@ export function InviteDialog() {
           <button type="button" onClick={closeDialog} style={{
             height: 36, padding: "0 18px", borderRadius: 7,
             border: 0, background: "none", cursor: "pointer",
-            color: "#888892", fontSize: 13, fontWeight: 500,
+            color: "var(--muted-foreground)", fontSize: 13, fontWeight: 500,
           }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#e4e4e4"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "#888892"; }}
+            onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
           >
             Cancelar
           </button>
@@ -292,9 +292,9 @@ export function InviteDialog() {
             style={{
               height: 36, padding: "0 20px", borderRadius: 7,
               border: 0,
-              background: createInvite.isPending || success || !email.trim() ? "#2a2a2a" : "#e4e4e4",
+              background: createInvite.isPending || success || !email.trim() ? "var(--accent)" : "var(--primary)",
               cursor: createInvite.isPending || success || !email.trim() ? "not-allowed" : "pointer",
-              color: createInvite.isPending || success || !email.trim() ? "#555" : "#111",
+              color: createInvite.isPending || success || !email.trim() ? "var(--muted-foreground)" : "var(--primary-foreground)",
               fontSize: 13, fontWeight: 700, transition: "all .15s",
             }}
           >
