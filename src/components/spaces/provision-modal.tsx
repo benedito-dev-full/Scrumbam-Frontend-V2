@@ -5,10 +5,10 @@
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Server, X, ChevronRight, Check, AlertCircle } from 'lucide-react';
+import { Server, X, ChevronRight, Check, AlertCircle, Globe, Lock } from 'lucide-react';
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 import { useAgents } from '@/hooks/use-agents';
@@ -32,13 +32,23 @@ interface ProvisionModalProps {
 
 // ─── Validação do passo 2 ─────────────────────────────────────────────────────
 
+const REPO_URL_REGEX =
+  /^(git@(github\.com|gitlab\.com|bitbucket\.org):[A-Za-z0-9_.\-]+\/[A-Za-z0-9_.\-]+(\.git)?|https:\/\/(github\.com|gitlab\.com|bitbucket\.org)\/[A-Za-z0-9_.\-]+\/[A-Za-z0-9_.\-]+(\.git)?)$/;
+
 const step2Schema = z.object({
-  remoteRepoUrl: z.string().min(1, 'URL obrigatória'),
-  remoteBranch: z.string().min(1, 'Branch obrigatória'),
-  remotePath: z.string().min(1, 'Caminho obrigatório'),
+  remoteRepoUrl: z
+    .string()
+    .min(1, 'URL obrigatória')
+    .regex(REPO_URL_REGEX, 'URL inválida. Use SSH (git@github.com:org/repo.git) ou HTTPS (https://github.com/org/repo.git)'),
 });
 
 type Step2Data = z.infer<typeof step2Schema>;
+
+function detectProtocol(url: string): 'ssh' | 'https' | null {
+  if (url.startsWith('git@')) return 'ssh';
+  if (url.startsWith('https://')) return 'https';
+  return null;
+}
 
 // ─── Utilitários ──────────────────────────────────────────────────────────────
 
@@ -215,28 +225,21 @@ export function ProvisionModal({
   const { data: agents = [], isLoading: loadingAgents } = useAgents();
   const linkMutation = useLinkSpaceAgent(spaceId);
 
-  const suggestedPath = `/home/scrumban-agent/projects/${toKebab(spaceName)}`;
-
   const form = useForm<Step2Data>({
     resolver: zodResolver(step2Schema),
-    defaultValues: {
-      remoteRepoUrl: initialRepoUrl ?? '',
-      remoteBranch: 'main',
-      remotePath: suggestedPath,
-    },
+    defaultValues: { remoteRepoUrl: initialRepoUrl ?? '' },
   });
 
-  // Reset ao abrir: agenda via setTimeout para não violar react-hooks/set-state-in-effect
+  const repoUrlValue = useWatch({ control: form.control, name: 'remoteRepoUrl' }) ?? '';
+  const protocol = detectProtocol(repoUrlValue);
+
+  // Reset ao abrir
   useEffect(() => {
     if (!open) return;
     const id = setTimeout(() => {
       setStep(initialStep);
       setSelectedAgentId(initialAgentId ?? '');
-      form.reset({
-        remoteRepoUrl: initialRepoUrl ?? '',
-        remoteBranch: 'main',
-        remotePath: suggestedPath,
-      });
+      form.reset({ remoteRepoUrl: initialRepoUrl ?? '' });
     }, 0);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -252,8 +255,8 @@ export function ProvisionModal({
     await linkMutation.mutateAsync({
       agentId: selectedAgentId,
       remoteRepoUrl: data.remoteRepoUrl,
-      remoteBranch: data.remoteBranch,
-      remotePath: data.remotePath,
+      remoteBranch: 'main',
+      remotePath: `/home/dev/projetos/${toKebab(spaceName)}`,
     });
     onClose();
   }
@@ -428,21 +431,58 @@ export function ProvisionModal({
               onSubmit={form.handleSubmit(handleConfirm)}
               style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
             >
+              {/* Instrução de protocolo */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 8,
+              }}>
+                <div style={{
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(34,197,94,0.2)',
+                  background: 'rgba(34,197,94,0.05)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Globe size={12} style={{ color: '#4ade80', flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#4ade80' }}>Repositório público</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#71717a', lineHeight: 1.4, display: 'block' }}>
+                    Use <code style={{ color: '#a3a3a3', fontFamily: 'monospace' }}>https://</code> — sem autenticação necessária.
+                  </span>
+                </div>
+                <div style={{
+                  padding: '10px 12px',
+                  borderRadius: 8,
+                  border: '1px solid rgba(251,191,36,0.2)',
+                  background: 'rgba(251,191,36,0.04)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <Lock size={12} style={{ color: '#fbbf24', flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#fbbf24' }}>Repositório privado</span>
+                  </div>
+                  <span style={{ fontSize: 11, color: '#71717a', lineHeight: 1.4, display: 'block' }}>
+                    Use <code style={{ color: '#a3a3a3', fontFamily: 'monospace' }}>git@</code> SSH — o agente usa a deploy key gerada.
+                  </span>
+                </div>
+              </div>
+
+              {/* Campo URL */}
               <FormField
                 label="URL do repositório"
                 error={form.formState.errors.remoteRepoUrl?.message}
               >
                 <input
                   {...form.register('remoteRepoUrl')}
-                  placeholder="https://github.com/org/projeto.git"
+                  placeholder="git@github.com:org/repo.git  ou  https://github.com/org/repo.git"
                   style={{
-                    height: 36,
+                    height: 38,
                     padding: '0 12px',
                     borderRadius: 7,
                     border: `1px solid ${form.formState.errors.remoteRepoUrl ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
                     background: 'rgba(255,255,255,0.03)',
                     color: '#e4e4e4',
-                    fontSize: 13,
+                    fontSize: 12,
                     width: '100%',
                     boxSizing: 'border-box',
                     outline: 'none',
@@ -454,56 +494,39 @@ export function ProvisionModal({
                 />
               </FormField>
 
-              <FormField
-                label="Branch padrão"
-                error={form.formState.errors.remoteBranch?.message}
-              >
-                <input
-                  {...form.register('remoteBranch')}
-                  placeholder="main"
-                  style={{
-                    height: 36,
-                    padding: '0 12px',
-                    borderRadius: 7,
-                    border: `1px solid ${form.formState.errors.remoteBranch ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                    background: 'rgba(255,255,255,0.03)',
-                    color: '#e4e4e4',
-                    fontSize: 13,
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                    transition: 'border-color 120ms',
-                  }}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'rgba(34,211,238,0.4)'; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = form.formState.errors.remoteBranch ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'; }}
-                />
-              </FormField>
-
-              <FormField
-                label="Caminho na VPS"
-                error={form.formState.errors.remotePath?.message}
-              >
-                <input
-                  {...form.register('remotePath')}
-                  placeholder={suggestedPath}
-                  style={{
-                    height: 36,
-                    padding: '0 12px',
-                    borderRadius: 7,
-                    border: `1px solid ${form.formState.errors.remotePath ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                    background: 'rgba(255,255,255,0.03)',
-                    color: '#e4e4e4',
-                    fontSize: 13,
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                    fontFamily: 'monospace',
-                    transition: 'border-color 120ms',
-                  }}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'rgba(34,211,238,0.4)'; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = form.formState.errors.remotePath ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'; }}
-                />
-              </FormField>
+              {/* Badge dinâmico conforme protocolo digitado */}
+              {protocol === 'https' && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '9px 12px',
+                  borderRadius: 7,
+                  background: 'rgba(34,197,94,0.07)',
+                  border: '1px solid rgba(34,197,94,0.25)',
+                  fontSize: 12,
+                  color: '#4ade80',
+                }}>
+                  <Globe size={13} style={{ flexShrink: 0 }} />
+                  Repositório público detectado — confirme que o repositório é de fato público antes de continuar.
+                </div>
+              )}
+              {protocol === 'ssh' && (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 7,
+                  padding: '9px 12px',
+                  borderRadius: 7,
+                  background: 'rgba(251,191,36,0.07)',
+                  border: '1px solid rgba(251,191,36,0.25)',
+                  fontSize: 12,
+                  color: '#fbbf24',
+                }}>
+                  <Lock size={13} style={{ flexShrink: 0 }} />
+                  Repositório privado detectado — confirme que a deploy key do agente foi adicionada ao repositório.
+                </div>
+              )}
 
               {linkMutation.isError && (
                 <div style={{
