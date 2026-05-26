@@ -9,41 +9,43 @@ import {
   Calendar,
   ChevronDown,
   Clock,
+  Coffee,
   Link2,
   MapPin,
+  Phone,
+  Pin,
   Tag,
   Users,
+  Video,
   X,
+  CheckSquare,
+  CalendarDays,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-// Tipos de evento mapeados para DTabela (idTaskType) — seeds futuros no backend
 const EVENT_TYPES = [
-  { value: "meeting",      label: "Reunião",     icon: "🤝", color: "text-blue-400" },
-  { value: "event",        label: "Evento",      icon: "📅", color: "text-violet-400" },
-  { value: "task",         label: "Tarefa",      icon: "✅", color: "text-emerald-400" },
-  { value: "lunch",        label: "Almoço",      icon: "🍽️", color: "text-amber-400" },
-  { value: "call",         label: "Ligação",     icon: "📞", color: "text-cyan-400" },
-  { value: "other",        label: "Outro",       icon: "📌", color: "text-slate-400" },
+  { value: "meeting", label: "Reunião",  Icon: Video,        color: "text-blue-400" },
+  { value: "event",   label: "Evento",   Icon: CalendarDays, color: "text-violet-400" },
+  { value: "task",    label: "Tarefa",   Icon: CheckSquare,  color: "text-emerald-400" },
+  { value: "lunch",   label: "Almoço",   Icon: Coffee,       color: "text-amber-400" },
+  { value: "call",    label: "Ligação",  Icon: Phone,        color: "text-cyan-400" },
+  { value: "other",   label: "Outro",    Icon: Pin,          color: "text-slate-400" },
 ] as const;
 
 type EventTypeValue = typeof EVENT_TYPES[number]["value"];
 
-// Prioridades mapeadas para DTabela (idPriority)
 const PRIORITIES = [
-  { value: "urgent", label: "Urgente",  color: "text-red-400" },
-  { value: "high",   label: "Alta",     color: "text-orange-400" },
-  { value: "medium", label: "Media",    color: "text-yellow-400" },
-  { value: "low",    label: "Baixa",    color: "text-slate-400" },
+  { value: "urgent", label: "Urgente" },
+  { value: "high",   label: "Alta" },
+  { value: "medium", label: "Média" },
+  { value: "low",    label: "Baixa" },
 ] as const;
 
 type PriorityValue = typeof PRIORITIES[number]["value"];
 
 interface CreateEventModalProps {
-  /** Data de inicio pre-preenchida (celula clicada). */
   date: Date;
-  /** Hora pre-preenchida (null = dia todo). Mapeia para dueDate em DTask. */
   hour: number | null;
   onClose: () => void;
 }
@@ -57,18 +59,9 @@ const inputClass = cn(
 /**
  * Modal de criacao de evento do Planner.
  *
- * Campos alinhados com DTask do Scrumban-Backend-V2:
- * - nome        → titulo
- * - idTaskType  → tipo (DTabela lookup)
- * - dueDate     → data + hora
- * - descricao   → descricao
- * - idAssignee  → convidados (DEntidade)
- * - idPriority  → prioridade (DTabela lookup)
- * - dados.meetLink  → link de reuniao (Zoom/Meet — JSON polimórfico)
- * - dados.location  → local
- *
- * Preparado para integracao com Google Calendar (dados.googleEventId)
- * e Zoom (dados.zoomId, dados.zoomJoinUrl).
+ * Campos alinhados com DTask (Scrumban-Backend-V2):
+ * nome, idTaskType, dueDate, descricao, idAssignee, idPriority,
+ * dados.meetLink, dados.location.
  */
 export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps) {
   const [eventType, setEventType] = useState<EventTypeValue>("meeting");
@@ -82,15 +75,14 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
       ? `${String(hour).padStart(2, "0")}:00 – ${String(hour + 1).padStart(2, "0")}:00`
       : "O dia todo";
 
-  const selectedType = EVENT_TYPES.find((t) => t.value === eventType)!;
   const isMeeting = eventType === "meeting" || eventType === "call";
+  const selectedType = EVENT_TYPES.find((t) => t.value === eventType)!;
+  const SelectedIcon = selectedType.Icon;
 
   return (
     <>
-      {/* Backdrop */}
       <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px]" onClick={onClose} />
 
-      {/* Modal */}
       <div
         className="fixed left-1/2 top-1/2 z-50 w-full max-w-[480px] -translate-x-1/2 -translate-y-1/2 rounded-xl border border-border shadow-2xl"
         style={{ background: "var(--background)" }}
@@ -125,20 +117,20 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
               Tipo
             </label>
             <div className="flex flex-wrap gap-1.5">
-              {EVENT_TYPES.map((t) => (
+              {EVENT_TYPES.map(({ value, label, Icon, color }) => (
                 <button
-                  key={t.value}
+                  key={value}
                   type="button"
-                  onClick={() => setEventType(t.value)}
+                  onClick={() => setEventType(value)}
                   className={cn(
                     "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[12px] transition-all",
-                    eventType === t.value
+                    eventType === value
                       ? "border-primary bg-primary/10 text-foreground"
                       : "border-border text-muted-foreground hover:border-border/80 hover:bg-secondary",
                   )}
                 >
-                  <span>{t.icon}</span>
-                  <span>{t.label}</span>
+                  <Icon size={12} className={eventType === value ? color : undefined} />
+                  <span>{label}</span>
                 </button>
               ))}
             </div>
@@ -156,30 +148,28 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
             </div>
           </div>
 
-          {/* Descricao — mapeia para DTask.descricao */}
+          {/* Descricao */}
           <div className="flex items-start gap-2.5">
             <AlignLeft size={13} className="mt-2.5 flex-shrink-0 text-muted-foreground" />
             <textarea
-              placeholder="Adicionar descricao"
+              placeholder="Adicionar descrição"
               rows={2}
               className={cn(inputClass, "resize-none")}
             />
           </div>
 
-          {/* Convidados — mapeia para DTask.idAssignee (DEntidade) */}
+          {/* Convidados */}
           <div className="flex items-center gap-2.5">
             <Users size={13} className="flex-shrink-0 text-muted-foreground" />
             <input type="text" placeholder="Adicionar convidados ou participantes" className={inputClass} />
           </div>
 
-          {/* Prioridade — mapeia para DTask.idPriority (DTabela) */}
+          {/* Prioridade */}
           <div className="flex items-center gap-2.5">
-            <div className="flex-shrink-0 text-muted-foreground">
-              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-                <line x1="4" x2="4" y1="22" y2="15" />
-              </svg>
-            </div>
+            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="flex-shrink-0 text-muted-foreground">
+              <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+              <line x1="4" x2="4" y1="22" y2="15" />
+            </svg>
             <div className="relative flex-1">
               <select
                 value={priority}
@@ -194,42 +184,51 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
             </div>
           </div>
 
-          {/* Link de reuniao — mapeia para DTask.dados.meetLink */}
+          {/* Link de reuniao — só aparece para Reunião e Ligação */}
           {isMeeting && (
             <div className="flex items-center gap-2.5">
               <Link2 size={13} className="flex-shrink-0 text-muted-foreground" />
               {showMeetLink ? (
-                <input type="url" placeholder="https://zoom.us/j/... ou meet.google.com/..." className={inputClass} />
+                <input
+                  autoFocus
+                  type="url"
+                  placeholder="https://zoom.us/j/... ou meet.google.com/..."
+                  className={inputClass}
+                />
               ) : (
                 <button
                   type="button"
                   onClick={() => setShowMeetLink(true)}
                   className="text-[13px] text-primary hover:underline"
                 >
-                  + Adicionar link de reuniao (Zoom / Meet)
+                  + Adicionar link de reunião (Zoom / Meet)
                 </button>
               )}
             </div>
           )}
 
-          {/* Local — mapeia para DTask.dados.location */}
-          {showLocation ? (
-            <div className="flex items-center gap-2.5">
-              <MapPin size={13} className="flex-shrink-0 text-muted-foreground" />
-              <input type="text" placeholder="Adicionar local ou endereco" className={inputClass} />
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowLocation(true)}
-              className="flex items-center gap-2.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <MapPin size={13} />
-              <span>+ Adicionar local</span>
-            </button>
-          )}
+          {/* Local */}
+          <div className="flex items-center gap-2.5">
+            <MapPin size={13} className="flex-shrink-0 text-muted-foreground" />
+            {showLocation ? (
+              <input
+                autoFocus
+                type="text"
+                placeholder="Adicionar local ou endereço"
+                className={inputClass}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setShowLocation(true)}
+                className="text-[13px] text-muted-foreground transition-colors hover:text-foreground"
+              >
+                + Adicionar local
+              </button>
+            )}
+          </div>
 
-          {/* Integrações futuras */}
+          {/* Integracoes futuras */}
           <div className="flex items-center gap-3 rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
             <div className="flex items-center gap-1.5">
               <GoogleCalendarIcon />
@@ -249,7 +248,7 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
         {/* Footer */}
         <div className="flex items-center justify-between border-t border-border px-5 py-3.5">
           <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-            <span className={selectedType.color}>{selectedType.icon}</span>
+            <SelectedIcon size={13} className={selectedType.color} />
             <span>{selectedType.label}</span>
           </div>
           <div className="flex items-center gap-2">
