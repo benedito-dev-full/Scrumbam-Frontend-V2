@@ -13,6 +13,8 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, Plus, Lock, MoreHorizontal, Star, Pencil, Copy, Trash2 } from "lucide-react";
+import * as LucideIcons from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -143,6 +145,47 @@ function useInlineRename(project: DProjectDto) {
 
   return { editing, draft, setDraft, inputRef, isPending, startEdit, handleKeyDown, commitEdit };
 }
+
+// ─── Mapa de ícones do picker → Lucide ───────────────────────────────────────
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  zap: LucideIcons.Zap, rocket: LucideIcons.Rocket, target: LucideIcons.Target,
+  lightbulb: LucideIcons.Lightbulb, flame: LucideIcons.Flame, star: LucideIcons.Star,
+  sparkles: LucideIcons.Sparkles, trophy: LucideIcons.Trophy, palette: LucideIcons.Palette,
+  drama: LucideIcons.Drama, music: LucideIcons.Music, film: LucideIcons.Film,
+  mic: LucideIcons.Mic, guitar: LucideIcons.Guitar, radio: LucideIcons.Radio,
+  headphones: LucideIcons.Headphones, smartphone: LucideIcons.Smartphone,
+  laptop: LucideIcons.Laptop, monitor: LucideIcons.Monitor, keyboard: LucideIcons.Keyboard,
+  mouse: LucideIcons.Mouse, printer: LucideIcons.Printer, camera: LucideIcons.Camera,
+  scanline: LucideIcons.ScanLine, barchart: LucideIcons.BarChart2,
+  "trending-up": LucideIcons.TrendingUp, "trending-dn": LucideIcons.TrendingDown,
+  clipboard: LucideIcons.ClipboardList, pin: LucideIcons.Pin, "map-pin": LucideIcons.MapPin,
+  map: LucideIcons.Map, calendar: LucideIcons.Calendar, key: LucideIcons.Key,
+  lock: LucideIcons.Lock, unlock: LucideIcons.Unlock, bell: LucideIcons.Bell,
+  "bell-off": LucideIcons.BellOff, megaphone: LucideIcons.Megaphone,
+  volume: LucideIcons.Volume2, "volume-x": LucideIcons.VolumeX, medal: LucideIcons.Medal,
+  award: LucideIcons.Award, ribbon: LucideIcons.Ribbon, gift: LucideIcons.Gift,
+  globe: LucideIcons.Globe, compass: LucideIcons.Compass, mountain: LucideIcons.Mountain,
+  home: LucideIcons.Home, building: LucideIcons.Building2, hospital: LucideIcons.Hospital,
+  store: LucideIcons.Store, hotel: LucideIcons.Hotel, car: LucideIcons.Car,
+  plane: LucideIcons.Plane, ship: LucideIcons.Ship, anchor: LucideIcons.Anchor,
+  bike: LucideIcons.Bike, bus: LucideIcons.Bus, pizza: LucideIcons.Pizza,
+  apple: LucideIcons.Apple, coffee: LucideIcons.Coffee, cart: LucideIcons.ShoppingCart,
+  package: LucideIcons.Package, boxes: LucideIcons.Boxes, dumbbell: LucideIcons.Dumbbell,
+  gamepad: LucideIcons.Gamepad2, puzzle: LucideIcons.Puzzle, swords: LucideIcons.Swords,
+  shield: LucideIcons.Shield, flag: LucideIcons.Flag, leaf: LucideIcons.Leaf,
+  flower: LucideIcons.Flower, trees: LucideIcons.Trees, sun: LucideIcons.Sun,
+  moon: LucideIcons.Moon, cloud: LucideIcons.Cloud, umbrella: LucideIcons.Umbrella,
+  snowflake: LucideIcons.Snowflake, diamond: LucideIcons.Diamond, crown: LucideIcons.Crown,
+  heart: LucideIcons.Heart, smile: LucideIcons.Smile, users: LucideIcons.Users,
+  user: LucideIcons.User, baby: LucideIcons.Baby, dog: LucideIcons.Dog,
+  microscope: LucideIcons.Microscope, flask: LucideIcons.FlaskConical, atom: LucideIcons.Atom,
+  cpu: LucideIcons.Cpu, database: LucideIcons.Database, code: LucideIcons.Code,
+  terminal: LucideIcons.Terminal, git: LucideIcons.GitBranch, book: LucideIcons.BookOpen,
+  bookmark: LucideIcons.BookMarked, pen: LucideIcons.Pen, file: LucideIcons.FileText,
+  folder: LucideIcons.Folder, archive: LucideIcons.Archive, paperclip: LucideIcons.Paperclip,
+  search: LucideIcons.Search,
+};
 
 // ─── Ícones SVG ───────────────────────────────────────────────────────────────
 
@@ -483,21 +526,11 @@ function SpaceNode({
   const { editing, draft, setDraft, inputRef, isPending, startEdit, handleKeyDown, commitEdit } =
     useInlineRename(space);
 
-  // Gera iniciais do nome do space para o chip colorido
-  const iniciais = space.nome
-    .split(" ")
-    .slice(0, 2)
-    .map((w) => w[0] ?? "")
-    .join("")
-    .toUpperCase() || "?";
-
-  // Cor determinística baseada no ID
-  const COLORS = [
-    "#6366f1", "#8b5cf6", "#ec4899", "#f59e0b",
-    "#10b981", "#3b82f6", "#ef4444", "#14b8a6",
-  ];
-  const colorIndex = parseInt(space.id, 10) % COLORS.length;
-  const chipColor = COLORS[isNaN(colorIndex) ? 0 : colorIndex];
+  // Avatar: usa color/icon salvos ou fallback determinístico
+  const inicial = (space.nome.trim().charAt(0) || "?").toUpperCase();
+  const FALLBACK_COLORS = ["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6","#ef4444","#14b8a6"];
+  const chipColor = space.color ?? FALLBACK_COLORS[parseInt(space.id, 10) % FALLBACK_COLORS.length] ?? "#6366f1";
+  const SpaceIcon = space.icon ? ICON_MAP[space.icon] ?? null : null;
 
   return (
     <div>
@@ -521,7 +554,10 @@ function SpaceNode({
               className="grid size-6 place-items-center rounded-md text-[11px] font-bold text-white"
               style={{ background: chipColor }}
             >
-              {iniciais}
+              {SpaceIcon
+                ? <SpaceIcon size={13} strokeWidth={1.75} color="white" />
+                : inicial
+              }
             </span>
           </span>
           <span className="absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-100 group-hover:opacity-100">
