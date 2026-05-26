@@ -10,6 +10,7 @@ import { DayView } from "./_components/day-view";
 import { MonthView } from "./_components/month-view";
 import { PlannerToolbar } from "./_components/planner-toolbar";
 import { WeekView } from "./_components/week-view";
+import { useDragNavigation } from "./_hooks/use-drag-navigation";
 
 /**
  * Pagina /planner — orquestra view ativa + data de referencia.
@@ -21,6 +22,12 @@ import { WeekView } from "./_components/week-view";
 export default function PlannerPage() {
   const [view, setView] = useState<PlannerView>("week");
   const [cursorDate, setCursorDate] = useState<Date>(new Date());
+
+  const { dragOffset, isDragging, pointerHandlers } = useDragNavigation({
+    view,
+    cursorDate,
+    onCursorChange: setCursorDate,
+  });
 
   return (
     <div
@@ -34,9 +41,26 @@ export default function PlannerPage() {
         onCursorChange={setCursorDate}
       />
 
-      {view === "day" && <DayView cursorDate={cursorDate} events={mockPlannerEvents} />}
-      {view === "week" && <WeekView cursorDate={cursorDate} events={mockPlannerEvents} />}
-      {view === "month" && <MonthView cursorDate={cursorDate} events={mockPlannerEvents} />}
+      {/* Wrapper de drag: captura pointer events e aplica translacao fluida */}
+      <div
+        className="relative flex-1 overflow-hidden"
+        {...pointerHandlers}
+        style={{ touchAction: "pan-y" }}
+      >
+        <div
+          className="h-full"
+          style={{
+            transform: `translateX(${dragOffset}px)`,
+            transition: isDragging ? "none" : "transform 0.2s ease-out",
+            cursor: isDragging ? "grabbing" : "default",
+            userSelect: isDragging ? "none" : undefined,
+          }}
+        >
+          {view === "day" && <DayView cursorDate={cursorDate} events={mockPlannerEvents} />}
+          {view === "week" && <WeekView cursorDate={cursorDate} events={mockPlannerEvents} />}
+          {view === "month" && <MonthView cursorDate={cursorDate} events={mockPlannerEvents} />}
+        </div>
+      </div>
 
       <PlannerSearchBar />
     </div>
