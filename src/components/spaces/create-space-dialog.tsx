@@ -206,9 +206,10 @@ function IconColorPicker({
   onIconChange: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [tab, setTab] = useState<"icon" | "color">("icon");
+  const [colorOpen, setColorOpen] = useState(false);
   const [search, setSearch] = useState("");
   const ref = useRef<HTMLDivElement>(null);
+  const colorRef = useRef<HTMLDivElement>(null);
 
   const letter = nome.trim().charAt(0).toUpperCase() || "S";
   const selectedEntry = ICON_LIST.find((e) => e.id === iconId);
@@ -218,10 +219,12 @@ function IconColorPicker({
     ? ICON_LIST.filter((e) => e.label.toLowerCase().includes(search.toLowerCase()))
     : ICON_LIST;
 
+  // Fecha popover principal ao clicar fora
   useEffect(() => {
     function handle(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false);
+        setColorOpen(false);
       }
     }
     if (open) document.addEventListener("mousedown", handle);
@@ -233,7 +236,7 @@ function IconColorPicker({
       {/* Avatar clicável */}
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => { setOpen((v) => !v); setColorOpen(false); }}
         className="flex h-11 w-11 items-center justify-center rounded-md text-white font-bold text-lg select-none transition-all hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         style={{ backgroundColor: color }}
         aria-label="Escolher ícone e cor"
@@ -244,33 +247,21 @@ function IconColorPicker({
         }
       </button>
 
-      {/* Popover */}
+      {/* Popover principal — só ícones, sem tabs */}
       {open && (
         <div className="absolute left-0 top-[48px] z-50 w-[320px] rounded-lg border border-border bg-popover shadow-2xl">
-          {/* Tabs */}
-          <div className="flex border-b border-border">
-            {(["icon", "color"] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={cn(
-                  "flex-1 py-2.5 text-xs font-semibold capitalize transition-colors",
-                  tab === t
-                    ? "border-b-2 border-primary text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {t === "icon" ? "Ícone" : "Cor"}
-              </button>
-            ))}
+          {/* Header: título da tab (estático) */}
+          <div className="border-b border-border px-3 py-2.5">
+            <span className="text-xs font-semibold text-foreground border-b-2 pb-2.5 border-primary">
+              Ícone
+            </span>
           </div>
 
-          {/* ── Tab Ícone ── */}
-          {tab === "icon" && (
-            <div className="p-3 space-y-2">
-              {/* Barra de pesquisa */}
-              <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3">
+          <div className="p-3 space-y-2">
+            {/* Barra de pesquisa + botão cor */}
+            <div className="flex items-center gap-2">
+              {/* Search */}
+              <div className="flex flex-1 items-center gap-2 rounded-md border border-input bg-background px-3">
                 <Search size={13} className="text-muted-foreground shrink-0" />
                 <input
                   type="text"
@@ -290,67 +281,78 @@ function IconColorPicker({
                 )}
               </div>
 
-              {/* Grid */}
-              <div className="grid grid-cols-8 gap-0.5 max-h-[240px] overflow-y-auto">
-                {/* Inicial (sem ícone) */}
+              {/* Botão círculo de cor */}
+              <div ref={colorRef} className="relative shrink-0">
                 <button
                   type="button"
-                  title="Usar inicial"
-                  onClick={() => { onIconChange(""); setOpen(false); }}
+                  title="Escolher cor"
+                  onClick={() => setColorOpen((v) => !v)}
+                  className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-border/60 transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+                  style={{ backgroundColor: color }}
+                  aria-label="Cor atual — clique para mudar"
+                />
+
+                {/* Sub-dropdown de cores */}
+                {colorOpen && (
+                  <div className="absolute right-0 top-[34px] z-[60] w-[188px] rounded-lg border border-border bg-popover p-3 shadow-2xl">
+                    <div className="grid grid-cols-8 gap-1.5">
+                      {COLOR_PALETTE.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => { onColorChange(c); setColorOpen(false); }}
+                          className={cn(
+                            "h-5 w-5 rounded-full transition-transform hover:scale-110 focus:outline-none",
+                            color === c && "ring-2 ring-white ring-offset-1 ring-offset-popover scale-110",
+                          )}
+                          style={{ backgroundColor: c }}
+                          aria-label={`Cor ${c}`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Grid de ícones */}
+            <div className="grid grid-cols-8 gap-0.5 max-h-[240px] overflow-y-auto">
+              {/* Inicial (sem ícone) */}
+              <button
+                type="button"
+                title="Usar inicial"
+                onClick={() => { onIconChange(""); setOpen(false); }}
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded text-sm font-bold text-white transition-colors hover:opacity-80",
+                  !iconId && "ring-2 ring-offset-1 ring-offset-popover",
+                )}
+                style={{ backgroundColor: color }}
+              >
+                {letter}
+              </button>
+
+              {filtered.map(({ id, label, Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  title={label}
+                  onClick={() => { onIconChange(id); setOpen(false); }}
                   className={cn(
-                    "flex h-8 w-8 items-center justify-center rounded text-sm font-bold text-white transition-colors hover:opacity-80",
-                    !iconId && "ring-2 ring-offset-1 ring-offset-popover",
+                    "flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-muted/60",
+                    iconId === id && "bg-muted/60",
                   )}
-                  style={{ backgroundColor: color, ...((!iconId) ? { ringColor: color } : {}) }}
                 >
-                  {letter}
+                  <Icon size={15} strokeWidth={1.75} style={{ color }} />
                 </button>
-
-                {filtered.map(({ id, label, Icon }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    title={label}
-                    onClick={() => { onIconChange(id); setOpen(false); }}
-                    className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-muted/60",
-                      iconId === id && "bg-muted/60 ring-1 ring-offset-1 ring-offset-popover",
-                    )}
-                    style={iconId === id ? { outlineColor: color } : {}}
-                  >
-                    <Icon size={15} strokeWidth={1.75} style={{ color }} />
-                  </button>
-                ))}
-              </div>
+              ))}
             </div>
-          )}
-
-          {/* ── Tab Cor ── */}
-          {tab === "color" && (
-            <div className="p-4 space-y-2">
-              <p className="text-xs text-muted-foreground mb-3">Cor do espaço</p>
-              <div className="grid grid-cols-8 gap-2">
-                {COLOR_PALETTE.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => onColorChange(c)}
-                    className={cn(
-                      "h-7 w-7 rounded-full transition-transform hover:scale-110 focus:outline-none",
-                      color === c && "ring-2 ring-white ring-offset-2 ring-offset-popover scale-110",
-                    )}
-                    style={{ backgroundColor: c }}
-                    aria-label={`Cor ${c}`}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       )}
     </div>
   );
 }
+
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 
