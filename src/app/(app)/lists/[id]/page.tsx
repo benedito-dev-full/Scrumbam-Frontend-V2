@@ -27,6 +27,7 @@ import {
 } from "@dnd-kit/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/query-keys";
+import { api } from "@/lib/api";
 
 import { ViewSwitcher } from "@/components/shell/view-switcher";
 import {
@@ -390,13 +391,63 @@ function sortTasks(tasks: TaskResponseDto[], key: BlockSortKey): TaskResponseDto
 // ─── Drawer de tasks do bloco ─────────────────────────────────────────────────
 function BlockDrawer({
   block,
+  projectId,
   onClose,
 }: {
   block: BlockDto;
+  projectId: string;
   onClose: () => void;
 }) {
   const [sortKey, setSortKey] = useState<BlockSortKey>("recent");
   const [sortOpen, setSortOpen] = useState(false);
+
+  // modo do painel de adição: null=fechado, "new"=criar, "link"=vincular existente
+  const [addMode, setAddMode] = useState<"new" | "link" | null>(null);
+  const [newTaskName, setNewTaskName] = useState("");
+  const [linkSearch, setLinkSearch] = useState("");
+
+  const createTask = useCreateTask();
+  const queryClient = useQueryClient();
+
+  // tasks da lista sem bloco (idPai null) — para vincular existente
+  const { data: allTasks = [] } = useTasksByProject(projectId);
+  const unassigned = allTasks.filter((t) => !t.idPai && t.idClasse !== "-200");
+
+  const filtered = linkSearch.trim()
+    ? unassigned.filter((t) =>
+        t.nome.toLowerCase().includes(linkSearch.toLowerCase()),
+      )
+    : unassigned;
+
+  const [linking, setLinking] = useState(false);
+
+  function handleCreateTask() {
+    const nome = newTaskName.trim();
+    if (!nome) return;
+    createTask.mutate(
+      { titulo: nome, idProject: projectId, idPai: block.id },
+      {
+        onSuccess: () => {
+          setNewTaskName("");
+          setAddMode(null);
+        },
+      },
+    );
+  }
+
+  async function handleLinkTask(taskId: string) {
+    setLinking(true);
+    try {
+      await api.put(`/tasks/${taskId}`, { idPai: block.id });
+      void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
+      void queryClient.invalidateQueries({ queryKey: qk.tasks.children(block.id) });
+      setAddMode(null);
+      setLinkSearch("");
+    } finally {
+      setLinking(false);
+    }
+  }
+
   const { data: tasks = [], isLoading: loadingTasks } = useSubtasks(block.id, true);
   const { done, total, percent } = calcBlockProgress(tasks);
   const endDate = block.dados?.endDate ?? null;
@@ -717,40 +768,226 @@ function BlockDrawer({
         {/* rodapé — adicionar task */}
         <div
           style={{
-            padding: "14px 20px",
             borderTop: "1px solid #26262d",
             flexShrink: 0,
           }}
         >
-          <button
-            type="button"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              height: 32,
-              padding: "0 14px",
-              borderRadius: 6,
-              border: "1px solid #2a2a32",
-              background: "var(--background)",
-              color: "var(--muted-foreground)",
-              fontSize: 13,
-              cursor: "pointer",
-              width: "100%",
-              justifyContent: "center",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--foreground)";
-              e.currentTarget.style.borderColor = "#3a3a45";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--muted-foreground)";
-              e.currentTarget.style.borderColor = "#2a2a32";
-            }}
-          >
-            <IcPlus size={13} />
-            Adicionar tarefa neste bloco
-          </button>
+          {/* painel: criar nova tarefa */}
+          {addMode === "new" && (
+            <div style={{ padding: "12px 20px", borderBottom: "1px solid #26262d" }}>
+              <input
+                autoFocus
+                value={newTaskName}
+                onChange={(e) => setNewTaskName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateTask();
+                  if (e.key === "Escape") { setAddMode(null); setNewTaskName(""); }
+                }}
+                placeholder="Nome da nova tarefa…"
+                style={{
+                  width: "100%",
+                  background: "var(--background)",
+                  border: "1px solid #3a3a45",
+                  borderRadius: 6,
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  color: "var(--foreground)",
+                  outline: 0,
+                  marginBottom: 8,
+                  boxSizing: "border-box",
+                }}
+              />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={handleCreateTask}
+                  disabled={!newTaskName.trim() || createTask.isPending}
+                  style={{
+                    height: 30,
+                    padding: "0 14px",
+                    borderRadius: 6,
+                    border: "none",
+                    background: "#7c5cff",
+                    color: "#fff",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: newTaskName.trim() ? "pointer" : "default",
+                    opacity: newTaskName.trim() ? 1 : 0.5,
+                  }}
+                >
+                  {createTask.isPending ? "Criando…" : "Criar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setAddMode(null); setNewTaskName(""); }}
+                  style={{
+                    height: 30,
+                    padding: "0 12px",
+                    borderRadius: 6,
+                    border: "1px solid #2a2a32",
+                    background: "none",
+                    color: "var(--muted-foreground)",
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* painel: vincular tarefa existente */}
+          {addMode === "link" && (
+            <div style={{ padding: "12px 20px", borderBottom: "1px solid #26262d" }}>
+              <input
+                autoFocus
+                value={linkSearch}
+                onChange={(e) => setLinkSearch(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape") { setAddMode(null); setLinkSearch(""); } }}
+                placeholder="Buscar tarefa existente…"
+                style={{
+                  width: "100%",
+                  background: "var(--background)",
+                  border: "1px solid #3a3a45",
+                  borderRadius: 6,
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  color: "var(--foreground)",
+                  outline: 0,
+                  marginBottom: 8,
+                  boxSizing: "border-box",
+                }}
+              />
+              <div
+                style={{
+                  maxHeight: 180,
+                  overflowY: "auto",
+                  borderRadius: 6,
+                  border: "1px solid #26262d",
+                  background: "var(--background)",
+                }}
+              >
+                {filtered.length === 0 ? (
+                  <div style={{ padding: "12px 14px", fontSize: 13, color: "var(--muted-foreground)" }}>
+                    {unassigned.length === 0
+                      ? "Todas as tarefas já estão em um bloco."
+                      : "Nenhuma tarefa encontrada."}
+                  </div>
+                ) : (
+                  filtered.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => handleLinkTask(t.id)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        width: "100%",
+                        padding: "8px 14px",
+                        background: "none",
+                        border: 0,
+                        borderBottom: "1px solid #1f1f25",
+                        color: "var(--foreground)",
+                        fontSize: 13,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                    >
+                      <span
+                        style={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: "50%",
+                          background: STATUS_COLOR[t.status as V3Intention] ?? "#6b7280",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span className="truncate">{t.nome}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => { setAddMode(null); setLinkSearch(""); }}
+                style={{
+                  marginTop: 8,
+                  height: 28,
+                  padding: "0 12px",
+                  borderRadius: 6,
+                  border: "1px solid #2a2a32",
+                  background: "none",
+                  color: "var(--muted-foreground)",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+
+          {/* botões principais */}
+          {addMode === null && (
+            <div style={{ display: "flex", gap: 8, padding: "12px 20px" }}>
+              <button
+                type="button"
+                onClick={() => setAddMode("new")}
+                style={{
+                  flex: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  height: 32,
+                  borderRadius: 6,
+                  border: "1px solid #2a2a32",
+                  background: "var(--background)",
+                  color: "var(--foreground)",
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#7c5cff60")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#2a2a32")}
+              >
+                <IcPlus size={13} />
+                Nova tarefa
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddMode("link")}
+                style={{
+                  flex: 1,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  height: 32,
+                  borderRadius: 6,
+                  border: "1px solid #2a2a32",
+                  background: "var(--background)",
+                  color: "var(--muted-foreground)",
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#3a3a45";
+                  e.currentTarget.style.color = "var(--foreground)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#2a2a32";
+                  e.currentTarget.style.color = "var(--muted-foreground)";
+                }}
+              >
+                <IcGitFork size={13} />
+                Vincular existente
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </>
@@ -1083,7 +1320,7 @@ function BlocksContent({
 
       {/* drawer de detalhes do bloco */}
       {selectedBlock && (
-        <BlockDrawer block={selectedBlock} onClose={() => setSelectedBlock(null)} />
+        <BlockDrawer block={selectedBlock} projectId={projectId} onClose={() => setSelectedBlock(null)} />
       )}
     </div>
   );
