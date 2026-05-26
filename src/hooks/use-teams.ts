@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { qk } from '@/lib/query-keys';
-import { useAuthStore } from '@/lib/stores/auth';
-import type { TeamResponseDto, TeamMemberDto } from '@/lib/types/api';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query-keys";
+import { useAuthStore } from "@/lib/stores/auth";
+import type { TeamResponseDto, TeamMemberDto } from "@/lib/types/api";
 
 interface CreateTeamPayload {
   nome: string;
@@ -26,7 +26,7 @@ export function useCreateTeam() {
   return useMutation<TeamResponseDto, Error, CreateTeamPayload>({
     mutationFn: async (payload) => {
       const orgId = user?.organizationId;
-      if (!orgId) throw new Error('Nenhuma organização ativa');
+      if (!orgId) throw new Error("Nenhuma organização ativa");
       const res = await api.post<TeamResponseDto>(
         `/organizations/${orgId}/teams`,
         payload,
@@ -62,7 +62,9 @@ export function useTeamMembers(teamId: string) {
   return useQuery<TeamMemberDto[]>({
     queryKey: qk.teams.members(teamId),
     queryFn: async () => {
-      const res = await api.get<ListTeamMembersResponse>(`/teams/${teamId}/members`);
+      const res = await api.get<ListTeamMembersResponse>(
+        `/teams/${teamId}/members`,
+      );
       return res.data.members;
     },
     enabled: !!accessToken && !!teamId,
@@ -73,7 +75,11 @@ export function useTeamMembers(teamId: string) {
 export function useAddTeamMember(teamId: string) {
   const qc = useQueryClient();
 
-  return useMutation<void, Error, { userId: string; cargo?: 'LEAD' | 'MEMBER' }>({
+  return useMutation<
+    void,
+    Error,
+    { userId: string; cargo?: "LEAD" | "MEMBER" }
+  >({
     mutationFn: async (payload) => {
       await api.post(`/teams/${teamId}/members`, payload);
     },
@@ -110,6 +116,26 @@ export function useTeams() {
       return res.data.items;
     },
     enabled: !!accessToken && !!orgId,
+    staleTime: 30_000,
+  });
+}
+
+/**
+ * Lista os times dos quais o usuário logado faz parte (na org ativa).
+ *
+ * Mapeia para `GET /teams/mine`. Mais barato que `useTeams()` (que traz
+ * todos os times da org) quando você só precisa dos times do user.
+ */
+export function useMyTeams() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+
+  return useQuery<TeamResponseDto[]>({
+    queryKey: [...qk.teams.all, "mine"],
+    queryFn: async () => {
+      const res = await api.get<ListTeamsResponse>("/teams/mine");
+      return res.data.items;
+    },
+    enabled: !!accessToken,
     staleTime: 30_000,
   });
 }

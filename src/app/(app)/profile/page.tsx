@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import {
   User,
-  Pencil,
   LogOut,
   KeyRound,
   CheckCircle2,
@@ -16,29 +15,12 @@ import { Button } from "@/components/ui/button";
 import { SpaceChip } from "@/components/shell/space-chip";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useLogout } from "@/hooks/use-auth";
+import { useMyTasks } from "@/hooks/use-tasks";
+import { useSpaces } from "@/hooks/use-projects";
+import { useMyTeams } from "@/hooks/use-teams";
 import { cn } from "@/lib/utils";
 
-/* ─── Mock data ──────────────────────────────────────────────────────────── */
-
-const MOCK_PROFILE = {
-  cargo: "Desenvolvedor Full-stack",
-  time: "Engenharia",
-  fuso: "America/São_Paulo (GMT-3)",
-  idioma: "Português (Brasil)",
-  criadoEm: "2026-05-23",
-};
-
-const MOCK_STATS = {
-  concluidas: 12,
-  emAndamento: 5,
-  atribuidas: 3,
-  espacos: 2,
-};
-
-const MOCK_ESPACOS = [
-  { id: "1", nome: "Texte", color: "#6366f1" },
-  { id: "2", nome: "Scrumban", color: "#ef4444" },
-];
+/* ─── Mock — Atividade recente (Fase 3 futura, requer endpoint /auth/me/activity) ─── */
 
 type AtividadeTipo = "completed" | "comment" | "assigned" | "created";
 
@@ -49,34 +31,62 @@ const MOCK_ATIVIDADE: {
   contexto: string;
   tempo: string;
 }[] = [
-  { id: "a1", tipo: "completed", titulo: "Refatorar autenticação", contexto: "Produto",   tempo: "há 2h" },
-  { id: "a2", tipo: "comment",   titulo: "SEO landing /precos",    contexto: "Marketing", tempo: "há 5h" },
-  { id: "a3", tipo: "assigned",  titulo: "Migração para PG 16",    contexto: "Produto",   tempo: "ontem" },
-  { id: "a4", tipo: "created",   titulo: "Espaço Marketing",       contexto: "Workspace", tempo: "há 2 dias" },
+  {
+    id: "a1",
+    tipo: "completed",
+    titulo: "Refatorar autenticação",
+    contexto: "Produto",
+    tempo: "há 2h",
+  },
+  {
+    id: "a2",
+    tipo: "comment",
+    titulo: "SEO landing /precos",
+    contexto: "Marketing",
+    tempo: "há 5h",
+  },
+  {
+    id: "a3",
+    tipo: "assigned",
+    titulo: "Migração para PG 16",
+    contexto: "Produto",
+    tempo: "ontem",
+  },
+  {
+    id: "a4",
+    tipo: "created",
+    titulo: "Espaço Marketing",
+    contexto: "Workspace",
+    tempo: "há 2 dias",
+  },
 ];
 
 const tipoIcon: Record<AtividadeTipo, React.ElementType> = {
   completed: CheckCircle2,
-  comment:   MessageSquare,
-  assigned:  GitFork,
-  created:   Plus,
+  comment: MessageSquare,
+  assigned: GitFork,
+  created: Plus,
 };
 
 const tipoColor: Record<AtividadeTipo, string> = {
   completed: "bg-emerald-500/15 text-emerald-400",
-  comment:   "bg-sky-500/15 text-sky-400",
-  assigned:  "bg-primary/15 text-primary",
-  created:   "bg-violet-500/15 text-violet-400",
+  comment: "bg-sky-500/15 text-sky-400",
+  assigned: "bg-primary/15 text-primary",
+  created: "bg-violet-500/15 text-violet-400",
 };
 
 const tipoLabel: Record<AtividadeTipo, string> = {
   completed: "Concluiu",
-  comment:   "Comentou em",
-  assigned:  "Foi atribuído",
-  created:   "Criou",
+  comment: "Comentou em",
+  assigned: "Foi atribuído",
+  created: "Criou",
 };
 
-/* ─── Helpers ────────────────────────────────────────────────────────────── */
+/* ─── V3 Intentions terminais (filtro de stats) ─── */
+
+const TERMINAL_STATUSES = new Set(["DONE", "FAILED", "CANCELLED", "DISCARDED"]);
+
+/* ─── Helpers ─── */
 
 function getInitials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -86,33 +96,49 @@ function getInitials(name: string): string {
 
 function avatarColor(str: string): string {
   const colors = [
-    "#3b5bdb", "#ae3ec9", "#0ca678", "#e8590c",
-    "#f03e3e", "#1098ad", "#74b816", "#f59f00",
+    "#3b5bdb",
+    "#ae3ec9",
+    "#0ca678",
+    "#e8590c",
+    "#f03e3e",
+    "#1098ad",
+    "#74b816",
+    "#f59f00",
   ];
   let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < str.length; i++)
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
   return colors[Math.abs(hash) % colors.length];
 }
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-/* ─── Página ─────────────────────────────────────────────────────────────── */
+/* ─── Página ─── */
 
 export default function ProfilePage() {
   const router = useRouter();
   const logout = useLogout();
   const user = useAuthStore((s) => s.user);
 
+  const { data: myTasks = [] } = useMyTasks();
+  const { data: spaces = [] } = useSpaces();
+  const { data: myTeams = [] } = useMyTeams();
+
   const name = user?.name ?? "Usuário";
   const email = user?.email ?? "—";
   const initials = getInitials(name);
   const color = avatarColor(name);
+
+  // Stats reais derivadas das tasks atribuídas
+  const concluidas = myTasks.filter((t) => t.status === "DONE").length;
+  const emAndamento = myTasks.filter((t) => t.status === "EXECUTING").length;
+  const atribuidas = myTasks.filter(
+    (t) => !TERMINAL_STATUSES.has(t.status),
+  ).length;
+  const espacosCount = spaces.length;
+
+  const subtitulo =
+    myTeams.length > 0
+      ? `Membro de ${myTeams.length} time${myTeams.length !== 1 ? "s" : ""}`
+      : email;
 
   return (
     <div className="flex h-full flex-col">
@@ -121,27 +147,20 @@ export default function ProfilePage() {
           <User className="size-4 text-muted-foreground" />
           <h1 className="text-sm font-semibold text-foreground">Perfil</h1>
         </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="xs" className="gap-1.5">
-            <Pencil className="size-3.5" />
-            Editar perfil
-          </Button>
-          <Button
-            variant="ghost"
-            size="xs"
-            className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
-            onClick={() => logout.mutate()}
-            disabled={logout.isPending}
-          >
-            <LogOut className="size-3.5" />
-            Sair
-          </Button>
-        </div>
+        <Button
+          variant="ghost"
+          size="xs"
+          className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={() => logout.mutate()}
+          disabled={logout.isPending}
+        >
+          <LogOut className="size-3.5" />
+          Sair
+        </Button>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6">
-
           {/* Hero card */}
           <section className="flex items-center gap-4 rounded-[10px] border border-border bg-card p-5">
             <div
@@ -152,33 +171,40 @@ export default function ProfilePage() {
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[15px] font-semibold text-foreground">{name}</p>
+              <p className="truncate text-[15px] font-semibold text-foreground">
+                {name}
+              </p>
               <p className="truncate text-[13px] text-muted-foreground">
-                {MOCK_PROFILE.cargo} · {MOCK_PROFILE.time}
+                {subtitulo}
               </p>
-              <p className="mt-0.5 truncate text-[12px] text-muted-foreground/80">
-                {email} · Membro desde {formatDate(MOCK_PROFILE.criadoEm)}
-              </p>
+              {myTeams.length > 0 && (
+                <p className="mt-0.5 truncate text-[12px] text-muted-foreground/80">
+                  {email}
+                </p>
+              )}
             </div>
           </section>
 
-          {/* Mini stats */}
+          {/* Mini stats reais */}
           <section className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <StatCard label="Concluídas"    value={MOCK_STATS.concluidas}   />
-            <StatCard label="Em andamento"  value={MOCK_STATS.emAndamento}  />
-            <StatCard label="Atribuídas"    value={MOCK_STATS.atribuidas}   />
-            <StatCard label="Espaços"       value={MOCK_STATS.espacos}      />
+            <StatCard label="Concluídas" value={concluidas} />
+            <StatCard label="Em andamento" value={emAndamento} />
+            <StatCard label="Atribuídas" value={atribuidas} />
+            <StatCard label="Espaços" value={espacosCount} />
           </section>
 
-          {/* Informações pessoais */}
+          {/* Informações pessoais — só campos com fonte de verdade no backend */}
           <Card title="Informações pessoais">
             <dl className="grid grid-cols-[140px_1fr] gap-y-3 text-[13px]">
-              <Row label="Email"        value={email} />
-              <Row label="Cargo"        value={MOCK_PROFILE.cargo} />
-              <Row label="Time"         value={MOCK_PROFILE.time} />
-              <Row label="Fuso horário" value={MOCK_PROFILE.fuso} />
-              <Row label="Idioma"       value={MOCK_PROFILE.idioma} />
-              <Row label="Conta criada" value={formatDate(MOCK_PROFILE.criadoEm)} />
+              <Row label="Email" value={email} />
+              <Row
+                label="Times"
+                value={
+                  myTeams.length > 0
+                    ? myTeams.map((t) => t.nome).join(", ")
+                    : "—"
+                }
+              />
             </dl>
           </Card>
 
@@ -198,7 +224,9 @@ export default function ProfilePage() {
                   <KeyRound className="size-4" />
                 </span>
                 <div>
-                  <p className="text-[13px] font-medium text-foreground">Alterar senha</p>
+                  <p className="text-[13px] font-medium text-foreground">
+                    Alterar senha
+                  </p>
                   <p className="text-[11px] text-muted-foreground">
                     Use uma senha forte e única para esta conta
                   </p>
@@ -208,31 +236,34 @@ export default function ProfilePage() {
             </button>
           </Card>
 
-          {/* Espaços */}
+          {/* Espaços que participo — useSpaces real */}
           <Card title="Espaços que participo">
-            <div className="flex flex-wrap items-center gap-2">
-              {MOCK_ESPACOS.map((e) => (
-                <button
-                  key={e.id}
-                  type="button"
-                  onClick={() => router.push(`/spaces/${e.id}`)}
-                  className="flex items-center gap-2 rounded-md border border-border/70 bg-background/30 px-2.5 py-1.5 text-[13px] text-foreground transition-colors hover:bg-muted/30"
-                >
-                  <SpaceChip iniciais={e.nome.slice(0, 2).toUpperCase()} cor={e.color} size="sm" />
-                  {e.nome}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="flex items-center gap-1.5 rounded-md border border-dashed border-border/70 px-2.5 py-1.5 text-[12px] text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
-              >
-                <Plus className="size-3.5" />
-                Adicionar
-              </button>
-            </div>
+            {spaces.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {spaces.map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => router.push(`/spaces/${s.id}`)}
+                    className="flex items-center gap-2 rounded-md border border-border/70 bg-background/30 px-2.5 py-1.5 text-[13px] text-foreground transition-colors hover:bg-muted/30"
+                  >
+                    <SpaceChip
+                      iniciais={s.nome.slice(0, 2).toUpperCase()}
+                      cor={typeof s.color === "string" ? s.color : "#6366f1"}
+                      size="sm"
+                    />
+                    {s.nome}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[13px] text-muted-foreground">
+                Você ainda não participa de nenhum espaço.
+              </p>
+            )}
           </Card>
 
-          {/* Atividade recente */}
+          {/* Atividade recente — mock (Fase 3: requer endpoint /auth/me/activity) */}
           <Card title="Atividade recente">
             <ul className="-mx-2">
               {MOCK_ATIVIDADE.map((a) => {
@@ -250,7 +281,9 @@ export default function ProfilePage() {
                       </span>
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] text-foreground">
-                          <span className="text-muted-foreground">{tipoLabel[a.tipo]}</span>{" "}
+                          <span className="text-muted-foreground">
+                            {tipoLabel[a.tipo]}
+                          </span>{" "}
                           <span className="font-medium">{a.titulo}</span>
                         </p>
                         <p className="mt-0.5 text-[11px] text-muted-foreground">
@@ -262,23 +295,22 @@ export default function ProfilePage() {
                 );
               })}
             </ul>
-            <div className="mt-3 flex justify-end border-t border-border/60 pt-3">
-              <Button variant="ghost" size="xs" className="gap-1 text-muted-foreground hover:text-foreground">
-                Ver mais atividade
-                <ChevronRight className="size-3" />
-              </Button>
-            </div>
           </Card>
-
         </div>
       </div>
     </div>
   );
 }
 
-/* ─── Subcomponentes ──────────────────────────────────────────────────────── */
+/* ─── Subcomponentes ─── */
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+function Card({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-[10px] border border-border bg-card p-5">
       <h2 className="mb-4 border-b border-border/60 pb-3 text-[15px] font-medium text-foreground">
@@ -292,7 +324,9 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-[10px] border border-border bg-card px-4 py-3.5">
-      <p className="text-[22px] font-semibold leading-tight text-foreground">{value}</p>
+      <p className="text-[22px] font-semibold leading-tight text-foreground">
+        {value}
+      </p>
       <p className="mt-0.5 text-[11px] uppercase tracking-wide text-muted-foreground">
         {label}
       </p>
