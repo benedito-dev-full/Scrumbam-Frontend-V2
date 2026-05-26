@@ -110,16 +110,6 @@ function IcDocs() {
   );
 }
 
-/* Formulário — quadrado com checkmark dentro, igual ClickUp */
-function IcForm() {
-  return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="3" />
-      <path d="M8 12l3 3 5-5" />
-    </svg>
-  );
-}
-
 /* Mais — grid 3×3 de pontos preenchidos */
 function IcGrid() {
   return (
@@ -174,7 +164,7 @@ const mainNav: RailItem[] = [
   { href: "/ia",       label: "IA",         renderIcon: () => <IcAI /> },
   { href: "/teams",    label: "Equipes",    renderIcon: () => <IcTeams /> },
   { href: "/docs",     label: "Documen...", renderIcon: () => <IcDocs /> },
-  { href: "/forms",    label: "Formulário", renderIcon: () => <IcForm /> },
+  // Formulário ocultado da sidebar (a rota /forms continua acessível via URL).
 ];
 
 /* ─── Botão do rail ───────────────────────────────────────────────────────── */
