@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -12,6 +14,7 @@ import {
   getAllDayEventsForDay,
   getTimedEventsForDay,
 } from "../_lib/events";
+import { CreateEventModal } from "./create-event-modal";
 import { EventBlock } from "./event-block";
 
 interface DayViewProps {
@@ -26,6 +29,7 @@ interface DayViewProps {
  * para que blocos fiquem visualmente consistentes entre Dia e Semana.
  */
 export function DayView({ cursorDate, events }: DayViewProps) {
+  const [modal, setModal] = useState<{ hour: number } | null>(null);
   const today = isToday(cursorDate);
   const now = new Date();
   const currentMin = now.getHours() * 60 + now.getMinutes();
@@ -108,7 +112,16 @@ export function DayView({ cursorDate, events }: DayViewProps) {
 
         <div className={cn("relative", today && "bg-accent/30")}>
           {hours.map((h) => (
-            <div key={h} className="h-[60px] border-b border-border/50" />
+            <div key={h} className="group relative h-[60px] border-b border-border/50">
+              <button
+                type="button"
+                onClick={() => setModal({ hour: h })}
+                className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground opacity-0 shadow transition-opacity group-hover:opacity-100"
+                aria-label="Criar evento"
+              >
+                +
+              </button>
+            </div>
           ))}
           {timed.map((ev) => (
             <EventBlock key={ev.id} event={ev} />
@@ -124,6 +137,14 @@ export function DayView({ cursorDate, events }: DayViewProps) {
           )}
         </div>
       </div>
+
+      {modal && (
+        <CreateEventModal
+          date={cursorDate}
+          hour={modal.hour}
+          onClose={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }

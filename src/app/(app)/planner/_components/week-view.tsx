@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { cn } from "@/lib/utils";
 import type { PlannerEvent } from "@/lib/types/planner-event";
 
@@ -9,6 +11,7 @@ import {
   getAllDayEventsForDay,
   getTimedEventsForDay,
 } from "../_lib/events";
+import { CreateEventModal } from "./create-event-modal";
 import { EventBlock } from "./event-block";
 
 const WEEK_DAY_LABEL = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
@@ -26,6 +29,7 @@ interface WeekViewProps {
  * faixa "O dia todo" no topo para eventos `allDay`.
  */
 export function WeekView({ cursorDate, events }: WeekViewProps) {
+  const [modal, setModal] = useState<{ date: Date; hour: number } | null>(null);
   const weekDates = getWeekDates(cursorDate);
   const now = new Date();
   const currentMin = now.getHours() * 60 + now.getMinutes();
@@ -147,7 +151,19 @@ export function WeekView({ cursorDate, events }: WeekViewProps) {
               )}
             >
               {hours.map((h) => (
-                <div key={h} className="h-[60px] border-b border-border/50" />
+                <div
+                  key={h}
+                  className="group relative h-[60px] border-b border-border/50"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setModal({ date, hour: h })}
+                    className="absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground opacity-0 shadow transition-opacity group-hover:opacity-100"
+                    aria-label={`Criar evento`}
+                  >
+                    +
+                  </button>
+                </div>
               ))}
               {dayEvents.map((ev) => (
                 <EventBlock key={ev.id} event={ev} />
@@ -164,6 +180,14 @@ export function WeekView({ cursorDate, events }: WeekViewProps) {
             </div>
           );
         })}
+
+      {modal && (
+        <CreateEventModal
+          date={modal.date}
+          hour={modal.hour}
+          onClose={() => setModal(null)}
+        />
+      )}
       </div>
     </div>
   );

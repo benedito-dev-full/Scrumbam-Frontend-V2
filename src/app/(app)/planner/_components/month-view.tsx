@@ -1,10 +1,13 @@
 "use client";
 
+import { useState } from "react";
+
 import { cn } from "@/lib/utils";
 import type { PlannerEvent } from "@/lib/types/planner-event";
 
 import { getMonthGrid, isSameMonth, isToday } from "../_lib/date";
 import { EVENT_PILL_CLASSES, getEventsForDay } from "../_lib/events";
+import { CreateEventModal } from "./create-event-modal";
 
 const WEEK_DAY_LABEL = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sab"];
 
@@ -23,6 +26,7 @@ const MAX_PILLS = 3;
  * mostra "+N mais" (sem popover por enquanto — apenas indicador visual).
  */
 export function MonthView({ cursorDate, events }: MonthViewProps) {
+  const [modal, setModal] = useState<{ date: Date } | null>(null);
   const weeks = getMonthGrid(cursorDate);
 
   return (
@@ -63,11 +67,19 @@ export function MonthView({ cursorDate, events }: MonthViewProps) {
                 <div
                   key={di}
                   className={cn(
-                    "flex min-h-[88px] flex-col gap-1 p-1.5",
+                    "group relative flex min-h-[88px] flex-col gap-1 p-1.5",
                     di < 6 && "border-r border-border",
                     !inMonth && "bg-muted/20",
                   )}
                 >
+                  <button
+                    type="button"
+                    onClick={() => setModal({ date })}
+                    className="absolute right-1.5 top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground opacity-0 shadow transition-opacity group-hover:opacity-100"
+                    aria-label="Criar evento"
+                  >
+                    +
+                  </button>
                   <div className="flex items-center justify-end">
                     <span
                       className={cn(
@@ -106,6 +118,14 @@ export function MonthView({ cursorDate, events }: MonthViewProps) {
           </div>
         ))}
       </div>
+
+      {modal && (
+        <CreateEventModal
+          date={modal.date}
+          hour={null}
+          onClose={() => setModal(null)}
+        />
+      )}
     </div>
   );
 }
