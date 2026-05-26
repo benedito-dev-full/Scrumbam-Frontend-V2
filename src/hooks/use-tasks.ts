@@ -82,7 +82,7 @@ export function useTask(id: string | null) {
 /**
  * Lista tasks atribuídas ao usuário logado.
  *
- * Mapeia para `GET /tasks?assignedToMe=true&status={status}&limit=200`.
+ * Mapeia para `GET /tasks?assigneeId={entidadeId}&status={status}&limit=100`.
  * Quando `status` é omitido, retorna tasks em todos os estados.
  *
  * @param status - Filtro opcional de V3 Intention (ex: 'INBOX', 'EXECUTING').
@@ -96,15 +96,16 @@ export function useTask(id: string | null) {
  */
 export function useMyTasks(status?: string) {
   const accessToken = useAuthStore((s) => s.accessToken);
+  const entidadeId = useAuthStore((s) => s.user?.entidadeId);
   return useQuery<TaskResponseDto[]>({
-    queryKey: [...qk.tasks.all, 'my', status],
+    queryKey: [...qk.tasks.all, 'my', entidadeId, status],
     queryFn: async () => {
       const res = await api.get<TasksPage>('/tasks', {
-        params: { assignedToMe: true, status, limit: 100 },
+        params: { assigneeId: entidadeId, status, limit: 100 },
       });
       return res.data.items;
     },
-    enabled: !!accessToken,
+    enabled: !!accessToken && !!entidadeId,
     staleTime: 15_000,
   });
 }
