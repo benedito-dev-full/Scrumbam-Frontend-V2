@@ -105,7 +105,7 @@ export function PlannerPanel() {
             <div style={{
               display: "flex", alignItems: "center", gap: 6,
               margin: "6px 12px 0", padding: "7px 10px",
-              borderRadius: 6, border: "1px solid rgba(255,255,255,0.10)", background: "var(--background)",
+              borderRadius: 6, border: "1px solid var(--border)", background: "var(--background)",
             }}>
               <Users size={13} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
               <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Pesquisar pessoas...</span>

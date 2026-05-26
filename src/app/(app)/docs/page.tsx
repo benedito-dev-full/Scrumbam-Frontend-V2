@@ -15,15 +15,15 @@ function IcDocBlue() {
       {/* dobra no canto superior direito */}
       <path d="M11 1 L15 5 L11 5 Z" fill="#1d4ed8" />
       {/* linhas de texto */}
-      <line x1="5" y1="9"  x2="12" y2="9"  stroke="rgba(255,255,255,0.5)" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="5" y1="12" x2="12" y2="12" stroke="rgba(255,255,255,0.5)" strokeWidth="1.2" strokeLinecap="round" />
-      <line x1="5" y1="15" x2="9"  y2="15" stroke="rgba(255,255,255,0.5)" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="5" y1="9"  x2="12" y2="9"  stroke="var(--border)" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="5" y1="12" x2="12" y2="12" stroke="var(--border)" strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="5" y1="15" x2="9"  y2="15" stroke="var(--border)" strokeWidth="1.2" strokeLinecap="round" />
     </svg>
   );
 }
 
 /* ─── Ícone de pasta (localização "Documentos" — sem espaço associado) ────── */
-function IcFolderOutline({ color = "#6b7280" }: { color?: string }) {
+function IcFolderOutline({ color = "var(--muted-foreground)" }: { color?: string }) {
   return (
     <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
       <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
@@ -139,8 +139,8 @@ function DocRow({ doc }: { doc: Doc }) {
         gridTemplateColumns: "minmax(0,1fr) 200px 120px 160px 160px 72px 32px",
         alignItems: "center",
         height: 44,
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-        background: hovered ? "rgba(255,255,255,0.025)" : "transparent",
+        borderBottom: "1px solid var(--border)",
+        background: hovered ? "var(--border)" : "transparent",
         cursor: "pointer",
         paddingLeft: 16,
         paddingRight: 8,
@@ -149,7 +149,7 @@ function DocRow({ doc }: { doc: Doc }) {
       {/* nome */}
       <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
         <IcDocBlue />
-        <span style={{ fontSize: 13, color: "#e4e4e4", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {doc.nome}
         </span>
       </div>
@@ -157,7 +157,7 @@ function DocRow({ doc }: { doc: Doc }) {
       {/* localização — SpaceChip do espaço real, ou pasta genérica */}
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         {doc.semEspaco || !espaco ? (
-          <IcFolderOutline color="#6b7280" />
+          <IcFolderOutline color="var(--muted-foreground)" />
         ) : (
           <SpaceChip
             iniciais={espaco.meta.iniciais}
@@ -166,17 +166,17 @@ function DocRow({ doc }: { doc: Doc }) {
             size="xs"
           />
         )}
-        <span style={{ fontSize: 12, color: "#888892" }}>{doc.localizacaoLabel}</span>
+        <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{doc.localizacaoLabel}</span>
       </div>
 
       {/* etiquetas */}
-      <div style={{ fontSize: 12, color: "#3a3a3a" }}>–</div>
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>–</div>
 
       {/* data de atualização */}
-      <div style={{ fontSize: 12, color: "#888892" }}>{doc.atualizadoEm}</div>
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{doc.atualizadoEm}</div>
 
       {/* data de visualização */}
-      <div style={{ fontSize: 12, color: "#888892" }}>{doc.visualizadoEm}</div>
+      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>{doc.visualizadoEm}</div>
 
       {/* compartilhamento — avatar */}
       <div>
@@ -195,10 +195,10 @@ function DocRow({ doc }: { doc: Doc }) {
             width: 24, height: 24, borderRadius: 5, border: 0,
             background: "none", cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
-            color: "#606068",
+            color: "var(--muted-foreground)",
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#2a2a2a"; e.currentTarget.style.color = "#c4c4c4"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
           >
             <MoreHorizontal size={14} />
           </button>
@@ -226,17 +226,17 @@ function TableHead() {
       gridTemplateColumns: "minmax(0,1fr) 200px 120px 160px 160px 72px 32px",
       alignItems: "center",
       height: 36,
-      borderBottom: "1px solid rgba(255,255,255,0.06)",
+      borderBottom: "1px solid var(--border)",
       paddingLeft: 16,
       paddingRight: 8,
     }}>
       {cols.map((col, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <span style={{ fontSize: 11, color: col.accent ? "#7c9dca" : "#555", fontWeight: 500 }}>
+          <span style={{ fontSize: 11, color: col.accent ? "var(--muted-foreground)" : "var(--muted-foreground)", fontWeight: 500 }}>
             {col.label}
           </span>
-          {col.icon && <ArrowUpDown size={10} color="#555" />}
-          {col.info && <Info size={11} color="#444" />}
+          {col.icon && <ArrowUpDown size={10} color="var(--muted-foreground)" />}
+          {col.info && <Info size={11} color="var(--muted-foreground)" />}
         </div>
       ))}
     </div>
@@ -246,24 +246,24 @@ function TableHead() {
 /* ─── Página ──────────────────────────────────────────────────────────────── */
 export default function DocsPage() {
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#111111", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--background)", overflow: "hidden" }}>
 
       {/* topbar */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 20px", height: 52,
-        borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0,
+        borderBottom: "1px solid var(--border)", flexShrink: 0,
       }}>
-        <h1 style={{ fontSize: 15, fontWeight: 700, color: "#e4e4e4" }}>Todos os documentos</h1>
+        <h1 style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)" }}>Todos os documentos</h1>
         <div style={{ display: "flex", gap: 8 }}>
           <button type="button" style={{
             display: "flex", alignItems: "center", gap: 6,
             height: 32, padding: "0 12px", borderRadius: 7,
-            border: "1px solid rgba(255,255,255,0.10)", background: "none",
-            cursor: "pointer", color: "#888892", fontSize: 13,
+            border: "1px solid var(--border)", background: "none",
+            cursor: "pointer", color: "var(--muted-foreground)", fontSize: 13,
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.color = "#e4e4e4"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#888892"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
           >
             <Download size={13} strokeWidth={1.7} />
             Importar
@@ -271,11 +271,11 @@ export default function DocsPage() {
           <button type="button" style={{
             display: "flex", alignItems: "center", gap: 6,
             height: 32, padding: "0 14px", borderRadius: 7,
-            border: "none", background: "#e4e4e4",
-            cursor: "pointer", color: "#111", fontSize: 13, fontWeight: 700,
+            border: "none", background: "var(--foreground)",
+            cursor: "pointer", color: "var(--primary-foreground)", fontSize: 13, fontWeight: 700,
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#fff"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "#e4e4e4"; }}
+            onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.1)"; }}
+            onMouseLeave={e => { e.currentTarget.style.filter = "none"; }}
           >
             Novo documento
             <ChevronDown size={12} strokeWidth={2.5} />
@@ -287,22 +287,22 @@ export default function DocsPage() {
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
 
         {/* Modelos */}
-        <p style={{ fontSize: 12, fontWeight: 600, color: "#606068", marginBottom: 10 }}>Modelos</p>
+        <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", marginBottom: 10 }}>Modelos</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 24 }}>
           {TEMPLATES.map((tpl) => (
             <button key={tpl.title} type="button" style={{
               display: "flex", alignItems: "center", gap: 12,
               padding: "14px 16px", borderRadius: 10,
-              border: "1px solid rgba(255,255,255,0.07)",
-              background: "#1a1a1a", cursor: "pointer", textAlign: "left",
+              border: "1px solid var(--border)",
+              background: "var(--card)", cursor: "pointer", textAlign: "left",
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#1a1a1a"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.borderColor = "var(--border)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "var(--card)"; e.currentTarget.style.borderColor = "var(--border)"; }}
             >
               {tpl.icon}
               <div>
                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4" }}>{tpl.title}</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>{tpl.title}</p>
                   {tpl.verified && (
                     <svg width={13} height={13} viewBox="0 0 24 24" fill="#3b82f6">
                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
@@ -310,7 +310,7 @@ export default function DocsPage() {
                     </svg>
                   )}
                 </div>
-                <p style={{ fontSize: 11, color: "#606068", marginTop: 2 }}>{tpl.desc}</p>
+                <p style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 2 }}>{tpl.desc}</p>
               </div>
             </button>
           ))}
@@ -322,10 +322,10 @@ export default function DocsPage() {
             <button type="button" style={{
               display: "flex", alignItems: "center", gap: 5,
               height: 30, padding: "0 10px", borderRadius: 6,
-              border: "1px solid rgba(255,255,255,0.09)", background: "none",
-              cursor: "pointer", color: "#888892", fontSize: 12,
+              border: "1px solid var(--border)", background: "none",
+              cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12,
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
             >
               <Filter size={11} strokeWidth={2} />
@@ -335,22 +335,22 @@ export default function DocsPage() {
               display: "flex", alignItems: "center", gap: 5,
               height: 30, padding: "0 10px", borderRadius: 6,
               border: "none", background: "none",
-              cursor: "pointer", color: "#888892", fontSize: 12,
+              cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12,
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
             >
               <ArrowUpDown size={11} strokeWidth={2} />
               Classificar
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 4 }}>
-              <span style={{ fontSize: 12, color: "#505058" }}>Etiquetas:</span>
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Etiquetas:</span>
               <button type="button" style={{
                 height: 28, padding: "0 10px", borderRadius: 6,
                 border: "none", background: "none",
-                cursor: "pointer", color: "#888892", fontSize: 12,
+                cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12,
               }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+                onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
               >
                 Visualizar tudo
@@ -361,9 +361,9 @@ export default function DocsPage() {
             display: "flex", alignItems: "center", gap: 5,
             height: 30, padding: "0 10px", borderRadius: 6,
             border: "none", background: "none",
-            cursor: "pointer", color: "#888892", fontSize: 12,
+            cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12,
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
           >
             <Search size={12} strokeWidth={2} />
@@ -374,9 +374,9 @@ export default function DocsPage() {
         {/* Tabela */}
         <div style={{
           borderRadius: 8,
-          border: "1px solid rgba(255,255,255,0.06)",
+          border: "1px solid var(--border)",
           overflow: "hidden",
-          background: "#1a1a1a",
+          background: "var(--card)",
         }}>
           <TableHead />
           {DOCS.map((doc, i) => (

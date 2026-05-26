@@ -119,7 +119,7 @@ export function InviteDialog() {
         style={{
           width: 480, borderRadius: 12,
           background: "var(--accent)",
-          border: "1px solid rgba(255,255,255,0.09)",
+          border: "1px solid var(--border)",
           boxShadow: "0 24px 60px rgba(0,0,0,0.6)",
           padding: "24px 24px 20px",
           position: "relative",
@@ -158,7 +158,7 @@ export function InviteDialog() {
           placeholder="E-mail, separado por vírgulas ou espaços"
           style={{
             width: "100%", height: 42, borderRadius: 8,
-            border: focused ? "1.5px solid #4f7ef7" : "1.5px solid rgba(255,255,255,0.12)",
+            border: focused ? "1.5px solid #4f7ef7" : "1.5px solid var(--border)",
             background: "var(--background)", color: "var(--foreground)", fontSize: 13,
             padding: "0 14px", outline: "none", boxSizing: "border-box",
             transition: "border-color .15s",
@@ -176,8 +176,8 @@ export function InviteDialog() {
             display: "flex", alignItems: "flex-start", gap: 12,
             padding: "12px 14px", borderRadius: roleOpen ? "8px 8px 0 0" : 8,
             background: "var(--accent)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            borderBottom: roleOpen ? "1px solid rgba(255,255,255,0.04)" : "1px solid rgba(255,255,255,0.07)",
+            border: "1px solid var(--border)",
+            borderBottom: roleOpen ? "1px solid var(--border)" : "1px solid var(--border)",
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 8, flexShrink: 0,
@@ -213,7 +213,7 @@ export function InviteDialog() {
             <div style={{
               position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10,
               background: "var(--accent)",
-              border: "1px solid rgba(255,255,255,0.07)",
+              border: "1px solid var(--border)",
               borderTop: "none",
               borderRadius: "0 0 8px 8px",
               overflow: "hidden",
@@ -225,7 +225,7 @@ export function InviteDialog() {
                     width: "100%", padding: "10px 14px",
                     border: 0, background: "none", cursor: "pointer", textAlign: "left",
                   }}
-                  onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; }}
+                  onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}
                   onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
                 >
                   <div style={{ flex: 1 }}>
@@ -248,14 +248,14 @@ export function InviteDialog() {
               ))}
 
               {/* divisor + Adicionar função personalizada */}
-              <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", margin: "2px 0" }} />
+              <div style={{ borderTop: "1px solid var(--border)", margin: "2px 0" }} />
               <button type="button" style={{
                 display: "flex", alignItems: "center", gap: 6,
                 width: "100%", padding: "10px 14px",
                 border: 0, background: "none", cursor: "pointer",
                 color: "var(--muted-foreground)", fontSize: 13,
               }}
-                onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.04)"; e.currentTarget.style.color = "var(--foreground)"; }}
+                onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; e.currentTarget.style.color = "var(--foreground)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
               >
                 <Plus size={13} strokeWidth={2.5} />

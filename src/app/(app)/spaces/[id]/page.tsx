@@ -54,7 +54,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
       <header style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 16px", height: 44, flexShrink: 0,
-        borderBottom: "1px solid rgba(255,255,255,0.07)", background: "var(--background)",
+        borderBottom: "1px solid var(--border)", background: "var(--background)",
       }}>
         {/* esquerda: chip + nome + estrela + menu */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -90,7 +90,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
           <button type="button" style={{
             display: "flex", alignItems: "center", gap: 5,
             height: 28, padding: "0 12px", borderRadius: 6,
-            border: "1px solid rgba(255,255,255,0.12)", background: "none",
+            border: "1px solid var(--border)", background: "none",
             cursor: "pointer", color: "var(--foreground)", fontSize: 12,
           }}
             onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
@@ -106,7 +106,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
       <div style={{
         display: "flex", alignItems: "center", gap: 2,
         padding: "0 16px", height: 38, flexShrink: 0,
-        borderBottom: "1px solid rgba(255,255,255,0.07)", background: "var(--background)",
+        borderBottom: "1px solid var(--border)", background: "var(--background)",
         overflowX: "auto",
       }}>
         {/* Adicionar canal */}
@@ -159,9 +159,9 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
         {/* Toolbar */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          height: 44, borderBottom: "1px solid rgba(255,255,255,0.05)",
+          height: 44, borderBottom: "1px solid var(--border)",
         }}>
-          <button type="button" style={{ display: "flex", alignItems: "center", gap: 5, height: 28, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.09)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12 }}
+          <button type="button" style={{ display: "flex", alignItems: "center", gap: 5, height: 28, padding: "0 10px", borderRadius: 6, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12 }}
             onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
           >
@@ -197,7 +197,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginTop: 16, marginBottom: 16 }}>
 
           {/* Recent */}
-          <div style={{ background: "var(--card)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
+          <div style={{ background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)", padding: "16px 18px", minHeight: 200 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", marginBottom: 12 }}>Recent</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {recentes.map((item) => {
@@ -227,7 +227,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
           </div>
 
           {/* Docs */}
-          <div style={{ background: "var(--card)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
+          <div style={{ background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)", padding: "16px 18px", minHeight: 200 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", marginBottom: 12 }}>Docs</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
               {docs.length > 0 ? docs.map((doc) => (
@@ -249,13 +249,13 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
           </div>
 
           {/* Bookmarks */}
-          <div style={{ background: "var(--card)", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", padding: "16px 18px", minHeight: 200 }}>
+          <div style={{ background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)", padding: "16px 18px", minHeight: 200 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", marginBottom: 12 }}>Bookmarks</p>
             {docs.length > 0 ? (
               <div style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "8px 10px", borderRadius: 8,
-                background: "var(--secondary)", border: "1px solid rgba(255,255,255,0.06)",
+                background: "var(--secondary)", border: "1px solid var(--border)",
                 cursor: "pointer", transition: "background 120ms, border-color 120ms",
               }}
                 onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.borderColor = "var(--border)"; }}
@@ -274,10 +274,10 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
 
         {/* ── Folders — container próprio com borda ── */}
         {pastas.length > 0 && (
-          <section style={{ marginBottom: 12, border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, overflow: "hidden" }}>
+          <section style={{ marginBottom: 12, border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
             <div style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)",
+              padding: "10px 16px", borderBottom: "1px solid var(--border)",
               background: "var(--card)",
             }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -304,7 +304,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
                 <Link key={pasta.id} href={`/folders/${pasta.id}`} style={{
                   display: "flex", alignItems: "center", gap: 8,
                   width: 200, padding: "10px 14px", borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.07)", background: "var(--card)",
+                  border: "1px solid var(--border)", background: "var(--card)",
                   textDecoration: "none",
                 }}
                   onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
@@ -319,10 +319,10 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
         )}
 
         {/* ── Lists — container próprio com borda ── */}
-        <section style={{ border: "1px solid rgba(255,255,255,0.07)", borderRadius: 10, overflow: "hidden" }}>
+        <section style={{ border: "1px solid var(--border)", borderRadius: 10, overflow: "hidden" }}>
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "10px 16px", borderBottom: "1px solid rgba(255,255,255,0.07)",
+            padding: "10px 16px", borderBottom: "1px solid var(--border)",
             background: "var(--card)",
           }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -335,7 +335,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
             <div style={{
               display: "grid",
               gridTemplateColumns: "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
-              height: 34, borderBottom: "1px solid rgba(255,255,255,0.06)",
+              height: 34, borderBottom: "1px solid var(--border)",
               padding: "0 16px", background: "var(--card)",
             }}>
               {["Nome","Cor","Progresso","Início","Término","Prioridade","Proprietário",""].map((col, i) => (

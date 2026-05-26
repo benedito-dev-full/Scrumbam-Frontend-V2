@@ -75,9 +75,9 @@ function FormRow({ form }: { form: typeof FORMS[0] }) {
         display: "grid",
         gridTemplateColumns: "1fr 220px 120px 160px 72px",
         height: 44, alignItems: "center",
-        borderBottom: "1px solid rgba(255,255,255,0.07)",
+        borderBottom: "1px solid var(--border)",
         padding: "0 16px", cursor: "pointer",
-        background: hovered ? "#1a1a1a" : "transparent",
+        background: hovered ? "var(--card)" : "transparent",
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
@@ -85,10 +85,10 @@ function FormRow({ form }: { form: typeof FORMS[0] }) {
       {/* nome */}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <IcFormItem />
-        <span style={{ fontSize: 13, color: "#d4d4e0" }}>{form.name}</span>
+        <span style={{ fontSize: 13, color: "var(--foreground)" }}>{form.name}</span>
       </div>
       {/* localização */}
-      <div style={{ display: "flex", alignItems: "center", gap: 5, color: "#6a6a80", fontSize: 13 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 5, color: "var(--muted-foreground)", fontSize: 13 }}>
         <IcLocation />
         {form.location}
       </div>
@@ -104,21 +104,21 @@ function FormRow({ form }: { form: typeof FORMS[0] }) {
         </div>
       </div>
       {/* data */}
-      <span style={{ fontSize: 13, color: "#6a6a80" }}>{form.viewedAt}</span>
+      <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{form.viewedAt}</span>
       {/* ações — só aparecem no hover */}
       <div style={{
         display: "flex", alignItems: "center", gap: 0, justifyContent: "flex-end",
         opacity: hovered ? 1 : 0, transition: "opacity .1s",
       }}>
-        <button type="button" style={{ background: "none", border: 0, cursor: "pointer", color: "#7a7a90", padding: "4px 3px", borderRadius: 4 }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#c4c4cc"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "#7a7a90"; }}
+        <button type="button" style={{ background: "none", border: 0, cursor: "pointer", color: "var(--muted-foreground)", padding: "4px 3px", borderRadius: 4 }}
+          onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
         >
           <Download size={13} strokeWidth={1.7} />
         </button>
-        <button type="button" style={{ background: "none", border: 0, cursor: "pointer", color: "#7a7a90", padding: "4px 3px", borderRadius: 4 }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#c4c4cc"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "#7a7a90"; }}
+        <button type="button" style={{ background: "none", border: 0, cursor: "pointer", color: "var(--muted-foreground)", padding: "4px 3px", borderRadius: 4 }}
+          onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
         >
           <MoreHorizontal size={13} strokeWidth={1.7} />
         </button>
@@ -136,14 +136,14 @@ export default function FormsPage() {
   );
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "#111111", color: "#e6e6ea" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden", background: "var(--background)", color: "var(--foreground)" }}>
 
       {/* topbar da página */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 24px", height: 52, borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0,
+        padding: "0 24px", height: 52, borderBottom: "1px solid var(--border)", flexShrink: 0,
       }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700, color: "#e6e6ea", letterSpacing: "-0.01em" }}>Todos os formulários</h1>
+        <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--foreground)", letterSpacing: "-0.01em" }}>Todos os formulários</h1>
         <button type="button" style={{
           display: "flex", alignItems: "center", gap: 6,
           height: 34, padding: "0 16px", borderRadius: 7,
@@ -162,7 +162,7 @@ export default function FormsPage() {
       <div style={{ flex: 1, overflow: "auto", padding: "24px 24px 16px" }}>
 
         {/* label Modelos */}
-        <p style={{ fontSize: 13, color: "#6a6a80", marginBottom: 12, fontWeight: 400 }}>Modelos</p>
+        <p style={{ fontSize: 13, color: "var(--muted-foreground)", marginBottom: 12, fontWeight: 400 }}>Modelos</p>
 
         {/* cards de modelos — sem borda, fundo sutil */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 24 }}>
@@ -170,11 +170,11 @@ export default function FormsPage() {
             <button key={tpl.label} type="button" style={{
               display: "flex", alignItems: "center", gap: 14,
               padding: "16px 16px", borderRadius: 10,
-              border: "1px solid rgba(255,255,255,0.07)", background: "#181818",
+              border: "1px solid var(--border)", background: "var(--card)",
               cursor: "pointer", textAlign: "left",
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#15151c"; e.currentTarget.style.borderColor = "#252530"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "#181818"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.07)"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.borderColor = "var(--secondary)"; }}
+              onMouseLeave={e => { e.currentTarget.style.background = "var(--card)"; e.currentTarget.style.borderColor = "var(--border)"; }}
             >
               {/* ícone — quadrado colorido sólido */}
               <div style={{
@@ -184,8 +184,8 @@ export default function FormsPage() {
                 {tpl.icon}
               </div>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "#dcdce8", marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tpl.label}</p>
-                <p style={{ fontSize: 12, color: "#6a6a80", lineHeight: 1.45 }}>{tpl.desc}</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tpl.label}</p>
+                <p style={{ fontSize: 12, color: "var(--muted-foreground)", lineHeight: 1.45 }}>{tpl.desc}</p>
               </div>
             </button>
           ))}
@@ -197,9 +197,9 @@ export default function FormsPage() {
             display: "flex", alignItems: "center", gap: 6,
             height: 30, padding: "0 10px", borderRadius: 6,
             border: "1px solid #26262d", background: "none",
-            cursor: "pointer", color: "#a0a0b8", fontSize: 12,
+            cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12,
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
           >
             <ArrowUpDown size={13} strokeWidth={1.8} />
@@ -210,10 +210,10 @@ export default function FormsPage() {
           <button type="button" style={{
             display: "flex", alignItems: "center", gap: 6,
             height: 30, padding: "0 10px", borderRadius: 6,
-            border: "none", background: "none", cursor: "pointer", color: "#6a6a80", fontSize: 12,
+            border: "none", background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12,
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.color = "#a0a0b8"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#6a6a80"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
             onClick={() => {
               const inp = document.getElementById("forms-search");
               if (inp) inp.focus();
@@ -226,7 +226,7 @@ export default function FormsPage() {
                 autoFocus
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{ background: "none", border: "none", outline: "none", color: "#c4c4cc", fontSize: 12, width: 100 }}
+                style={{ background: "none", border: "none", outline: "none", color: "var(--foreground)", fontSize: 12, width: 100 }}
               />
             ) : (
               <span>Pesquisar</span>
@@ -241,17 +241,17 @@ export default function FormsPage() {
             display: "grid",
             gridTemplateColumns: "1fr 220px 120px 160px 72px",
             height: 34, alignItems: "center",
-            borderBottom: "1px solid rgba(255,255,255,0.07)",
+            borderBottom: "1px solid var(--border)",
             padding: "0 16px",
           }}>
             {["Nome", "Localização", "Criado por", "Data de visual...", ""].map((col, i) => (
-              <span key={i} style={{ fontSize: 12, fontWeight: 500, color: "#4a4a5e" }}>{col}</span>
+              <span key={i} style={{ fontSize: 12, fontWeight: 500, color: "var(--muted-foreground)" }}>{col}</span>
             ))}
           </div>
 
           {/* linhas */}
           {filtered.length === 0 ? (
-            <div style={{ padding: "32px 16px", textAlign: "center", color: "#4a4a5e", fontSize: 13 }}>
+            <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
               Nenhum formulário encontrado
             </div>
           ) : (

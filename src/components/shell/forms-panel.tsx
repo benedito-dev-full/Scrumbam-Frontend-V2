@@ -47,7 +47,7 @@ export function FormsPanel() {
       {/* header */}
       <header style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 12px", height: 44, borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0,
+        padding: "0 12px", height: 44, borderBottom: "1px solid var(--border)", flexShrink: 0,
       }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: "#e4e4e6" }}>Formulários</span>
         <button type="button" style={{

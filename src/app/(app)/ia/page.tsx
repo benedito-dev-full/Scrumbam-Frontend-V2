@@ -140,9 +140,9 @@ function ModelDropdown() {
           display: "flex", alignItems: "center", gap: 5,
           height: 28, padding: "0 10px", borderRadius: 6,
           border: "none", background: "none", cursor: "pointer",
-          color: "#c4c4c4", fontSize: 13, fontWeight: 500,
+          color: "var(--foreground)", fontSize: 13, fontWeight: 500,
         }}
-        onMouseEnter={e => { e.currentTarget.style.background = "#222"; }}
+        onMouseEnter={e => { e.currentTarget.style.background = "var(--secondary)"; }}
         onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
       >
         {current.icon}
@@ -157,12 +157,12 @@ function ModelDropdown() {
         <div ref={ref} style={{
           position: "fixed", top: pos.top, left: pos.left,
           width: 220, borderRadius: 10,
-          background: "#1e1e1e", border: "1px solid #2a2a2a",
+          background: "var(--accent)", border: "1px solid #2a2a2a",
           boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
           zIndex: 9999, overflow: "hidden",
           padding: "8px 0",
         }}>
-          <p style={{ fontSize: 11, fontWeight: 600, color: "#555", padding: "4px 14px 8px", textTransform: "none", letterSpacing: 0 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)", padding: "4px 14px 8px", textTransform: "none", letterSpacing: 0 }}>
             Best models
           </p>
 
@@ -175,9 +175,9 @@ function ModelDropdown() {
                 display: "flex", alignItems: "center", gap: 10,
                 width: "100%", height: 36, padding: "0 14px",
                 border: 0, background: "none", cursor: "pointer",
-                color: "#d4d4d4", fontSize: 13, textAlign: "left",
+                color: "var(--foreground)", fontSize: 13, textAlign: "left",
               }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#262626"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
             >
               <span style={{ flexShrink: 0 }}>{model.icon}</span>
@@ -196,16 +196,16 @@ function ModelDropdown() {
             </button>
           ))}
 
-          <div style={{ height: 1, background: "#2a2a2a", margin: "4px 0" }} />
+          <div style={{ height: 1, background: "var(--accent)", margin: "4px 0" }} />
 
           <button type="button" style={{
             display: "flex", alignItems: "center", gap: 8,
             width: "100%", height: 34, padding: "0 14px",
             border: 0, background: "none", cursor: "pointer",
-            color: "#888", fontSize: 13,
+            color: "var(--muted-foreground)", fontSize: 13,
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#262626"; e.currentTarget.style.color = "#c4c4c4"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#888"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
           >
             <ChevronDown size={13} strokeWidth={2} />
             Mostrar mais
@@ -224,7 +224,7 @@ export default function IAPage() {
     <div style={{
       position: "relative", display: "flex", flexDirection: "column",
       alignItems: "center", justifyContent: tab === "agentes" ? "flex-start" : "center",
-      height: "100%", width: "100%", background: "#111111",
+      height: "100%", width: "100%", background: "var(--background)",
       overflowY: "auto", overflowX: "hidden",
       paddingTop: tab === "agentes" ? 32 : 0,
     }}>
@@ -244,7 +244,7 @@ export default function IAPage() {
           <NexusIcon size={40} />
           <span style={{ fontSize: 36, fontWeight: 700, color: "#ffffff", letterSpacing: "-0.02em", lineHeight: 1 }}>
             Nexus
-            <sup style={{ fontSize: 12, fontWeight: 400, color: "#888", verticalAlign: "super", marginLeft: 2 }}>™</sup>
+            <sup style={{ fontSize: 12, fontWeight: 400, color: "var(--muted-foreground)", verticalAlign: "super", marginLeft: 2 }}>™</sup>
           </span>
         </div>
 
@@ -256,7 +256,7 @@ export default function IAPage() {
             background: "linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #dc2626 100%)",
             boxShadow: "0 0 40px rgba(37,99,235,0.15), 0 0 40px rgba(124,58,237,0.1)",
           }}>
-            <div style={{ borderRadius: 14, background: "#171717", overflow: "hidden" }}>
+            <div style={{ borderRadius: 14, background: "var(--card)", overflow: "hidden" }}>
 
               {/* abas */}
               <div style={{ display: "flex", gap: 2, padding: "10px 10px 0" }}>
@@ -268,7 +268,7 @@ export default function IAPage() {
                     height: 30, padding: "0 14px", borderRadius: 7,
                     border: 0, cursor: "pointer", fontSize: 13, fontWeight: 500,
                     background: tab === "pergunta" ? "#2563eb" : "transparent",
-                    color: tab === "pergunta" ? "#fff" : "#666",
+                    color: tab === "pergunta" ? "#fff" : "var(--muted-foreground)",
                   }}
                 >
                   <NexusMiniIcon />
@@ -282,7 +282,7 @@ export default function IAPage() {
                     height: 30, padding: "0 14px", borderRadius: 7,
                     border: 0, cursor: "pointer", fontSize: 13, fontWeight: 500,
                     background: "transparent",
-                    color: "#666",
+                    color: "var(--muted-foreground)",
                   }}
                 >
                   <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8}>
@@ -302,7 +302,7 @@ export default function IAPage() {
                   rows={2}
                   style={{
                     width: "100%", background: "transparent", border: "none", outline: "none", resize: "none",
-                    fontSize: 14, color: "#c4c4c4", lineHeight: 1.65,
+                    fontSize: 14, color: "var(--foreground)", lineHeight: 1.65,
                   }}
                 />
               </div>
@@ -316,11 +316,11 @@ export default function IAPage() {
                   {/* botão + */}
                   <button type="button" style={{
                     width: 28, height: 28, borderRadius: 6, border: "1px solid #333",
-                    background: "none", cursor: "pointer", color: "#888",
+                    background: "none", cursor: "pointer", color: "var(--muted-foreground)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
-                    onMouseEnter={e => { e.currentTarget.style.background = "#222"; e.currentTarget.style.color = "#ccc"; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#888"; }}
+                    onMouseEnter={e => { e.currentTarget.style.background = "var(--secondary)"; e.currentTarget.style.color = "var(--foreground)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
                   >
                     <Plus size={14} strokeWidth={2} />
                   </button>
@@ -333,11 +333,11 @@ export default function IAPage() {
                   {/* globo */}
                   <button type="button" style={{
                     width: 28, height: 28, borderRadius: 6, border: "none",
-                    background: "none", cursor: "pointer", color: "#666",
+                    background: "none", cursor: "pointer", color: "var(--muted-foreground)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}
-                    onMouseEnter={e => { e.currentTarget.style.color = "#aaa"; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = "#666"; }}
+                    onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
                   >
                     <Globe size={15} strokeWidth={1.7} />
                   </button>
@@ -348,8 +348,8 @@ export default function IAPage() {
                     style={{
                       width: 30, height: 30, borderRadius: 7,
                       border: "none", cursor: input.trim() ? "pointer" : "default",
-                      background: input.trim() ? "#2563eb" : "#1e1e1e",
-                      color: input.trim() ? "#fff" : "#444",
+                      background: input.trim() ? "#2563eb" : "var(--accent)",
+                      color: input.trim() ? "#fff" : "var(--muted-foreground)",
                       display: "flex", alignItems: "center", justifyContent: "center",
                       transition: "background .15s",
                     }}
@@ -371,7 +371,7 @@ export default function IAPage() {
             {/* abas — repetidas fora do card para manter navegação */}
             <div style={{
               display: "flex", gap: 2, padding: "4px 0 16px",
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              borderBottom: "1px solid var(--border)",
               marginBottom: 20,
             }}>
               <button
@@ -382,7 +382,7 @@ export default function IAPage() {
                   height: 30, padding: "0 14px", borderRadius: 7,
                   border: 0, cursor: "pointer", fontSize: 13, fontWeight: 500,
                   background: "transparent",
-                  color: "#666",
+                  color: "var(--muted-foreground)",
                 }}
               >
                 <NexusMiniIcon />
@@ -419,16 +419,16 @@ export default function IAPage() {
                 display: "flex", flexDirection: "column", alignItems: "flex-start",
                 gap: 8, padding: "12px 14px 12px",
                 borderRadius: 10, border: "none", overflow: "hidden",
-                background: "#1a1a1a", cursor: "pointer", textAlign: "left",
+                background: "var(--card)", cursor: "pointer", textAlign: "left",
                 minWidth: 0,
               }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#202020"; }}
-                onMouseLeave={e => { e.currentTarget.style.background = "#1a1a1a"; }}
+                onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
+                onMouseLeave={e => { e.currentTarget.style.background = "var(--card)"; }}
               >
-                <span style={{ color: "#aaa", flexShrink: 0 }}>{a.icon}</span>
+                <span style={{ color: "var(--foreground)", flexShrink: 0 }}>{a.icon}</span>
                 <div style={{ minWidth: 0, width: "100%" }}>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: "#e4e4e4", marginBottom: 3 }}>{a.label}</p>
-                  <p style={{ fontSize: 11, color: "#666", lineHeight: 1.4 }}>{a.sublabel}</p>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)", marginBottom: 3 }}>{a.label}</p>
+                  <p style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.4 }}>{a.sublabel}</p>
                 </div>
               </button>
             ))}

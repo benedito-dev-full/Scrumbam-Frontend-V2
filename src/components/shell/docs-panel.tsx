@@ -93,7 +93,7 @@ export function DocsPanel() {
       <header style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 14px", height: 44,
-        borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0,
+        borderBottom: "1px solid var(--border)", flexShrink: 0,
       }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)" }}>Documentos</span>
         <div style={{ display: "flex", gap: 4 }}>

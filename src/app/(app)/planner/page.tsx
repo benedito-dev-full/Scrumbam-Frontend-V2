@@ -68,7 +68,7 @@ function WeekCalendar() {
   };
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "#111111" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--background)" }}>
 
       {/* toolbar do calendário */}
       <div style={{
@@ -82,7 +82,7 @@ function WeekCalendar() {
           <button type="button" onClick={nextWeek} style={navBtnStyle}>
             <ChevronRight size={15} strokeWidth={2} />
           </button>
-          <span style={{ fontSize: 15, fontWeight: 600, color: "#e6e6ea", marginLeft: 4 }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", marginLeft: 4 }}>
             {fmtMonthYear(weekDates[0])}
           </span>
         </div>
@@ -91,8 +91,8 @@ function WeekCalendar() {
           {/* Anotações com IA */}
           <button type="button" style={{
             display: "flex", alignItems: "center", gap: 6, padding: "4px 10px",
-            borderRadius: 6, border: "1px solid rgba(255,255,255,0.10)", background: "none",
-            cursor: "pointer", color: "#b0b0c4", fontSize: 12,
+            borderRadius: 6, border: "1px solid var(--border)", background: "none",
+            cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12,
           }}>
             <Sparkles size={13} strokeWidth={1.7} style={{ color: "#a78bfa" }} />
             Anotações com IA
@@ -104,8 +104,8 @@ function WeekCalendar() {
           {/* seletor Semana */}
           <button type="button" style={{
             display: "flex", alignItems: "center", gap: 4, padding: "4px 10px",
-            borderRadius: 6, border: "1px solid rgba(255,255,255,0.10)", background: "none",
-            cursor: "pointer", color: "#b0b0c4", fontSize: 12,
+            borderRadius: 6, border: "1px solid var(--border)", background: "none",
+            cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12,
           }}>
             Semana
             <ChevronDown size={12} strokeWidth={2} />
@@ -122,13 +122,13 @@ function WeekCalendar() {
           gridTemplateColumns: "60px repeat(7, 1fr)",
           borderBottom: "1px solid #1c1c1f",
           flexShrink: 0,
-          background: "#111111",
+          background: "var(--background)",
           position: "sticky", top: 0, zIndex: 2,
         }}>
           {/* coluna GMT */}
           <div style={{
             padding: "8px 0", textAlign: "center",
-            fontSize: 10, color: "#5a5a64", borderRight: "1px solid #1c1c1f",
+            fontSize: 10, color: "var(--muted-foreground)", borderRight: "1px solid #1c1c1f",
           }}>
             GMT-3
           </div>
@@ -138,9 +138,9 @@ function WeekCalendar() {
               <div key={i} style={{
                 padding: "6px 0", textAlign: "center",
                 borderRight: i < 6 ? "1px solid #1c1c1f" : "none",
-                background: today ? "#1a1a1a" : "transparent",
+                background: today ? "var(--card)" : "transparent",
               }}>
-                <div style={{ fontSize: 11, color: "#7a7a90", marginBottom: 2 }}>
+                <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginBottom: 2 }}>
                   {WEEK_DAYS[date.getDay()]}
                 </div>
                 <div style={{
@@ -148,7 +148,7 @@ function WeekCalendar() {
                   width: 26, height: 26, borderRadius: "50%",
                   background: today ? "#ef4444" : "transparent",
                   fontSize: 13, fontWeight: today ? 700 : 400,
-                  color: today ? "#fff" : "#e6e6ea",
+                  color: today ? "#fff" : "var(--foreground)",
                 }}>
                   {date.getDate()}
                 </div>
@@ -170,7 +170,7 @@ function WeekCalendar() {
               <div style={{
                 display: "flex", alignItems: "flex-start", justifyContent: "flex-end",
                 paddingRight: 8, paddingTop: 6,
-                fontSize: 10, color: "#5a5a64",
+                fontSize: 10, color: "var(--muted-foreground)",
                 borderRight: "1px solid #1c1c1f", flexShrink: 0,
               }}>
                 {hi === 0 ? "O dia" : hi === 1 ? "todo" : hour}
@@ -182,12 +182,12 @@ function WeekCalendar() {
                 return (
                   <div key={di} style={{
                     borderRight: di < 6 ? "1px solid #1c1c1f" : "none",
-                    background: today ? "#11111a" : "transparent",
+                    background: today ? "var(--accent)" : "transparent",
                     cursor: "pointer",
                     transition: "background .1s",
                   }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#1e1e1e"; }}
-                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = today ? "#11111a" : "transparent"; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = today ? "var(--accent)" : "transparent"; }}
                   />
                 );
               })}
@@ -228,11 +228,11 @@ function WeekCalendar() {
         <div style={{
           display: "flex", alignItems: "center", gap: 8,
           width: "100%", maxWidth: 520, height: 34,
-          background: "#111111", border: "1px solid rgba(255,255,255,0.10)",
+          background: "var(--background)", border: "1px solid var(--border)",
           borderRadius: 8, padding: "0 12px",
         }}>
-          <Search size={13} style={{ color: "#5a5a64", flexShrink: 0 }} />
-          <span style={{ fontSize: 13, color: "#5a5a64" }}>
+          <Search size={13} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
             Pesquise eventos, colegas de equipe, comandos...
           </span>
           <span style={{ marginLeft: "auto", flexShrink: 0 }}>
@@ -245,8 +245,8 @@ function WeekCalendar() {
 }
 
 const navBtnStyle: React.CSSProperties = {
-  width: 28, height: 28, borderRadius: 6, border: "1px solid rgba(255,255,255,0.10)",
-  background: "none", cursor: "pointer", color: "#b0b0c4",
+  width: 28, height: 28, borderRadius: 6, border: "1px solid var(--border)",
+  background: "none", cursor: "pointer", color: "var(--muted-foreground)",
   display: "flex", alignItems: "center", justifyContent: "center",
 };
 
@@ -254,11 +254,11 @@ function ToolbarIconBtn({ children }: { children: React.ReactNode }) {
   return (
     <button type="button" style={{
       width: 28, height: 28, borderRadius: 6, border: 0,
-      background: "none", cursor: "pointer", color: "#7a7a90",
+      background: "none", cursor: "pointer", color: "var(--muted-foreground)",
       display: "flex", alignItems: "center", justifyContent: "center",
     }}
-      onMouseEnter={e => { e.currentTarget.style.background = "#222222"; e.currentTarget.style.color = "#c4c4cc"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#7a7a90"; }}
+      onMouseEnter={e => { e.currentTarget.style.background = "var(--secondary)"; e.currentTarget.style.color = "var(--foreground)"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
     >
       {children}
     </button>

@@ -85,8 +85,8 @@ export function ListRow({ id, nome }: { id: string; nome: string }) {
         display: "grid",
         gridTemplateColumns: "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
         height: 40, padding: "0 16px", textDecoration: "none",
-        borderBottom: "1px solid rgba(255,255,255,0.05)",
-        background: hovered ? "rgba(255,255,255,0.025)" : "transparent",
+        borderBottom: "1px solid var(--border)",
+        background: hovered ? "var(--border)" : "transparent",
         alignItems: "center",
       }}
     >
@@ -128,7 +128,7 @@ export function AddListRow() {
       style={{
         display: "flex", alignItems: "center", gap: 7,
         width: "100%", height: 36, padding: "0 16px",
-        border: 0, background: hovered ? "rgba(255,255,255,0.025)" : "transparent",
+        border: 0, background: hovered ? "var(--border)" : "transparent",
         cursor: "pointer", color: hovered ? "var(--muted-foreground)" : "var(--muted-foreground)", fontSize: 13,
       }}
     >

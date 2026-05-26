@@ -134,7 +134,7 @@ export function WorkspaceSwitcher() {
               style={{
                 flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
                 gap: 5, height: 30, borderRadius: 6,
-                border: "1px solid rgba(255,255,255,0.09)", background: "none",
+                border: "1px solid var(--border)", background: "none",
                 cursor: "pointer", color: "var(--foreground)", fontSize: 12,
               }}
               onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}
@@ -255,7 +255,7 @@ export function WorkspaceSwitcher() {
           display: "flex", alignItems: "center", justifyContent: "center",
           width: "calc(100% - 20px)", margin: "4px 10px 6px",
           height: 32, borderRadius: 6,
-          border: "1px solid rgba(255,255,255,0.09)", background: "none",
+          border: "1px solid var(--border)", background: "none",
           cursor: "pointer", color: "var(--foreground)", fontSize: 13,
         }}
           onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}

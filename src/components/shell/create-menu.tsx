@@ -43,9 +43,9 @@ function IcDoc() {
     <svg width={18} height={18} viewBox="0 0 18 18" fill="none">
       <rect x="2" y="1.5" width="10" height="14" rx="1.5" fill="#3b82f6" />
       <path d="M9 1.5 L12 4.5 L9 4.5 Z" fill="#1d4ed8" />
-      <line x1="4" y1="7.5"  x2="10" y2="7.5"  stroke="rgba(255,255,255,0.55)" strokeWidth={1} strokeLinecap="round" />
-      <line x1="4" y1="9.5"  x2="10" y2="9.5"  stroke="rgba(255,255,255,0.55)" strokeWidth={1} strokeLinecap="round" />
-      <line x1="4" y1="11.5" x2="7.5" y2="11.5" stroke="rgba(255,255,255,0.55)" strokeWidth={1} strokeLinecap="round" />
+      <line x1="4" y1="7.5"  x2="10" y2="7.5"  stroke="var(--border)" strokeWidth={1} strokeLinecap="round" />
+      <line x1="4" y1="9.5"  x2="10" y2="9.5"  stroke="var(--border)" strokeWidth={1} strokeLinecap="round" />
+      <line x1="4" y1="11.5" x2="7.5" y2="11.5" stroke="var(--border)" strokeWidth={1} strokeLinecap="round" />
     </svg>
   );
 }
