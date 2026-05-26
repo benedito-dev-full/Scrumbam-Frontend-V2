@@ -3,18 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Fragment, useState, useEffect, useRef } from "react";
-import {
-  ChevronDown,
-  ChevronRight,
-  Plus,
-  Star,
-  MoreHorizontal,
-  Settings2,
-  type LucideIcon,
-} from "lucide-react";
-
-// necessário para o tipo React.ReactNode no MoreItem
-import type { ReactNode } from "react";
+import { ChevronDown, ChevronRight, Plus, Star, Settings2 } from "lucide-react";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -29,7 +18,16 @@ import { useMe } from "@/hooks/use-auth";
 /* Caixa de entrada — bandeja com seta entrando */
 function IcInbox() {
   return (
-    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={15}
+      height={15}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M22 12h-6l-2 3H10l-2-3H2" />
       <path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
     </svg>
@@ -39,7 +37,16 @@ function IcInbox() {
 /* Respostas — seta de reply curvada */
 function IcReply() {
   return (
-    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={15}
+      height={15}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M9 17L4 12l5-5" />
       <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
     </svg>
@@ -49,7 +56,16 @@ function IcReply() {
 /* Comentários atribuídos — balão de chat com @ */
 function IcMentions() {
   return (
-    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={15}
+      height={15}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="4" />
       <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94" />
     </svg>
@@ -59,7 +75,16 @@ function IcMentions() {
 /* Minhas tarefas — pessoa com check mark */
 function IcMyTasks() {
   return (
-    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={15}
+      height={15}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="9" cy="7" r="4" />
       <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
       <path d="M16 11l2 2 4-4" />
@@ -81,7 +106,16 @@ function IcMore() {
 /* Favoritos — estrela outline */
 function IcStar() {
   return (
-    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={15}
+      height={15}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
     </svg>
   );
@@ -90,7 +124,16 @@ function IcStar() {
 /* Canal de anúncio — antena com sinal (igual ClickUp Geral) */
 function IcChannel() {
   return (
-    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={15}
+      height={15}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35z" />
       <path d="M6 18h12" />
       <path d="M6 14h12" />
@@ -102,7 +145,16 @@ function IcChannel() {
 /* Canal público — hashtag */
 function IcHash() {
   return (
-    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={15}
+      height={15}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <line x1="4" y1="9" x2="20" y2="9" />
       <line x1="4" y1="15" x2="20" y2="15" />
       <line x1="10" y1="3" x2="8" y2="21" />
@@ -126,10 +178,18 @@ type TreeItem = LeafItem & {
 
 /* ─── Dados de navegação ─────────────────────────────────────────────────── */
 const homeItems: TreeItem[] = [
-  { href: "/inbox",    label: "Caixa de entrada",      renderIcon: () => <IcInbox /> },
-  { href: "/replies",  label: "Respostas",              renderIcon: () => <IcReply /> },
-  { href: "/mentions", label: "Comentários atribuídos", renderIcon: () => <IcMentions /> },
-  { href: "/assigned", label: "Minhas tarefas",         renderIcon: () => <IcMyTasks /> },
+  { href: "/inbox", label: "Caixa de entrada", renderIcon: () => <IcInbox /> },
+  { href: "/replies", label: "Respostas", renderIcon: () => <IcReply /> },
+  {
+    href: "/mentions",
+    label: "Comentários atribuídos",
+    renderIcon: () => <IcMentions />,
+  },
+  {
+    href: "/assigned",
+    label: "Minhas tarefas",
+    renderIcon: () => <IcMyTasks />,
+  },
 ];
 
 type Section = {
@@ -140,13 +200,16 @@ type Section = {
 };
 
 function buildSections(orgName?: string): Section[] {
-  const suffix = orgName ? ` - ${orgName}` : "";
   return [
     {
       id: "favoritos",
       label: "Favoritos",
       items: [
-        { href: "/favorites", label: "Adicione à sua barra lateral", renderIcon: () => <IcStar /> },
+        {
+          href: "/favorites",
+          label: "Adicione à sua barra lateral",
+          renderIcon: () => <IcStar />,
+        },
       ],
     },
     {
@@ -154,8 +217,18 @@ function buildSections(orgName?: string): Section[] {
       label: "Canais",
       showAddButton: true,
       items: [
-        { href: "/channels/geral",   label: "Geral",   suffix: orgName, renderIcon: () => <IcChannel /> },
-        { href: "/channels/welcome", label: "Welcome", suffix: orgName, renderIcon: () => <IcHash /> },
+        {
+          href: "/channels/geral",
+          label: "Geral",
+          suffix: orgName,
+          renderIcon: () => <IcChannel />,
+        },
+        {
+          href: "/channels/welcome",
+          label: "Welcome",
+          suffix: orgName,
+          renderIcon: () => <IcHash />,
+        },
       ],
     },
   ];
@@ -176,7 +249,16 @@ const MORE_ENTRIES: MoreEntry[] = [
     label: "Atividade do chat",
     href: "/chat-activity",
     renderIcon: () => (
-      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width={15}
+        height={15}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
       </svg>
     ),
@@ -186,8 +268,18 @@ const MORE_ENTRIES: MoreEntry[] = [
     label: "Rascunhos e enviadas",
     href: "/drafts",
     renderIcon: () => (
-      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 2L11 13" /><path d="M22 2L15 22l-4-9-9-4 20-7z" />
+      <svg
+        width={15}
+        height={15}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M22 2L11 13" />
+        <path d="M22 2L15 22l-4-9-9-4 20-7z" />
       </svg>
     ),
   },
@@ -196,8 +288,18 @@ const MORE_ENTRIES: MoreEntry[] = [
     label: "Posts",
     href: "/posts",
     renderIcon: () => (
-      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18M9 21V9" />
+      <svg
+        width={15}
+        height={15}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M3 9h18M9 21V9" />
       </svg>
     ),
   },
@@ -206,9 +308,20 @@ const MORE_ENTRIES: MoreEntry[] = [
     label: "Todos os canais",
     href: "/channels/geral",
     renderIcon: () => (
-      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-        <line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" />
-        <line x1="10" y1="3" x2="8" y2="21" /><line x1="16" y1="3" x2="14" y2="21" />
+      <svg
+        width={15}
+        height={15}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <line x1="4" y1="9" x2="20" y2="9" />
+        <line x1="4" y1="15" x2="20" y2="15" />
+        <line x1="10" y1="3" x2="8" y2="21" />
+        <line x1="16" y1="3" x2="14" y2="21" />
       </svg>
     ),
   },
@@ -217,24 +330,46 @@ const MORE_ENTRIES: MoreEntry[] = [
     label: "Todos os Espaços",
     href: "/spaces",
     renderIcon: () => (
-      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" />
-        <rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+      <svg
+        width={15}
+        height={15}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="3" y="3" width="7" height="7" rx="1" />
+        <rect x="14" y="3" width="7" height="7" rx="1" />
+        <rect x="3" y="14" width="7" height="7" rx="1" />
+        <rect x="14" y="14" width="7" height="7" rx="1" />
       </svg>
     ),
   },
   {
     id: "all-tasks",
-    label: "Todas as tarefas",
-    href: "/tasks",
+    label: "Minhas tarefas",
+    href: "/assigned",
     renderIcon: () => (
-      <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-        <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+      <svg
+        width={15}
+        height={15}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.7}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M9 11l3 3L22 4" />
+        <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
       </svg>
     ),
   },
 ];
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function MoreItem() {
   const [open, setOpen] = useState(false);
   const router = useRouter();
@@ -260,7 +395,9 @@ function MoreItem() {
           open && "bg-sidebar-accent text-sidebar-accent-foreground",
         )}
       >
-        <span className="shrink-0 text-muted-foreground"><IcMore /></span>
+        <span className="shrink-0 text-muted-foreground">
+          <IcMore />
+        </span>
         <span className="flex-1 text-left">Mais</span>
       </button>
 
@@ -367,7 +504,8 @@ function ExpandableItem({
         className={cn(
           "group flex h-[34px] items-center rounded-[4px] text-[13px] text-sidebar-foreground/80 transition-colors",
           "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-          active && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+          active &&
+            "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
         )}
       >
         <button
@@ -376,13 +514,19 @@ function ExpandableItem({
           onClick={() => setOpen((v) => !v)}
           className="grid h-full w-5 place-items-center text-muted-foreground hover:text-foreground"
         >
-          {open ? <ChevronDown className="size-3" /> : <ChevronRight className="size-3" />}
+          {open ? (
+            <ChevronDown className="size-3" />
+          ) : (
+            <ChevronRight className="size-3" />
+          )}
         </button>
         <Link
           href={item.href}
           className="flex h-full flex-1 items-center gap-2 pr-2 outline-none"
         >
-          <span className="shrink-0 text-muted-foreground">{item.renderIcon()}</span>
+          <span className="shrink-0 text-muted-foreground">
+            {item.renderIcon()}
+          </span>
           <span className="flex-1 truncate">{item.label}</span>
           {item.badge && (
             <span className="rounded bg-muted px-1.5 text-[10px] font-semibold text-muted-foreground">
@@ -459,7 +603,12 @@ function SectionBlock({ section }: { section: Section }) {
 function DirectMessagesSection({ userName }: { userName?: string }) {
   const [open, setOpen] = useState(true);
   const initials = userName
-    ? userName.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase()
+    ? userName
+        .split(" ")
+        .slice(0, 2)
+        .map((w) => w[0])
+        .join("")
+        .toUpperCase()
     : "?";
 
   return (
@@ -517,7 +666,10 @@ export function WorkspacePanel() {
   /* painéis alternativos por rota */
   if (pathname.startsWith("/planner")) {
     return (
-      <aside aria-label="Painel do planejador" className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar border-r border-border">
+      <aside
+        aria-label="Painel do planejador"
+        className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar border-r border-border"
+      >
         <PlannerPanel />
       </aside>
     );
@@ -525,7 +677,10 @@ export function WorkspacePanel() {
 
   if (pathname.startsWith("/forms")) {
     return (
-      <aside aria-label="Painel de formulários" className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar border-r border-border">
+      <aside
+        aria-label="Painel de formulários"
+        className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar border-r border-border"
+      >
         <FormsPanel />
       </aside>
     );
@@ -541,7 +696,10 @@ export function WorkspacePanel() {
 
   if (pathname === "/docs") {
     return (
-      <aside aria-label="Painel de documentos" className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar border-r border-border overflow-y-auto">
+      <aside
+        aria-label="Painel de documentos"
+        className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar border-r border-border overflow-y-auto"
+      >
         <DocsPanel />
       </aside>
     );

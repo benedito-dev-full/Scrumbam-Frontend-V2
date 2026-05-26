@@ -10,7 +10,7 @@ const CHORD_TIMEOUT_MS = 1200;
 const G_ROUTES: Record<string, string> = {
   h: "/",
   i: "/inbox",
-  t: "/tasks",
+  t: "/assigned",
   s: "/sprints",
 };
 

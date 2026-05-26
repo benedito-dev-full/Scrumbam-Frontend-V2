@@ -64,50 +64,158 @@ export function CommandPalette() {
   };
 
   const recents: Entry[] = [
-    { id: "r:home",     label: "Início",           sublabel: "Página inicial",      icon: Home,        iconColor: "#60a5fa", keywords: ["home", "inicio", "dashboard"],                  onSelect: run(() => router.push("/")) },
-    { id: "r:inbox",    label: "Caixa de entrada",  sublabel: "Inbox",               icon: Inbox,       iconColor: "#a78bfa", keywords: ["caixa", "inbox", "notificacoes"],               onSelect: run(() => router.push("/inbox")) },
-    { id: "r:tasks",    label: "Minhas tarefas",    sublabel: "Board de tarefas",    icon: ListTodo,    iconColor: "#34d399", keywords: ["tarefas", "tasks", "board"],                    onSelect: run(() => router.push("/tasks")) },
-    { id: "r:planner",  label: "Planejador",        sublabel: "Visão de calendário", icon: CalendarDays,iconColor: "#fb923c", keywords: ["planner", "calendario", "planejador"],          onSelect: run(() => router.push("/planner")) },
-    { id: "r:docs",     label: "Documentos",        sublabel: "Docs colaborativos",  icon: FileText,    iconColor: "#94a3b8", keywords: ["docs", "documento", "notas"],                   onSelect: run(() => router.push("/docs")) },
-    { id: "r:channels", label: "Canal Geral",       sublabel: "Canais",              icon: Hash,        iconColor: "#38bdf8", keywords: ["canal", "geral", "chat"],                       onSelect: run(() => router.push("/channels/geral")) },
+    {
+      id: "r:home",
+      label: "Início",
+      sublabel: "Página inicial",
+      icon: Home,
+      iconColor: "#60a5fa",
+      keywords: ["home", "inicio", "dashboard"],
+      onSelect: run(() => router.push("/")),
+    },
+    {
+      id: "r:inbox",
+      label: "Caixa de entrada",
+      sublabel: "Inbox",
+      icon: Inbox,
+      iconColor: "#a78bfa",
+      keywords: ["caixa", "inbox", "notificacoes"],
+      onSelect: run(() => router.push("/inbox")),
+    },
+    {
+      id: "r:tasks",
+      label: "Minhas tarefas",
+      sublabel: "Tarefas atribuidas a voce",
+      icon: ListTodo,
+      iconColor: "#34d399",
+      keywords: ["tarefas", "tasks", "board", "atribuidas", "assigned"],
+      onSelect: run(() => router.push("/assigned")),
+    },
+    {
+      id: "r:planner",
+      label: "Planejador",
+      sublabel: "Visão de calendário",
+      icon: CalendarDays,
+      iconColor: "#fb923c",
+      keywords: ["planner", "calendario", "planejador"],
+      onSelect: run(() => router.push("/planner")),
+    },
+    {
+      id: "r:docs",
+      label: "Documentos",
+      sublabel: "Docs colaborativos",
+      icon: FileText,
+      iconColor: "#94a3b8",
+      keywords: ["docs", "documento", "notas"],
+      onSelect: run(() => router.push("/docs")),
+    },
+    {
+      id: "r:channels",
+      label: "Canal Geral",
+      sublabel: "Canais",
+      icon: Hash,
+      iconColor: "#38bdf8",
+      keywords: ["canal", "geral", "chat"],
+      onSelect: run(() => router.push("/channels/geral")),
+    },
   ];
 
   const commands: Entry[] = [
-    { id: "c:new-task", label: "Criar tarefa",             icon: Plus,        shortcut: "C T", keywords: ["nova tarefa", "criar", "add"],               onSelect: run(() => {}) },
-    { id: "c:invite",   label: "Convidar membro",          icon: UserPlus,               keywords: ["invite", "convidar", "membro"],               onSelect: run(() => openInvite()) },
-    { id: "c:sprints",  label: "Abrir Sprints",            icon: Zap,         shortcut: "G S", keywords: ["sprint", "iteracao"],                        onSelect: run(() => router.push("/sprints")) },
-    { id: "c:ia",       label: "Assistente IA",            icon: Sparkles,               keywords: ["ai", "ia", "assistente", "nexus"],            onSelect: run(() => router.push("/ia")) },
-    { id: "c:people",   label: "Gerenciar pessoas",        icon: Users,                  keywords: ["team", "equipe", "pessoas", "membros"],       onSelect: run(() => router.push("/people")) },
-    { id: "c:theme",    label: isDark ? "Tema claro" : "Tema escuro", icon: isDark ? Sun : Moon, keywords: ["tema", "theme", "dark", "light"], onSelect: run(() => setTheme(isDark ? "light" : "dark")) },
-    { id: "c:shortcuts",label: "Atalhos de teclado",       icon: Keyboard,    shortcut: "⌘ /", keywords: ["shortcuts", "atalhos", "ajuda"],             onSelect: run(() => {}) },
-    { id: "c:settings", label: "Configurações",            icon: Settings,    shortcut: "⌘ ,", keywords: ["preferences", "config", "configuracoes"],   onSelect: run(() => router.push("/settings")) },
+    {
+      id: "c:new-task",
+      label: "Criar tarefa",
+      icon: Plus,
+      shortcut: "C T",
+      keywords: ["nova tarefa", "criar", "add"],
+      onSelect: run(() => {}),
+    },
+    {
+      id: "c:invite",
+      label: "Convidar membro",
+      icon: UserPlus,
+      keywords: ["invite", "convidar", "membro"],
+      onSelect: run(() => openInvite()),
+    },
+    {
+      id: "c:sprints",
+      label: "Abrir Sprints",
+      icon: Zap,
+      shortcut: "G S",
+      keywords: ["sprint", "iteracao"],
+      onSelect: run(() => router.push("/sprints")),
+    },
+    {
+      id: "c:ia",
+      label: "Assistente IA",
+      icon: Sparkles,
+      keywords: ["ai", "ia", "assistente", "nexus"],
+      onSelect: run(() => router.push("/ia")),
+    },
+    {
+      id: "c:people",
+      label: "Gerenciar pessoas",
+      icon: Users,
+      keywords: ["team", "equipe", "pessoas", "membros"],
+      onSelect: run(() => router.push("/people")),
+    },
+    {
+      id: "c:theme",
+      label: isDark ? "Tema claro" : "Tema escuro",
+      icon: isDark ? Sun : Moon,
+      keywords: ["tema", "theme", "dark", "light"],
+      onSelect: run(() => setTheme(isDark ? "light" : "dark")),
+    },
+    {
+      id: "c:shortcuts",
+      label: "Atalhos de teclado",
+      icon: Keyboard,
+      shortcut: "⌘ /",
+      keywords: ["shortcuts", "atalhos", "ajuda"],
+      onSelect: run(() => {}),
+    },
+    {
+      id: "c:settings",
+      label: "Configurações",
+      icon: Settings,
+      shortcut: "⌘ ,",
+      keywords: ["preferences", "config", "configuracoes"],
+      onSelect: run(() => router.push("/settings")),
+    },
   ];
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const allEntries = [...recents, ...commands];
 
   // filtro por query
   const q = query.toLowerCase().trim();
   const filteredRecents = q
-    ? recents.filter((e) =>
-        e.label.toLowerCase().includes(q) ||
-        (e.sublabel ?? "").toLowerCase().includes(q) ||
-        (e.keywords ?? []).some((k) => k.includes(q)),
+    ? recents.filter(
+        (e) =>
+          e.label.toLowerCase().includes(q) ||
+          (e.sublabel ?? "").toLowerCase().includes(q) ||
+          (e.keywords ?? []).some((k) => k.includes(q)),
       )
     : recents;
   const filteredCommands = q
-    ? commands.filter((e) =>
-        e.label.toLowerCase().includes(q) ||
-        (e.keywords ?? []).some((k) => k.includes(q)),
+    ? commands.filter(
+        (e) =>
+          e.label.toLowerCase().includes(q) ||
+          (e.keywords ?? []).some((k) => k.includes(q)),
       )
     : commands;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const filtered = [...filteredRecents, ...filteredCommands];
 
   // reset cursor quando muda a query
-  useEffect(() => { setCursor(0); }, [query]);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCursor(0);
+  }, [query]);
 
   // foca o input quando abre
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setQuery("");
       setCursor(0);
       setTimeout(() => inputRef.current?.focus(), 30);
@@ -173,7 +281,7 @@ export function CommandPalette() {
         <div ref={listRef} className="max-h-[360px] overflow-y-auto py-1.5">
           {filtered.length === 0 && (
             <p className="py-8 text-center text-[13px] text-muted-foreground">
-              Nenhum resultado para "{query}"
+              Nenhum resultado para &ldquo;{query}&rdquo;
             </p>
           )}
 
@@ -202,10 +310,14 @@ export function CommandPalette() {
         <div className="flex items-center justify-between border-t border-border px-4 py-2">
           <div className="flex items-center gap-3 text-[11px] text-muted-foreground/50">
             <span className="flex items-center gap-1">
-              <Kbd>↑</Kbd><Kbd>↓</Kbd> navegar
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd> navegar
             </span>
             <span className="flex items-center gap-1">
-              <Kbd><CornerDownLeft className="size-2.5" /></Kbd> selecionar
+              <Kbd>
+                <CornerDownLeft className="size-2.5" />
+              </Kbd>{" "}
+              selecionar
             </span>
           </div>
           <span className="text-[11px] text-muted-foreground/30">⌘K</span>
@@ -218,7 +330,11 @@ export function CommandPalette() {
 // ─── Seção ────────────────────────────────────────────────────────────────────
 
 function Section({
-  label, entries, offset, cursor, onHover,
+  label,
+  entries,
+  offset,
+  cursor,
+  onHover,
 }: {
   label: string;
   entries: Entry[];
@@ -255,7 +371,9 @@ function Section({
             </span>
 
             <span className="flex flex-1 flex-col min-w-0">
-              <span className="text-[13px] text-foreground leading-tight">{entry.label}</span>
+              <span className="text-[13px] text-foreground leading-tight">
+                {entry.label}
+              </span>
               {entry.sublabel && (
                 <span className="text-[11px] text-muted-foreground/60 leading-tight truncate">
                   {entry.sublabel}
@@ -283,12 +401,22 @@ function Section({
 
 // ─── Kbd ──────────────────────────────────────────────────────────────────────
 
-function Kbd({ children, small }: { children: React.ReactNode; small?: boolean }) {
+function Kbd({
+  children,
+  small,
+}: {
+  children: React.ReactNode;
+  small?: boolean;
+}) {
   return (
-    <kbd className={cn(
-      "inline-flex items-center justify-center rounded border border-border bg-muted font-medium text-muted-foreground",
-      small ? "h-5 min-w-[20px] px-1 text-[10px]" : "h-4 min-w-[16px] px-1 text-[9px]",
-    )}>
+    <kbd
+      className={cn(
+        "inline-flex items-center justify-center rounded border border-border bg-muted font-medium text-muted-foreground",
+        small
+          ? "h-5 min-w-[20px] px-1 text-[10px]"
+          : "h-4 min-w-[16px] px-1 text-[9px]",
+      )}
+    >
       {children}
     </kbd>
   );
