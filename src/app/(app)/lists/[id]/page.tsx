@@ -1,7 +1,18 @@
 "use client";
 
 import React, { use, useEffect, useState } from "react";
-import { Star, Share2, Sparkles, GripVertical, Lock } from "lucide-react";
+import {
+  Star,
+  Share2,
+  Sparkles,
+  GripVertical,
+  Lock,
+  Layers,
+  ChevronDown,
+  ChevronRight,
+  Columns3,
+  List as LucideList,
+} from "lucide-react";
 import { AgentPopover } from "@/components/spaces/agent-popover";
 import {
   DndContext,
@@ -89,6 +100,13 @@ function ClaudeAvatar({ size = 22 }: { size?: number }) {
   );
 }
 
+// ─── Views disponíveis na página de Lista ────────────────────────────────────
+const LIST_VIEWS = [
+  { id: "list", label: "Lista", icon: LucideList },
+  { id: "board", label: "Quadro", icon: Columns3 },
+  { id: "blocks", label: "Blocos", icon: Layers },
+];
+
 // ─── Tipo de status visual (espelha StatusTarefa da main) ────────────────────
 type StatusVisual =
   | "backlog"
@@ -121,7 +139,7 @@ export default function ListPage({
   const members =
     projectMembers.length > 0 ? projectMembers : orgAsProjectMembers;
 
-  const [view, setView] = useState<"list" | "board">("list");
+  const [view, setView] = useState<"list" | "board" | "blocks">("list");
   const [subtarefasMode, setSubtarefasMode] =
     useState<SubtarefasMode>("recolhidas");
   const [modalOpen, setModalOpen] = useState(false);
@@ -168,9 +186,10 @@ export default function ListPage({
     >
       <PageHeader id={id} nome={projeto.nome} />
       <ViewSwitcher
+        views={LIST_VIEWS}
         defaultValue="list"
         value={view}
-        onChange={(v) => setView(v as "list" | "board")}
+        onChange={(v) => setView(v as "list" | "board" | "blocks")}
       />
       <Toolbar
         tarefasCount={loadingTasks ? null : tasks.length}
@@ -189,8 +208,10 @@ export default function ListPage({
           projectId={id}
           allTasks={tasks}
         />
-      ) : (
+      ) : view === "board" ? (
         <BoardContent listId={id} tasks={tasks} onOpenTask={setSelectedTask} />
+      ) : (
+        <BlocksContent projectId={id} members={members} onOpenTask={setSelectedTask} />
       )}
       <TaskSheet task={selectedTask} onClose={() => setSelectedTask(null)} />
       <CreateTaskModal
@@ -281,6 +302,488 @@ function BoardContent({
         if (found) onOpenTask(found);
       }}
     />
+  );
+}
+
+// ─── BlocksContent (mock) ─────────────────────────────────────────────────────
+
+type MockBlock = {
+  id: string;
+  nome: string;
+  startDate: string;
+  endDate: string;
+  cor: string;
+  tasks: { id: string; nome: string; status: "DONE" | "FAILED" | "INBOX" | "EXECUTING" | "READY" }[];
+};
+
+const MOCK_BLOCKS: MockBlock[] = [
+  {
+    id: "blk-001",
+    nome: "Sprint de Fundação",
+    startDate: "2026-05-12",
+    endDate: "2026-05-23",
+    cor: "#7c5cff",
+    tasks: [
+      { id: "t1", nome: "Configurar banco de dados", status: "DONE" },
+      { id: "t2", nome: "Setup do repositório V2", status: "DONE" },
+      { id: "t3", nome: "Estrutura de pastas NestJS", status: "DONE" },
+      { id: "t4", nome: "Migrations iniciais", status: "DONE" },
+    ],
+  },
+  {
+    id: "blk-002",
+    nome: "Autenticação & RBAC",
+    startDate: "2026-05-26",
+    endDate: "2026-06-06",
+    cor: "#0ea5e9",
+    tasks: [
+      { id: "t5", nome: "Login com JWT", status: "DONE" },
+      { id: "t6", nome: "Refresh token", status: "DONE" },
+      { id: "t7", nome: "Permissões via DVincula", status: "EXECUTING" },
+      { id: "t8", nome: "Testes de autenticação", status: "INBOX" },
+      { id: "t9", nome: "Guard de organização", status: "INBOX" },
+    ],
+  },
+  {
+    id: "blk-003",
+    nome: "Engine de Execução (F6)",
+    startDate: "2026-06-09",
+    endDate: "2026-06-20",
+    cor: "#f59e0b",
+    tasks: [
+      { id: "t10", nome: "OperacaoExecucaoClaude", status: "INBOX" },
+      { id: "t11", nome: "Risk Gate (-301/-302/-303)", status: "INBOX" },
+      { id: "t12", nome: "Polling de DPedido", status: "INBOX" },
+    ],
+  },
+];
+
+const BLOCK_STATUS_DOT: Record<string, string> = {
+  DONE: "#22c55e",
+  FAILED: "#ef4444",
+  EXECUTING: "#f59e0b",
+  READY: "#60a5fa",
+  INBOX: "#6b7280",
+};
+
+const BLOCK_STATUS_LABEL: Record<string, string> = {
+  DONE: "Concluído",
+  FAILED: "Falhou",
+  EXECUTING: "Em progresso",
+  READY: "Pronto",
+  INBOX: "Backlog",
+};
+
+function calcProgress(tasks: MockBlock["tasks"]) {
+  if (tasks.length === 0) return { done: 0, total: 0, percent: 0 };
+  const done = tasks.filter((t) => t.status === "DONE").length;
+  return { done, total: tasks.length, percent: Math.round((done / tasks.length) * 100) };
+}
+
+function fmtDate(iso: string) {
+  return new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "short",
+  });
+}
+
+function BlocksContent({
+  projectId,
+  members,
+  onOpenTask,
+}: {
+  projectId: string;
+  members: ProjectMemberDto[];
+  onOpenTask: (task: TaskResponseDto) => void;
+}) {
+  const [openBlocks, setOpenBlocks] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(MOCK_BLOCKS.map((b) => [b.id, true])),
+  );
+  const [creating, setCreating] = useState(false);
+  const [newBlockName, setNewBlockName] = useState("");
+
+  function toggleBlock(id: string) {
+    setOpenBlocks((prev) => ({ ...prev, [id]: !prev[id] }));
+  }
+
+  return (
+    <div
+      className="flex-1 overflow-y-auto"
+      style={{ background: "var(--background)", padding: "24px 28px 80px" }}
+    >
+      {/* cabeçalho da view */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 24,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Layers size={16} style={{ color: "var(--muted-foreground)" }} />
+          <span
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: "var(--muted-foreground)",
+              letterSpacing: ".4px",
+              textTransform: "uppercase",
+            }}
+          >
+            {MOCK_BLOCKS.length} blocos
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            height: 30,
+            padding: "0 14px",
+            borderRadius: 6,
+            border: "1px solid #2a2a32",
+            background: "var(--card)",
+            color: "var(--foreground)",
+            fontSize: 13,
+            cursor: "pointer",
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "var(--secondary)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "var(--card)")
+          }
+        >
+          <IcPlus size={13} />
+          Novo bloco
+        </button>
+      </div>
+
+      {/* formulário inline de criação */}
+      {creating && (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "14px 18px",
+            borderRadius: 10,
+            border: "1px dashed #7c5cff80",
+            background: "rgba(124,92,255,0.06)",
+          }}
+        >
+          <input
+            autoFocus
+            value={newBlockName}
+            onChange={(e) => setNewBlockName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newBlockName.trim()) {
+                setCreating(false);
+                setNewBlockName("");
+              }
+              if (e.key === "Escape") {
+                setCreating(false);
+                setNewBlockName("");
+              }
+            }}
+            placeholder="Nome do bloco…"
+            style={{
+              width: "100%",
+              background: "none",
+              border: 0,
+              outline: 0,
+              fontSize: 14,
+              fontWeight: 600,
+              color: "var(--foreground)",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              marginTop: 10,
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+            }}
+          >
+            <span>Enter para salvar</span>
+            <span>·</span>
+            <span>Esc para cancelar</span>
+          </div>
+        </div>
+      )}
+
+      {/* lista de blocos */}
+      {MOCK_BLOCKS.map((block) => {
+        const { done, total, percent } = calcProgress(block.tasks);
+        const isOpen = openBlocks[block.id] ?? true;
+        const isOverdueBlock = new Date(block.endDate) < new Date("2026-05-26");
+        const isPastEnd = isOverdueBlock && percent < 100;
+
+        return (
+          <div
+            key={block.id}
+            style={{
+              marginBottom: 16,
+              borderRadius: 10,
+              border: "1px solid #26262d",
+              background: "var(--card)",
+              overflow: "hidden",
+            }}
+          >
+            {/* header do bloco */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "12px 16px",
+                borderBottom: isOpen ? "1px solid #26262d" : "none",
+                cursor: "pointer",
+              }}
+              onClick={() => toggleBlock(block.id)}
+            >
+              {/* chevron */}
+              <span style={{ color: "var(--muted-foreground)", flexShrink: 0 }}>
+                {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </span>
+
+              {/* dot de cor */}
+              <span
+                style={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  background: block.cor,
+                  flexShrink: 0,
+                }}
+              />
+
+              {/* nome */}
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "var(--foreground)",
+                  flex: 1,
+                }}
+              >
+                {block.nome}
+              </span>
+
+              {/* timebox */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  fontSize: 12,
+                  color: isPastEnd ? "#ef4444" : "var(--muted-foreground)",
+                  flexShrink: 0,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <ChevronRight size={11} style={{ color: "var(--muted-foreground)" }} />
+                <span>{fmtDate(block.startDate)}</span>
+                <span style={{ color: "var(--muted-foreground)" }}>→</span>
+                <span>{fmtDate(block.endDate)}</span>
+                {isPastEnd && (
+                  <span
+                    style={{
+                      marginLeft: 4,
+                      padding: "1px 7px",
+                      borderRadius: 4,
+                      background: "rgba(239,68,68,0.15)",
+                      color: "#ef4444",
+                      fontSize: 11,
+                      fontWeight: 600,
+                    }}
+                  >
+                    atrasado
+                  </span>
+                )}
+              </div>
+
+              {/* progress badge */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginLeft: 16,
+                  flexShrink: 0,
+                }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* barra */}
+                <div
+                  style={{
+                    width: 80,
+                    height: 5,
+                    borderRadius: 99,
+                    background: "#26262d",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${percent}%`,
+                      borderRadius: 99,
+                      background:
+                        percent === 100
+                          ? "#22c55e"
+                          : percent > 60
+                            ? "#7c5cff"
+                            : "#60a5fa",
+                      transition: "width .3s ease",
+                    }}
+                  />
+                </div>
+                {/* texto */}
+                <span
+                  style={{
+                    fontSize: 12,
+                    color:
+                      percent === 100 ? "#22c55e" : "var(--muted-foreground)",
+                    fontWeight: percent === 100 ? 600 : 400,
+                    minWidth: 56,
+                  }}
+                >
+                  {done}/{total} · {percent}%
+                </span>
+              </div>
+            </div>
+
+            {/* tasks do bloco */}
+            {isOpen && (
+              <div>
+                {block.tasks.map((t, idx) => (
+                  <div
+                    key={t.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "9px 16px 9px 40px",
+                      borderBottom:
+                        idx < block.tasks.length - 1
+                          ? "1px solid #1f1f25"
+                          : "none",
+                      fontSize: 13,
+                      color: "var(--foreground)",
+                      background: "transparent",
+                      cursor: "default",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background = "rgba(255,255,255,0.03)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "transparent")
+                    }
+                  >
+                    {/* status dot */}
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: BLOCK_STATUS_DOT[t.status] ?? "#6b7280",
+                        flexShrink: 0,
+                      }}
+                      title={BLOCK_STATUS_LABEL[t.status]}
+                    />
+                    {/* nome da task */}
+                    <span
+                      style={{
+                        flex: 1,
+                        textDecoration:
+                          t.status === "DONE" ? "line-through" : "none",
+                        color:
+                          t.status === "DONE"
+                            ? "var(--muted-foreground)"
+                            : "var(--foreground)",
+                      }}
+                    >
+                      {t.nome}
+                    </span>
+                    {/* badge de status */}
+                    <span
+                      style={{
+                        fontSize: 11,
+                        padding: "2px 8px",
+                        borderRadius: 4,
+                        background: "var(--accent)",
+                        color: "var(--muted-foreground)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {BLOCK_STATUS_LABEL[t.status]}
+                    </span>
+                  </div>
+                ))}
+
+                {/* add task inline */}
+                <button
+                  type="button"
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    width: "100%",
+                    padding: "9px 16px 9px 40px",
+                    background: "none",
+                    border: 0,
+                    fontSize: 13,
+                    color: "var(--muted-foreground)",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background =
+                      "rgba(255,255,255,0.03)";
+                    e.currentTarget.style.color = "var(--foreground)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "none";
+                    e.currentTarget.style.color = "var(--muted-foreground)";
+                  }}
+                >
+                  <IcPlus size={12} />
+                  Adicionar tarefa
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* bloco sem pai (tarefas soltas) */}
+      <div
+        style={{
+          marginBottom: 16,
+          borderRadius: 10,
+          border: "1px dashed #26262d",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "12px 16px",
+            fontSize: 13,
+            color: "var(--muted-foreground)",
+          }}
+        >
+          <Layers size={14} />
+          <span style={{ flex: 1, fontWeight: 500 }}>Sem bloco</span>
+          <span style={{ fontSize: 12 }}>Tarefas sem bloco associado</span>
+        </div>
+      </div>
+    </div>
   );
 }
 
