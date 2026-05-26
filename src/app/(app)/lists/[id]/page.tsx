@@ -897,43 +897,43 @@ function TaskRowBackend({
           <>
             <div style={{ position: "fixed", inset: 0, zIndex: 100 }} onClick={closeDropdown} />
             <div style={{
-              position: "absolute", top: "calc(100% + 2px)", left: 0, zIndex: 101,
-              background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8,
-              padding: 4, minWidth: 180, maxHeight: 260, overflowY: "auto",
-              boxShadow: "0 8px 24px rgba(0,0,0,.5)",
+              position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 101,
+              background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 10,
+              padding: "6px", minWidth: 220, maxHeight: 320, overflowY: "auto",
+              boxShadow: "0 12px 32px rgba(0,0,0,.6)",
             }}>
-              <button type="button" onClick={() => handleAssigneeChange(null)} style={{ ...dropItemStyle("#7a7a85"), gap: 8 }}>
-                <IcUserInline size={13} color="#7a7a85" />
-                <span style={{ color: "#d4d4dc" }}>Sem responsável</span>
-                {!task.assigneeId && <IcCheck size={11} />}
+              <button type="button" onClick={() => handleAssigneeChange(null)} style={{ ...assigneeItemStyle("#9a9aaa"), gap: 10 }}>
+                <IcUserInline size={14} color="#9a9aaa" />
+                <span style={{ color: "#c0c0cc" }}>Sem responsável</span>
+                {!task.assigneeId && <IcCheck size={12} />}
               </button>
               {members.map((m) => {
                 const initials = m.nome.split(" ").slice(0, 2).map((w) => w[0]).join("").toUpperCase();
                 const isSelected = task.assigneeId === m.userId;
                 return (
-                  <button key={m.userId} type="button" onClick={() => handleAssigneeChange(m.userId)} style={{ ...dropItemStyle("#d4d4dc"), gap: 8, background: isSelected ? "rgba(124,92,255,0.12)" : "none" }}>
+                  <button key={m.userId} type="button" onClick={() => handleAssigneeChange(m.userId)} style={{ ...assigneeItemStyle("#e0e0ea"), gap: 10, background: isSelected ? "rgba(124,92,255,0.14)" : "none" }}>
                     <span style={{
-                      width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                      width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
                       background: "#3d2a6b", color: "#d8ccff",
-                      fontSize: 9, fontWeight: 700,
+                      fontSize: 11, fontWeight: 700,
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
                     }}>
                       {initials}
                     </span>
-                    <span style={{ flex: 1 }}>{m.nome}</span>
-                    {isSelected && <IcCheck size={11} />}
+                    <span style={{ flex: 1, fontSize: 13 }}>{m.nome}</span>
+                    {isSelected && <IcCheck size={12} />}
                   </button>
                 );
               })}
-              <div style={{ borderTop: "1px solid #2e2e38", margin: "4px 0" }} />
-              <button type="button" onClick={() => handleAssigneeChange(AI_ASSIGNEE_ID)} style={{ ...dropItemStyle("#818cf8"), gap: 8, background: task.assigneeId === AI_ASSIGNEE_ID ? "rgba(129,140,248,0.12)" : "none" }}>
+              <div style={{ borderTop: "1px solid #2e2e38", margin: "6px 4px" }} />
+              <button type="button" onClick={() => handleAssigneeChange(AI_ASSIGNEE_ID)} style={{ ...assigneeItemStyle("#818cf8"), gap: 10, background: task.assigneeId === AI_ASSIGNEE_ID ? "rgba(129,140,248,0.14)" : "none" }}>
                 <span style={{
-                  width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-                  background: "#1a1a4e", fontSize: 13,
+                  width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
+                  background: "#1a1a4e", fontSize: 15,
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                 }}>🤖</span>
-                <span style={{ flex: 1, color: "#818cf8" }}>IA</span>
-                {task.assigneeId === AI_ASSIGNEE_ID && <IcCheck size={11} />}
+                <span style={{ flex: 1, fontSize: 13, color: "#818cf8" }}>IA</span>
+                {task.assigneeId === AI_ASSIGNEE_ID && <IcCheck size={12} />}
               </button>
             </div>
           </>
@@ -1168,6 +1168,16 @@ function dropItemStyle(color: string): React.CSSProperties {
     width: "100%", padding: "7px 10px", borderRadius: 5,
     background: "none", border: 0, cursor: "pointer",
     color, fontSize: 12, textAlign: "left" as const,
+  };
+}
+
+function assigneeItemStyle(color: string): React.CSSProperties {
+  return {
+    display: "flex", alignItems: "center",
+    width: "100%", padding: "9px 12px", borderRadius: 7,
+    background: "none", border: 0, cursor: "pointer",
+    color, fontSize: 13, textAlign: "left" as const,
+    transition: "background .1s",
   };
 }
 
