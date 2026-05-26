@@ -5,9 +5,6 @@ import {
   LayoutDashboard,
   List,
   Columns3,
-  Calendar,
-  BarChart2,
-  Table,
   Plus,
   type LucideIcon,
 } from "lucide-react";
@@ -23,9 +20,6 @@ const defaultViews: View[] = [
   { id: "overview", label: "Visão geral", icon: LayoutDashboard },
   { id: "list", label: "Lista", icon: List },
   { id: "board", label: "Quadro", icon: Columns3 },
-  { id: "calendar", label: "Calendário", icon: Calendar },
-  { id: "timeline", label: "Linha do tempo", icon: BarChart2 },
-  { id: "table", label: "Tabela", icon: Table },
 ];
 
 /**
