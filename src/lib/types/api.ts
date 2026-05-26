@@ -79,6 +79,10 @@ export interface DProjectDto {
   folderId: string | null;
   /** Projeto privado (true) ou público na org (false). ADR-V2-051 §8. */
   privado: boolean;
+  /** Cor hex do espaço (#RRGGBB), lida de dados.color. Null se não definida. */
+  color?: string | null;
+  /** Ícone do espaço (emoji ou slug), lido de dados.icon. Null se não definido. */
+  icon?: string | null;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -97,6 +101,10 @@ export interface CreateProjectDto {
   idPai?: string | null;
   /** Tornar projeto privado (visível apenas a membros explícitos). */
   privado?: boolean;
+  /** Cor hex do espaço (#RRGGBB). */
+  color?: string | null;
+  /** Ícone do espaço (emoji ou slug). */
+  icon?: string | null;
 }
 
 export interface UpdateProjectDto {

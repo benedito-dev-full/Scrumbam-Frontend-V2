@@ -168,7 +168,7 @@ export function useLists(folderId: string | null) {
 export function useCreateSpace() {
   const queryClient = useQueryClient();
 
-  return useMutation<DProjectDto, Error, Pick<CreateProjectDto, 'nome' | 'privado'>>({
+  return useMutation<DProjectDto, Error, Pick<CreateProjectDto, 'nome' | 'privado' | 'color' | 'icon'>>({
     mutationFn: async (dto) => {
       const res = await api.post<DProjectDto>('/projects', {
         ...dto,

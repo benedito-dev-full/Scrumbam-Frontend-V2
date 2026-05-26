@@ -23,6 +23,14 @@ interface CreateSpaceDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// ─── Paleta de cores ──────────────────────────────────────────────────────────
+
+const COLOR_PALETTE = [
+  "#ef4444", "#f97316", "#eab308", "#22c55e",
+  "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899",
+  "#64748b", "#0ea5e9", "#10b981", "#f43f5e",
+];
+
 // ─── Switch ───────────────────────────────────────────────────────────────────
 
 function Switch({
@@ -59,11 +67,42 @@ function Switch({
 
 // ─── SpaceAvatar ──────────────────────────────────────────────────────────────
 
-function SpaceAvatar({ nome }: { nome: string }) {
+function SpaceAvatar({ nome, color, icon }: { nome: string; color: string; icon: string }) {
   const letter = nome.trim().charAt(0).toUpperCase() || "S";
   return (
-    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-border bg-muted text-base font-semibold text-foreground select-none">
-      {letter}
+    <div
+      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-base font-semibold text-white select-none transition-colors"
+      style={{ backgroundColor: color }}
+    >
+      {icon || letter}
+    </div>
+  );
+}
+
+// ─── ColorPicker ──────────────────────────────────────────────────────────────
+
+function ColorPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (color: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {COLOR_PALETTE.map((c) => (
+        <button
+          key={c}
+          type="button"
+          onClick={() => onChange(c)}
+          className={cn(
+            "h-6 w-6 rounded-full transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+            value === c && "ring-2 ring-white ring-offset-2 ring-offset-background scale-110",
+          )}
+          style={{ backgroundColor: c }}
+          aria-label={`Cor ${c}`}
+        />
+      ))}
     </div>
   );
 }
@@ -74,6 +113,8 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [privado, setPrivado] = useState(false);
+  const [color, setColor] = useState(COLOR_PALETTE[5]); // azul padrão
+  const [icon, setIcon] = useState("");
   const [nomeError, setNomeError] = useState<string | null>(null);
 
   const { mutate, isPending } = useCreateSpace();
@@ -83,6 +124,8 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
       setNome("");
       setDescricao("");
       setPrivado(false);
+      setColor(COLOR_PALETTE[5]);
+      setIcon("");
       setNomeError(null);
     }
   }, [open]);
@@ -110,7 +153,7 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
     if (!validate()) return;
 
     mutate(
-      { nome: nome.trim(), privado },
+      { nome: nome.trim(), privado, color, icon: icon || undefined },
       {
         onSuccess: (created) => {
           toast.success(`Space "${created.nome}" criado`, {
@@ -154,7 +197,7 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
                 Ícone e nome
               </label>
               <div className="flex items-center gap-3">
-                <SpaceAvatar nome={nome} />
+                <SpaceAvatar nome={nome} color={color} icon={icon} />
                 <div className="flex-1 space-y-1">
                   <Input
                     id="create-space-nome"
@@ -173,6 +216,32 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
                   )}
                 </div>
               </div>
+            </div>
+
+            {/* Cor do espaço */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">
+                Cor do espaço
+              </label>
+              <ColorPicker value={color} onChange={setColor} />
+            </div>
+
+            {/* Ícone (emoji) */}
+            <div className="space-y-2">
+              <label
+                htmlFor="create-space-icon"
+                className="text-sm font-medium text-foreground"
+              >
+                Ícone<span className="ml-1 text-muted-foreground font-normal text-xs">(opcional — emoji)</span>
+              </label>
+              <Input
+                id="create-space-icon"
+                placeholder="ex: 🚀 🎯 💡"
+                value={icon}
+                onChange={(e) => setIcon(e.target.value)}
+                className="h-10 text-sm w-40"
+                maxLength={10}
+              />
             </div>
 
             {/* Descrição */}
