@@ -338,6 +338,63 @@ export interface CreateInviteDto {
 
 // ─── Notifications ───────────────────────────────────────────────────────────
 
+/**
+ * Notificação in-app (DEvento idClasse=-490) serializada pelo backend V2.
+ *
+ * BigInts são strings para preservar precisão (ADR-V2-025).
+ *
+ * @see `GET /notifications` — backend `NotificationResponseDto`.
+ */
+export interface NotificationDto {
+  /** DEvento.chave (BigInt como string). */
+  id: string;
+  /** Classe canônica em DEvento (atualmente "-490"). */
+  idClasse: string;
+  /** Destinatário (DEntidade.chave) — null em casos raros legados. */
+  recipientId: string | null;
+  /** Tipo do evento original (ex: "task.status.changed", "task.mention"). */
+  eventType: string | null;
+  /** Título curto exibido na UI. */
+  title: string;
+  /** Mensagem principal. */
+  message: string;
+  /** Lida derivada de DEvento.metaDados.read. */
+  read: boolean;
+  /** Task relacionada, se disponível. */
+  taskId?: string | null;
+  /** Projeto relacionado, se disponível. */
+  projectId?: string | null;
+  /** Execução relacionada, se disponível. */
+  executionId?: string | null;
+  /** ISO 8601 da criação do evento. */
+  createdAt: string;
+  /** metaDados originais do DEvento (payload livre). */
+  metadata: Record<string, unknown>;
+}
+
+export interface NotificationsPaginationDto {
+  hasMore: boolean;
+  nextCursor: string | null;
+}
+
+export interface ListNotificationsResponseDto {
+  items: NotificationDto[];
+  pagination: NotificationsPaginationDto;
+}
+
+export interface UnreadCountResponseDto {
+  count: number;
+}
+
+export interface MarkAllReadResponseDto {
+  updated: number;
+}
+
+/**
+ * @deprecated Use `NotificationDto` (espelha o backend V2). Mantido apenas
+ * para evitar quebra durante o roll-out — remover quando todas as
+ * referências forem migradas.
+ */
 export interface NotificationResponseDto {
   id: string;
   title?: string;

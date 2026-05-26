@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  CalendarDays,
-  Search,
-  RefreshCw,
-  Bell,
-} from "lucide-react";
+import { CalendarDays, Search, RefreshCw } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -16,6 +11,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
+import { NotificationsPopover } from "@/components/shell/notifications-popover";
 import { useCommandPaletteStore } from "@/lib/stores/command-palette";
 import { useLogout } from "@/hooks/use-auth";
 import { useAuthStore } from "@/lib/stores/auth";
@@ -48,15 +44,28 @@ export function AppTopbar() {
       }}
     >
       {/* ── Esquerda: workspace switcher + calendário ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}
+      >
         <WorkspaceSwitcher />
         <TopbarIconBtn aria-label="Calendário">
-          <CalendarDays size={16} strokeWidth={1.6} style={{ color: "var(--muted-foreground)" }} />
+          <CalendarDays
+            size={16}
+            strokeWidth={1.6}
+            style={{ color: "var(--muted-foreground)" }}
+          />
         </TopbarIconBtn>
       </div>
 
       {/* ── Centro: barra de pesquisa ── */}
-      <div style={{ flex: 1, display: "flex", justifyContent: "center", padding: "0 40px" }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          justifyContent: "center",
+          padding: "0 40px",
+        }}
+      >
         <button
           type="button"
           onClick={() => openCommandPalette(true)}
@@ -82,8 +91,20 @@ export function AppTopbar() {
             e.currentTarget.style.background = "var(--background)";
           }}
         >
-          <Search size={14} strokeWidth={1.8} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
-          <span style={{ flex: 1, textAlign: "left", color: "var(--muted-foreground)" }}>Pesquisar</span>
+          <Search
+            size={14}
+            strokeWidth={1.8}
+            style={{ color: "var(--muted-foreground)", flexShrink: 0 }}
+          />
+          <span
+            style={{
+              flex: 1,
+              textAlign: "left",
+              color: "var(--muted-foreground)",
+            }}
+          >
+            Pesquisar
+          </span>
           {/* shortcut Ctrl K */}
           <span
             style={{
@@ -107,13 +128,17 @@ export function AppTopbar() {
       </div>
 
       {/* ── Direita: ícones de ação + avatar ── */}
-      <div style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}>
+      <div
+        style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}
+      >
         <TopbarIconBtn aria-label="Sincronizar">
-          <RefreshCw size={15} strokeWidth={1.6} style={{ color: "var(--muted-foreground)" }} />
+          <RefreshCw
+            size={15}
+            strokeWidth={1.6}
+            style={{ color: "var(--muted-foreground)" }}
+          />
         </TopbarIconBtn>
-        <TopbarIconBtn aria-label="Notificações">
-          <Bell size={15} strokeWidth={1.6} style={{ color: "var(--muted-foreground)" }} />
-        </TopbarIconBtn>
+        <NotificationsPopover />
 
         {/* avatar do usuário */}
         <UserMenu />
@@ -134,8 +159,8 @@ function UserMenu() {
   const logout = useLogout();
   const user = useAuthStore((s) => s.user);
 
-  const name = user?.name ?? '?';
-  const email = user?.email ?? '';
+  const name = user?.name ?? "?";
+  const email = user?.email ?? "";
   const initials = getInitials(name);
 
   return (
@@ -145,7 +170,13 @@ function UserMenu() {
           <button
             type="button"
             aria-label="Menu do usuário"
-            style={{ background: "none", border: 0, padding: 2, borderRadius: "50%", cursor: "pointer" }}
+            style={{
+              background: "none",
+              border: 0,
+              padding: 2,
+              borderRadius: "50%",
+              cursor: "pointer",
+            }}
           />
         }
       >
@@ -171,15 +202,35 @@ function UserMenu() {
       <DropdownMenuContent align="end" sideOffset={6} className="w-52">
         <DropdownMenuGroup>
           <DropdownMenuLabel>
-            <div className="text-[13px] font-semibold text-foreground">{name}</div>
+            <div className="text-[13px] font-semibold text-foreground">
+              {name}
+            </div>
             <div className="text-[11px] text-muted-foreground">{email}</div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-[13px]" onClick={() => router.push("/profile")}>Perfil</DropdownMenuItem>
-          <DropdownMenuItem className="text-[13px]" onClick={() => router.push("/settings")}>Configurações</DropdownMenuItem>
-          <DropdownMenuItem className="text-[13px]">Atalhos de teclado</DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-[13px]"
+            onClick={() => router.push("/profile")}
+          >
+            Perfil
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-[13px]"
+            onClick={() => router.push("/settings")}
+          >
+            Configurações
+          </DropdownMenuItem>
+          <DropdownMenuItem className="text-[13px]">
+            Atalhos de teclado
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="destructive" className="text-[13px]" onClick={() => logout.mutate()}>Sair</DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            className="text-[13px]"
+            onClick={() => logout.mutate()}
+          >
+            Sair
+          </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -249,16 +300,8 @@ function SparklesColorIcon() {
         strokeWidth={1.8}
         fill="none"
       />
-      <path
-        d="M20 3v4M22 5h-4"
-        stroke="url(#spark-grad)"
-        strokeWidth={1.8}
-      />
-      <path
-        d="M4 17v2M5 18H3"
-        stroke="url(#spark-grad)"
-        strokeWidth={1.8}
-      />
+      <path d="M20 3v4M22 5h-4" stroke="url(#spark-grad)" strokeWidth={1.8} />
+      <path d="M4 17v2M5 18H3" stroke="url(#spark-grad)" strokeWidth={1.8} />
     </svg>
   );
 }

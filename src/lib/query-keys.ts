@@ -37,7 +37,8 @@ export const qk = {
     filtered: (filters: TaskFilters) => ["tasks", "filtered", filters] as const,
   },
   sprints: {
-    byProject: (projectId: string) => ["sprints", "project", projectId] as const,
+    byProject: (projectId: string) =>
+      ["sprints", "project", projectId] as const,
     byId: (id: string) => ["sprints", id] as const,
   },
   teams: {
@@ -53,6 +54,9 @@ export const qk = {
   },
   notifications: {
     all: ["notifications"] as const,
+    list: (unreadOnly: boolean) =>
+      ["notifications", "list", { unreadOnly }] as const,
+    unreadCount: ["notifications", "unread-count"] as const,
   },
   workflowStatuses: {
     byProject: (projectId: string) =>

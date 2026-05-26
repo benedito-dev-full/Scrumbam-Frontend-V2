@@ -1,216 +1,139 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Bell,
-  AtSign,
-  GitPullRequest,
-  CheckCircle2,
-  MessageSquare,
-  GitFork,
-  Star,
-  UserPlus,
-  Settings2,
-  Check,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Bell, Check, Settings2, Trash2 } from "lucide-react";
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  resolveNotificationTarget,
+  useDeleteNotification,
+  useMarkAllAsRead,
+  useMarkAsRead,
+  useNotifications,
+  useUnreadCount,
+  type NotificationFilter,
+} from "@/hooks/use-notifications";
+import type { NotificationDto } from "@/lib/types/api";
 
-type TabId = "todas" | "nao-lidas" | "mencoes" | "atribuicoes";
+type TabId = NotificationFilter;
 
-const tabs: { id: TabId; label: string; count?: number }[] = [
-  { id: "todas", label: "Todas", count: 8 },
-  { id: "nao-lidas", label: "Não lidas", count: 3 },
-  { id: "mencoes", label: "Menções", count: 2 },
-  { id: "atribuicoes", label: "Atribuições" },
+const TAB_DEFS: { id: TabId; label: string }[] = [
+  { id: "all", label: "Todas" },
+  { id: "unread", label: "Não lidas" },
+  { id: "mentions", label: "Menções" },
+  { id: "assignments", label: "Atribuições" },
 ];
-
-type NotificacaoTipo =
-  | "comentario"
-  | "mencao"
-  | "atribuicao"
-  | "status"
-  | "convite"
-  | "aprovacao";
-
-type Notificacao = {
-  id: string;
-  tipo: NotificacaoTipo;
-  lida: boolean;
-  autor: { nome: string; iniciais: string };
-  mensagem: string;
-  alvo: string;
-  espaco: string;
-  tempo: string;
-};
-
-const mockNotificacoes: Notificacao[] = [
-  {
-    id: "n1",
-    tipo: "mencao",
-    lida: false,
-    autor: { nome: "Ana Costa", iniciais: "AC" },
-    mensagem: "mencionou você em",
-    alvo: "Refatorar módulo de autenticação",
-    espaco: "Produto",
-    tempo: "há 5 min",
-  },
-  {
-    id: "n2",
-    tipo: "comentario",
-    lida: false,
-    autor: { nome: "Pedro Silva", iniciais: "PS" },
-    mensagem: "comentou em",
-    alvo: "Briefing campanha de junho",
-    espaco: "Marketing",
-    tempo: "há 23 min",
-  },
-  {
-    id: "n3",
-    tipo: "atribuicao",
-    lida: false,
-    autor: { nome: "Júlia Mendes", iniciais: "JM" },
-    mensagem: "atribuiu a você",
-    alvo: "Migração para Postgres 16",
-    espaco: "Produto",
-    tempo: "há 1h",
-  },
-  {
-    id: "n4",
-    tipo: "status",
-    lida: true,
-    autor: { nome: "Ana Costa", iniciais: "AC" },
-    mensagem: "marcou como concluído",
-    alvo: "Release notes do Q2",
-    espaco: "Produto",
-    tempo: "há 2h",
-  },
-  {
-    id: "n5",
-    tipo: "comentario",
-    lida: true,
-    autor: { nome: "Pedro Silva", iniciais: "PS" },
-    mensagem: "comentou em",
-    alvo: "SEO da landing /precos",
-    espaco: "Marketing",
-    tempo: "há 3h",
-  },
-  {
-    id: "n6",
-    tipo: "mencao",
-    lida: true,
-    autor: { nome: "Júlia Mendes", iniciais: "JM" },
-    mensagem: "mencionou você em",
-    alvo: "Onboarding do novo dev backend",
-    espaco: "RH",
-    tempo: "ontem",
-  },
-  {
-    id: "n7",
-    tipo: "aprovacao",
-    lida: true,
-    autor: { nome: "Ana Costa", iniciais: "AC" },
-    mensagem: "aprovou sua solicitação em",
-    alvo: "Roadmap 2026",
-    espaco: "Produto",
-    tempo: "ontem",
-  },
-  {
-    id: "n8",
-    tipo: "convite",
-    lida: true,
-    autor: { nome: "Robério", iniciais: "RB" },
-    mensagem: "convidou você para o espaço",
-    alvo: "Marketing",
-    espaco: "Marketing",
-    tempo: "há 2 dias",
-  },
-];
-
-const tipoIcon: Record<NotificacaoTipo, React.ElementType> = {
-  comentario: MessageSquare,
-  mencao: AtSign,
-  atribuicao: GitFork,
-  status: CheckCircle2,
-  convite: UserPlus,
-  aprovacao: GitPullRequest,
-};
-
-const tipoColor: Record<NotificacaoTipo, string> = {
-  comentario: "bg-sky-500/15 text-sky-400",
-  mencao: "bg-violet-500/15 text-violet-400",
-  atribuicao: "bg-primary/15 text-primary",
-  status: "bg-emerald-500/15 text-emerald-400",
-  convite: "bg-amber-500/15 text-amber-400",
-  aprovacao: "bg-emerald-500/15 text-emerald-400",
-};
 
 export default function InboxPage() {
-  const [tab, setTab] = useState<TabId>("todas");
-  const [notificacoes, setNotificacoes] = useState(mockNotificacoes);
+  const router = useRouter();
+  const [tab, setTab] = useState<TabId>("all");
 
-  const filtradas = notificacoes.filter((n) => {
-    if (tab === "nao-lidas") return !n.lida;
-    if (tab === "mencoes") return n.tipo === "mencao";
-    if (tab === "atribuicoes") return n.tipo === "atribuicao";
-    return true;
-  });
+  // Carrega "todas" para os contadores das abas (filtra localmente). Quando
+  // tab='unread' usamos a query 'unread' que vai com unreadOnly=true ao servidor.
+  const allQuery = useNotifications("all");
+  const unreadQuery = useNotifications("unread");
+  const unreadCountQuery = useUnreadCount();
+  const markAsRead = useMarkAsRead();
+  const markAllAsRead = useMarkAllAsRead();
+  const deleteNotification = useDeleteNotification();
 
-  function marcarLida(id: string) {
-    setNotificacoes((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, lida: true } : n)),
+  const all = useMemo(() => allQuery.data ?? [], [allQuery.data]);
+  const unreadCount =
+    unreadCountQuery.data?.count ?? unreadQuery.data?.length ?? 0;
+
+  const counts: Record<TabId, number | undefined> = {
+    all: all.length,
+    unread: unreadCount,
+    mentions: all.filter((n) =>
+      (n.eventType ?? "").toLowerCase().includes("mention"),
+    ).length,
+    assignments: all.filter((n) =>
+      (n.eventType ?? "").toLowerCase().includes("assign"),
+    ).length,
+  };
+
+  const visible: NotificationDto[] = useMemo(() => {
+    if (tab === "all") return all;
+    if (tab === "unread") return all.filter((n) => !n.read);
+    if (tab === "mentions")
+      return all.filter((n) =>
+        (n.eventType ?? "").toLowerCase().includes("mention"),
+      );
+    return all.filter((n) =>
+      (n.eventType ?? "").toLowerCase().includes("assign"),
     );
-  }
+  }, [all, tab]);
 
-  function marcarTodasLidas() {
-    setNotificacoes((prev) => prev.map((n) => ({ ...n, lida: true })));
+  function handleRowClick(n: NotificationDto) {
+    const target = resolveNotificationTarget(n);
+    if (!n.read) markAsRead.mutate(n.id);
+    if (target) router.push(target);
   }
 
   return (
     <>
-      <PageHeader onMarcarTodas={marcarTodasLidas} />
+      <PageHeader
+        onMarcarTodas={() => markAllAsRead.mutate()}
+        marcarPending={markAllAsRead.isPending}
+      />
 
       <div className="flex h-10 items-center gap-px border-b border-border bg-background px-4">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            onClick={() => setTab(t.id)}
-            className={cn(
-              "relative flex h-10 items-center gap-1.5 px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground",
-              tab === t.id &&
-                "text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-t-sm after:bg-primary",
-            )}
-          >
-            {t.label}
-            {t.count != null && (
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-px text-[10px] font-semibold leading-none",
-                  tab === t.id
-                    ? "bg-primary/15 text-primary"
-                    : "bg-muted text-muted-foreground",
-                )}
-              >
-                {t.count}
-              </span>
-            )}
-          </button>
-        ))}
+        {TAB_DEFS.map((t) => {
+          const count = counts[t.id];
+          const active = tab === t.id;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "relative flex h-10 items-center gap-1.5 px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground",
+                active &&
+                  "text-foreground after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:rounded-t-sm after:bg-primary",
+              )}
+            >
+              {t.label}
+              {count != null && count > 0 && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-px text-[10px] font-semibold leading-none",
+                    active
+                      ? "bg-primary/15 text-primary"
+                      : "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <div className="mx-auto w-full max-w-3xl px-4 py-4">
-        {filtradas.length === 0 ? (
+        {allQuery.isLoading ? (
+          <LoadingState />
+        ) : allQuery.isError ? (
+          <ErrorState />
+        ) : visible.length === 0 ? (
           <EmptyState />
         ) : (
           <div className="overflow-hidden rounded-lg border border-border">
-            {filtradas.map((n, i) => (
+            {visible.map((n, i) => (
               <NotificacaoRow
                 key={n.id}
                 notificacao={n}
-                isLast={i === filtradas.length - 1}
-                onMarcarLida={() => marcarLida(n.id)}
+                isLast={i === visible.length - 1}
+                onClick={() => handleRowClick(n)}
+                onMarcarLida={() => markAsRead.mutate(n.id)}
+                onDeletar={() => deleteNotification.mutate(n.id)}
+                deletingPending={
+                  deleteNotification.isPending &&
+                  deleteNotification.variables === n.id
+                }
               />
             ))}
           </div>
@@ -220,15 +143,29 @@ export default function InboxPage() {
   );
 }
 
-function PageHeader({ onMarcarTodas }: { onMarcarTodas: () => void }) {
+function PageHeader({
+  onMarcarTodas,
+  marcarPending,
+}: {
+  onMarcarTodas: () => void;
+  marcarPending: boolean;
+}) {
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-4">
       <div className="flex items-center gap-2">
         <Bell className="size-4 text-muted-foreground" />
-        <h1 className="text-sm font-semibold text-foreground">Caixa de entrada</h1>
+        <h1 className="text-sm font-semibold text-foreground">
+          Caixa de entrada
+        </h1>
       </div>
       <div className="flex items-center gap-1">
-        <Button variant="ghost" size="xs" className="gap-1.5" onClick={onMarcarTodas}>
+        <Button
+          variant="ghost"
+          size="xs"
+          className="gap-1.5"
+          onClick={onMarcarTodas}
+          disabled={marcarPending}
+        >
           <Check className="size-3.5" />
           Marcar tudo como lido
         </Button>
@@ -243,57 +180,78 @@ function PageHeader({ onMarcarTodas }: { onMarcarTodas: () => void }) {
 function NotificacaoRow({
   notificacao: n,
   isLast,
+  onClick,
   onMarcarLida,
+  onDeletar,
+  deletingPending,
 }: {
-  notificacao: Notificacao;
+  notificacao: NotificationDto;
   isLast: boolean;
+  onClick: () => void;
   onMarcarLida: () => void;
+  onDeletar: () => void;
+  deletingPending: boolean;
 }) {
-  const TipoIcon = tipoIcon[n.tipo];
-  const colorClass = tipoColor[n.tipo];
+  const initials = getInitials(n.title || n.message);
 
   return (
-    <button
-      type="button"
-      onClick={onMarcarLida}
+    <div
       className={cn(
-        "group flex w-full items-start gap-3 bg-card px-4 py-3 text-left transition-colors hover:bg-muted/40",
+        "group flex w-full items-start gap-3 bg-card px-4 py-3 transition-colors hover:bg-muted/40",
         !isLast && "border-b border-border",
-        !n.lida && "bg-primary/[0.03]",
+        !n.read && "bg-primary/[0.03]",
       )}
     >
-      <div className="relative mt-0.5 shrink-0">
-        <Avatar>
-          <AvatarFallback>{n.autor.iniciais}</AvatarFallback>
-        </Avatar>
-        <span
-          className={cn(
-            "absolute -bottom-0.5 -right-0.5 grid size-4 place-items-center rounded-full",
-            colorClass,
-          )}
-        >
-          <TipoIcon className="size-2.5" strokeWidth={2} />
-        </span>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] text-foreground">
-          <span className="font-medium">{n.autor.nome}</span>{" "}
-          <span className="text-muted-foreground">{n.mensagem}</span>{" "}
-          <span className="font-medium">{n.alvo}</span>
-        </p>
-        <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <Star className="size-3" />
-          <span>{n.espaco}</span>
-          <span>·</span>
-          <span>{n.tempo}</span>
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex flex-1 items-start gap-3 text-left"
+      >
+        <div className="relative mt-0.5 shrink-0">
+          <Avatar>
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
         </div>
-      </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] text-foreground">
+            <span className="font-medium">{n.title || "Notificação"}</span>
+          </p>
+          <p className="mt-0.5 line-clamp-2 text-[12px] text-muted-foreground">
+            {n.message}
+          </p>
+          <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            {n.eventType && <span>{n.eventType}</span>}
+            {n.eventType && <span>·</span>}
+            <span>{formatRelative(n.createdAt)}</span>
+          </div>
+        </div>
+        {!n.read && (
+          <span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />
+        )}
+      </button>
 
-      {!n.lida && (
-        <span className="mt-1.5 size-2 shrink-0 rounded-full bg-primary" />
-      )}
-    </button>
+      <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+        {!n.read && (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Marcar como lida"
+            onClick={onMarcarLida}
+          >
+            <Check className="size-3.5" />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label="Excluir notificação"
+          onClick={onDeletar}
+          disabled={deletingPending}
+        >
+          <Trash2 className="size-3.5" />
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -311,4 +269,42 @@ function EmptyState() {
       </div>
     </div>
   );
+}
+
+function LoadingState() {
+  return (
+    <div className="flex items-center justify-center rounded-lg border border-dashed border-border p-14 text-center text-xs text-muted-foreground">
+      Carregando notificações...
+    </div>
+  );
+}
+
+function ErrorState() {
+  return (
+    <div className="flex items-center justify-center rounded-lg border border-dashed border-destructive/40 p-14 text-center text-xs text-destructive">
+      Não foi possível carregar as notificações.
+    </div>
+  );
+}
+
+function getInitials(text: string): string {
+  const cleaned = text.trim().replace(/[^a-zA-Z\s]/g, "");
+  if (!cleaned) return "??";
+  const parts = cleaned.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "??";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function formatRelative(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const diffSec = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (diffSec < 60) return "agora";
+  if (diffSec < 3600) return `há ${Math.floor(diffSec / 60)} min`;
+  if (diffSec < 86400) return `há ${Math.floor(diffSec / 3600)} h`;
+  if (diffSec < 172800) return "ontem";
+  const days = Math.floor(diffSec / 86400);
+  if (days < 7) return `há ${days} dias`;
+  return new Date(iso).toLocaleDateString("pt-BR");
 }
