@@ -7,9 +7,10 @@ import {
   IcCaretR, IcGitFork, IcUserPlus, IcCalPlus, IcFlag, IcChat, IcPending, IcCheck,
 } from "./icons";
 import { STATUS_CONFIG, PRIO_CONFIG, INLINE_PILL_STYLE } from "./config";
-import { mockMembros } from "@/lib/mocks/entidades";
 import { diasUntil } from "@/lib/mocks/tarefas";
 import { useTasksStore } from "@/lib/stores/tasks";
+import { useOrgMembers } from "@/hooks/use-org-members";
+import { AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
 import type { Prioridade, StatusTarefa, Tarefa } from "@/lib/types/tarefa";
 
 /* ─── Dropdown portal ──────────────────────────────────────────────────────── */
@@ -114,6 +115,8 @@ export function TaskRow({
   /* célula que está a piscar verde após salvar */
   const [flashCell, setFlashCell] = useState<string | null>(null);
 
+  const { data: orgMembers = [] } = useOrgMembers();
+
   function saveAndFlash(cell: string, patch: Parameters<typeof updateTask>[1]) {
     updateTask(tarefa.id, patch);
     setFlashCell(cell);
@@ -128,7 +131,10 @@ export function TaskRow({
 
   const cfg = STATUS_CONFIG[status];
   const StatusIcon = cfg.Icon;
-  const membro = tarefa.responsavelId ? mockMembros.find((m) => m.id === tarefa.responsavelId) : null;
+  const isAiAssignee = tarefa.responsavelId === AI_ASSIGNEE_ID;
+  const membro = !isAiAssignee && tarefa.responsavelId
+    ? orgMembers.find((m) => m.userId === tarefa.responsavelId)
+    : null;
   const prio = tarefa.prioridade ? PRIO_CONFIG[tarefa.prioridade] : null;
   const dias = diasUntil(tarefa.dataVencimento);
 
@@ -223,7 +229,19 @@ export function TaskRow({
           rowHovered={rowHovered}
           onClick={() => toggle("responsavel")}
         >
-          {membro ? (
+          {isAiAssignee ? (
+            <>
+              <div style={{
+                width: 22, height: 22, borderRadius: "50%",
+                background: "#1a1a4e", color: "#818cf8",
+                fontSize: 13, flexShrink: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                🤖
+              </div>
+              <span style={{ fontSize: 12, color: "#818cf8" }}>IA</span>
+            </>
+          ) : membro ? (
             <>
               <div style={{
                 width: 22, height: 22, borderRadius: "50%",
@@ -231,7 +249,7 @@ export function TaskRow({
                 fontSize: 10, fontWeight: 600, flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                {membro.iniciais}
+                {membro.nome.slice(0, 2).toUpperCase()}
               </div>
               <span style={{ fontSize: 12, color: "#c0c0cc" }}>{membro.nome}</span>
             </>
@@ -243,19 +261,31 @@ export function TaskRow({
               <DropItem active={!tarefa.responsavelId} onClick={() => { saveAndFlash("responsavel", { responsavelId: null }); setOpenDD(null); }}>
                 <span style={{ color: "#7a7a85" }}>Sem responsável</span>
               </DropItem>
-              {mockMembros.map((m) => (
-                <DropItem key={m.id} active={tarefa.responsavelId === m.id} onClick={() => { saveAndFlash("responsavel", { responsavelId: m.id }); setOpenDD(null); }}>
+              {orgMembers.map((m) => (
+                <DropItem key={m.userId} active={tarefa.responsavelId === m.userId} onClick={() => { saveAndFlash("responsavel", { responsavelId: m.userId }); setOpenDD(null); }}>
                   <div style={{
                     width: 20, height: 20, borderRadius: "50%",
                     background: "#3d2a6b", color: "#d8ccff",
                     fontSize: 9, fontWeight: 700, flexShrink: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
-                    {m.iniciais}
+                    {m.nome.slice(0, 2).toUpperCase()}
                   </div>
                   {m.nome}
                 </DropItem>
               ))}
+              <div style={{ borderTop: "1px solid #2e2e38", margin: "4px 0" }} />
+              <DropItem active={isAiAssignee} onClick={() => { saveAndFlash("responsavel", { responsavelId: AI_ASSIGNEE_ID }); setOpenDD(null); }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: "50%",
+                  background: "#1a1a4e", color: "#818cf8",
+                  fontSize: 12, flexShrink: 0,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  🤖
+                </div>
+                <span style={{ color: "#818cf8" }}>IA</span>
+              </DropItem>
             </CellDropdown>
           )}
         </EditableTd>
