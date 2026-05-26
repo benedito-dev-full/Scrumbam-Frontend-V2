@@ -104,6 +104,7 @@ async function pollExecution(
   executionId: string,
   taskId: string,
   signal: AbortSignal,
+  queryClient: ReturnType<typeof useQueryClient>,
 ) {
   while (!signal.aborted) {
     await new Promise((r) => setTimeout(r, POLL_INTERVAL));
@@ -129,6 +130,7 @@ async function pollExecution(
       }
 
       const current = executionStore.get(taskId);
+      const previousStatus = current?.status;
       if (current) {
         setExecution(taskId, {
           ...current,
@@ -136,6 +138,12 @@ async function pollExecution(
           finishedAt: data.claude?.finishedAt ?? current.finishedAt,
           output: data.claude?.stdout ?? current.output,
         });
+      }
+
+      // Quando o status muda para terminal, invalida a query de tasks
+      // para que a UI da lista/kanban reflita o novo estado sem reload manual.
+      if (TERMINAL_STATUSES.has(status) && previousStatus !== status) {
+        void queryClient.invalidateQueries({ queryKey: ["tasks"] });
       }
 
       if (TERMINAL_STATUSES.has(status)) break;
@@ -198,7 +206,7 @@ export function useTaskExecution(taskId: string, projectId?: string) {
       abortRef.current?.abort();
       const ctrl = new AbortController();
       abortRef.current = ctrl;
-      void pollExecution(data.id, taskId, ctrl.signal);
+      void pollExecution(data.id, taskId, ctrl.signal, queryClient);
     },
   });
 
