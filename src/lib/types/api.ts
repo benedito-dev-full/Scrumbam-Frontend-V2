@@ -347,16 +347,15 @@ export type ExecutionRisk = "LOW" | "MEDIUM" | "HIGH";
 
 export interface AgentDto {
   id: string;
-  name: string;
-  hostname: string;
+  nome: string;
+  hostname: string | null;
   status: AgentStatus;
   lastHeartbeat: string | null;
-  repoUrl: string | null;
-  repoApiKey: string | null;
-  autonomyLevel: ExecutionRisk;
-  orgId: string;
-  criadoEm: string;
-  atualizadoEm: string;
+  agentVersion: string | null;
+  tunnelPort: number | null;
+  installedAt: string | null;
+  createdAt: string;
+  installTokenId: string | null;
 }
 
 export interface CreateAgentDto {

@@ -830,7 +830,7 @@ export function VpsWizard({ open, onClose, onSuccess }: VpsWizardProps) {
                   <span
                     style={{ fontSize: 14, fontWeight: 600, color: '#e4e4e4' }}
                   >
-                    {createdAgent?.name}
+                    {createdAgent?.nome}
                   </span>
                   <div
                     style={{

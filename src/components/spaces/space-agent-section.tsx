@@ -309,7 +309,7 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
                 <span style={{ fontSize: 12, color: '#555', width: 60, flexShrink: 0 }}>Servidor</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ fontSize: 13, color: '#c4c4c4', fontWeight: 500 }}>
-                    {agent?.name ?? link.agentId}
+                    {agent?.nome ?? link.agentId}
                   </span>
                   <StatusBadge online={agentOnline} />
                 </div>

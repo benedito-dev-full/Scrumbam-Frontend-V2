@@ -131,10 +131,10 @@ function AgentCard({
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, color: '#e4e4e4', marginBottom: 3 }}>
-          {agent.name}
+          {agent.nome}
         </div>
         <div style={{ fontSize: 11, color: '#71717a', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {agent.hostname}
+          {agent.hostname ?? '—'}
         </div>
       </div>
 

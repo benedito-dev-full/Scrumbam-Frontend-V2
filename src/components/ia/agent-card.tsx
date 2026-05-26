@@ -56,11 +56,6 @@ const STATUS_CONFIG = {
   },
 } as const;
 
-const RISK_LABEL: Record<AgentDto['autonomyLevel'], string> = {
-  LOW: 'Baixo risco',
-  MEDIUM: 'Risco médio',
-  HIGH: 'Alto risco',
-};
 
 // ─── Componente ───────────────────────────────────────────────────────────────
 
@@ -78,7 +73,7 @@ export function AgentCard({ agent, onExecute }: AgentCardProps) {
   const cfg = STATUS_CONFIG[agent.status];
 
   function handleDelete() {
-    if (confirm(`Remover o agente "${agent.name}"?`)) {
+    if (confirm(`Remover o agente "${agent.nome}"?`)) {
       deleteAgent.mutate(agent.id);
     }
   }
@@ -140,10 +135,10 @@ export function AgentCard({ agent, onExecute }: AgentCardProps) {
                 marginBottom: 2,
               }}
             >
-              {agent.name}
+              {agent.nome}
             </p>
             <p style={{ fontSize: 12, color: '#555', fontFamily: 'monospace' }}>
-              {agent.hostname}
+              {agent.hostname ?? '—'}
             </p>
           </div>
         </div>
@@ -179,30 +174,17 @@ export function AgentCard({ agent, onExecute }: AgentCardProps) {
             })}
           </span>
         )}
-        <span
-          style={{
-            fontSize: 11,
-            color: '#555',
-            padding: '2px 8px',
-            borderRadius: 6,
-            background: 'rgba(255,255,255,0.04)',
-          }}
-        >
-          {RISK_LABEL[agent.autonomyLevel]}
-        </span>
-        {agent.repoUrl && (
+        {agent.agentVersion && (
           <span
             style={{
               fontSize: 11,
               color: '#555',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              maxWidth: 200,
+              padding: '2px 8px',
+              borderRadius: 6,
+              background: 'rgba(255,255,255,0.04)',
             }}
-            title={agent.repoUrl}
           >
-            {agent.repoUrl}
+            v{agent.agentVersion}
           </span>
         )}
       </div>
@@ -220,7 +202,7 @@ export function AgentCard({ agent, onExecute }: AgentCardProps) {
           type="button"
           onClick={() => onExecute(agent)}
           disabled={!canExecute}
-          aria-label={`Executar agente ${agent.name}`}
+          aria-label={`Executar agente ${agent.nome}`}
           style={{
             flex: 1,
             height: 34,
@@ -255,7 +237,7 @@ export function AgentCard({ agent, onExecute }: AgentCardProps) {
           type="button"
           onClick={handleDelete}
           disabled={deleteAgent.isPending}
-          aria-label={`Remover agente ${agent.name}`}
+          aria-label={`Remover agente ${agent.nome}`}
           style={{
             width: 34,
             height: 34,

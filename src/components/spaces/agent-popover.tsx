@@ -323,7 +323,7 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                       <span style={{ fontSize: 13, fontWeight: 600, color: '#e4e4e4' }}>
-                        {agent?.name ?? 'Agente'}
+                        {agent?.nome ?? 'Agente'}
                       </span>
                       <StatusDot online={agentOnline} />
                       <span style={{ fontSize: 10, color: agentOnline ? '#22c55e' : '#52525b' }}>
