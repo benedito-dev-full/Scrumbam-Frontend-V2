@@ -121,13 +121,11 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
           <div className="flex items-center gap-2.5">
             <Tag size={13} className="flex-shrink-0 text-muted-foreground" />
             <Select value={eventType} onValueChange={(v) => setEventType(v as EventTypeValue)}>
-              <SelectTrigger className="flex-1 text-[13px]">
-                <div className="flex items-center gap-2">
-                  <SelectedIcon size={13} className={selectedType.color} />
-                  <SelectValue />
-                </div>
+              <SelectTrigger className="flex-1 gap-2 text-[13px]">
+                <SelectedIcon size={13} className={selectedType.color} />
+                <SelectValue placeholder="Selecionar tipo" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent side="bottom" sideOffset={4}>
                 {EVENT_TYPES.map(({ value, label, Icon, color }) => (
                   <SelectItem key={value} value={value}>
                     <div className="flex items-center gap-2">
@@ -176,9 +174,9 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
             </svg>
             <Select value={priority} onValueChange={(v) => setPriority(v as PriorityValue)}>
               <SelectTrigger className="flex-1 text-[13px]">
-                <SelectValue />
+                <SelectValue placeholder="Selecionar prioridade" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent side="bottom" sideOffset={4}>
                 {PRIORITIES.map(({ value, label }) => (
                   <SelectItem key={value} value={value}>
                     {label}
