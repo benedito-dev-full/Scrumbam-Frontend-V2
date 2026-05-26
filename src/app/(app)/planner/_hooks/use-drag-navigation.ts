@@ -13,7 +13,7 @@ const SNAP_RATIO = 0.25;
 const DRAG_RESISTANCE = 0.5;
 
 /** Duracao da animacao de snap em ms — valor alto para o spring ser perceptivel. */
-const SNAP_DURATION_MS = 1950;
+const SNAP_DURATION_MS = 1300;
 
 /**
  * Spring easing: dispara em velocidade maxima e desacelera
