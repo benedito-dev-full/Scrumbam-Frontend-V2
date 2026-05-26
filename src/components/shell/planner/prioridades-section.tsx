@@ -2,13 +2,19 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { Flag } from "lucide-react";
+import { ChevronDown, Flag } from "lucide-react";
 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useMyTasks } from "@/hooks/use-tasks";
 import {
   isTerminalIntention,
   priorityToColor,
-  priorityToLabel,
 } from "@/lib/mappers/task-status.mapper";
 import {
   usePlannerPrefs,
@@ -20,153 +26,144 @@ import { cn } from "@/lib/utils";
 /**
  * Secao "Prioridades" do PlannerPanel.
  *
- * Lista tasks atribuidas ao usuario logado (via `useMyTasks`) cujo nivel
- * de prioridade atinge ou supera o threshold escolhido — `URGENT`,
- * `HIGH`+ ou `MEDIUM`+. O threshold eh persistido em localStorage via
- * `usePlannerPrefs` para sobreviver a reloads.
+ * Lista plana (sem agrupamento) de tasks do usuario logado cuja prioridade
+ * atinge ou supera o threshold escolhido no dropdown. Threshold persistido
+ * em localStorage via `usePlannerPrefs`.
  *
- * Tasks em estado terminal sao descartadas. Resultado eh agrupado por
- * prioridade em ordem descendente (Urgente -> Alta -> Media).
+ * Exemplo: threshold = "medium" -> mostra URGENT + HIGH + MEDIUM numa
+ * unica lista, ordenada por prioridade desc + dueDate asc. Tasks em
+ * estado terminal sao descartadas.
  */
 export function PrioridadesSection() {
   const threshold = usePlannerPrefs((s) => s.priorityThreshold);
   const setThreshold = usePlannerPrefs((s) => s.setPriorityThreshold);
   const { data: tasks = [], isLoading } = useMyTasks();
 
-  const grouped = useMemo(() => {
+  const filtered = useMemo(() => {
     const allowed = ALLOWED_BY_THRESHOLD[threshold];
-    const result: Record<AllowedPriority, TaskResponseDto[]> = {
-      URGENT: [],
-      HIGH: [],
-      MEDIUM: [],
-    };
-    for (const t of tasks) {
-      if (isTerminalIntention(t.status)) continue;
-      const p = t.priority as AllowedPriority | undefined;
-      if (!p || !allowed.includes(p)) continue;
-      result[p].push(t);
-    }
-    const byDue = (a: TaskResponseDto, b: TaskResponseDto) => {
-      const ad = a.dueDate ?? "9999-12-31";
-      const bd = b.dueDate ?? "9999-12-31";
-      return ad.localeCompare(bd);
-    };
-    (Object.keys(result) as AllowedPriority[]).forEach((k) =>
-      result[k].sort(byDue),
-    );
-    return result;
+    return tasks
+      .filter((t) => {
+        if (isTerminalIntention(t.status)) return false;
+        const p = t.priority as AllowedPriority | undefined;
+        return !!p && allowed.includes(p);
+      })
+      .sort((a, b) => {
+        const ra = PRIORITY_RANK[a.priority as AllowedPriority] ?? 0;
+        const rb = PRIORITY_RANK[b.priority as AllowedPriority] ?? 0;
+        if (ra !== rb) return rb - ra;
+        const ad = a.dueDate ?? "9999-12-31";
+        const bd = b.dueDate ?? "9999-12-31";
+        return ad.localeCompare(bd);
+      });
   }, [tasks, threshold]);
-
-  const total =
-    grouped.URGENT.length + grouped.HIGH.length + grouped.MEDIUM.length;
 
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between px-[14px]">
+      <div className="mb-2 flex items-center justify-between px-[14px]">
         <div className="flex items-center gap-1.5">
-          <Flag size={11} className="text-rose-400" />
+          <Flag size={12} className="text-rose-400" />
           <span className="text-[12px] font-semibold text-foreground">
             Prioridades
           </span>
-          {!isLoading && total > 0 && (
-            <span className="text-[11px] text-muted-foreground">({total})</span>
+          {!isLoading && filtered.length > 0 && (
+            <span className="text-[11px] text-muted-foreground">
+              ({filtered.length})
+            </span>
           )}
         </div>
-      </div>
 
-      <div className="mx-3 mb-2 flex overflow-hidden rounded-md border border-border">
-        {(Object.keys(THRESHOLD_LABEL) as PriorityThreshold[]).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setThreshold(t)}
-            className={cn(
-              "flex-1 border-0 px-2 py-1 text-[11px] font-medium transition-colors",
-              threshold === t
-                ? "bg-accent text-foreground"
-                : "bg-transparent text-muted-foreground hover:bg-secondary",
-            )}
-          >
-            {THRESHOLD_LABEL[t]}
-          </button>
-        ))}
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={
+              <button
+                type="button"
+                className="flex items-center gap-1 rounded-md border border-border bg-transparent px-2 py-0.5 text-[11px] text-muted-foreground hover:bg-secondary hover:text-foreground"
+                aria-label="Selecionar nivel de prioridade"
+              >
+                {THRESHOLD_LABEL[threshold]}
+                <ChevronDown size={11} strokeWidth={2} />
+              </button>
+            }
+          />
+          <DropdownMenuContent align="end" sideOffset={4} className="w-40">
+            <DropdownMenuGroup>
+              {(Object.keys(THRESHOLD_LABEL) as PriorityThreshold[]).map((t) => (
+                <DropdownMenuItem
+                  key={t}
+                  className={cn(
+                    "text-[12px]",
+                    threshold === t && "font-semibold",
+                  )}
+                  onClick={() => setThreshold(t)}
+                >
+                  <span
+                    className="mr-2 inline-block h-1.5 w-1.5 rounded-full"
+                    style={{ background: THRESHOLD_COLOR[t] }}
+                  />
+                  {THRESHOLD_LABEL[t]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {isLoading ? (
         <div className="px-[14px] py-2 text-[12px] text-muted-foreground">
           Carregando...
         </div>
-      ) : total === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="mx-3 mb-2 rounded-md border border-dashed border-border px-3 py-4 text-center">
-          <Flag
-            size={16}
-            className="mx-auto mb-2 block text-rose-400"
-          />
+          <Flag size={16} className="mx-auto mb-2 block text-rose-400" />
           <p className="text-[12px] leading-relaxed text-muted-foreground">
-            Nenhuma tarefa atende a esse filtro.
+            Nenhuma tarefa nesse nivel de prioridade.
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2 px-[14px] pb-2">
-          {(["URGENT", "HIGH", "MEDIUM"] as AllowedPriority[])
-            .filter((p) => grouped[p].length > 0)
-            .map((p) => (
-              <Group key={p} priority={p} tasks={grouped[p]} />
-            ))}
-        </div>
+        <ul className="flex flex-col gap-px px-[14px] pb-2">
+          {filtered.map((t) => (
+            <li key={t.id}>
+              <TaskRow task={t} />
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
 }
 
-const THRESHOLD_LABEL: Record<PriorityThreshold, string> = {
-  urgent: "Urgentes",
-  high: "Alta+",
-  medium: "Media+",
-};
+type AllowedPriority = "URGENT" | "HIGH" | "MEDIUM" | "LOW";
 
-type AllowedPriority = "URGENT" | "HIGH" | "MEDIUM";
+const PRIORITY_RANK: Record<AllowedPriority, number> = {
+  URGENT: 4,
+  HIGH: 3,
+  MEDIUM: 2,
+  LOW: 1,
+};
 
 const ALLOWED_BY_THRESHOLD: Record<PriorityThreshold, AllowedPriority[]> = {
   urgent: ["URGENT"],
   high: ["URGENT", "HIGH"],
   medium: ["URGENT", "HIGH", "MEDIUM"],
+  low: ["URGENT", "HIGH", "MEDIUM", "LOW"],
 };
 
-function Group({
-  priority,
-  tasks,
-}: {
-  priority: AllowedPriority;
-  tasks: TaskResponseDto[];
-}) {
-  const color = priorityToColor(priority);
-  return (
-    <div>
-      <div className="mb-1 flex items-center gap-1.5">
-        <span
-          className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
-          style={{ background: color }}
-        />
-        <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {priorityToLabel(priority)}
-        </span>
-        <span className="text-[11px] text-muted-foreground">
-          ({tasks.length})
-        </span>
-      </div>
-      <ul className="flex flex-col gap-px">
-        {tasks.map((t) => (
-          <li key={t.id}>
-            <TaskRow task={t} color={color} />
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+const THRESHOLD_LABEL: Record<PriorityThreshold, string> = {
+  urgent: "Urgente",
+  high: "Alta+",
+  medium: "Media+",
+  low: "Baixa+",
+};
 
-function TaskRow({ task, color }: { task: TaskResponseDto; color: string }) {
+const THRESHOLD_COLOR: Record<PriorityThreshold, string> = {
+  urgent: priorityToColor("URGENT"),
+  high: priorityToColor("HIGH"),
+  medium: priorityToColor("MEDIUM"),
+  low: priorityToColor("LOW"),
+};
+
+function TaskRow({ task }: { task: TaskResponseDto }) {
+  const color = priorityToColor(task.priority);
   return (
     <Link
       href={`/lists/${task.projectId}`}

@@ -4,14 +4,14 @@ import { persist, createJSONStorage } from "zustand/middleware";
 /**
  * Threshold de prioridade da secao "Prioridades" do PlannerPanel.
  *
- *  - "urgent": mostra apenas tasks URGENT
+ *  - "urgent": apenas URGENT
  *  - "high":   URGENT + HIGH
  *  - "medium": URGENT + HIGH + MEDIUM
+ *  - "low":    URGENT + HIGH + MEDIUM + LOW (todas as priorizadas)
  *
- * (LOW nunca entra — se for relevante para o user, ele eleva a prioridade
- * da task no card e ela aparece aqui automaticamente.)
+ * Lista resultante eh plana, ordenada por prioridade desc + dueDate.
  */
-export type PriorityThreshold = "urgent" | "high" | "medium";
+export type PriorityThreshold = "urgent" | "high" | "medium" | "low";
 
 interface PlannerPrefsState {
   priorityThreshold: PriorityThreshold;
