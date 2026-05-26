@@ -60,14 +60,14 @@ export function SpaceSwitcher({ currentSpaceId, currentSpaceName }: SpaceSwitche
               border: 0,
               background: "none",
               cursor: "pointer",
-              color: "#e4e4e4",
+              color: "var(--foreground)",
               fontSize: 14,
               fontWeight: 600,
               padding: "2px 6px",
               borderRadius: 5,
               transition: "background .12s",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.06)"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--border)"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
           />
         }
@@ -77,7 +77,7 @@ export function SpaceSwitcher({ currentSpaceId, currentSpaceName }: SpaceSwitche
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" sideOffset={6} style={{ width: 260, padding: "6px 0" }}>
-        <p style={{ fontSize: 11, color: "#505058", padding: "6px 12px 4px", fontWeight: 500 }}>
+        <p style={{ fontSize: 11, color: "var(--muted-foreground)", padding: "6px 12px 4px", fontWeight: 500 }}>
           Alternar espaço
         </p>
 
@@ -94,7 +94,7 @@ export function SpaceSwitcher({ currentSpaceId, currentSpaceName }: SpaceSwitche
         {isLoading && (
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "center",
-            height: 36, color: "#505058", fontSize: 13, gap: 6,
+            height: 36, color: "var(--muted-foreground)", fontSize: 13, gap: 6,
           }}>
             <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
             Carregando espaços…
@@ -102,7 +102,7 @@ export function SpaceSwitcher({ currentSpaceId, currentSpaceName }: SpaceSwitche
         )}
 
         {!isLoading && sorted.length === 0 && (
-          <div style={{ padding: "8px 12px", color: "#606068", fontSize: 12 }}>
+          <div style={{ padding: "8px 12px", color: "var(--muted-foreground)", fontSize: 12 }}>
             Nenhum outro espaço disponível.
           </div>
         )}
@@ -138,7 +138,7 @@ function SpaceRow({ space, active, onSelect }: SpaceRowProps) {
         textAlign: "left",
       }}
       onMouseEnter={(e) => {
-        if (!active) e.currentTarget.style.background = "rgba(255,255,255,0.05)";
+        if (!active) e.currentTarget.style.background = "var(--border)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = active ? "rgba(124,111,247,0.10)" : "none";
@@ -147,7 +147,7 @@ function SpaceRow({ space, active, onSelect }: SpaceRowProps) {
       <SpaceChip iniciais={iniciais} cor={cor} iconName={space.icon} size="sm" />
       <span style={{
         fontSize: 13,
-        color: active ? "#e4e4e4" : "#c4c4c4",
+        color: active ? "var(--foreground)" : "var(--foreground)",
         fontWeight: active ? 500 : 400,
         flex: 1,
         overflow: "hidden",

@@ -286,7 +286,7 @@ function IndentGuide({ depth }: { depth: number }) {
         top: 0,
         bottom: 0,
         width: 1,
-        background: "#2a2a2a",
+        background: "var(--accent)",
         borderRadius: 1,
         pointerEvents: "none",
       }}
@@ -866,7 +866,7 @@ function SpacePlusMenu({
             />
             {showFolder && (
               <MenuItem
-                icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a1a1aa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>}
+                icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted-foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>}
                 label="Pasta"
                 description="Agrupe listas, documentos e muito mais"
                 onClick={() => { setMenuOpen(false); onCreateFolder(); }}
@@ -925,13 +925,13 @@ function SpacePlusMenu({
             <button type="button" role="menuitem" onClick={() => setMenuOpen(false)}
               className="flex w-full items-center justify-between rounded-md px-3 py-2 hover:bg-[#2a2a2f]">
               <div className="flex items-center gap-3">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted-foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 <span className="text-[13px] text-[#e4e4e7]">Importações</span>
               </div>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted-foreground)" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
             <MenuItem
-              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>}
+              icon={<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted-foreground)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>}
               label="Modelos"
               onClick={() => setMenuOpen(false)}
             />

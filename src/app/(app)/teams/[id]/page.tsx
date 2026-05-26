@@ -118,31 +118,31 @@ function AddMemberModal({
       style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)" }}
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div style={{ width: 400, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", padding: "26px 26px 22px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
-        <h2 style={{ fontSize: 15, fontWeight: 700, color: "#e4e4e4", marginBottom: 18 }}>Adicionar membro</h2>
+      <div style={{ width: 400, borderRadius: 12, background: "var(--card)", border: "1px solid var(--border)", padding: "26px 26px 22px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}>
+        <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)", marginBottom: 18 }}>Adicionar membro</h2>
         <form onSubmit={handleSubmit}>
-          <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 5 }}>Nome</label>
+          <label style={{ display: "block", fontSize: 12, color: "var(--muted-foreground)", marginBottom: 5 }}>Nome</label>
           <input
             autoFocus
             value={nome}
             onChange={e => setNome(e.target.value)}
             placeholder="Nome do membro"
-            style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)", color: "#e4e4e4", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 14 }}
+            style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--border)", color: "var(--foreground)", fontSize: 13, outline: "none", boxSizing: "border-box", marginBottom: 14 }}
           />
-          <label style={{ display: "block", fontSize: 12, color: "#888", marginBottom: 5 }}>Cargo</label>
+          <label style={{ display: "block", fontSize: 12, color: "var(--muted-foreground)", marginBottom: 5 }}>Cargo</label>
           <select
             value={cargo}
             onChange={e => setCargo(e.target.value)}
-            style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.12)", background: "#1e1e1e", color: "#e4e4e4", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+            style={{ width: "100%", height: 36, padding: "0 10px", borderRadius: 7, border: "1px solid var(--border)", background: "var(--accent)", color: "var(--foreground)", fontSize: 13, outline: "none", boxSizing: "border-box" }}
           >
             <option value="LEAD">Lead</option>
             <option value="MEMBER">Membro</option>
           </select>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
-            <button type="button" onClick={onClose} style={{ height: 32, padding: "0 14px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#888", fontSize: 13 }}>
+            <button type="button" onClick={onClose} style={{ height: 32, padding: "0 14px", borderRadius: 7, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 13 }}>
               Cancelar
             </button>
-            <button type="submit" disabled={!nome.trim()} style={{ height: 32, padding: "0 18px", borderRadius: 7, border: "none", background: nome.trim() ? "#e4e4e4" : "#2a2a2a", cursor: nome.trim() ? "pointer" : "not-allowed", color: nome.trim() ? "#111" : "#555", fontSize: 13, fontWeight: 600 }}>
+            <button type="submit" disabled={!nome.trim()} style={{ height: 32, padding: "0 18px", borderRadius: 7, border: "none", background: nome.trim() ? "var(--primary)" : "var(--accent)", cursor: nome.trim() ? "pointer" : "not-allowed", color: nome.trim() ? "var(--primary-foreground)" : "var(--muted-foreground)", fontSize: 13, fontWeight: 600 }}>
               Adicionar
             </button>
           </div>
@@ -238,24 +238,24 @@ function AddMemberPopover({
         right: pos.right,
         width: 260,
         borderRadius: 10,
-        background: "#1a1a1a",
-        border: "1px solid rgba(255,255,255,0.1)",
+        background: "var(--card)",
+        border: "1px solid var(--border)",
         boxShadow: "0 16px 48px rgba(0,0,0,0.7)",
         zIndex: 9999,
         overflow: "hidden",
       }}
     >
       {/* busca */}
-      <div style={{ padding: "10px 10px 6px", borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 7, height: 32, borderRadius: 7, background: "rgba(255,255,255,0.06)", padding: "0 10px" }}>
-          <Search size={13} strokeWidth={2} style={{ color: "#555", flexShrink: 0 }} />
+      <div style={{ padding: "10px 10px 6px", borderBottom: "1px solid var(--border)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 7, height: 32, borderRadius: 7, background: "var(--border)", padding: "0 10px" }}>
+          <Search size={13} strokeWidth={2} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
           <input
             ref={inputRef}
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Busque ou insira o e-mail..."
-            style={{ flex: 1, background: "none", border: "none", outline: "none", color: "#e4e4e4", fontSize: 12 }}
+            style={{ flex: 1, background: "none", border: "none", outline: "none", color: "var(--foreground)", fontSize: 12 }}
           />
         </div>
       </div>
@@ -263,7 +263,7 @@ function AddMemberPopover({
       {/* lista */}
       <div style={{ maxHeight: 260, overflowY: "auto", padding: "4px 0" }}>
         {filtered.length === 0 ? (
-          <p style={{ fontSize: 12, color: "#555", padding: "12px 14px" }}>
+          <p style={{ fontSize: 12, color: "var(--muted-foreground)", padding: "12px 14px" }}>
             {search ? "Nenhum resultado." : "Todos os membros já estão no time."}
           </p>
         ) : (
@@ -283,7 +283,7 @@ function AddMemberPopover({
                   cursor: isAdded ? "default" : "pointer",
                   textAlign: "left",
                 }}
-                onMouseEnter={(e) => { if (!isAdded) e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+                onMouseEnter={(e) => { if (!isAdded) e.currentTarget.style.background = "var(--border)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
               >
                 {/* avatar */}
@@ -298,12 +298,12 @@ function AddMemberPopover({
 
                 {/* info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 12, color: "#e4e4e4", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.nome}</p>
-                  {m.email && <p style={{ fontSize: 10, color: "#555", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.email}</p>}
+                  <p style={{ fontSize: 12, color: "var(--foreground)", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.nome}</p>
+                  {m.email && <p style={{ fontSize: 10, color: "var(--muted-foreground)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.email}</p>}
                 </div>
 
                 {/* status */}
-                {isLoading && <Loader2 size={13} strokeWidth={2} style={{ color: "#555", flexShrink: 0, animation: "spin 1s linear infinite" }} />}
+                {isLoading && <Loader2 size={13} strokeWidth={2} style={{ color: "var(--muted-foreground)", flexShrink: 0, animation: "spin 1s linear infinite" }} />}
                 {isAdded && <Check size={13} strokeWidth={2.5} style={{ color: "#22c55e", flexShrink: 0 }} />}
               </button>
             );
@@ -319,7 +319,7 @@ function MemberRow({ member, onRemove, isRemoving }: { member: TeamMemberDto; on
 
   return (
     <div
-      style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px", borderRadius: 6, background: hovered ? "rgba(255,255,255,0.04)" : "none", transition: "background .12s" }}
+      style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px", borderRadius: 6, background: hovered ? "var(--border)" : "none", transition: "background .12s" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
@@ -327,8 +327,8 @@ function MemberRow({ member, onRemove, isRemoving }: { member: TeamMemberDto; on
         {member.nome.charAt(0).toUpperCase()}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ fontSize: 12, color: "#e4e4e4", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.nome}</p>
-        <p style={{ fontSize: 10, color: "#555" }}>{member.cargo === "LEAD" ? "Lead" : "Membro"}</p>
+        <p style={{ fontSize: 12, color: "var(--foreground)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{member.nome}</p>
+        <p style={{ fontSize: 10, color: "var(--muted-foreground)" }}>{member.cargo === "LEAD" ? "Lead" : "Membro"}</p>
       </div>
       <button
         type="button"
@@ -363,18 +363,18 @@ function MembersPanel({
   const btnRef = useRef<HTMLButtonElement>(null);
 
   return (
-    <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "14px 16px" }}>
+    <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", padding: "14px 16px" }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: members.length > 0 ? 12 : 4 }}>
-        <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4" }}>
-          Membros {members.length > 0 && <span style={{ fontSize: 11, color: "#555", fontWeight: 400 }}>({members.length})</span>}
+        <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+          Membros {members.length > 0 && <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontWeight: 400 }}>({members.length})</span>}
         </p>
         <button
           ref={btnRef}
           type="button"
           onClick={() => setPopoverOpen((v) => !v)}
-          style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#777", display: "flex", alignItems: "center", justifyContent: "center" }}
-          onMouseEnter={e => { e.currentTarget.style.color = "#e4e4e4"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "#777"; }}>
+          style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; }}
+          onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}>
           <Plus size={13} strokeWidth={2} />
         </button>
         {popoverOpen && (
@@ -388,12 +388,12 @@ function MembersPanel({
       </div>
 
       {isLoading ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0", color: "#555" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0", color: "var(--muted-foreground)" }}>
           <Loader2 size={13} strokeWidth={2} style={{ animation: "spin 1s linear infinite" }} />
           <span style={{ fontSize: 12 }}>Carregando...</span>
         </div>
       ) : members.length === 0 ? (
-        <p style={{ fontSize: 12, color: "#444", marginTop: 6 }}>Nenhum membro ainda.</p>
+        <p style={{ fontSize: 12, color: "var(--muted-foreground)", marginTop: 6 }}>Nenhum membro ainda.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {members.map((m: TeamMemberDto) => (
@@ -426,30 +426,30 @@ function TabVisaoGeral({
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto", minWidth: 0 }}>
 
         {/* descrição */}
-        <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", overflow: "hidden" }}>
+        <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", overflow: "hidden" }}>
           <textarea
             value={team.descricao ?? ""}
             onChange={e => onDescricaoChange(e.target.value)}
             placeholder="Adicione a descrição, informações e wiki da equipe"
-            style={{ width: "100%", minHeight: 80, padding: "14px 16px", background: "transparent", border: "none", outline: "none", color: "#777", fontSize: 13, resize: "none", lineHeight: 1.6, boxSizing: "border-box", fontFamily: "inherit" }}
+            style={{ width: "100%", minHeight: 80, padding: "14px 16px", background: "transparent", border: "none", outline: "none", color: "var(--muted-foreground)", fontSize: 13, resize: "none", lineHeight: 1.6, boxSizing: "border-box", fontFamily: "inherit" }}
           />
         </div>
 
         {/* favoritos */}
-        <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "16px 18px" }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "#e4e4e4", marginBottom: 28 }}>Favoritos</p>
+        <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", padding: "16px 18px" }}>
+          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", marginBottom: 28 }}>Favoritos</p>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "12px 0 20px" }}>
-            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-              <BookmarkIcon size={22} strokeWidth={1.4} color="#555" />
-              <div style={{ position: "absolute", bottom: -4, right: -4, width: 18, height: 18, borderRadius: "50%", background: "#2a2a2a", border: "2px solid #161616", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Plus size={10} strokeWidth={2.5} color="#777" />
+            <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+              <BookmarkIcon size={22} strokeWidth={1.4} color="var(--muted-foreground)" />
+              <div style={{ position: "absolute", bottom: -4, right: -4, width: 18, height: 18, borderRadius: "50%", background: "var(--accent)", border: "2px solid #161616", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Plus size={10} strokeWidth={2.5} color="var(--muted-foreground)" />
               </div>
             </div>
-            <p style={{ fontSize: 12, color: "#555", textAlign: "center", maxWidth: 320, lineHeight: 1.6 }}>
+            <p style={{ fontSize: 12, color: "var(--muted-foreground)", textAlign: "center", maxWidth: 320, lineHeight: 1.6 }}>
               Os favoritos facilitam salvar itens da sua workspace ou qualquer URL da web.
             </p>
-            <button type="button" style={{ height: 28, padding: "0 14px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "none", cursor: "pointer", color: "#c4c4c4", fontSize: 12, fontWeight: 500 }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+            <button type="button" style={{ height: 28, padding: "0 14px", borderRadius: 6, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--foreground)", fontSize: 12, fontWeight: 500 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; }}>
               Adicionar favorito
             </button>
@@ -457,14 +457,14 @@ function TabVisaoGeral({
         </div>
 
         {/* feed */}
-        <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "16px 18px" }}>
+        <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", padding: "16px 18px" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-            <p style={{ fontSize: 14, fontWeight: 600, color: "#e4e4e4" }}>Feed</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>Feed</p>
             <div style={{ display: "flex", gap: 8 }}>
-              <button type="button" style={{ height: 26, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#777", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
+              <button type="button" style={{ height: 26, padding: "0 10px", borderRadius: 6, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}>
                 Filtrar por tipo <ChevronDown size={11} strokeWidth={2} />
               </button>
-              <button type="button" style={{ height: 26, padding: "0 10px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)", cursor: "pointer", color: "#888", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+              <button type="button" style={{ height: 26, padding: "0 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--border)", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
                 Subtarefas: Mostrados
                 <X size={11} strokeWidth={2} />
               </button>
@@ -475,17 +475,17 @@ function TabVisaoGeral({
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "24px 0 32px" }}>
             <div style={{ width: 64, height: 48, position: "relative" }}>
               {/* ícone decorativo de "sem atividade" */}
-              <div style={{ width: 52, height: 38, borderRadius: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", position: "absolute", top: 0, left: 0 }}>
-                <div style={{ margin: "8px 10px 0", height: 4, borderRadius: 2, background: "rgba(255,255,255,0.08)" }} />
-                <div style={{ margin: "5px 10px 0", height: 4, borderRadius: 2, background: "rgba(255,255,255,0.05)", width: "60%" }} />
-                <div style={{ margin: "5px 10px 0", height: 4, borderRadius: 2, background: "rgba(255,255,255,0.04)", width: "40%" }} />
+              <div style={{ width: 52, height: 38, borderRadius: 6, background: "var(--border)", border: "1px solid var(--border)", position: "absolute", top: 0, left: 0 }}>
+                <div style={{ margin: "8px 10px 0", height: 4, borderRadius: 2, background: "var(--border)" }} />
+                <div style={{ margin: "5px 10px 0", height: 4, borderRadius: 2, background: "var(--border)", width: "60%" }} />
+                <div style={{ margin: "5px 10px 0", height: 4, borderRadius: 2, background: "var(--border)", width: "40%" }} />
               </div>
-              <div style={{ width: 22, height: 22, borderRadius: "50%", background: "#1a1a1a", border: "2px solid #161616", position: "absolute", bottom: -2, right: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <BarChart2 size={11} strokeWidth={2} color="#555" />
+              <div style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--card)", border: "2px solid #161616", position: "absolute", bottom: -2, right: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <BarChart2 size={11} strokeWidth={2} color="var(--muted-foreground)" />
               </div>
             </div>
-            <p style={{ fontSize: 14, fontWeight: 600, color: "#c4c4c4" }}>Nada para ver aqui</p>
-            <p style={{ fontSize: 12, color: "#555" }}>Parece que você ainda não tem nenhuma atividade de tarefas.</p>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>Nada para ver aqui</p>
+            <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Parece que você ainda não tem nenhuma atividade de tarefas.</p>
           </div>
         </div>
       </div>
@@ -497,45 +497,45 @@ function TabVisaoGeral({
         <MembersPanel teamId={team.id} onAddMember={onAddMember} />
 
         {/* análises */}
-        <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", padding: "14px 16px" }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4", marginBottom: 16 }}>Análises da equipe</p>
+        <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", padding: "14px 16px" }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", marginBottom: 16 }}>Análises da equipe</p>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "8px 0 12px" }}>
-            <div style={{ width: 44, height: 44, borderRadius: "50%", background: "rgba(255,255,255,0.04)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-              <BarChart2 size={20} strokeWidth={1.4} color="#444" />
-              <div style={{ position: "absolute", bottom: -3, right: -3, width: 16, height: 16, borderRadius: "50%", background: "#1a1a1a", border: "2px solid #161616", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <BarChart2 size={8} strokeWidth={2} color="#555" />
+            <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+              <BarChart2 size={20} strokeWidth={1.4} color="var(--muted-foreground)" />
+              <div style={{ position: "absolute", bottom: -3, right: -3, width: 16, height: 16, borderRadius: "50%", background: "var(--card)", border: "2px solid #161616", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <BarChart2 size={8} strokeWidth={2} color="var(--muted-foreground)" />
               </div>
             </div>
-            <p style={{ fontSize: 11, color: "#555" }}>Não há dados suficientes.</p>
+            <p style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Não há dados suficientes.</p>
           </div>
         </div>
 
         {/* prioridades card */}
-        <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", overflow: "hidden" }}>
+        <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", overflow: "hidden" }}>
           {/* preview colorido */}
           <div style={{ height: 90, background: "linear-gradient(135deg,#1e1040 0%,#120c30 100%)", padding: "10px 12px", display: "flex", gap: 8 }}>
             {[
               { name: "Priya Gupta", role: "UI designer", color: "#f472b6" },
               { name: "Sarah C.",    role: "Software Eng", color: "#60a5fa" },
             ].map(m => (
-              <div key={m.name} style={{ flex: 1, background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: "6px 8px" }}>
+              <div key={m.name} style={{ flex: 1, background: "var(--border)", borderRadius: 6, padding: "6px 8px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
                   <div style={{ width: 16, height: 16, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
-                  <p style={{ fontSize: 9, color: "#e4e4e4", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</p>
+                  <p style={{ fontSize: 9, color: "var(--foreground)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</p>
                 </div>
                 {[1,2,3].map(i => (
-                  <div key={i} style={{ height: 3, borderRadius: 2, background: "rgba(255,255,255,0.08)", marginBottom: 3 }} />
+                  <div key={i} style={{ height: 3, borderRadius: 2, background: "var(--border)", marginBottom: 3 }} />
                 ))}
               </div>
             ))}
           </div>
           <div style={{ padding: "12px 14px 14px" }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4", marginBottom: 4 }}>Use as prioridades para manter o foco</p>
-            <p style={{ fontSize: 11, color: "#555", lineHeight: 1.5, marginBottom: 10 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", marginBottom: 4 }}>Use as prioridades para manter o foco</p>
+            <p style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.5, marginBottom: 10 }}>
               Saiba instantaneamente no que cada membro da equipe está trabalhando agora e o que está por vir na agenda deles.
             </p>
-            <button type="button" style={{ height: 26, padding: "0 12px", borderRadius: 6, border: "1px solid rgba(255,255,255,0.12)", background: "none", cursor: "pointer", color: "#c4c4c4", fontSize: 11, fontWeight: 500 }}
-              onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; }}
+            <button type="button" style={{ height: 26, padding: "0 12px", borderRadius: 6, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--foreground)", fontSize: 11, fontWeight: 500 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; }}>
               Acessar Prioridades
             </button>
@@ -543,7 +543,7 @@ function TabVisaoGeral({
         </div>
 
         {/* espaços card */}
-        <div style={{ borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)", background: "#161616", overflow: "hidden" }}>
+        <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", overflow: "hidden" }}>
           <div style={{ height: 64, background: "linear-gradient(135deg,#1a2a1a 0%,#0d1a0d 100%)", padding: "8px 12px", display: "flex", gap: 8, alignItems: "center" }}>
             <div style={{ flex: 1, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 6, height: 44, padding: "6px 8px" }}>
               <p style={{ fontSize: 9, color: "#f59e0b", fontWeight: 600 }}>Needs Updates</p>
@@ -554,8 +554,8 @@ function TabVisaoGeral({
             </div>
           </div>
           <div style={{ padding: "12px 14px 14px" }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: "#e4e4e4", marginBottom: 4 }}>Espaços da equipe - Veja apenas o que importa</p>
-            <p style={{ fontSize: 11, color: "#555", lineHeight: 1.5 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", marginBottom: 4 }}>Espaços da equipe - Veja apenas o que importa</p>
+            <p style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
               Filtre espaços para ver apenas o trabalho relevante para sua equipe.
             </p>
           </div>
@@ -573,7 +573,7 @@ function TabVisaoGeral({
 function TabPlaceholder({ label }: { label: string }) {
   return (
     <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <p style={{ color: "#444", fontSize: 14 }}>{label} — em breve</p>
+      <p style={{ color: "var(--muted-foreground)", fontSize: 14 }}>{label} — em breve</p>
     </div>
   );
 }
@@ -629,9 +629,9 @@ export default function TeamDetailPage() {
 
   if (!team) {
     return (
-      <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", background: "#111", flexDirection: "column", gap: 12 }}>
-        <p style={{ color: "#555", fontSize: 14 }}>Equipe não encontrada.</p>
-        <button type="button" onClick={() => router.push("/teams")} style={{ height: 30, padding: "0 14px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#888", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", background: "var(--background)", flexDirection: "column", gap: 12 }}>
+        <p style={{ color: "var(--muted-foreground)", fontSize: 14 }}>Equipe não encontrada.</p>
+        <button type="button" onClick={() => router.push("/teams")} style={{ height: 30, padding: "0 14px", borderRadius: 7, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
           <ArrowLeft size={13} strokeWidth={2} /> Voltar para equipes
         </button>
       </div>
@@ -641,12 +641,12 @@ export default function TeamDetailPage() {
   const slug = "@" + team.nome.toLowerCase().replace(/\s+/g, "").slice(0, 16);
 
   return (
-    <div style={{ display: "flex", height: "100%", overflow: "hidden", background: "#111111" }}>
+    <div style={{ display: "flex", height: "100%", overflow: "hidden", background: "var(--background)" }}>
 
       {/* sidebar — igual à página /teams */}
-      <aside style={{ width: 260, flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.07)", background: "#1a1a1a", display: "flex", flexDirection: "column" }}>
-        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 12px", height: 44, borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
-          <span style={{ fontSize: 14, fontWeight: 700, color: "#e4e4e4" }}>Equipes</span>
+      <aside style={{ width: 260, flexShrink: 0, borderRight: "1px solid var(--border)", background: "var(--card)", display: "flex", flexDirection: "column" }}>
+        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 12px", height: 44, borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)" }}>Equipes</span>
         </header>
         <div style={{ padding: "8px 6px" }}>
           {[
@@ -655,20 +655,20 @@ export default function TeamDetailPage() {
             { label: "Dados analíticos",  icon: <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
           ].map(item => (
             <button key={item.label} type="button" onClick={() => router.push("/teams")}
-              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", height: 34, padding: "0 8px", borderRadius: 5, border: 0, cursor: "pointer", background: "none", color: "#888892", fontSize: 13 }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#1a1a1c"; }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", height: 34, padding: "0 8px", borderRadius: 5, border: 0, cursor: "pointer", background: "none", color: "var(--muted-foreground)", fontSize: 13 }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; }}>
-              <span style={{ color: "#505058" }}>{item.icon}</span>
+              <span style={{ color: "var(--muted-foreground)" }}>{item.icon}</span>
               {item.label}
             </button>
           ))}
 
-          <p style={{ fontSize: 11, fontWeight: 600, color: "#505058", textTransform: "uppercase", letterSpacing: "0.06em", padding: "12px 8px 6px" }}>Minhas equipes</p>
+          <p style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", padding: "12px 8px 6px" }}>Minhas equipes</p>
 
           {teams.map(t => (
             <button key={t.id} type="button" onClick={() => router.push(`/teams/${t.id}`)}
-              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", height: 32, padding: "0 8px", borderRadius: 5, border: 0, cursor: "pointer", background: t.id === teamId ? "#202022" : "none", color: t.id === teamId ? "#e4e4e4" : "#888892", fontSize: 13 }}
-              onMouseEnter={e => { if (t.id !== teamId) e.currentTarget.style.background = "#1a1a1c"; }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", height: 32, padding: "0 8px", borderRadius: 5, border: 0, cursor: "pointer", background: t.id === teamId ? "var(--accent)" : "none", color: t.id === teamId ? "var(--foreground)" : "var(--muted-foreground)", fontSize: 13 }}
+              onMouseEnter={e => { if (t.id !== teamId) e.currentTarget.style.background = "var(--accent)"; }}
               onMouseLeave={e => { if (t.id !== teamId) e.currentTarget.style.background = "none"; }}>
               <div style={{ width: 18, height: 18, borderRadius: "50%", background: t.color, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#fff" }}>
                 {getInitials(t.nome)}
@@ -683,45 +683,45 @@ export default function TeamDetailPage() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
         {/* header do time */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: 52, borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: 52, borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {/* avatar */}
             <div style={{ width: 30, height: 30, borderRadius: "50%", background: team.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
               {getInitials(team.nome)}
             </div>
-            <span style={{ fontSize: 15, fontWeight: 700, color: "#e4e4e4" }}>{team.nome}</span>
-            <span style={{ fontSize: 13, color: "#444" }}>{slug}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)" }}>{team.nome}</span>
+            <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{slug}</span>
             {/* ícone de editar nome — decorativo */}
-            <button type="button" style={{ width: 22, height: 22, borderRadius: 5, border: "1px solid rgba(255,255,255,0.08)", background: "none", cursor: "pointer", color: "#555", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <button type="button" style={{ width: 22, height: 22, borderRadius: 5, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
               </svg>
             </button>
           </div>
 
-          <button type="button" onClick={() => setModalOpen(true)} style={{ height: 30, padding: "0 14px", borderRadius: 7, background: "#e4e4e4", border: "none", cursor: "pointer", color: "#111", fontSize: 13, fontWeight: 600 }}
+          <button type="button" onClick={() => setModalOpen(true)} style={{ height: 30, padding: "0 14px", borderRadius: 7, background: "var(--primary)", border: "none", cursor: "pointer", color: "var(--primary-foreground)", fontSize: 13, fontWeight: 600 }}
             onMouseEnter={e => { e.currentTarget.style.background = "#fff"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "#e4e4e4"; }}>
+            onMouseLeave={e => { e.currentTarget.style.background = "var(--foreground)"; }}>
             Adicionar membro
           </button>
         </div>
 
         {/* abas */}
-        <div style={{ display: "flex", alignItems: "center", padding: "0 20px", height: 42, borderBottom: "1px solid rgba(255,255,255,0.07)", flexShrink: 0, gap: 2 }}>
+        <div style={{ display: "flex", alignItems: "center", padding: "0 20px", height: 42, borderBottom: "1px solid var(--border)", flexShrink: 0, gap: 2 }}>
           {TABS.map(tab => (
             <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)}
               style={{
                 height: 42, padding: "0 12px", border: 0, background: "none", cursor: "pointer",
                 fontSize: 13, fontWeight: activeTab === tab.id ? 600 : 400,
-                color: activeTab === tab.id ? "#e4e4e4" : "#666",
+                color: activeTab === tab.id ? "var(--foreground)" : "var(--muted-foreground)",
                 display: "flex", alignItems: "center", gap: 5, position: "relative",
                 borderBottom: activeTab === tab.id ? "2px solid #e4e4e4" : "2px solid transparent",
                 transition: "color .15s",
               }}
-              onMouseEnter={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "#aaa"; }}
-              onMouseLeave={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "#666"; }}
+              onMouseEnter={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "var(--foreground)"; }}
+              onMouseLeave={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "var(--muted-foreground)"; }}
             >
-              <span style={{ color: tab.color ?? (activeTab === tab.id ? "#e4e4e4" : "#555") }}>
+              <span style={{ color: tab.color ?? (activeTab === tab.id ? "var(--foreground)" : "var(--muted-foreground)") }}>
                 {TAB_ICONS[tab.id]}
               </span>
               {tab.label}

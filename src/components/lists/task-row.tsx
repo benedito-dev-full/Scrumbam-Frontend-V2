@@ -48,7 +48,7 @@ function CellDropdown({
       ref={dropRef}
       style={{
         position: "fixed", top: pos.top, left: pos.left, zIndex: 99999,
-        background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8,
+        background: "var(--card)", border: "1px solid #2e2e38", borderRadius: 8,
         padding: "4px", minWidth: 180,
         boxShadow: "0 8px 24px rgba(0,0,0,.5)",
       }}
@@ -76,10 +76,10 @@ function DropItem({
         display: "flex", alignItems: "center", gap: 8,
         width: "100%", padding: "7px 10px", borderRadius: 5,
         background: active ? "rgba(124,92,255,0.12)" : "none",
-        border: 0, color: "#d4d4dc", fontSize: 12,
+        border: 0, color: "var(--foreground)", fontSize: 12,
         cursor: "pointer", textAlign: "left",
       }}
-      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "#26262f"; }}
+      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--accent)"; }}
       onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "none"; }}
     >
       {children}
@@ -138,7 +138,7 @@ export function TaskRow({
   const prio = tarefa.prioridade ? PRIO_CONFIG[tarefa.prioridade] : null;
   const dias = diasUntil(tarefa.dataVencimento);
 
-  let dateText = "", dateColor = "#b6b6bf", dateSub = "";
+  let dateText = "", dateColor = "var(--muted-foreground)", dateSub = "";
   if (tarefa.dataVencimento) {
     const d = new Date(tarefa.dataVencimento + "T00:00:00.000Z");
     dateText = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
@@ -159,8 +159,8 @@ export function TaskRow({
   function tdBase(hov?: boolean): React.CSSProperties {
     return {
       padding: 0, borderBottom: "1px solid #1f1f25", height: 38, verticalAlign: "middle",
-      color: "#b6b6bf",
-      background: hov ? "#1e1e28" : rowHovered ? "#15151a" : "transparent",
+      color: "var(--muted-foreground)",
+      background: hov ? "var(--accent)" : rowHovered ? "var(--accent)" : "transparent",
       cursor: hov !== undefined ? "pointer" : "default",
       transition: "background .1s",
     };
@@ -182,7 +182,7 @@ export function TaskRow({
                 type="button"
                 onClick={onToggle}
                 style={{
-                  width: 14, color: "#7a7a85", display: "inline-flex",
+                  width: 14, color: "var(--muted-foreground)", display: "inline-flex",
                   alignItems: "center", justifyContent: "center",
                   cursor: "pointer", opacity: 0.7, background: "none", border: 0,
                   transform: expanded ? "rotate(90deg)" : "none", transition: "transform .15s",
@@ -204,17 +204,17 @@ export function TaskRow({
               onClick={onOpen}
               onKeyDown={onOpen ? (e) => { if (e.key === "Enter" || e.key === " ") onOpen(); } : undefined}
               style={{
-                color: "#e6e6ea", fontWeight: 600, fontSize: 13,
+                color: "var(--foreground)", fontWeight: 600, fontSize: 13,
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                 cursor: onOpen ? "pointer" : "default",
               }}
               onMouseEnter={onOpen ? (e) => { e.currentTarget.style.color = "#cfc1ff"; e.currentTarget.style.textDecoration = "underline"; } : undefined}
-              onMouseLeave={onOpen ? (e) => { e.currentTarget.style.color = "#e6e6ea"; e.currentTarget.style.textDecoration = "none"; } : undefined}
+              onMouseLeave={onOpen ? (e) => { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.textDecoration = "none"; } : undefined}
             >
               {tarefa.nome}
             </span>
             {tarefa.subtarefas > 0 && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "#7a7a85", fontSize: 11, marginLeft: 2 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "var(--muted-foreground)", fontSize: 11, marginLeft: 2 }}>
                 <IcGitFork size={11} /> {tarefa.subtarefas}
               </span>
             )}
@@ -233,7 +233,7 @@ export function TaskRow({
             <>
               <div style={{
                 width: 22, height: 22, borderRadius: "50%",
-                background: "#1a1a4e", color: "#818cf8",
+                background: "var(--accent)", color: "#818cf8",
                 fontSize: 13, flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
@@ -245,27 +245,27 @@ export function TaskRow({
             <>
               <div style={{
                 width: 22, height: 22, borderRadius: "50%",
-                background: "#3d2a6b", color: "#d8ccff",
+                background: "var(--accent)", color: "#d8ccff",
                 fontSize: 10, fontWeight: 600, flexShrink: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 {membro.nome.slice(0, 2).toUpperCase()}
               </div>
-              <span style={{ fontSize: 12, color: "#c0c0cc" }}>{membro.nome}</span>
+              <span style={{ fontSize: 12, color: "var(--foreground)" }}>{membro.nome}</span>
             </>
           ) : (
-            <span style={{ color: "#6a6a75" }}><IcUserPlus size={14} /></span>
+            <span style={{ color: "var(--muted-foreground)" }}><IcUserPlus size={14} /></span>
           )}
           {openDD === "responsavel" && (
             <CellDropdown anchorRef={respTd} onClose={() => setOpenDD(null)}>
               <DropItem active={!tarefa.responsavelId} onClick={() => { saveAndFlash("responsavel", { responsavelId: null }); setOpenDD(null); }}>
-                <span style={{ color: "#7a7a85" }}>Sem responsável</span>
+                <span style={{ color: "var(--muted-foreground)" }}>Sem responsável</span>
               </DropItem>
               {orgMembers.map((m) => (
                 <DropItem key={m.userId} active={tarefa.responsavelId === m.userId} onClick={() => { saveAndFlash("responsavel", { responsavelId: m.userId }); setOpenDD(null); }}>
                   <div style={{
                     width: 20, height: 20, borderRadius: "50%",
-                    background: "#3d2a6b", color: "#d8ccff",
+                    background: "var(--accent)", color: "#d8ccff",
                     fontSize: 9, fontWeight: 700, flexShrink: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
                   }}>
@@ -278,7 +278,7 @@ export function TaskRow({
               <DropItem active={isAiAssignee} onClick={() => { saveAndFlash("responsavel", { responsavelId: AI_ASSIGNEE_ID }); setOpenDD(null); }}>
                 <div style={{
                   width: 20, height: 20, borderRadius: "50%",
-                  background: "#1a1a4e", color: "#818cf8",
+                  background: "var(--accent)", color: "#818cf8",
                   fontSize: 12, flexShrink: 0,
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
@@ -301,15 +301,15 @@ export function TaskRow({
           {dateText ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
               <span style={{ fontSize: 13, color: dateColor }}>{dateText}</span>
-              {dateSub && <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase", color: "#7a7a85" }}>{dateSub}</span>}
+              {dateSub && <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase", color: "var(--muted-foreground)" }}>{dateSub}</span>}
             </div>
           ) : (
-            <span style={{ color: "#6a6a75" }}><IcCalPlus size={14} /></span>
+            <span style={{ color: "var(--muted-foreground)" }}><IcCalPlus size={14} /></span>
           )}
           {openDD === "data" && (
             <CellDropdown anchorRef={dataTd} onClose={() => setOpenDD(null)}>
               <div style={{ padding: "4px 6px 6px" }}>
-                <p style={{ fontSize: 11, color: "#7a7a85", margin: "0 0 6px", fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase" }}>
+                <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "0 0 6px", fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase" }}>
                   Data de vencimento
                 </p>
                 <input
@@ -319,8 +319,8 @@ export function TaskRow({
                   onChange={(e) => saveAndFlash("data", { dataVencimento: e.target.value || null })}
                   onBlur={() => setOpenDD(null)}
                   style={{
-                    background: "#26262f", border: "1px solid #3a3a46",
-                    borderRadius: 6, color: "#d4d4dc", fontSize: 12,
+                    background: "var(--accent)", border: "1px solid #3a3a46",
+                    borderRadius: 6, color: "var(--foreground)", fontSize: 12,
                     padding: "5px 8px", outline: "none", width: "100%",
                     colorScheme: "dark",
                   }}
@@ -358,13 +358,13 @@ export function TaskRow({
               <IcFlag size={13} />{prio.label}
             </span>
           ) : (
-            <span style={{ color: "#6a6a75" }}><IcFlag size={14} /></span>
+            <span style={{ color: "var(--muted-foreground)" }}><IcFlag size={14} /></span>
           )}
           {openDD === "prioridade" && (
             <CellDropdown anchorRef={prioTd} onClose={() => setOpenDD(null)}>
               <DropItem active={!tarefa.prioridade} onClick={() => { saveAndFlash("prioridade", { prioridade: null }); setOpenDD(null); }}>
                 <IcFlag size={12} />
-                <span style={{ color: "#7a7a85" }}>Sem prioridade</span>
+                <span style={{ color: "var(--muted-foreground)" }}>Sem prioridade</span>
               </DropItem>
               {allPrios.map((p) => {
                 const c = PRIO_CONFIG[p];
@@ -416,26 +416,26 @@ export function TaskRow({
         {/* Comentários — apenas visual */}
         <td style={{
           padding: 0, borderBottom: "1px solid #1f1f25", height: 38, verticalAlign: "middle",
-          background: rowHovered ? "#15151a" : "transparent",
+          background: rowHovered ? "var(--accent)" : "transparent",
         }}>
           <div style={{ display: "flex", justifyContent: "center", padding: "0 6px", height: 38, alignItems: "center" }}>
-            <span style={{ color: "#6a6a75" }}><IcChat size={14} /></span>
+            <span style={{ color: "var(--muted-foreground)" }}><IcChat size={14} /></span>
           </div>
         </td>
 
         <td style={{
           padding: 0, borderBottom: "1px solid #1f1f25", height: 38,
-          background: rowHovered ? "#15151a" : "transparent",
+          background: rowHovered ? "var(--accent)" : "transparent",
         }} />
       </tr>
 
       {expanded && tarefa.subtarefas > 0 && (
         <tr>
-          <td colSpan={7} style={{ padding: 0, borderBottom: "1px solid #1f1f25", height: 34, background: "#101015" }}>
+          <td colSpan={7} style={{ padding: 0, borderBottom: "1px solid #1f1f25", height: 34, background: "var(--card)" }}>
             <div style={{ paddingLeft: 54, height: 34, display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ width: 14, visibility: "hidden", display: "inline-flex" }}><IcCaretR size={12} /></span>
-              <span style={{ display: "inline-flex", color: "#8a8a93" }}><IcPending size={13} /></span>
-              <span style={{ color: "#b6b6bf", fontWeight: 500, fontSize: 13 }}>Subtarefa</span>
+              <span style={{ display: "inline-flex", color: "var(--muted-foreground)" }}><IcPending size={13} /></span>
+              <span style={{ color: "var(--muted-foreground)", fontWeight: 500, fontSize: 13 }}>Subtarefa</span>
             </div>
           </td>
         </tr>
@@ -482,7 +482,7 @@ function EditableTd({
       style={{
         padding: "0 10px", borderBottom: "1px solid #1f1f25", height: 38,
         verticalAlign: "middle", cursor: "pointer", position: "relative",
-        background: rowHovered ? "#15151a" : "transparent",
+        background: rowHovered ? "var(--accent)" : "transparent",
         boxShadow: hov || active ? "inset 0 0 0 1px #3a3a46" : "none",
         borderRadius: 4,
         transition: "box-shadow .1s",

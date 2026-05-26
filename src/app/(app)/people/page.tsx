@@ -284,23 +284,23 @@ export default function PeoplePage() {
           onClick={() => setRemoveTarget(null)}
         >
           <div
-            style={{ width: 420, borderRadius: 12, background: "#1a1a1a", border: "1px solid rgba(255,255,255,0.1)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}
+            style={{ width: 420, borderRadius: 12, background: "var(--card)", border: "1px solid var(--border)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "#e4e4e4", marginBottom: 8 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)", marginBottom: 8 }}>
               Remover membro
             </h2>
-            <p style={{ fontSize: 13, color: "#888", lineHeight: 1.6, marginBottom: 24 }}>
-              Tem certeza que deseja remover <strong style={{ color: "#e4e4e4" }}>{removeTarget.nome}</strong> da organização?
+            <p style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.6, marginBottom: 24 }}>
+              Tem certeza que deseja remover <strong style={{ color: "var(--foreground)" }}>{removeTarget.nome}</strong> da organização?
               Essa ação não pode ser desfeita.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button
                 type="button"
                 onClick={() => setRemoveTarget(null)}
-                style={{ height: 34, padding: "0 16px", borderRadius: 7, border: "1px solid rgba(255,255,255,0.1)", background: "none", cursor: "pointer", color: "#888", fontSize: 13 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "#e4e4e4"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "#888"; }}
+                style={{ height: 34, padding: "0 16px", borderRadius: 7, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 13 }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--foreground)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
               >
                 Cancelar
               </button>
@@ -376,7 +376,7 @@ function RoleDropdown({ memberId, currentRole, disabled }: { memberId: string; c
         <div style={{
           position: 'absolute', top: '100%', left: 0, zIndex: 50, marginTop: 4,
           minWidth: 160, borderRadius: 8, overflow: 'hidden',
-          background: '#1e1e1e', border: '1px solid rgba(255,255,255,0.09)',
+          background: '#1e1e1e', border: '1px solid var(--border)',
           boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
         }}>
           {ROLES.map((r) => (
@@ -385,7 +385,7 @@ function RoleDropdown({ memberId, currentRole, disabled }: { memberId: string; c
               type="button"
               onClick={() => handleSelect(r.value)}
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 14px', border: 0, background: 'none', cursor: 'pointer', textAlign: 'left' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
             >
               <span style={{ fontSize: 13, color: optimisticRole === r.value ? '#e4e4e4' : '#888' }}>{r.label}</span>

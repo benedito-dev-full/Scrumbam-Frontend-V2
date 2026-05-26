@@ -143,7 +143,7 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
           borderRadius: 6,
           border: open
             ? '1px solid rgba(34,211,238,0.25)'
-            : '1px solid rgba(255,255,255,0.09)',
+            : '1px solid var(--border)',
           background: open ? 'rgba(34,211,238,0.06)' : 'none',
           cursor: 'pointer',
           color: open ? '#22d3ee' : '#888892',
@@ -198,7 +198,7 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
             width: 300,
             background: '#1a1a1a',
             borderRadius: 10,
-            border: '1px solid rgba(255,255,255,0.09)',
+            border: '1px solid var(--border)',
             boxShadow: '0 16px 48px rgba(0,0,0,0.6)',
             overflow: 'hidden',
           }}
@@ -209,7 +209,7 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
             alignItems: 'center',
             gap: 8,
             padding: '12px 14px',
-            borderBottom: '1px solid rgba(255,255,255,0.07)',
+            borderBottom: '1px solid var(--border)',
             background: '#1e1e1e',
           }}>
             <div style={{
@@ -278,7 +278,7 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
                     cursor: hasAgents ? 'pointer' : 'not-allowed',
                     background: hasAgents
                       ? 'linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%)'
-                      : 'rgba(255,255,255,0.05)',
+                      : 'var(--border)',
                     color: hasAgents ? '#0a0a0a' : '#555',
                     fontSize: 13,
                     fontWeight: 600,
@@ -304,15 +304,15 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
                   gap: 10,
                   padding: '10px 12px',
                   borderRadius: 8,
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.07)',
+                  background: 'var(--border)',
+                  border: '1px solid var(--border)',
                 }}>
                   <div style={{
                     width: 32,
                     height: 32,
                     borderRadius: 7,
-                    background: agentOnline ? 'rgba(34,211,238,0.08)' : 'rgba(255,255,255,0.04)',
-                    border: `1px solid ${agentOnline ? 'rgba(34,211,238,0.2)' : 'rgba(255,255,255,0.08)'}`,
+                    background: agentOnline ? 'rgba(34,211,238,0.08)' : 'var(--border)',
+                    border: `1px solid ${agentOnline ? 'rgba(34,211,238,0.2)' : 'var(--border)'}`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -346,8 +346,8 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
                     gap: 8,
                     padding: '10px 12px',
                     borderRadius: 8,
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'var(--border)',
+                    border: '1px solid var(--border)',
                   }}>
                     {link.repoUrl && <InfoRow label="Repositório" value={link.repoUrl} mono />}
                     {link.projectSlug && <InfoRow label="Slug" value={link.projectSlug} mono />}
@@ -368,7 +368,7 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
                           flex: 1,
                           height: 32,
                           borderRadius: 6,
-                          border: '1px solid rgba(255,255,255,0.1)',
+                          border: '1px solid var(--border)',
                           background: 'none',
                           color: '#888',
                           fontSize: 12,
@@ -409,7 +409,7 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
                         flex: 1,
                         height: 30,
                         borderRadius: 6,
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        border: '1px solid var(--border)',
                         background: 'none',
                         color: '#71717a',
                         fontSize: 11,
@@ -423,7 +423,7 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
                       }}
                       onMouseLeave={e => {
                         e.currentTarget.style.color = '#71717a';
-                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                        e.currentTarget.style.borderColor = 'var(--border)';
                       }}
                     >
                       <Unlink size={11} />
@@ -439,7 +439,7 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
                         flex: 1,
                         height: 30,
                         borderRadius: 6,
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        border: '1px solid var(--border)',
                         background: 'none',
                         color: '#71717a',
                         fontSize: 11,
@@ -468,7 +468,7 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
                         width: 30,
                         height: 30,
                         borderRadius: 6,
-                        border: '1px solid rgba(255,255,255,0.08)',
+                        border: '1px solid var(--border)',
                         background: 'none',
                         color: '#71717a',
                         cursor: 'pointer',

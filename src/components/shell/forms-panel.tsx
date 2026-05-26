@@ -49,13 +49,13 @@ export function FormsPanel() {
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 12px", height: 44, borderBottom: "1px solid var(--border)", flexShrink: 0,
       }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: "#e4e4e6" }}>Formulários</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)" }}>Formulários</span>
         <button type="button" style={{
           width: 22, height: 22, borderRadius: 5, border: 0,
           background: "none", cursor: "pointer", color: "var(--muted-foreground)",
           display: "flex", alignItems: "center", justifyContent: "center",
         }}
-          onMouseEnter={e => { e.currentTarget.style.background = "#202022"; e.currentTarget.style.color = "#c0c0c4"; }}
+          onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
           onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
         >
           <Plus size={14} strokeWidth={2} />
@@ -78,21 +78,21 @@ export function FormsPanel() {
                     display: "flex", alignItems: "center", gap: 8,
                     width: "100%", height: 34, padding: "0 8px",
                     borderRadius: 5, border: 0, cursor: "pointer", textAlign: "left",
-                    background: isActive ? "#202022" : "none",
-                    color: isActive ? "#e4e4e6" : "var(--muted-foreground)",
+                    background: isActive ? "var(--accent)" : "none",
+                    color: isActive ? "var(--foreground)" : "var(--muted-foreground)",
                     fontSize: 13, fontWeight: isActive ? 500 : 400,
                   }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "#1a1a1c"; }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "var(--accent)"; }}
                   onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "none"; }}
                 >
-                  <span style={{ color: isActive ? "#c0c0c4" : "var(--muted-foreground)", flexShrink: 0 }}>
+                  <span style={{ color: isActive ? "var(--foreground)" : "var(--muted-foreground)", flexShrink: 0 }}>
                     {item.renderIcon()}
                   </span>
                   <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.label}</span>
                   {item.badge !== undefined && (
                     <span style={{
                       fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)",
-                      background: "#202022", borderRadius: 4, padding: "0 5px", lineHeight: "18px",
+                      background: "var(--accent)", borderRadius: 4, padding: "0 5px", lineHeight: "18px",
                     }}>
                       {item.badge}
                     </span>
@@ -133,7 +133,7 @@ export function FormsPanel() {
                 borderRadius: 5, border: 0, background: "none", cursor: "pointer",
                 color: "var(--muted-foreground)", fontSize: 13, textAlign: "left",
               }}
-                onMouseEnter={e => { e.currentTarget.style.background = "#1a1a1c"; }}
+                onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
                 onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
               >
                 <IcFormItem />

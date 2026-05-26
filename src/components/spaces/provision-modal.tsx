@@ -105,10 +105,10 @@ function AgentCard({
         borderRadius: 8,
         border: selected
           ? '1px solid rgba(34,211,238,0.4)'
-          : '1px solid rgba(255,255,255,0.07)',
+          : '1px solid var(--border)',
         background: selected
           ? 'rgba(34,211,238,0.06)'
-          : 'rgba(255,255,255,0.02)',
+          : 'var(--border)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         opacity: disabled ? 0.5 : 1,
         transition: 'border-color 120ms, background 120ms',
@@ -119,8 +119,8 @@ function AgentCard({
         width: 32,
         height: 32,
         borderRadius: 7,
-        background: selected ? 'rgba(34,211,238,0.12)' : 'rgba(255,255,255,0.04)',
-        border: `1px solid ${selected ? 'rgba(34,211,238,0.25)' : 'rgba(255,255,255,0.08)'}`,
+        background: selected ? 'rgba(34,211,238,0.12)' : 'var(--border)',
+        border: `1px solid ${selected ? 'rgba(34,211,238,0.25)' : 'var(--border)'}`,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -266,7 +266,7 @@ function Step3DeployKey({
           <div style={{
             padding: '10px 44px 10px 12px',
             borderRadius: 7,
-            border: '1px solid rgba(255,255,255,0.1)',
+            border: '1px solid var(--border)',
             background: 'rgba(0,0,0,0.3)',
             fontFamily: 'monospace',
             fontSize: 11,
@@ -291,8 +291,8 @@ function Step3DeployKey({
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: 6,
-              border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'rgba(255,255,255,0.1)'}`,
-              background: copied ? 'rgba(34,197,94,0.12)' : 'rgba(255,255,255,0.04)',
+              border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'var(--border)'}`,
+              background: copied ? 'rgba(34,197,94,0.12)' : 'var(--border)',
               cursor: 'pointer',
               transition: 'all 150ms',
               color: copied ? '#4ade80' : '#71717a',
@@ -490,7 +490,7 @@ export function ProvisionModal({
         maxWidth: 500,
         background: '#171717',
         borderRadius: 12,
-        border: '1px solid rgba(255,255,255,0.07)',
+        border: '1px solid var(--border)',
         boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
         overflow: 'hidden',
         display: 'flex',
@@ -504,7 +504,7 @@ export function ProvisionModal({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '16px 20px',
-          borderBottom: '1px solid rgba(255,255,255,0.07)',
+          borderBottom: '1px solid var(--border)',
           flexShrink: 0,
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -523,15 +523,15 @@ export function ProvisionModal({
                       justifyContent: 'center',
                       fontSize: 11,
                       fontWeight: 700,
-                      background: step === s ? '#22d3ee' : step > s ? 'rgba(34,211,238,0.15)' : 'rgba(255,255,255,0.05)',
+                      background: step === s ? '#22d3ee' : step > s ? 'rgba(34,211,238,0.15)' : 'var(--border)',
                       color: step === s ? '#0a0a0a' : step > s ? '#22d3ee' : '#555',
-                      border: step === s ? 'none' : step > s ? '1px solid rgba(34,211,238,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                      border: step === s ? 'none' : step > s ? '1px solid rgba(34,211,238,0.3)' : '1px solid var(--border)',
                     }}
                   >
                     {step > s ? <Check size={12} /> : s}
                   </div>
                   {idx < 2 && (
-                    <div key={`sep-${s}`} style={{ width: 16, height: 1, background: 'rgba(255,255,255,0.1)' }} />
+                    <div key={`sep-${s}`} style={{ width: 16, height: 1, background: 'var(--border)' }} />
                   )}
                 </>
               ))}
@@ -552,7 +552,7 @@ export function ProvisionModal({
               alignItems: 'center',
               justifyContent: 'center',
               borderRadius: 6,
-              border: '1px solid rgba(255,255,255,0.07)',
+              border: '1px solid var(--border)',
               background: 'none',
               cursor: 'pointer',
               color: '#71717a',
@@ -665,8 +665,8 @@ export function ProvisionModal({
                     height: 38,
                     padding: '0 12px',
                     borderRadius: 7,
-                    border: `1px solid ${form.formState.errors.remoteRepoUrl ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
-                    background: 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${form.formState.errors.remoteRepoUrl ? 'rgba(239,68,68,0.5)' : 'var(--border)'}`,
+                    background: 'var(--border)',
                     color: '#e4e4e4',
                     fontSize: 12,
                     width: '100%',
@@ -676,7 +676,7 @@ export function ProvisionModal({
                     transition: 'border-color 120ms',
                   }}
                   onFocus={e => { e.currentTarget.style.borderColor = 'rgba(34,211,238,0.4)'; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = form.formState.errors.remoteRepoUrl ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = form.formState.errors.remoteRepoUrl ? 'rgba(239,68,68,0.5)' : 'var(--border)'; }}
                 />
               </FormField>
 
@@ -796,7 +796,7 @@ export function ProvisionModal({
           justifyContent: 'flex-end',
           gap: 8,
           padding: '14px 20px',
-          borderTop: '1px solid rgba(255,255,255,0.07)',
+          borderTop: '1px solid var(--border)',
           flexShrink: 0,
           background: '#171717',
         }}>
@@ -809,7 +809,7 @@ export function ProvisionModal({
                 height: 34,
                 padding: '0 16px',
                 borderRadius: 7,
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid var(--border)',
                 background: 'none',
                 color: '#888892',
                 fontSize: 13,
@@ -831,7 +831,7 @@ export function ProvisionModal({
                 height: 34,
                 padding: '0 16px',
                 borderRadius: 7,
-                border: '1px solid rgba(255,255,255,0.1)',
+                border: '1px solid var(--border)',
                 background: 'none',
                 color: '#888892',
                 fontSize: 13,
@@ -861,7 +861,7 @@ export function ProvisionModal({
                 cursor: selectedAgentId ? 'pointer' : 'not-allowed',
                 background: selectedAgentId
                   ? 'linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%)'
-                  : 'rgba(255,255,255,0.06)',
+                  : 'var(--border)',
                 color: selectedAgentId ? '#0a0a0a' : '#555',
                 fontSize: 13,
                 fontWeight: 600,

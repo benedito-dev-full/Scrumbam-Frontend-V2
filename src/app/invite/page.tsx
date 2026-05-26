@@ -192,7 +192,7 @@ function InvitePageInner() {
                 autoComplete="name"
                 style={{
                   ...inputStyle,
-                  borderColor: nameFocused ? CYAN : 'rgba(255,255,255,0.1)',
+                  borderColor: nameFocused ? CYAN : 'var(--border)',
                   boxShadow: nameFocused ? `0 0 0 2px rgba(0,210,200,0.15)` : 'none',
                 }}
               />
@@ -211,7 +211,7 @@ function InvitePageInner() {
                 style={{
                   ...inputStyle,
                   paddingRight: 44,
-                  borderColor: passFocused ? CYAN : 'rgba(255,255,255,0.1)',
+                  borderColor: passFocused ? CYAN : 'var(--border)',
                   boxShadow: passFocused ? `0 0 0 2px rgba(0,210,200,0.15)` : 'none',
                 }}
               />
@@ -303,7 +303,7 @@ const centerStyle: React.CSSProperties = {
 
 const cardStyle: React.CSSProperties = {
   width: '100%', maxWidth: 420, borderRadius: 16,
-  background: '#161616', border: '1px solid rgba(255,255,255,0.08)',
+  background: '#161616', border: '1px solid var(--border)',
   padding: '36px 32px', boxShadow: '0 24px 64px rgba(0,0,0,0.7)',
 };
 
@@ -314,7 +314,7 @@ const labelStyle: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: '100%', height: 42, borderRadius: 8,
-  border: '1.5px solid rgba(255,255,255,0.1)',
+  border: '1.5px solid var(--border)',
   background: '#111', color: '#e4e4e4', fontSize: 13,
   padding: '0 14px', outline: 'none', boxSizing: 'border-box',
   transition: 'border-color .15s, box-shadow .15s',

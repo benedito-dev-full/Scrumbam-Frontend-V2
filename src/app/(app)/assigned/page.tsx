@@ -59,15 +59,15 @@ function hrefDeProject(item: DProjectDto) {
 const HOURS = ["O dia todo", "1 am", "2 am", "3 am", "4 am", "5 am", "6 am", "7 am", "8 am", "9 am", "10 am", "11 am", "12 pm"];
 
 const STATUS_DOT: Record<string, string> = {
-  INBOX: "#6b7280",
+  INBOX: "var(--muted-foreground)",
   READY: "#3b82f6",
   EXECUTING: "#f59e0b",
   VALIDATING: "#8b5cf6",
   VALIDATED: "#10b981",
   DONE: "#10b981",
   FAILED: "#ef4444",
-  CANCELLED: "#6b7280",
-  DISCARDED: "#6b7280",
+  CANCELLED: "var(--muted-foreground)",
+  DISCARDED: "var(--muted-foreground)",
 };
 
 /* ─── Página ─────────────────────────────────────────────────────────────── */
@@ -107,30 +107,30 @@ export default function MinhasTarefasPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#111111", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--background)", overflow: "hidden" }}>
 
       {/* ── Topbar ── */}
       <header style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 16px", height: 44, flexShrink: 0,
-        borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
+        borderBottom: "1px solid var(--border)", background: "var(--background)",
       }}>
-        <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>Minhas tarefas</span>
+        <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>Minhas tarefas</span>
 
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <button type="button" style={{
             height: 28, padding: "0 12px", borderRadius: 6,
-            border: "1px solid rgba(255,255,255,0.12)", background: "none",
-            cursor: "pointer", color: "#c4c4c4", fontSize: 12, fontWeight: 500,
+            border: "1px solid var(--border)", background: "none",
+            cursor: "pointer", color: "var(--foreground)", fontSize: 12, fontWeight: 500,
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
           >
             Gerenciar cartões
           </button>
-          <button type="button" style={{ display: "grid", width: 28, height: 28, placeItems: "center", borderRadius: 6, border: 0, background: "none", cursor: "pointer", color: "#606068" }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.color = "#c4c4c4"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+          <button type="button" style={{ display: "grid", width: 28, height: 28, placeItems: "center", borderRadius: 6, border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)" }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
+            onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
           >
             <Settings size={14} />
           </button>
@@ -142,7 +142,7 @@ export default function MinhasTarefasPage() {
 
         {/* Saudação */}
         <h1 style={{
-          fontSize: 26, fontWeight: 700, color: "#f4f4f5",
+          fontSize: 26, fontWeight: 700, color: "var(--foreground)",
           margin: 0, marginBottom: 20, letterSpacing: "-0.02em",
         }}>
           {saudacao()}, {userName}
@@ -154,7 +154,7 @@ export default function MinhasTarefasPage() {
           {/* ─── Recentes ─── */}
           <Card title="Recentes">
             {loadingSpaces ? (
-              <div style={{ color: "#505058", fontSize: 12, padding: "8px 0" }}>Carregando...</div>
+              <div style={{ color: "var(--muted-foreground)", fontSize: 12, padding: "8px 0" }}>Carregando...</div>
             ) : recentes.length === 0 ? (
               <EmptyArea
                 icon={<Layers size={20} />}
@@ -169,13 +169,13 @@ export default function MinhasTarefasPage() {
                     padding: "7px 10px", margin: "0 -10px", borderRadius: 6,
                     textDecoration: "none", transition: "background 120ms",
                   }}
-                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#242428"; }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
                     onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
                     <ClassIcon idClasse={item.idClasse} />
-                    <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.nome}</span>
+                    <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.nome}</span>
                     {item.memberCount > 0 && (
-                      <span style={{ fontSize: 11, color: "#505058" }}>{item.memberCount} membro{item.memberCount !== 1 ? "s" : ""}</span>
+                      <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{item.memberCount} membro{item.memberCount !== 1 ? "s" : ""}</span>
                     )}
                   </Link>
                 ))}
@@ -194,19 +194,19 @@ export default function MinhasTarefasPage() {
                 <button type="button" onClick={() => shiftDia(1)} style={iconBtnStyle}>
                   <ChevronRight size={14} />
                 </button>
-                <span style={{ fontSize: 12, color: "#c4c4c4", fontWeight: 500, margin: "0 6px" }}>{diaLabel}</span>
-                <div style={{ display: "flex", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, overflow: "hidden", marginLeft: 4 }}>
+                <span style={{ fontSize: 12, color: "var(--foreground)", fontWeight: 500, margin: "0 6px" }}>{diaLabel}</span>
+                <div style={{ display: "flex", border: "1px solid var(--border)", borderRadius: 6, overflow: "hidden", marginLeft: 4 }}>
                   <button type="button" onClick={() => setAgendaView("lista")} style={{
                     width: 26, height: 24, display: "grid", placeItems: "center",
-                    border: 0, cursor: "pointer", background: agendaView === "lista" ? "#1e1e1e" : "transparent",
-                    color: agendaView === "lista" ? "#e4e4e4" : "#606068",
+                    border: 0, cursor: "pointer", background: agendaView === "lista" ? "var(--accent)" : "transparent",
+                    color: agendaView === "lista" ? "var(--foreground)" : "var(--muted-foreground)",
                   }}>
                     <List size={12} />
                   </button>
                   <button type="button" onClick={() => setAgendaView("calendario")} style={{
                     width: 26, height: 24, display: "grid", placeItems: "center",
-                    border: 0, cursor: "pointer", background: agendaView === "calendario" ? "#1e1e1e" : "transparent",
-                    color: agendaView === "calendario" ? "#e4e4e4" : "#606068",
+                    border: 0, cursor: "pointer", background: agendaView === "calendario" ? "var(--accent)" : "transparent",
+                    color: agendaView === "calendario" ? "var(--foreground)" : "var(--muted-foreground)",
                   }}>
                     <Calendar size={12} />
                   </button>
@@ -217,11 +217,11 @@ export default function MinhasTarefasPage() {
             {/* cabeçalho do dia */}
             <div style={{
               display: "grid", gridTemplateColumns: "60px 1fr",
-              borderBottom: "1px solid rgba(255,255,255,0.06)",
+              borderBottom: "1px solid var(--border)",
               paddingBottom: 8, marginBottom: 4,
             }}>
-              <div style={{ fontSize: 10, color: "#505058", fontWeight: 500 }}>{tzLabel}</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#888892", fontWeight: 600 }}>
+              <div style={{ fontSize: 10, color: "var(--muted-foreground)", fontWeight: 500 }}>{tzLabel}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--muted-foreground)", fontWeight: 600 }}>
                 {diaLabel.split(",")[0]}
                 <span style={{
                   display: "grid", placeItems: "center", minWidth: 18, height: 18, padding: "0 5px", borderRadius: "50%",
@@ -235,9 +235,9 @@ export default function MinhasTarefasPage() {
               {HOURS.map((h) => (
                 <div key={h} style={{
                   display: "grid", gridTemplateColumns: "60px 1fr",
-                  minHeight: 32, borderTop: "1px solid rgba(255,255,255,0.04)",
+                  minHeight: 32, borderTop: "1px solid var(--border)",
                 }}>
-                  <div style={{ fontSize: 11, color: "#505058", paddingTop: 6 }}>{h}</div>
+                  <div style={{ fontSize: 11, color: "var(--muted-foreground)", paddingTop: 6 }}>{h}</div>
                   <div />
                 </div>
               ))}
@@ -279,24 +279,24 @@ export default function MinhasTarefasPage() {
             </div>
 
             {loadingTasks ? (
-              <div style={{ color: "#505058", fontSize: 12, padding: "8px 0" }}>Carregando...</div>
+              <div style={{ color: "var(--muted-foreground)", fontSize: 12, padding: "8px 0" }}>Carregando...</div>
             ) : minhas.length > 0 ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
                 {minhas.map((t) => {
-                  const dotColor = STATUS_DOT[t.status] ?? "#6b7280";
+                  const dotColor = STATUS_DOT[t.status] ?? "var(--muted-foreground)";
                   return (
                     <Link key={t.id} href={`/lists/${t.projectId}`} style={{
                       display: "flex", alignItems: "center", gap: 8,
                       padding: "7px 10px", margin: "0 -10px", borderRadius: 6,
                       cursor: "pointer", transition: "background 120ms", textDecoration: "none",
                     }}
-                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#242428"; }}
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
                       onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                     >
                       <span style={{ width: 6, height: 6, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, color: "#c4c4c4", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.nome}</span>
+                      <span style={{ fontSize: 13, color: "var(--foreground)", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.nome}</span>
                       {t.identifier && (
-                        <span style={{ fontSize: 11, color: "#505058", flexShrink: 0 }}>{t.identifier}</span>
+                        <span style={{ fontSize: 11, color: "var(--muted-foreground)", flexShrink: 0 }}>{t.identifier}</span>
                       )}
                     </Link>
                   );
@@ -320,12 +320,12 @@ export default function MinhasTarefasPage() {
 function Card({ title, headerExtra, children }: { title: string; headerExtra?: React.ReactNode; children: React.ReactNode }) {
   return (
     <section style={{
-      background: "#1a1a1a", borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)",
+      background: "var(--card)", borderRadius: 10, border: "1px solid var(--border)",
       padding: "14px 16px", minHeight: 260,
       display: "flex", flexDirection: "column",
     }}>
       <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, minHeight: 26 }}>
-        <h2 style={{ fontSize: 14, fontWeight: 600, color: "#e4e4e4", margin: 0 }}>{title}</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)", margin: 0 }}>{title}</h2>
         {headerExtra}
       </header>
       <div style={{ flex: 1, minHeight: 0 }}>
@@ -339,21 +339,21 @@ function EmptyArea({ icon, text, hint }: { icon: React.ReactNode; text: string; 
   return (
     <div style={{
       display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-      gap: 6, padding: "32px 16px", color: "#505058",
+      gap: 6, padding: "32px 16px", color: "var(--muted-foreground)",
     }}>
       <div style={{
         width: 36, height: 36, borderRadius: "50%",
-        display: "grid", placeItems: "center", background: "#1f1f1f", color: "#606068",
+        display: "grid", placeItems: "center", background: "var(--accent)", color: "var(--muted-foreground)",
       }}>
         {icon}
       </div>
-      <p style={{ fontSize: 13, color: "#888892", fontWeight: 500, margin: 0 }}>{text}</p>
-      <p style={{ fontSize: 11, color: "#505058", margin: 0, textAlign: "center" }}>{hint}</p>
+      <p style={{ fontSize: 13, color: "var(--muted-foreground)", fontWeight: 500, margin: 0 }}>{text}</p>
+      <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: 0, textAlign: "center" }}>{hint}</p>
     </div>
   );
 }
 
 const iconBtnStyle: React.CSSProperties = {
   display: "grid", width: 24, height: 24, placeItems: "center",
-  borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "#606068",
+  borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)",
 };

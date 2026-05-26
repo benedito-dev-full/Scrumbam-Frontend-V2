@@ -197,7 +197,7 @@ export function CreateTaskModal({
           width: '100%', maxWidth: 560,
           background: '#111111',
           borderRadius: 12,
-          border: '1px solid rgba(255,255,255,0.1)',
+          border: '1px solid var(--border)',
           boxShadow: '0 24px 60px rgba(0,0,0,0.8)',
           display: 'flex', flexDirection: 'column',
           maxHeight: '90vh', overflow: 'hidden',
@@ -209,7 +209,7 @@ export function CreateTaskModal({
         <div style={{
           display: 'flex', alignItems: 'center',
           padding: '0 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          borderBottom: '1px solid var(--border)',
           background: '#111111',
           flexShrink: 0,
           gap: 2,
@@ -249,7 +249,7 @@ export function CreateTaskModal({
               marginLeft: 'auto',
               width: 28, height: 28,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              borderRadius: 6, border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 6, border: '1px solid var(--border)',
               background: 'none', cursor: 'pointer', color: '#6b6b74',
               transition: 'background 120ms, color 120ms',
             }}
@@ -275,7 +275,7 @@ export function CreateTaskModal({
                     boxShadow: '0 0 0 2px rgba(92,107,192,0.25)',
                   }} />
                   <span style={{ fontSize: 12, color: '#c4c4cc' }}>Tarefa</span>
-                  <ChevronDown size={11} color="#6b6b74" />
+                  <ChevronDown size={11} color="var(--muted-foreground)" />
                 </button>
               </div>
 
@@ -329,8 +329,8 @@ export function CreateTaskModal({
                   placeholder="Adicionar descrição..."
                   style={{
                     width: '100%', boxSizing: 'border-box',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.07)',
+                    background: 'var(--border)',
+                    border: '1px solid var(--border)',
                     borderRadius: 7, outline: 'none',
                     color: '#c4c4c4', fontSize: 13,
                     resize: 'none', lineHeight: 1.55,
@@ -395,7 +395,7 @@ export function CreateTaskModal({
                               data-selected={status === s ? '1' : '0'}
                               style={{
                                 ...dropdownItemStyle,
-                                background: status === s ? 'rgba(255,255,255,0.06)' : 'none',
+                                background: status === s ? 'var(--border)' : 'none',
                               }}
                               {...itemHover}
                             >
@@ -434,8 +434,8 @@ export function CreateTaskModal({
                           value={dataVencimento}
                           onChange={(e) => { setDataVencimento(e.target.value); setOpenDropdown(null); }}
                           style={{
-                            background: 'rgba(255,255,255,0.05)',
-                            border: '1px solid rgba(255,255,255,0.1)',
+                            background: 'var(--border)',
+                            border: '1px solid var(--border)',
                             borderRadius: 6, color: '#e4e4e4',
                             fontSize: 13, padding: '6px 10px',
                             outline: 'none', colorScheme: 'dark',
@@ -483,7 +483,7 @@ export function CreateTaskModal({
                               style={{
                                 ...dropdownItemStyle,
                                 color: cfg.color,
-                                background: prioridade === p ? 'rgba(255,255,255,0.06)' : 'none',
+                                background: prioridade === p ? 'var(--border)' : 'none',
                               }}
                               {...itemHover}
                             >
@@ -513,7 +513,7 @@ export function CreateTaskModal({
               <button type="button" style={chipStyle}>
                 <span style={{ fontSize: 13, lineHeight: 1 }}>☰</span>
                 <span style={{ fontSize: 12, color: '#a1a1aa' }}>Meus documentos</span>
-                <ChevronDown size={11} color="#6b6b74" />
+                <ChevronDown size={11} color="var(--muted-foreground)" />
               </button>
             </div>
 
@@ -576,7 +576,7 @@ export function CreateTaskModal({
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '10px 16px',
-          borderTop: '1px solid rgba(255,255,255,0.1)',
+          borderTop: '1px solid var(--border)',
           background: '#111111', flexShrink: 0,
         }}>
           {abaAtiva === 'tarefa' ? (
@@ -691,7 +691,7 @@ const docActionStyle: React.CSSProperties = {
 
 const docItemHover = {
   onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+    e.currentTarget.style.background = 'var(--border)';
     e.currentTarget.style.color = '#d4d4d4';
   },
   onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -703,8 +703,8 @@ const docItemHover = {
 const chipStyle: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
   height: 28, padding: '0 10px', borderRadius: 6,
-  border: '1px solid rgba(255,255,255,0.12)',
-  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid var(--border)',
+  background: 'var(--border)',
   cursor: 'pointer', color: '#c4c4cc', fontSize: 12,
   transition: 'background 120ms',
 };
@@ -712,15 +712,15 @@ const chipStyle: React.CSSProperties = {
 const propChipStyle: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
   height: 28, padding: '0 11px', borderRadius: 6,
-  border: '1px solid rgba(255,255,255,0.1)',
-  background: 'rgba(255,255,255,0.03)', cursor: 'pointer',
+  border: '1px solid var(--border)',
+  background: 'var(--border)', cursor: 'pointer',
   color: '#6b6b74', fontSize: 12,
   transition: 'background 120ms, color 120ms, border-color 120ms',
 };
 
 const dropdownStyle: React.CSSProperties = {
   background: '#1a1a1a',
-  border: '1px solid rgba(255,255,255,0.12)',
+  border: '1px solid var(--border)',
   borderRadius: 8,
   boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
   minWidth: 160, padding: '4px',
@@ -737,11 +737,11 @@ const dropdownItemStyle: React.CSSProperties = {
 
 const itemHover = {
   onMouseEnter: (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+    e.currentTarget.style.background = 'var(--border)';
   },
   onMouseLeave: (e: React.MouseEvent<HTMLButtonElement>) => {
     e.currentTarget.style.background = e.currentTarget.dataset.selected === '1'
-      ? 'rgba(255,255,255,0.06)'
+      ? 'var(--border)'
       : 'none';
   },
 };
@@ -749,7 +749,7 @@ const itemHover = {
 const footerBtnStyle: React.CSSProperties = {
   display: 'inline-flex', alignItems: 'center', gap: 6,
   height: 30, padding: '0 12px', borderRadius: 6,
-  border: '1px solid rgba(255,255,255,0.08)',
+  border: '1px solid var(--border)',
   background: 'none', cursor: 'pointer',
   color: '#6b6b74', fontSize: 12,
   transition: 'background 120ms, color 120ms',

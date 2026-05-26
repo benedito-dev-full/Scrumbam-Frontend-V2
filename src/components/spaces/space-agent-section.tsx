@@ -115,7 +115,7 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
       <div style={{
         background: '#1a1a1a',
         borderRadius: 10,
-        border: '1px solid rgba(255,255,255,0.07)',
+        border: '1px solid var(--border)',
         padding: '20px 20px',
         minHeight: 80,
         animation: 'pulse 1.5s ease-in-out infinite',
@@ -128,7 +128,7 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
       <section style={{
         background: '#1a1a1a',
         borderRadius: 10,
-        border: '1px solid rgba(255,255,255,0.07)',
+        border: '1px solid var(--border)',
         overflow: 'hidden',
         marginTop: 12,
       }}>
@@ -197,7 +197,7 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
                 cursor: hasAgents ? 'pointer' : 'not-allowed',
                 background: hasAgents
                   ? 'linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%)'
-                  : 'rgba(255,255,255,0.06)',
+                  : 'var(--border)',
                 color: hasAgents ? '#0a0a0a' : '#555',
                 fontSize: 13,
                 fontWeight: 600,
@@ -222,7 +222,7 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
               alignItems: 'center',
               justifyContent: 'space-between',
               padding: '12px 16px',
-              borderBottom: '1px solid rgba(255,255,255,0.07)',
+              borderBottom: '1px solid var(--border)',
               background: '#1e1e1e',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -259,7 +259,7 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
                       height: 26,
                       padding: '0 10px',
                       borderRadius: 5,
-                      border: '1px solid rgba(255,255,255,0.1)',
+                      border: '1px solid var(--border)',
                       background: 'none',
                       color: '#888',
                       fontSize: 12,
@@ -280,7 +280,7 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
                     height: 26,
                     padding: '0 10px',
                     borderRadius: 5,
-                    border: '1px solid rgba(255,255,255,0.08)',
+                    border: '1px solid var(--border)',
                     background: 'none',
                     color: '#71717a',
                     fontSize: 12,
@@ -293,7 +293,7 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.color = '#71717a';
-                    e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                    e.currentTarget.style.borderColor = 'var(--border)';
                   }}
                 >
                   <Unlink size={11} />
@@ -325,7 +325,7 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
             {/* Rodapé: botão reconfigurar */}
             <div style={{
               padding: '10px 16px',
-              borderTop: '1px solid rgba(255,255,255,0.05)',
+              borderTop: '1px solid var(--border)',
             }}>
               <button
                 type="button"
@@ -337,7 +337,7 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
                   height: 28,
                   padding: '0 12px',
                   borderRadius: 6,
-                  border: '1px solid rgba(255,255,255,0.09)',
+                  border: '1px solid var(--border)',
                   background: 'none',
                   color: '#888892',
                   fontSize: 12,

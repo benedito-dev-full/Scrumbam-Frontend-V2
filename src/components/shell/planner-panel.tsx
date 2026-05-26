@@ -5,13 +5,13 @@ import { ChevronRight, Plus, Flag, Users, Search, PanelLeftClose } from "lucide-
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 function Divider() {
-  return <div style={{ height: 1, background: "#1c1c1f", margin: "4px 0" }} />;
+  return <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <p style={{
-      fontSize: 12, fontWeight: 600, color: "#c4c4cc",
+      fontSize: 12, fontWeight: 600, color: "var(--foreground)",
       padding: "0 14px", marginBottom: 4,
     }}>
       {children}
@@ -29,9 +29,9 @@ function CollapsibleRow({ label }: { label: string }) {
         display: "flex", alignItems: "center", gap: 6,
         width: "100%", padding: "6px 14px",
         border: 0, background: "none", cursor: "pointer",
-        fontSize: 13, fontWeight: 600, color: "#c4c4cc", textAlign: "left",
+        fontSize: 13, fontWeight: 600, color: "var(--foreground)", textAlign: "left",
       }}
-      onMouseEnter={e => { e.currentTarget.style.background = "#191919"; }}
+      onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
       onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
     >
       <ChevronRight
@@ -59,7 +59,7 @@ export function PlannerPanel() {
               background: "none", cursor: "pointer", color: "var(--muted-foreground)",
               display: "flex", alignItems: "center", justifyContent: "center",
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "#c4c4cc"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
             >
               <Icon size={14} strokeWidth={1.7} />
@@ -89,7 +89,7 @@ export function PlannerPanel() {
               padding: "5px 8px", borderRadius: 6, border: 0,
               background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 13,
             }}
-              onMouseEnter={e => { e.currentTarget.style.background = "var(--secondary)"; e.currentTarget.style.color = "#c4c4cc"; }}
+              onMouseEnter={e => { e.currentTarget.style.background = "var(--secondary)"; e.currentTarget.style.color = "var(--foreground)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
             >
               <Plus size={13} strokeWidth={2} />

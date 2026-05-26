@@ -30,7 +30,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
   const [body, setBody] = useState<string>("");
 
   if (!entidade || entidade.idClasse !== "doc") {
-    return <div style={{ color: "#7a7a85", padding: 40 }}>Documento não encontrado.</div>;
+    return <div style={{ color: "var(--muted-foreground)", padding: 40 }}>Documento não encontrado.</div>;
   }
 
   /* ancestral espaço para o breadcrumb */
@@ -46,13 +46,13 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
   const espacoMeta = espacoAncestor && isEspaco(espacoAncestor) ? espacoAncestor.meta : null;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#111111", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--background)", overflow: "hidden" }}>
 
       {/* ── Topbar ── */}
       <header style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
         padding: "0 16px", height: 44, flexShrink: 0,
-        borderBottom: "1px solid rgba(255,255,255,0.07)", background: "#111111",
+        borderBottom: "1px solid var(--border)", background: "var(--background)",
       }}>
         {/* breadcrumb */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -60,17 +60,17 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
             <>
               <Link href={`/spaces/${espacoAncestor.id}`} style={{ display: "flex", alignItems: "center", gap: 6, textDecoration: "none" }}>
                 <SpaceChip iniciais={espacoMeta.iniciais} cor={espacoMeta.cor} iconName={espacoMeta.iconName} size="sm" />
-                <span style={{ fontSize: 13, color: "#c4c4c4", fontWeight: 500 }}>{espacoAncestor.nome}</span>
+                <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>{espacoAncestor.nome}</span>
               </Link>
-              <span style={{ color: "#404048", fontSize: 13 }}>/</span>
+              <span style={{ color: "var(--muted-foreground)", fontSize: 13 }}>/</span>
             </>
           )}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <IcDoc />
-            <span style={{ fontSize: 13, color: "#e4e4e4", fontWeight: 500 }}>{entidade.nome}</span>
-            <button type="button" style={{ display: "grid", width: 22, height: 22, placeItems: "center", borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "#606068" }}
+            <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>{entidade.nome}</span>
+            <button type="button" style={{ display: "grid", width: 22, height: 22, placeItems: "center", borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)" }}
               onMouseEnter={e => { e.currentTarget.style.color = "#f59e0b"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = "#606068"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
             >
               <Star size={13} />
             </button>
@@ -85,10 +85,10 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
           <TopBtn icon={<MoreHorizontal size={14} />} />
           <Link href="/docs" style={{
             display: "grid", width: 28, height: 28, placeItems: "center", borderRadius: 6,
-            color: "#888892", textDecoration: "none",
+            color: "var(--muted-foreground)", textDecoration: "none",
           }}
-            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#1e1e1e"; (e.currentTarget as HTMLElement).style.color = "#c4c4c4"; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "#888892"; }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; (e.currentTarget as HTMLElement).style.color = "var(--foreground)"; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "var(--muted-foreground)"; }}
           >
             <X size={14} />
           </Link>
@@ -101,15 +101,15 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
         {/* mini-sidebar de páginas */}
         <aside style={{
           width: 220, flexShrink: 0, padding: "16px 12px",
-          borderRight: "1px solid rgba(255,255,255,0.05)",
+          borderRight: "1px solid var(--border)",
         }}>
           <button type="button" style={{
             display: "flex", alignItems: "center", gap: 7,
             width: "100%", height: 32, padding: "0 10px", borderRadius: 6,
-            border: "1px solid rgba(255,255,255,0.09)", background: "none",
-            cursor: "pointer", color: "#c4c4c4", fontSize: 12, fontWeight: 500,
+            border: "1px solid var(--border)", background: "none",
+            cursor: "pointer", color: "var(--foreground)", fontSize: 12, fontWeight: 500,
           }}
-            onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; }}
+            onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; }}
             onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
           >
             <Plus size={13} />
@@ -126,10 +126,10 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
               display: "flex", alignItems: "center", gap: 6,
               margin: "0 auto 28px", padding: "6px 12px",
               border: 0, background: "none", cursor: "pointer",
-              color: "#606068", fontSize: 12,
+              color: "var(--muted-foreground)", fontSize: 12,
             }}
-              onMouseEnter={e => { e.currentTarget.style.color = "#c4c4c4"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = "#606068"; }}
+              onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
             >
               <Link2 size={13} />
               Vincular tarefa ou documento
@@ -143,7 +143,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
               placeholder="Sem título"
               style={{
                 width: "100%", border: 0, outline: "none", background: "transparent",
-                fontSize: 38, fontWeight: 700, color: "#f4f4f5",
+                fontSize: 38, fontWeight: 700, color: "var(--foreground)",
                 margin: 0, marginBottom: 14, lineHeight: 1.15,
                 letterSpacing: "-0.02em", padding: 0, fontFamily: "inherit",
               }}
@@ -159,9 +159,9 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
               }}>
                 BB
               </div>
-              <span style={{ fontSize: 12, color: "#888892", fontWeight: 500 }}>Benedito Bittencourt</span>
-              <span style={{ color: "#404048" }}>•</span>
-              <span style={{ fontSize: 12, color: "#606068" }}>Atualizado por último Ontem at 12:32 pm</span>
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500 }}>Benedito Bittencourt</span>
+              <span style={{ color: "var(--muted-foreground)" }}>•</span>
+              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Atualizado por último Ontem at 12:32 pm</span>
             </div>
 
             {/* corpo editável */}
@@ -172,7 +172,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
               style={{
                 width: "100%", minHeight: 400,
                 border: 0, outline: "none", resize: "none",
-                background: "transparent", color: "#e4e4e4",
+                background: "transparent", color: "var(--foreground)",
                 fontSize: 15, lineHeight: 1.7, fontFamily: "inherit",
                 padding: 0,
               }}
@@ -184,7 +184,7 @@ export default function DocPage({ params }: { params: Promise<{ id: string }> })
         <aside style={{
           width: 44, flexShrink: 0, padding: "16px 0",
           display: "flex", flexDirection: "column", alignItems: "center", gap: 4,
-          borderLeft: "1px solid rgba(255,255,255,0.05)",
+          borderLeft: "1px solid var(--border)",
         }}>
           <RailBtn icon={<MessageSquare size={14} />} />
           <RailBtn icon={<Type size={14} />} />
@@ -203,10 +203,10 @@ function TopBtn({ icon, label }: { icon: React.ReactNode; label?: string }) {
     <button type="button" style={{
       display: "flex", alignItems: "center", gap: 5,
       height: 28, padding: label ? "0 10px" : "0 7px", borderRadius: 6,
-      border: 0, background: "none", cursor: "pointer", color: "#888892", fontSize: 12,
+      border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12,
     }}
-      onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.color = "#c4c4c4"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#888892"; }}
+      onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
     >
       {icon}{label}
     </button>
@@ -217,10 +217,10 @@ function RailBtn({ icon }: { icon: React.ReactNode }) {
   return (
     <button type="button" style={{
       display: "grid", width: 28, height: 28, placeItems: "center",
-      border: 0, background: "none", cursor: "pointer", color: "#606068", borderRadius: 6,
+      border: 0, background: "none", cursor: "pointer", color: "var(--muted-foreground)", borderRadius: 6,
     }}
-      onMouseEnter={e => { e.currentTarget.style.background = "#1e1e1e"; e.currentTarget.style.color = "#c4c4c4"; }}
-      onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "#606068"; }}
+      onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
+      onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
     >
       {icon}
     </button>

@@ -77,10 +77,10 @@ function diasUntilDate(iso: string | null | undefined): number | null {
 
 function corData(iso: string | null | undefined): string {
   const dias = diasUntilDate(iso);
-  if (dias === null) return "#b6b6bf";
+  if (dias === null) return "var(--muted-foreground)";
   if (dias < 0) return "#fbbf24";
   if (dias === 0) return "#7c5cff";
-  return "#b6b6bf";
+  return "var(--muted-foreground)";
 }
 
 /* ─── Ícones internos do sheet ────────────────────────────────────────────── */
@@ -182,7 +182,7 @@ function StatusSelect({
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           padding: "4px 10px", borderRadius: 6,
-          background: pillBg[value], border: "1px solid rgba(255,255,255,0.06)",
+          background: pillBg[value], border: "1px solid var(--border)",
           color: cfg.iconColor, fontSize: 12, fontWeight: 600,
           letterSpacing: ".5px", textTransform: "uppercase", cursor: "pointer",
         }}
@@ -199,7 +199,7 @@ function StatusSelect({
           />
           <div style={{
             position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 2,
-            background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8,
+            background: "var(--card)", border: "1px solid #2e2e38", borderRadius: 8,
             padding: 4, minWidth: 160, boxShadow: "0 8px 24px rgba(0,0,0,.4)",
           }}>
             {allStatuses.map((s) => {
@@ -217,11 +217,11 @@ function StatusSelect({
                     border: 0, color: c.iconColor, fontSize: 12, fontWeight: 500,
                     cursor: "pointer", textAlign: "left",
                   }}
-                  onMouseEnter={(e) => { if (s !== value) e.currentTarget.style.background = "#26262f"; }}
+                  onMouseEnter={(e) => { if (s !== value) e.currentTarget.style.background = "var(--accent)"; }}
                   onMouseLeave={(e) => { if (s !== value) e.currentTarget.style.background = "none"; }}
                 >
                   <Icon size={12} />
-                  <span style={{ color: "#d4d4dc" }}>{c.label}</span>
+                  <span style={{ color: "var(--foreground)" }}>{c.label}</span>
                   {s === value && (
                     <span style={{ marginLeft: "auto", color: "#7c5cff" }}>
                       <IcCheck size={11} />
@@ -266,13 +266,13 @@ function PrioridadeSelect({
         style={{
           display: "inline-flex", alignItems: "center", gap: 6,
           padding: "4px 10px", borderRadius: 6,
-          background: "#1c1c24", border: "1px solid #2e2e38",
-          color: prioColor ?? "#7a7a85", fontSize: 12, fontWeight: 500,
+          background: "var(--card)", border: "1px solid #2e2e38",
+          color: prioColor ?? "var(--muted-foreground)", fontSize: 12, fontWeight: 500,
           cursor: "pointer",
         }}
       >
         <IcFlag size={12} />
-        <span style={{ color: prioColor ?? "#7a7a85" }}>
+        <span style={{ color: prioColor ?? "var(--muted-foreground)" }}>
           {prioLabel ?? "Sem prioridade"}
         </span>
         <IcChevDown size={11} />
@@ -285,7 +285,7 @@ function PrioridadeSelect({
           />
           <div style={{
             position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 2,
-            background: "#1c1c24", border: "1px solid #2e2e38", borderRadius: 8,
+            background: "var(--card)", border: "1px solid #2e2e38", borderRadius: 8,
             padding: 4, minWidth: 150, boxShadow: "0 8px 24px rgba(0,0,0,.4)",
           }}>
             <button
@@ -295,13 +295,13 @@ function PrioridadeSelect({
                 display: "flex", alignItems: "center", gap: 8,
                 width: "100%", padding: "7px 10px", borderRadius: 5,
                 background: value === null ? "rgba(124,92,255,0.12)" : "none",
-                border: 0, color: "#7a7a85", fontSize: 12, cursor: "pointer", textAlign: "left",
+                border: 0, color: "var(--muted-foreground)", fontSize: 12, cursor: "pointer", textAlign: "left",
               }}
-              onMouseEnter={(e) => { if (value !== null) e.currentTarget.style.background = "#26262f"; }}
+              onMouseEnter={(e) => { if (value !== null) e.currentTarget.style.background = "var(--accent)"; }}
               onMouseLeave={(e) => { if (value !== null) e.currentTarget.style.background = "none"; }}
             >
               <IcFlag size={12} />
-              <span style={{ color: "#d4d4dc" }}>Sem prioridade</span>
+              <span style={{ color: "var(--foreground)" }}>Sem prioridade</span>
               {value === null && (
                 <span style={{ marginLeft: "auto", color: "#7c5cff" }}><IcCheck size={11} /></span>
               )}
@@ -320,11 +320,11 @@ function PrioridadeSelect({
                     background: p === value ? "rgba(124,92,255,0.12)" : "none",
                     border: 0, color: c.color, fontSize: 12, cursor: "pointer", textAlign: "left",
                   }}
-                  onMouseEnter={(e) => { if (p !== value) e.currentTarget.style.background = "#26262f"; }}
+                  onMouseEnter={(e) => { if (p !== value) e.currentTarget.style.background = "var(--accent)"; }}
                   onMouseLeave={(e) => { if (p !== value) e.currentTarget.style.background = "none"; }}
                 >
                   <IcFlag size={12} />
-                  <span style={{ color: "#d4d4dc" }}>{c.label}</span>
+                  <span style={{ color: "var(--foreground)" }}>{c.label}</span>
                   {p === value && (
                     <span style={{ marginLeft: "auto", color: "#7c5cff" }}><IcCheck size={11} /></span>
                   )}
@@ -344,7 +344,7 @@ function PropRow({ label, children }: { label: string; children: React.ReactNode
       display: "grid", gridTemplateColumns: "130px 1fr",
       alignItems: "center", padding: "6px 0", gap: 12,
     }}>
-      <span style={{ fontSize: 12, color: "#7a7a85", fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500 }}>{label}</span>
       <div>{children}</div>
     </div>
   );
@@ -488,7 +488,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
         style={{
           position: "fixed", top: 0, right: 0, bottom: 0, zIndex: 999,
           width: 560, maxWidth: "90vw",
-          background: "#131318",
+          background: "var(--card)",
           borderLeft: "1px solid #26262d",
           display: "flex", flexDirection: "column",
           boxShadow: "-8px 0 40px rgba(0,0,0,.5)",
@@ -508,18 +508,18 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
             onClick={onClose}
             style={{
               display: "inline-flex", alignItems: "center", gap: 6,
-              background: "none", border: 0, color: "#7a7a85",
+              background: "none", border: 0, color: "var(--muted-foreground)",
               fontSize: 12, cursor: "pointer", padding: "4px 8px",
               borderRadius: 5,
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "#e6e6ea"; e.currentTarget.style.background = "#1e1e27"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "#7a7a85"; e.currentTarget.style.background = "none"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.background = "var(--accent)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted-foreground)"; e.currentTarget.style.background = "none"; }}
           >
             <IcArrowLeft size={15} />
             Fechar
           </button>
 
-          <span style={{ fontSize: 12, color: "#5a5a64", fontWeight: 500, letterSpacing: ".5px" }}>
+          <span style={{ fontSize: 12, color: "var(--muted-foreground)", fontWeight: 500, letterSpacing: ".5px" }}>
             {task.identifier.toUpperCase()}
           </span>
 
@@ -529,10 +529,10 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
             style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center",
               width: 30, height: 30, borderRadius: 6,
-              background: "none", border: 0, color: "#7a7a85", cursor: "pointer",
+              background: "none", border: 0, color: "var(--muted-foreground)", cursor: "pointer",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "#e6e6ea"; e.currentTarget.style.background = "#1e1e27"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = "#7a7a85"; e.currentTarget.style.background = "none"; }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.background = "var(--accent)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted-foreground)"; e.currentTarget.style.background = "none"; }}
           >
             <IcDots size={16} />
           </button>
@@ -556,7 +556,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                 style={{
                   width: "100%", background: "transparent",
                   border: "none", borderBottom: "1px solid #7c5cff",
-                  color: "#f0f0f4", fontSize: 20, fontWeight: 700,
+                  color: "var(--foreground)", fontSize: 20, fontWeight: 700,
                   outline: "none", padding: "2px 0",
                   fontFamily: "inherit",
                 }}
@@ -568,7 +568,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                 onClick={() => setEditandoNome(true)}
                 onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setEditandoNome(true); }}
                 style={{
-                  fontSize: 20, fontWeight: 700, color: "#f0f0f4",
+                  fontSize: 20, fontWeight: 700, color: "var(--foreground)",
                   margin: 0, cursor: "text", lineHeight: 1.35,
                   padding: "2px 0",
                 }}
@@ -581,11 +581,11 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
 
           {/* Seção de Propriedades */}
           <section style={{
-            background: "#1a1a22", borderRadius: 10,
+            background: "var(--card)", borderRadius: 10,
             border: "1px solid #26262d", padding: "12px 16px",
             marginBottom: 24,
           }}>
-            <p style={{ fontSize: 11, fontWeight: 600, color: "#5a5a64", letterSpacing: ".7px", textTransform: "uppercase", margin: "0 0 10px" }}>
+            <p style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)", letterSpacing: ".7px", textTransform: "uppercase", margin: "0 0 10px" }}>
               Propriedades
             </p>
 
@@ -593,13 +593,13 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
               <StatusSelect value={statusVisual} onChange={handleStatusChange} />
             </PropRow>
 
-            <div style={{ height: 1, background: "#22222a", margin: "4px 0" }} />
+            <div style={{ height: 1, background: "var(--accent)", margin: "4px 0" }} />
 
             <PropRow label="Prioridade">
               <PrioridadeSelect value={prioridade} onChange={handlePrioridadeChange} />
             </PropRow>
 
-            <div style={{ height: 1, background: "#22222a", margin: "4px 0" }} />
+            <div style={{ height: 1, background: "var(--accent)", margin: "4px 0" }} />
 
             <PropRow label="Vencimento">
               {editandoData ? (
@@ -613,8 +613,8 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                   }}
                   onBlur={() => setEditandoData(false)}
                   style={{
-                    background: "#1c1c24", border: "1px solid #7c5cff",
-                    borderRadius: 6, color: "#d4d4dc", fontSize: 12,
+                    background: "var(--card)", border: "1px solid #7c5cff",
+                    borderRadius: 6, color: "var(--foreground)", fontSize: 12,
                     padding: "3px 8px", outline: "none",
                     colorScheme: "dark",
                   }}
@@ -632,7 +632,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                   onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; }}
                 >
                   <IcCalendar size={13} />
-                  {dataTexto || <span style={{ color: "#5a5a64" }}>Sem data</span>}
+                  {dataTexto || <span style={{ color: "var(--muted-foreground)" }}>Sem data</span>}
                   {diasRestantes !== null && diasRestantes < 0 && (
                     <span style={{ fontSize: 10, fontWeight: 700, color: "#fbbf24", letterSpacing: ".5px" }}>
                       ATRASADO {Math.abs(diasRestantes)}D
@@ -650,7 +650,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
 
           {/* Seção Descrição */}
           <section style={{ marginBottom: 28 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#b6b6bf", margin: "0 0 8px" }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", margin: "0 0 8px" }}>
               Descrição
             </p>
             <textarea
@@ -661,23 +661,23 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
               rows={3}
               style={{
                 width: "100%", boxSizing: "border-box",
-                background: "#1a1a22", border: "1px solid #26262d",
-                borderRadius: 8, color: "#d4d4dc", fontSize: 13,
+                background: "var(--card)", border: "1px solid #26262d",
+                borderRadius: 8, color: "var(--foreground)", fontSize: 13,
                 padding: "10px 12px", outline: "none",
                 resize: "none", lineHeight: 1.6,
                 fontFamily: "inherit", minHeight: 80,
                 transition: "border-color .15s",
               }}
               onFocus={(e) => { e.currentTarget.style.borderColor = "#7c5cff"; }}
-              onBlur={(e) => { e.currentTarget.style.borderColor = "#26262d"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }}
             />
           </section>
 
           {/* Seção Subtarefas */}
           <section style={{ marginBottom: 28 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#b6b6bf", margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", margin: "0 0 8px", display: "flex", alignItems: "center", gap: 6 }}>
               Subtarefas
-              <span style={{ fontSize: 11, fontWeight: 500, color: "#5a5a64", background: "#1e1e27", borderRadius: 4, padding: "1px 6px" }}>
+              <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted-foreground)", background: "var(--accent)", borderRadius: 4, padding: "1px 6px" }}>
                 {subtarefas.length}
               </span>
             </p>
@@ -690,7 +690,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                     style={{
                       display: "flex", alignItems: "center", gap: 10,
                       padding: "7px 10px", borderRadius: 6,
-                      background: "#1a1a22", border: "1px solid #22222a",
+                      background: "var(--card)", border: "1px solid #22222a",
                       marginBottom: 4,
                     }}
                   >
@@ -709,7 +709,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                       {s.concluida && <IcCheck size={10} />}
                     </button>
                     <span style={{
-                      fontSize: 13, color: s.concluida ? "#5a5a64" : "#d4d4dc",
+                      fontSize: 13, color: s.concluida ? "var(--muted-foreground)" : "var(--foreground)",
                       textDecoration: s.concluida ? "line-through" : "none",
                     }}>
                       {s.nome}
@@ -721,7 +721,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
 
             <div style={{
               display: "flex", alignItems: "center", gap: 8,
-              background: "#1a1a22", border: "1px solid #26262d",
+              background: "var(--card)", border: "1px solid #26262d",
               borderRadius: 8, padding: "6px 10px",
             }}>
               <IcPlus size={13} />
@@ -733,7 +733,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                 placeholder="Adicionar subtarefa..."
                 style={{
                   flex: 1, background: "none", border: "none",
-                  outline: "none", color: "#d4d4dc", fontSize: 13,
+                  outline: "none", color: "var(--foreground)", fontSize: 13,
                   fontFamily: "inherit",
                 }}
               />
@@ -742,7 +742,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
 
           {/* Seção Atividade / Comentários */}
           <section>
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#b6b6bf", margin: "0 0 10px" }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--muted-foreground)", margin: "0 0 10px" }}>
               Atividade
             </p>
             <div style={{
@@ -750,19 +750,19 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
             }}>
               <div style={{
                 width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                background: "#3d2a6b", color: "#d8ccff",
+                background: "var(--accent)", color: "#d8ccff",
                 fontSize: 10, fontWeight: 700,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
                 RB
               </div>
               <div style={{
-                flex: 1, background: "#1a1a22", border: "1px solid #26262d",
+                flex: 1, background: "var(--card)", border: "1px solid #26262d",
                 borderRadius: 8, padding: "8px 12px",
                 transition: "border-color .15s",
               }}
                 onFocusCapture={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#7c5cff"; }}
-                onBlurCapture={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "#26262d"; }}
+                onBlurCapture={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
               >
                 <textarea
                   value={comentario}
@@ -771,7 +771,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                   rows={2}
                   style={{
                     width: "100%", background: "none", border: "none",
-                    outline: "none", color: "#d4d4dc", fontSize: 13,
+                    outline: "none", color: "var(--foreground)", fontSize: 13,
                     resize: "none", lineHeight: 1.6,
                     fontFamily: "inherit",
                   }}

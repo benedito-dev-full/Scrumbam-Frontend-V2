@@ -71,13 +71,13 @@ function ClaudeAvatar({ size = 22 }: { size?: number }) {
       xmlns="http://www.w3.org/2000/svg"
       style={{ flexShrink: 0 }}
     >
-      <rect width="40" height="40" rx="8" fill="#1a1a1a" />
+      <rect width="40" height="40" rx="8" fill="var(--card)" />
       {/* cabeça */}
       <rect x="10" y="8" width="20" height="14" rx="2" fill="#d97757" />
       {/* olho esquerdo */}
-      <rect x="13" y="12" width="5" height="5" fill="#1a1a1a" />
+      <rect x="13" y="12" width="5" height="5" fill="var(--card)" />
       {/* olho direito */}
-      <rect x="22" y="12" width="5" height="5" fill="#1a1a1a" />
+      <rect x="22" y="12" width="5" height="5" fill="var(--card)" />
       {/* pescoço */}
       <rect x="17" y="22" width="6" height="4" fill="#d97757" />
       {/* corpo */}
@@ -137,7 +137,7 @@ export default function ListPage({
     return (
       <div
         className="grid h-full place-items-center p-8 text-sm"
-        style={{ color: "#7a7a85" }}
+        style={{ color: "var(--muted-foreground)" }}
       >
         Carregando...
       </div>
@@ -148,7 +148,7 @@ export default function ListPage({
     return (
       <div
         className="grid h-full place-items-center p-8 text-sm"
-        style={{ color: "#7a7a85" }}
+        style={{ color: "var(--muted-foreground)" }}
       >
         Lista não encontrada.
       </div>
@@ -165,7 +165,7 @@ export default function ListPage({
   return (
     <div
       className="flex h-full flex-col overflow-hidden"
-      style={{ background: "#111111" }}
+      style={{ background: "var(--background)" }}
     >
       <PageHeader id={id} nome={projeto.nome} />
       <ViewSwitcher
@@ -369,7 +369,7 @@ function ListContent({
     >
       <div
         className="flex-1 overflow-y-auto overflow-x-auto"
-        style={{ background: "#111111" }}
+        style={{ background: "var(--background)" }}
       >
         <div style={{ minWidth: 860, padding: "0 22px 60px" }}>
           {isLoading ? (
@@ -396,15 +396,15 @@ function ListContent({
               display: "inline-flex",
               alignItems: "center",
               gap: 7,
-              color: "#5a5a64",
+              color: "var(--muted-foreground)",
               padding: "14px 4px 0 4px",
               fontSize: 13,
               cursor: "pointer",
               background: "none",
               border: 0,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "#e6e6ea")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "#5a5a64")}
+            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
+            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted-foreground)")}
           >
             <IcPlus size={13} />
             Novo status
@@ -416,12 +416,12 @@ function ListContent({
         {draggingTask && (
           <div
             style={{
-              background: "#1a1a22",
+              background: "var(--card)",
               border: "1px solid #7c5cff40",
               borderRadius: 6,
               padding: "8px 12px",
               fontSize: 13,
-              color: "#e6e6ea",
+              color: "var(--foreground)",
               boxShadow: "0 8px 24px rgba(0,0,0,0.5)",
               opacity: 0.95,
               display: "flex",
@@ -432,13 +432,13 @@ function ListContent({
           >
             <GripVertical
               size={13}
-              style={{ color: "#7a7a85", flexShrink: 0 }}
+              style={{ color: "var(--muted-foreground)", flexShrink: 0 }}
             />
             <span
               style={{
                 fontFamily: "monospace",
                 fontSize: 11,
-                color: "#7a7a85",
+                color: "var(--muted-foreground)",
                 flexShrink: 0,
               }}
             >
@@ -457,13 +457,13 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
   return (
     <header
       className="flex h-11 shrink-0 items-center justify-between gap-4 px-5"
-      style={{ borderBottom: "1px solid #26262d", background: "#111111" }}
+      style={{ borderBottom: "1px solid #26262d", background: "var(--background)" }}
     >
       <div className="flex min-w-0 items-center gap-2">
         <IcList size={16} />
         <h1
           className="truncate text-sm font-semibold"
-          style={{ color: "#e6e6ea" }}
+          style={{ color: "var(--foreground)" }}
         >
           {nome}
         </h1>
@@ -475,7 +475,7 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
             height: 20,
             placeItems: "center",
             borderRadius: 4,
-            color: "#7a7a85",
+            color: "var(--muted-foreground)",
             background: "none",
             border: 0,
           }}
@@ -490,7 +490,7 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
             height: 24,
             placeItems: "center",
             borderRadius: 4,
-            color: "#7a7a85",
+            color: "var(--muted-foreground)",
             background: "none",
             border: 0,
           }}
@@ -505,7 +505,7 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
           style={{
             width: 1,
             height: 16,
-            background: "#26262d",
+            background: "var(--accent)",
             margin: "0 4px",
           }}
         />
@@ -539,13 +539,13 @@ function TbBtn({
         padding: "0 10px",
         borderRadius: 6,
         border: bordered ? "1px solid #2a2a32" : "none",
-        background: bordered ? "#1c1c22" : "none",
-        color: "#b6b6bf",
+        background: bordered ? "var(--card)" : "none",
+        color: "var(--muted-foreground)",
         fontSize: 13,
         cursor: "pointer",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.color = "#e6e6ea")}
-      onMouseLeave={(e) => (e.currentTarget.style.color = "#b6b6bf")}
+      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
+      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted-foreground)")}
     >
       {icon}
       {label}
@@ -579,7 +579,7 @@ function Toolbar({
         padding: "0 22px",
         height: 44,
         borderBottom: "1px solid #26262d",
-        background: "#111111",
+        background: "var(--background)",
         flexShrink: 0,
       }}
     >
@@ -603,7 +603,7 @@ function Toolbar({
                   top: "calc(100% + 4px)",
                   left: 0,
                   zIndex: 101,
-                  background: "#1c1c24",
+                  background: "var(--card)",
                   border: "1px solid #2e2e38",
                   borderRadius: 8,
                   padding: "6px 4px",
@@ -615,7 +615,7 @@ function Toolbar({
                   style={{
                     fontSize: 11,
                     fontWeight: 600,
-                    color: "#5a5a64",
+                    color: "var(--muted-foreground)",
                     letterSpacing: ".6px",
                     textTransform: "uppercase",
                     padding: "4px 10px 6px",
@@ -655,13 +655,13 @@ function Toolbar({
                         borderRadius: 5,
                         background: "none",
                         border: 0,
-                        color: "#d4d4dc",
+                        color: "var(--foreground)",
                         fontSize: 13,
                         cursor: "pointer",
                         textAlign: "left",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#26262f";
+                        e.currentTarget.style.background = "var(--accent)";
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.background = "none";
@@ -672,7 +672,7 @@ function Toolbar({
                         {descs[opt] && (
                           <span
                             style={{
-                              color: "#7a7a85",
+                              color: "var(--muted-foreground)",
                               fontSize: 12,
                               marginLeft: 5,
                             }}
@@ -684,7 +684,7 @@ function Toolbar({
                       {active && (
                         <span
                           style={{
-                            color: "#b6b6bf",
+                            color: "var(--muted-foreground)",
                             marginLeft: "auto",
                             flexShrink: 0,
                           }}
@@ -713,23 +713,23 @@ function Toolbar({
             alignItems: "center",
             justifyContent: "center",
             borderRadius: 6,
-            color: "#b6b6bf",
+            color: "var(--muted-foreground)",
             background: "none",
             border: 0,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#17171c";
-            e.currentTarget.style.color = "#e6e6ea";
+            e.currentTarget.style.background = "var(--card)";
+            e.currentTarget.style.color = "var(--foreground)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "none";
-            e.currentTarget.style.color = "#b6b6bf";
+            e.currentTarget.style.color = "var(--muted-foreground)";
           }}
         >
           <IcSearch size={15} />
         </button>
         {tarefasCount !== null && (
-          <span style={{ color: "#7a7a85", fontSize: 12, padding: "0 4px" }}>
+          <span style={{ color: "var(--muted-foreground)", fontSize: 12, padding: "0 4px" }}>
             {tarefasCount} tarefas
           </span>
         )}
@@ -739,7 +739,7 @@ function Toolbar({
             alignItems: "stretch",
             height: 28,
             border: "1px solid #2a2a32",
-            background: "#1c1c22",
+            background: "var(--card)",
             borderRadius: 6,
             overflow: "hidden",
           }}
@@ -753,13 +753,13 @@ function Toolbar({
               gap: 6,
               padding: "0 12px",
               fontSize: 13,
-              color: "#e6e6ea",
+              color: "var(--foreground)",
               background: "none",
               border: 0,
               cursor: "pointer",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.background = "#252530";
+              e.currentTarget.style.background = "var(--secondary)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.background = "none";
@@ -767,7 +767,7 @@ function Toolbar({
           >
             Add Tarefa
           </button>
-          <div style={{ width: 1, background: "#2a2a32" }} />
+          <div style={{ width: 1, background: "var(--accent)" }} />
           <button
             type="button"
             style={{
@@ -775,7 +775,7 @@ function Toolbar({
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#b6b6bf",
+              color: "var(--muted-foreground)",
               background: "none",
               border: 0,
               cursor: "pointer",
@@ -813,21 +813,21 @@ function TabBtn({
         borderRadius: 6,
         background: active ? "rgba(124,92,255,0.16)" : "none",
         border: 0,
-        color: active ? "#cfc1ff" : "#b6b6bf",
+        color: active ? "#cfc1ff" : "var(--muted-foreground)",
         fontSize: 13,
         fontWeight: 500,
         cursor: "pointer",
       }}
       onMouseEnter={(e) => {
         if (!active) {
-          e.currentTarget.style.background = "#17171c";
-          e.currentTarget.style.color = "#e6e6ea";
+          e.currentTarget.style.background = "var(--card)";
+          e.currentTarget.style.color = "var(--foreground)";
         }
       }}
       onMouseLeave={(e) => {
         if (!active) {
           e.currentTarget.style.background = "none";
-          e.currentTarget.style.color = "#b6b6bf";
+          e.currentTarget.style.color = "var(--muted-foreground)";
         }
       }}
     >
@@ -847,19 +847,19 @@ function SmallBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
         height: 28,
         padding: "0 10px",
         border: "1px solid #2a2a32",
-        background: "#1c1c22",
+        background: "var(--card)",
         borderRadius: 6,
-        color: "#b6b6bf",
+        color: "var(--muted-foreground)",
         fontSize: 13,
         cursor: "pointer",
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.color = "#e6e6ea";
-        e.currentTarget.style.borderColor = "#34343d";
+        e.currentTarget.style.color = "var(--foreground)";
+        e.currentTarget.style.borderColor = "var(--accent)";
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.color = "#b6b6bf";
-        e.currentTarget.style.borderColor = "#2a2a32";
+        e.currentTarget.style.color = "var(--muted-foreground)";
+        e.currentTarget.style.borderColor = "var(--accent)";
       }}
     >
       {icon} {label}
@@ -910,7 +910,7 @@ function GroupBlock({
             display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#7a7a85",
+            color: "var(--muted-foreground)",
             background: "none",
             border: 0,
             cursor: "pointer",
@@ -938,7 +938,7 @@ function GroupBlock({
           <StatusIcon size={11} />
           {cfg.label}
         </span>
-        <span style={{ color: "#7a7a85", fontSize: 12, marginLeft: 2 }}>
+        <span style={{ color: "var(--muted-foreground)", fontSize: 12, marginLeft: 2 }}>
           {tarefasVisiveis.length}
         </span>
       </div>
@@ -990,7 +990,7 @@ function GroupBlock({
                       style={{
                         padding: "12px 16px",
                         fontSize: 12,
-                        color: "#7a7a85",
+                        color: "var(--muted-foreground)",
                         textAlign: "center",
                       }}
                     >
@@ -1011,7 +1011,7 @@ function GroupBlock({
 function HeadRow() {
   const thStyle: React.CSSProperties = {
     fontWeight: 500,
-    color: "#7a7a85",
+    color: "var(--muted-foreground)",
     fontSize: 12,
     textAlign: "left",
     padding: "6px 10px",
@@ -1037,10 +1037,10 @@ function HeadRow() {
             width: 18,
             height: 18,
             borderRadius: "50%",
-            background: "#2a2a32",
+            background: "var(--accent)",
             alignItems: "center",
             justifyContent: "center",
-            color: "#cfcfd6",
+            color: "var(--foreground)",
           }}
         >
           <IcPlus size={11} />
@@ -1091,7 +1091,7 @@ const PRIO_CONFIG_MAP = {
   urgente: { label: "Urgente", color: "#ef4444" },
   alta: { label: "Alta", color: "#f59e0b" },
   media: { label: "Média", color: "#60a5fa" },
-  baixa: { label: "Baixa", color: "#71717a" },
+  baixa: { label: "Baixa", color: "var(--muted-foreground)" },
 };
 const VISUAL_TO_BACKEND_PRIO: Record<
   keyof typeof PRIO_CONFIG_MAP,
@@ -1116,7 +1116,7 @@ const ALL_PRIO_VISUAL_ROW = Object.keys(
 // ─── Ícones inline das células ────────────────────────────────────────────────
 function IcCalendarInline({
   size = 13,
-  color = "#5a5a64",
+  color = "var(--muted-foreground)",
 }: {
   size?: number;
   color?: string;
@@ -1139,7 +1139,7 @@ function IcCalendarInline({
 }
 function IcUserInline({
   size = 13,
-  color = "#5a5a64",
+  color = "var(--muted-foreground)",
 }: {
   size?: number;
   color?: string;
@@ -1240,7 +1240,7 @@ function TaskRowBackend({
 
   const tdStyle: React.CSSProperties = {
     borderBottom: "1px solid #1f1f25",
-    background: hovered ? "#15151a" : "transparent",
+    background: hovered ? "var(--accent)" : "transparent",
     transition: "background .1s",
   };
 
@@ -1349,7 +1349,7 @@ function TaskRowBackend({
                 justifyContent: "center",
                 height: 36,
                 cursor: "grab",
-                color: hovered ? "#5a5a64" : "transparent",
+                color: hovered ? "var(--muted-foreground)" : "transparent",
                 transition: "color .15s",
               }}
             >
@@ -1391,7 +1391,7 @@ function TaskRowBackend({
                 flexShrink: 0,
                 background: "none",
                 border: 0,
-                color: hovered ? "#d4d4dc" : "#5a5a64",
+                color: hovered ? "var(--foreground)" : "var(--muted-foreground)",
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
@@ -1421,7 +1421,7 @@ function TaskRowBackend({
               }}
               style={{
                 fontSize: 13,
-                color: "#e6e6ea",
+                color: "var(--foreground)",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
@@ -1524,13 +1524,13 @@ function TaskRowBackend({
                   width: 20,
                   height: 20,
                   borderRadius: "50%",
-                  background: "#2a2a32",
+                  background: "var(--accent)",
                   border: 0,
                   cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  color: "#cfcfd6",
+                  color: "var(--foreground)",
                 }}
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.background =
@@ -1538,7 +1538,7 @@ function TaskRowBackend({
                 }}
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLButtonElement).style.background =
-                    "#2a2a32";
+                    "var(--accent)";
                 }}
               >
                 <IcPlus size={11} />
@@ -1583,7 +1583,7 @@ function TaskRowBackend({
                     height: 22,
                     borderRadius: "50%",
                     flexShrink: 0,
-                    background: "#3d2a6b",
+                    background: "var(--accent)",
                     color: "#d8ccff",
                     fontSize: 9,
                     fontWeight: 700,
@@ -1594,7 +1594,7 @@ function TaskRowBackend({
                 >
                   {assigneeInitials}
                 </span>
-                <span style={{ fontSize: 12, color: "#d4d4dc" }}>
+                <span style={{ fontSize: 12, color: "var(--foreground)" }}>
                   {assignee.nome.split(" ")[0]}
                 </span>
               </>
@@ -1604,10 +1604,10 @@ function TaskRowBackend({
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 5,
-                  color: "#5a5a64",
+                  color: "var(--muted-foreground)",
                 }}
               >
-                <IcUserInline size={13} color="#5a5a64" />
+                <IcUserInline size={13} color="var(--muted-foreground)" />
                 <span style={{ fontSize: 12 }}>Atribuir</span>
               </span>
             )}
@@ -1624,7 +1624,7 @@ function TaskRowBackend({
                   top: "calc(100% + 4px)",
                   left: 0,
                   zIndex: 101,
-                  background: "#1c1c24",
+                  background: "var(--card)",
                   border: "1px solid #2e2e38",
                   borderRadius: 10,
                   padding: "6px",
@@ -1637,10 +1637,10 @@ function TaskRowBackend({
                 <button
                   type="button"
                   onClick={() => handleAssigneeChange(null)}
-                  style={{ ...assigneeItemStyle("#9a9aaa"), gap: 10 }}
+                  style={{ ...assigneeItemStyle("var(--muted-foreground)"), gap: 10 }}
                 >
-                  <IcUserInline size={14} color="#9a9aaa" />
-                  <span style={{ color: "#c0c0cc" }}>Sem responsável</span>
+                  <IcUserInline size={14} color="var(--muted-foreground)" />
+                  <span style={{ color: "var(--foreground)" }}>Sem responsável</span>
                   {!task.assigneeId && <IcCheck size={12} />}
                 </button>
                 {members.map((m) => {
@@ -1657,7 +1657,7 @@ function TaskRowBackend({
                       type="button"
                       onClick={() => handleAssigneeChange(m.userId)}
                       style={{
-                        ...assigneeItemStyle("#e0e0ea"),
+                        ...assigneeItemStyle("var(--foreground)"),
                         gap: 10,
                         background: isSelected
                           ? "rgba(124,92,255,0.14)"
@@ -1670,7 +1670,7 @@ function TaskRowBackend({
                           height: 28,
                           borderRadius: "50%",
                           flexShrink: 0,
-                          background: "#3d2a6b",
+                          background: "var(--accent)",
                           color: "#d8ccff",
                           fontSize: 11,
                           fontWeight: 700,
@@ -1729,10 +1729,10 @@ function TaskRowBackend({
               onChange={(e) => handleDateChange(e.target.value || null)}
               onBlur={() => setEditandoData(false)}
               style={{
-                background: "#1c1c24",
+                background: "var(--card)",
                 border: "1px solid #7c5cff",
                 borderRadius: 5,
-                color: "#d4d4dc",
+                color: "var(--foreground)",
                 fontSize: 12,
                 padding: "2px 6px",
                 outline: "none",
@@ -1758,7 +1758,7 @@ function TaskRowBackend({
                 <span
                   style={{
                     fontSize: 12,
-                    color: overdue ? "#fbbf24" : "#b6b6bf",
+                    color: overdue ? "#fbbf24" : "var(--muted-foreground)",
                   }}
                 >
                   {overdue && "⚠ "}
@@ -1772,8 +1772,8 @@ function TaskRowBackend({
                     gap: 5,
                   }}
                 >
-                  <IcCalendarInline size={13} color="#5a5a64" />
-                  <span style={{ fontSize: 12, color: "#5a5a64" }}>
+                  <IcCalendarInline size={13} color="var(--muted-foreground)" />
+                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
                     Definir data
                   </span>
                 </span>
@@ -1812,8 +1812,8 @@ function TaskRowBackend({
               <span
                 style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
               >
-                <IcFlagInline size={12} color="#5a5a64" />
-                <span style={{ fontSize: 12, color: "#5a5a64" }}>Definir</span>
+                <IcFlagInline size={12} color="var(--muted-foreground)" />
+                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Definir</span>
               </span>
             )}
           </button>
@@ -1829,7 +1829,7 @@ function TaskRowBackend({
                   top: "calc(100% + 2px)",
                   left: 0,
                   zIndex: 101,
-                  background: "#1c1c24",
+                  background: "var(--card)",
                   border: "1px solid #2e2e38",
                   borderRadius: 8,
                   padding: 4,
@@ -1840,10 +1840,10 @@ function TaskRowBackend({
                 <button
                   type="button"
                   onClick={() => handlePrioChange(null)}
-                  style={dropItemStyle("#7a7a85")}
+                  style={dropItemStyle("var(--muted-foreground)")}
                 >
-                  <IcFlagInline size={12} color="#7a7a85" />
-                  <span style={{ color: "#d4d4dc" }}>Sem prioridade</span>
+                  <IcFlagInline size={12} color="var(--muted-foreground)" />
+                  <span style={{ color: "var(--foreground)" }}>Sem prioridade</span>
                   {!task.priority && <IcCheck size={11} />}
                 </button>
                 {ALL_PRIO_VISUAL_ROW.map((p) => {
@@ -1856,7 +1856,7 @@ function TaskRowBackend({
                       style={dropItemStyle(cfg.color)}
                     >
                       <IcFlagInline size={12} color={cfg.color} />
-                      <span style={{ color: "#d4d4dc" }}>{cfg.label}</span>
+                      <span style={{ color: "var(--foreground)" }}>{cfg.label}</span>
                       {currentPrioVisual === p && <IcCheck size={11} />}
                     </button>
                   );
@@ -1903,7 +1903,7 @@ function TaskRowBackend({
                   top: "calc(100% + 2px)",
                   left: 0,
                   zIndex: 101,
-                  background: "#1c1c24",
+                  background: "var(--card)",
                   border: "1px solid #2e2e38",
                   borderRadius: 8,
                   padding: 4,
@@ -1938,7 +1938,7 @@ function TaskRowBackend({
                       }}
                     >
                       <Icon size={12} />
-                      <span style={{ color: "#d4d4dc" }}>{cfg.label}</span>
+                      <span style={{ color: "var(--foreground)" }}>{cfg.label}</span>
                       {isSelected && <IcCheck size={11} />}
                     </button>
                   );
@@ -1949,7 +1949,7 @@ function TaskRowBackend({
         </td>
 
         {/* Comentários */}
-        <td style={{ ...tdStyle, textAlign: "center", color: "#5a5a64" }}>
+        <td style={{ ...tdStyle, textAlign: "center", color: "var(--muted-foreground)" }}>
           <IcChat size={13} />
         </td>
 
@@ -1967,7 +1967,7 @@ function TaskRowBackend({
                 style={{
                   padding: "6px 0 6px",
                   paddingLeft: indent + 22,
-                  color: "#5a5a64",
+                  color: "var(--muted-foreground)",
                   fontSize: 12,
                   borderBottom: "1px solid #1f1f25",
                 }}
@@ -2004,7 +2004,7 @@ function TaskRowBackend({
                 >
                   <span
                     style={{
-                      color: "#8a8a93",
+                      color: "var(--muted-foreground)",
                       flexShrink: 0,
                       display: "inline-flex",
                       alignItems: "center",
@@ -2029,7 +2029,7 @@ function TaskRowBackend({
                       background: "none",
                       border: "none",
                       outline: "none",
-                      color: "#e6e6ea",
+                      color: "var(--foreground)",
                       fontSize: 13,
                     }}
                   />
@@ -2057,7 +2057,7 @@ function TaskRowBackend({
                     style={{
                       background: "none",
                       border: 0,
-                      color: "#5a5a64",
+                      color: "var(--muted-foreground)",
                       cursor: "pointer",
                       fontSize: 12,
                       padding: "0 8px",
@@ -2082,7 +2082,7 @@ function TaskRowBackend({
                     height: 30,
                     width: "100%",
                     textAlign: "left",
-                    color: "#5a5a64",
+                    color: "var(--muted-foreground)",
                     fontSize: 12,
                     display: "flex",
                     alignItems: "center",
@@ -2149,7 +2149,7 @@ function AddRow({ onAddTask }: { onAddTask: () => void }) {
         style={{
           height: 34,
           borderBottom: "1px solid #1f1f25",
-          background: hovered ? "#15151a" : "transparent",
+          background: hovered ? "var(--accent)" : "transparent",
         }}
       >
         <div
@@ -2159,7 +2159,7 @@ function AddRow({ onAddTask }: { onAddTask: () => void }) {
             display: "flex",
             alignItems: "center",
             gap: 7,
-            color: hovered ? "#e6e6ea" : "#7a7a85",
+            color: hovered ? "var(--foreground)" : "var(--muted-foreground)",
             fontSize: 13,
           }}
         >
@@ -2191,19 +2191,19 @@ function EmptyState({ onAddTask }: { onAddTask: () => void }) {
           width: 40,
           height: 40,
           borderRadius: "50%",
-          background: "#1f1f25",
+          background: "var(--accent)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: "#7a7a85",
+          color: "var(--muted-foreground)",
         }}
       >
         <IcPlus size={18} />
       </div>
-      <p style={{ color: "#e6e6ea", fontSize: 14, fontWeight: 500, margin: 0 }}>
+      <p style={{ color: "var(--foreground)", fontSize: 14, fontWeight: 500, margin: 0 }}>
         Nenhuma tarefa nesta lista ainda
       </p>
-      <p style={{ color: "#7a7a85", fontSize: 12, margin: 0 }}>
+      <p style={{ color: "var(--muted-foreground)", fontSize: 12, margin: 0 }}>
         Crie a primeira tarefa para começar.
       </p>
       <button
@@ -2219,7 +2219,7 @@ function EmptyState({ onAddTask }: { onAddTask: () => void }) {
           borderRadius: 7,
           border: "none",
           background: "linear-gradient(135deg, #22d3ee 0%, #0ea5e9 100%)",
-          color: "#0a0a0a",
+          color: "var(--background)",
           fontSize: 13,
           fontWeight: 600,
           cursor: "pointer",
@@ -2242,7 +2242,7 @@ function ListSkeleton() {
             height: 36,
             marginBottom: 2,
             borderRadius: 4,
-            background: "#1a1a1f",
+            background: "var(--card)",
           }}
         />
       ))}
