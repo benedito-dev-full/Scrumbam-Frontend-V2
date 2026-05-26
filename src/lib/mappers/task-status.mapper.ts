@@ -7,7 +7,7 @@
  * @see docs/plano/00-PLANO-MESTRE.md — §V3 Intentions
  */
 
-import type { V3Intention } from '@/lib/types/api';
+import type { TaskResponseDto, V3Intention } from '@/lib/types/api';
 
 // ─── Colunas Kanban (agrupamentos visuais do frontend) ────────────────────────
 
@@ -247,4 +247,37 @@ export function priorityToLabel(priority?: string): string {
 export function priorityToColor(priority?: string): string {
   if (!priority) return '#6b7280';
   return PRIORITY_COLOR_MAP[priority] ?? '#6b7280';
+}
+
+// ─── Progresso de bloco (idClasse=-200) ──────────────────────────────────────
+
+export interface BlockProgress {
+  done: number;
+  failed: number;
+  total: number;
+  percent: number;
+}
+
+const BLOCK_DONE_INTENTIONS: V3Intention[] = ['DONE', 'VALIDATED', 'CANCELLED'];
+const BLOCK_FAILED_INTENTIONS: V3Intention[] = ['FAILED', 'DISCARDED'];
+
+/**
+ * Calcula o progresso de um bloco (idClasse=-200) a partir das tasks filhas.
+ *
+ * Usado client-side enquanto GET /tasks/:id/metrics retorna 501 (Phase 4 stub).
+ *
+ * `done`    = DONE | VALIDATED | CANCELLED (decisão intencional, não falha)
+ * `failed`  = FAILED | DISCARDED
+ * `percent` = Math.round(done / total * 100), 0 se total=0
+ */
+export function calcBlockProgress(tasks: TaskResponseDto[]): BlockProgress {
+  const total = tasks.length;
+  if (total === 0) return { done: 0, failed: 0, total: 0, percent: 0 };
+  const done = tasks.filter((t) =>
+    BLOCK_DONE_INTENTIONS.includes(t.status as V3Intention),
+  ).length;
+  const failed = tasks.filter((t) =>
+    BLOCK_FAILED_INTENTIONS.includes(t.status as V3Intention),
+  ).length;
+  return { done, failed, total, percent: Math.round((done / total) * 100) };
 }
