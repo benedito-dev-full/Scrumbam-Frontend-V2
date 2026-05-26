@@ -13,7 +13,13 @@ const SNAP_RATIO = 0.25;
 const DRAG_RESISTANCE = 0.5;
 
 /** Duracao da animacao de snap em ms. */
-const SNAP_DURATION_MS = 280;
+const SNAP_DURATION_MS = 380;
+
+/**
+ * Curva de easing do snap: inicia rapido e desacelera suavemente no final.
+ * Inspirado em spring physics — da a sensacao de peso e sofisticacao.
+ */
+const SNAP_EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 
 export type SlideOffset = -1 | 0 | 1;
 
@@ -22,9 +28,11 @@ interface UseDragNavigationResult {
   slideDates: Record<SlideOffset, Date>;
   /** Offset horizontal atual do trilho (px, inclui posicao base + drag). */
   railOffset: number;
-  /** Se true, a animacao de snap esta rodando (desabilita transicao CSS manual). */
+  /** Se true, a animacao de snap esta rodando. */
   isSnapping: boolean;
-  /** Se true, o usuario esta arrastando (cursor grabbing, sem select). */
+  /** Easing CSS a aplicar na transition durante snap. */
+  snapEasing: string;
+  /** Se true, o usuario esta arrastando (cursor grabbing). */
   isDragging: boolean;
   /** Largura do container (px) — necessaria para posicionar os slides. */
   containerWidth: number;
@@ -97,6 +105,18 @@ export function useDragNavigation(
     [1]: shiftDate(view, cursorDate, 1),
   };
 
+  /** Bloqueia selecao de texto no documento inteiro enquanto arrasta. */
+  function lockSelection() {
+    document.body.style.userSelect = "none";
+    document.body.style.webkitUserSelect = "none";
+  }
+
+  /** Libera selecao de texto. */
+  function unlockSelection() {
+    document.body.style.userSelect = "";
+    document.body.style.webkitUserSelect = "";
+  }
+
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
     const tag = (e.target as HTMLElement).closest("button, a, input, [role='button']");
@@ -117,6 +137,7 @@ export function useDragNavigation(
       if (!dragActiveRef.current) {
         dragActiveRef.current = true;
         setIsDragging(true);
+        lockSelection();
       }
 
       const offset = baseOffsetRef.current + delta * DRAG_RESISTANCE;
@@ -133,12 +154,12 @@ export function useDragNavigation(
       startXRef.current = null;
       dragActiveRef.current = false;
       setIsDragging(false);
+      unlockSelection();
 
       const w = containerRef.current?.getBoundingClientRect().width ?? containerWidth;
       const threshold = w * SNAP_RATIO;
 
       if (Math.abs(totalDelta) < threshold) {
-        // Nao passou do limiar — volta para o slide atual
         setIsSnapping(true);
         setRailOffset(baseOffsetRef.current);
         setTimeout(() => setIsSnapping(false), SNAP_DURATION_MS);
@@ -148,13 +169,11 @@ export function useDragNavigation(
       const dir = totalDelta < 0 ? 1 : -1;
       const newDate = shiftDate(view, cursorDate, dir as 1 | -1);
 
-      // Snap visual para o slide adjacente antes de trocar a data
       const snapTarget = baseOffsetRef.current + dir * -1 * w;
       setIsSnapping(true);
       setRailOffset(snapTarget);
 
       setTimeout(() => {
-        // Troca a data (remonta os 3 slides sem animacao)
         baseOffsetRef.current = 0;
         setRailOffset(0);
         setIsSnapping(false);
@@ -175,6 +194,7 @@ export function useDragNavigation(
     startXRef.current = null;
     dragActiveRef.current = false;
     setIsDragging(false);
+    unlockSelection();
     setIsSnapping(true);
     setRailOffset(baseOffsetRef.current);
     setTimeout(() => setIsSnapping(false), SNAP_DURATION_MS);
@@ -184,6 +204,7 @@ export function useDragNavigation(
     slideDates,
     railOffset,
     isSnapping,
+    snapEasing: SNAP_EASING,
     isDragging,
     containerWidth,
     containerRef,

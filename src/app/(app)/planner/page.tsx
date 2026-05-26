@@ -30,6 +30,7 @@ export default function PlannerPage() {
     slideDates,
     railOffset,
     isSnapping,
+    snapEasing,
     isDragging,
     containerWidth,
     containerRef,
@@ -61,7 +62,7 @@ export default function PlannerPage() {
           style={{
             width: containerWidth ? `${containerWidth * 3}px` : "300%",
             transform: `translateX(${-containerWidth + railOffset}px)`,
-            transition: isSnapping ? `transform ${280}ms cubic-bezier(0.25, 0.46, 0.45, 0.94)` : "none",
+            transition: isSnapping ? `transform ${380}ms ${snapEasing}` : "none",
             userSelect: isDragging ? "none" : undefined,
             willChange: "transform",
           }}
