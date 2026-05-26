@@ -305,7 +305,13 @@ function BoardContent({
   );
 }
 
-// ─── BlocksContent (mock) ─────────────────────────────────────────────────────
+// ─── BlocksContent — grid de cards ───────────────────────────────────────────
+
+type MockBlockTask = {
+  id: string;
+  nome: string;
+  status: "DONE" | "FAILED" | "INBOX" | "EXECUTING" | "READY";
+};
 
 type MockBlock = {
   id: string;
@@ -313,8 +319,10 @@ type MockBlock = {
   startDate: string;
   endDate: string;
   cor: string;
-  tasks: { id: string; nome: string; status: "DONE" | "FAILED" | "INBOX" | "EXECUTING" | "READY" }[];
+  tasks: MockBlockTask[];
 };
+
+const TODAY_MOCK = new Date("2026-05-26T12:00:00");
 
 const MOCK_BLOCKS: MockBlock[] = [
   {
@@ -356,35 +364,206 @@ const MOCK_BLOCKS: MockBlock[] = [
       { id: "t12", nome: "Polling de DPedido", status: "INBOX" },
     ],
   },
+  {
+    id: "blk-004",
+    nome: "Webhooks & Notificações",
+    startDate: "2026-06-23",
+    endDate: "2026-07-04",
+    cor: "#22c55e",
+    tasks: [
+      { id: "t13", nome: "DEvento outbound HMAC", status: "INBOX" },
+      { id: "t14", nome: "Retry logic exponencial", status: "INBOX" },
+      { id: "t15", nome: "Inbox de notificações", status: "INBOX" },
+      { id: "t16", nome: "Testes de webhook", status: "INBOX" },
+    ],
+  },
 ];
 
-const BLOCK_STATUS_DOT: Record<string, string> = {
-  DONE: "#22c55e",
-  FAILED: "#ef4444",
-  EXECUTING: "#f59e0b",
-  READY: "#60a5fa",
-  INBOX: "#6b7280",
-};
-
-const BLOCK_STATUS_LABEL: Record<string, string> = {
-  DONE: "Concluído",
-  FAILED: "Falhou",
-  EXECUTING: "Em progresso",
-  READY: "Pronto",
-  INBOX: "Backlog",
-};
-
-function calcProgress(tasks: MockBlock["tasks"]) {
+function calcProgress(tasks: MockBlockTask[]) {
   if (tasks.length === 0) return { done: 0, total: 0, percent: 0 };
   const done = tasks.filter((t) => t.status === "DONE").length;
   return { done, total: tasks.length, percent: Math.round((done / tasks.length) * 100) };
 }
 
-function fmtDate(iso: string) {
-  return new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "short",
-  });
+function daysUntil(isoEnd: string): number {
+  const end = new Date(isoEnd + "T12:00:00");
+  const diff = end.getTime() - TODAY_MOCK.getTime();
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
+
+function deadlineInfo(isoEnd: string, percent: number): {
+  label: string;
+  color: string;
+  bg: string;
+} {
+  const days = daysUntil(isoEnd);
+  if (percent === 100) {
+    return { label: "Concluído", color: "#22c55e", bg: "rgba(34,197,94,0.12)" };
+  }
+  if (days < 0) {
+    return { label: `${Math.abs(days)}d atrasado`, color: "#ef4444", bg: "rgba(239,68,68,0.12)" };
+  }
+  if (days < 10) {
+    return { label: `${days}d restantes`, color: "#ef4444", bg: "rgba(239,68,68,0.12)" };
+  }
+  if (days < 30) {
+    return { label: `${days}d restantes`, color: "#f59e0b", bg: "rgba(245,158,11,0.12)" };
+  }
+  return { label: `${days}d restantes`, color: "#22c55e", bg: "rgba(34,197,94,0.12)" };
+}
+
+function BlockCard({ block }: { block: MockBlock }) {
+  const { done, total, percent } = calcProgress(block.tasks);
+  const dl = deadlineInfo(block.endDate, percent);
+  const barColor =
+    percent === 100 ? "#22c55e" : percent > 60 ? "#7c5cff" : "#60a5fa";
+
+  return (
+    <div
+      style={{
+        borderRadius: 12,
+        border: "1px solid #26262d",
+        background: "var(--card)",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        cursor: "pointer",
+        transition: "border-color .15s, box-shadow .15s",
+      }}
+      onMouseEnter={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = block.cor + "60";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 20px ${block.cor}18`;
+      }}
+      onMouseLeave={(e) => {
+        (e.currentTarget as HTMLDivElement).style.borderColor = "#26262d";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = "none";
+      }}
+    >
+      {/* topo colorido */}
+      <div style={{ height: 4, background: block.cor, flexShrink: 0 }} />
+
+      {/* corpo do card */}
+      <div style={{ padding: "16px 18px 14px", flex: 1 }}>
+        {/* nome */}
+        <div
+          style={{
+            fontSize: 14,
+            fontWeight: 700,
+            color: "var(--foreground)",
+            marginBottom: 10,
+            lineHeight: 1.3,
+          }}
+        >
+          {block.nome}
+        </div>
+
+        {/* contador de tarefas — destaque */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            gap: 4,
+            marginBottom: 14,
+          }}
+        >
+          <span
+            style={{
+              fontSize: 28,
+              fontWeight: 800,
+              color: "var(--foreground)",
+              lineHeight: 1,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {done}
+          </span>
+          <span
+            style={{
+              fontSize: 16,
+              fontWeight: 500,
+              color: "var(--muted-foreground)",
+              lineHeight: 1,
+            }}
+          >
+            /{total}
+          </span>
+          <span
+            style={{
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+              marginLeft: 4,
+              alignSelf: "center",
+            }}
+          >
+            tarefas
+          </span>
+        </div>
+
+        {/* badge de prazo */}
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "3px 9px",
+            borderRadius: 6,
+            background: dl.bg,
+            fontSize: 12,
+            fontWeight: 600,
+            color: dl.color,
+          }}
+        >
+          <span
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: "50%",
+              background: dl.color,
+              flexShrink: 0,
+            }}
+          />
+          {dl.label}
+        </div>
+      </div>
+
+      {/* rodapé — barra de progresso */}
+      <div style={{ padding: "0 18px 16px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 6,
+            fontSize: 11,
+            color: "var(--muted-foreground)",
+          }}
+        >
+          <span>Progresso</span>
+          <span style={{ fontWeight: 600, color: percent === 100 ? "#22c55e" : "var(--foreground)" }}>
+            {percent}%
+          </span>
+        </div>
+        <div
+          style={{
+            height: 6,
+            borderRadius: 99,
+            background: "#1f1f25",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              height: "100%",
+              width: `${percent}%`,
+              borderRadius: 99,
+              background: barColor,
+              transition: "width .4s ease",
+            }}
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function BlocksContent({
@@ -396,22 +575,15 @@ function BlocksContent({
   members: ProjectMemberDto[];
   onOpenTask: (task: TaskResponseDto) => void;
 }) {
-  const [openBlocks, setOpenBlocks] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(MOCK_BLOCKS.map((b) => [b.id, true])),
-  );
   const [creating, setCreating] = useState(false);
   const [newBlockName, setNewBlockName] = useState("");
-
-  function toggleBlock(id: string) {
-    setOpenBlocks((prev) => ({ ...prev, [id]: !prev[id] }));
-  }
 
   return (
     <div
       className="flex-1 overflow-y-auto"
       style={{ background: "var(--background)", padding: "24px 28px 80px" }}
     >
-      {/* cabeçalho da view */}
+      {/* cabeçalho */}
       <div
         style={{
           display: "flex",
@@ -421,7 +593,7 @@ function BlocksContent({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Layers size={16} style={{ color: "var(--muted-foreground)" }} />
+          <Layers size={15} style={{ color: "var(--muted-foreground)" }} />
           <span
             style={{
               fontSize: 13,
@@ -450,12 +622,8 @@ function BlocksContent({
             fontSize: 13,
             cursor: "pointer",
           }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "var(--secondary)")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = "var(--card)")
-          }
+          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--secondary)")}
+          onMouseLeave={(e) => (e.currentTarget.style.background = "var(--card)")}
         >
           <IcPlus size={13} />
           Novo bloco
@@ -466,7 +634,7 @@ function BlocksContent({
       {creating && (
         <div
           style={{
-            marginBottom: 16,
+            marginBottom: 20,
             padding: "14px 18px",
             borderRadius: 10,
             border: "1px dashed #7c5cff80",
@@ -498,290 +666,23 @@ function BlocksContent({
               color: "var(--foreground)",
             }}
           />
-          <div
-            style={{
-              display: "flex",
-              gap: 8,
-              marginTop: 10,
-              fontSize: 12,
-              color: "var(--muted-foreground)",
-            }}
-          >
-            <span>Enter para salvar</span>
-            <span>·</span>
-            <span>Esc para cancelar</span>
+          <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
+            Enter para salvar · Esc para cancelar
           </div>
         </div>
       )}
 
-      {/* lista de blocos */}
-      {MOCK_BLOCKS.map((block) => {
-        const { done, total, percent } = calcProgress(block.tasks);
-        const isOpen = openBlocks[block.id] ?? true;
-        const isOverdueBlock = new Date(block.endDate) < new Date("2026-05-26");
-        const isPastEnd = isOverdueBlock && percent < 100;
-
-        return (
-          <div
-            key={block.id}
-            style={{
-              marginBottom: 16,
-              borderRadius: 10,
-              border: "1px solid #26262d",
-              background: "var(--card)",
-              overflow: "hidden",
-            }}
-          >
-            {/* header do bloco */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "12px 16px",
-                borderBottom: isOpen ? "1px solid #26262d" : "none",
-                cursor: "pointer",
-              }}
-              onClick={() => toggleBlock(block.id)}
-            >
-              {/* chevron */}
-              <span style={{ color: "var(--muted-foreground)", flexShrink: 0 }}>
-                {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </span>
-
-              {/* dot de cor */}
-              <span
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: block.cor,
-                  flexShrink: 0,
-                }}
-              />
-
-              {/* nome */}
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: "var(--foreground)",
-                  flex: 1,
-                }}
-              >
-                {block.nome}
-              </span>
-
-              {/* timebox */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  fontSize: 12,
-                  color: isPastEnd ? "#ef4444" : "var(--muted-foreground)",
-                  flexShrink: 0,
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <ChevronRight size={11} style={{ color: "var(--muted-foreground)" }} />
-                <span>{fmtDate(block.startDate)}</span>
-                <span style={{ color: "var(--muted-foreground)" }}>→</span>
-                <span>{fmtDate(block.endDate)}</span>
-                {isPastEnd && (
-                  <span
-                    style={{
-                      marginLeft: 4,
-                      padding: "1px 7px",
-                      borderRadius: 4,
-                      background: "rgba(239,68,68,0.15)",
-                      color: "#ef4444",
-                      fontSize: 11,
-                      fontWeight: 600,
-                    }}
-                  >
-                    atrasado
-                  </span>
-                )}
-              </div>
-
-              {/* progress badge */}
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  marginLeft: 16,
-                  flexShrink: 0,
-                }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                {/* barra */}
-                <div
-                  style={{
-                    width: 80,
-                    height: 5,
-                    borderRadius: 99,
-                    background: "#26262d",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      height: "100%",
-                      width: `${percent}%`,
-                      borderRadius: 99,
-                      background:
-                        percent === 100
-                          ? "#22c55e"
-                          : percent > 60
-                            ? "#7c5cff"
-                            : "#60a5fa",
-                      transition: "width .3s ease",
-                    }}
-                  />
-                </div>
-                {/* texto */}
-                <span
-                  style={{
-                    fontSize: 12,
-                    color:
-                      percent === 100 ? "#22c55e" : "var(--muted-foreground)",
-                    fontWeight: percent === 100 ? 600 : 400,
-                    minWidth: 56,
-                  }}
-                >
-                  {done}/{total} · {percent}%
-                </span>
-              </div>
-            </div>
-
-            {/* tasks do bloco */}
-            {isOpen && (
-              <div>
-                {block.tasks.map((t, idx) => (
-                  <div
-                    key={t.id}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "9px 16px 9px 40px",
-                      borderBottom:
-                        idx < block.tasks.length - 1
-                          ? "1px solid #1f1f25"
-                          : "none",
-                      fontSize: 13,
-                      color: "var(--foreground)",
-                      background: "transparent",
-                      cursor: "default",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = "rgba(255,255,255,0.03)")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "transparent")
-                    }
-                  >
-                    {/* status dot */}
-                    <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: BLOCK_STATUS_DOT[t.status] ?? "#6b7280",
-                        flexShrink: 0,
-                      }}
-                      title={BLOCK_STATUS_LABEL[t.status]}
-                    />
-                    {/* nome da task */}
-                    <span
-                      style={{
-                        flex: 1,
-                        textDecoration:
-                          t.status === "DONE" ? "line-through" : "none",
-                        color:
-                          t.status === "DONE"
-                            ? "var(--muted-foreground)"
-                            : "var(--foreground)",
-                      }}
-                    >
-                      {t.nome}
-                    </span>
-                    {/* badge de status */}
-                    <span
-                      style={{
-                        fontSize: 11,
-                        padding: "2px 8px",
-                        borderRadius: 4,
-                        background: "var(--accent)",
-                        color: "var(--muted-foreground)",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {BLOCK_STATUS_LABEL[t.status]}
-                    </span>
-                  </div>
-                ))}
-
-                {/* add task inline */}
-                <button
-                  type="button"
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    width: "100%",
-                    padding: "9px 16px 9px 40px",
-                    background: "none",
-                    border: 0,
-                    fontSize: 13,
-                    color: "var(--muted-foreground)",
-                    cursor: "pointer",
-                    textAlign: "left",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background =
-                      "rgba(255,255,255,0.03)";
-                    e.currentTarget.style.color = "var(--foreground)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "none";
-                    e.currentTarget.style.color = "var(--muted-foreground)";
-                  }}
-                >
-                  <IcPlus size={12} />
-                  Adicionar tarefa
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {/* bloco sem pai (tarefas soltas) */}
+      {/* grid de cards — 3 colunas base, 4 em telas largas */}
       <div
         style={{
-          marginBottom: 16,
-          borderRadius: 10,
-          border: "1px dashed #26262d",
-          overflow: "hidden",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+          gap: 16,
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "12px 16px",
-            fontSize: 13,
-            color: "var(--muted-foreground)",
-          }}
-        >
-          <Layers size={14} />
-          <span style={{ flex: 1, fontWeight: 500 }}>Sem bloco</span>
-          <span style={{ fontSize: 12 }}>Tarefas sem bloco associado</span>
-        </div>
+        {MOCK_BLOCKS.map((block) => (
+          <BlockCard key={block.id} block={block} />
+        ))}
       </div>
     </div>
   );
