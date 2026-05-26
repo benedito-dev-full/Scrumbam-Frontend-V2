@@ -13,10 +13,12 @@ import {
   Loader2,
   User,
   Lock,
+  Trash2,
 } from "lucide-react";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { useTask, useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
+import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
 import {
   KANBAN_COLUMNS,
   priorityToLabel,
@@ -79,6 +81,7 @@ export function TaskDetailDrawer({
   const { data: task, isLoading } = useTask(taskId);
   const { mutate: updateTask, isPending: isUpdating } = useUpdateTask();
   const { mutate: updateStatus } = useUpdateTaskStatus();
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -97,9 +100,18 @@ export function TaskDetailDrawer({
   const lockTitle = isLocked
     ? "Em execução pela IA — aguarde a conclusão para editar"
     : undefined;
+  const deleteDisabledTitle = isLocked
+    ? "Não é possível excluir enquanto há execução ativa"
+    : undefined;
 
   return (
     <DrawerShell onClose={onClose}>
+      <DeleteTaskDialog
+        task={task}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        onSuccess={onClose}
+      />
       {/* Header */}
       <div className="flex items-start justify-between gap-3 border-b border-border p-4">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -223,6 +235,23 @@ export function TaskDetailDrawer({
             projectId={projectId}
           />
         )}
+      </div>
+
+      {/* Footer — ação destrutiva */}
+      <div className="mt-auto border-t border-border p-4">
+        <button
+          type="button"
+          disabled={isLocked}
+          onClick={() => setDeleteOpen(true)}
+          title={deleteDisabledTitle}
+          className={cn(
+            "inline-flex w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[13px] font-semibold text-red-400 transition-colors",
+            isLocked ? "cursor-not-allowed opacity-50" : "hover:bg-red-500/20",
+          )}
+        >
+          <Trash2 className="size-3.5" />
+          Excluir task
+        </button>
       </div>
     </DrawerShell>
   );

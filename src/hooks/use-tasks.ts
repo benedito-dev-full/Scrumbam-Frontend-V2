@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
-import { api } from '@/lib/api';
-import { qk } from '@/lib/query-keys';
-import { useAuthStore } from '@/lib/stores/auth';
+import { api } from "@/lib/api";
+import { qk } from "@/lib/query-keys";
+import { useAuthStore } from "@/lib/stores/auth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-import type { TaskResponseDto } from '@/lib/types/api';
+import type { TaskResponseDto } from "@/lib/types/api";
 
 // ─── Tipos de resposta paginada ───────────────────────────────────────────────
 
@@ -40,9 +40,9 @@ interface TasksPage {
 export function useTasksByProject(projectId: string | null) {
   const accessToken = useAuthStore((s) => s.accessToken);
   return useQuery<TaskResponseDto[]>({
-    queryKey: qk.tasks.byProject(projectId ?? ''),
+    queryKey: qk.tasks.byProject(projectId ?? ""),
     queryFn: async () => {
-      const res = await api.get<TasksPage>('/tasks', {
+      const res = await api.get<TasksPage>("/tasks", {
         params: { projectId, limit: 100 },
       });
       return res.data.items;
@@ -69,7 +69,7 @@ export function useTasksByProject(projectId: string | null) {
 export function useTask(id: string | null) {
   const accessToken = useAuthStore((s) => s.accessToken);
   return useQuery<TaskResponseDto>({
-    queryKey: qk.tasks.byId(id ?? ''),
+    queryKey: qk.tasks.byId(id ?? ""),
     queryFn: async () => {
       const res = await api.get<TaskResponseDto>(`/tasks/${id}`);
       return res.data;
@@ -98,9 +98,9 @@ export function useMyTasks(status?: string) {
   const accessToken = useAuthStore((s) => s.accessToken);
   const entidadeId = useAuthStore((s) => s.user?.entidadeId);
   return useQuery<TaskResponseDto[]>({
-    queryKey: [...qk.tasks.all, 'my', entidadeId, status],
+    queryKey: [...qk.tasks.all, "my", entidadeId, status],
     queryFn: async () => {
-      const res = await api.get<TasksPage>('/tasks', {
+      const res = await api.get<TasksPage>("/tasks", {
         params: { assigneeId: entidadeId, status, limit: 100 },
       });
       return res.data.items;
@@ -121,7 +121,7 @@ export function useSubtasks(parentId: string, enabled: boolean) {
   return useQuery<TaskResponseDto[]>({
     queryKey: qk.tasks.children(parentId),
     queryFn: async () => {
-      const res = await api.get<TasksPage>('/tasks', {
+      const res = await api.get<TasksPage>("/tasks", {
         params: { idPai: parentId, limit: 100 },
       });
       return res.data.items;
@@ -162,7 +162,7 @@ export function useCreateTask() {
     }
   >({
     mutationFn: async ({ titulo, idProject, ...rest }) => {
-      const res = await api.post<TaskResponseDto>('/tasks', {
+      const res = await api.post<TaskResponseDto>("/tasks", {
         nome: titulo,
         projectId: idProject,
         ...rest,
@@ -204,7 +204,9 @@ export function useUpdateTaskStatus() {
     { id: string; status: string; projectId: string }
   >({
     mutationFn: async ({ id, status }) => {
-      const res = await api.put<TaskResponseDto>(`/tasks/${id}/status`, { status });
+      const res = await api.put<TaskResponseDto>(`/tasks/${id}/status`, {
+        status,
+      });
       return res.data;
     },
     onSuccess: (_data, variables) => {
@@ -268,6 +270,54 @@ export function useUpdateTask() {
       void queryClient.invalidateQueries({
         queryKey: qk.tasks.byId(variables.id),
       });
+    },
+  });
+}
+
+/**
+ * Deleta uma task (soft delete no backend — task vai para lixeira).
+ *
+ * Mapeia para `DELETE /tasks/:id` (retorna 204). Se a task for uma fase
+ * (idClasse=-200), o backend executa cascade automaticamente em filhas
+ * conforme ADR-V2-047.
+ *
+ * Após sucesso, invalida:
+ * - `qk.tasks.byProject(projectId)` (sempre) — refetch do Kanban
+ * - `qk.tasks.byId(id)` (sempre) — limpa cache da task individual
+ * - `qk.tasks.children(parentId)` (se a task era subtask) — atualiza a lista
+ *   de filhas no pai
+ *
+ * @returns Resultado do useMutation
+ *
+ * @example
+ * ```tsx
+ * const { mutate, isPending } = useDeleteTask();
+ * mutate({ id: taskId, projectId: listId });
+ * mutate({ id: subtaskId, projectId: listId, parentId: parentTaskId });
+ * ```
+ */
+export function useDeleteTask() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    void,
+    Error,
+    { id: string; projectId: string; parentId?: string }
+  >({
+    mutationFn: async ({ id }) => {
+      await api.delete(`/tasks/${id}`);
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.byProject(variables.projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.byId(variables.id),
+      });
+      if (variables.parentId) {
+        void queryClient.invalidateQueries({
+          queryKey: qk.tasks.children(variables.parentId),
+        });
+      }
     },
   });
 }

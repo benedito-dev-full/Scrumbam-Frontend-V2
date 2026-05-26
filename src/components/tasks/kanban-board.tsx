@@ -14,7 +14,7 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { Play, Bot, Loader2, User, Lock } from "lucide-react";
+import { Play, Bot, Loader2, User, Lock, Trash2 } from "lucide-react";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { useTasksByProject, useUpdateTaskStatus } from "@/hooks/use-tasks";
@@ -27,6 +27,7 @@ import {
 import { qk } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { TaskDetailDrawer } from "@/components/tasks/task-detail-drawer";
+import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
 import { useTaskExecution, AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -275,6 +276,7 @@ function TaskCard({
   // tem a verdade quando recarregar a página.
   const isRunning = isLocked || execution?.status === "running";
   const isDone = execution?.status === "done";
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
     <div
@@ -306,6 +308,31 @@ function TaskCard({
         isAiAssigned && isDone && !isLocked && "border-green-500/20",
       )}
     >
+      {/* Lixeira no hover — só aparece quando não está em execução */}
+      {!isLocked && !isDragOverlay && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setDeleteOpen(true);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          title="Excluir task"
+          aria-label="Excluir task"
+          className="absolute right-1.5 top-1.5 z-10 rounded p-1 text-muted-foreground opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      )}
+
+      {/* Dialog de confirmação — controlado por `deleteOpen` */}
+      <DeleteTaskDialog
+        task={task}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+      />
+
       {/* Identifier + prioridade + cadeado */}
       <div className="mb-1.5 flex items-center justify-between">
         <span className="font-mono text-[11px] text-muted-foreground">
