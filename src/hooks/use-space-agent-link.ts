@@ -65,23 +65,18 @@ export function useSpaceAgentLink(spaceId: string) {
 
 export interface LinkSpaceAgentDto {
   agentId: string;
-  remoteRepoUrl: string;
-  remoteBranch: string;
-  remotePath: string;
+  repoUrl: string;
 }
 
 export function useLinkSpaceAgent(spaceId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (dto: LinkSpaceAgentDto) =>
-      api
-        .patch<DProjectDto>(`/projects/${spaceId}`, {
-          idAgent: dto.agentId,
-          remoteRepoUrl: dto.remoteRepoUrl,
-          remoteBranch: dto.remoteBranch,
-          remotePath: dto.remotePath,
-        })
-        .then((r) => r.data),
+    mutationFn: async (dto: LinkSpaceAgentDto) => {
+      // 1. Salva URL do repo no projeto
+      await api.patch<DProjectDto>(`/projects/${spaceId}`, { repoUrl: dto.repoUrl });
+      // 2. Cria/atualiza vínculo agente↔projeto (DVincula -185)
+      await api.post(`/projects/${spaceId}/agent`, { agentId: dto.agentId, tipo: 'primary' });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: linkKeys.bySpace(spaceId) });
     },

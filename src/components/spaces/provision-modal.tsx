@@ -50,15 +50,6 @@ function detectProtocol(url: string): 'ssh' | 'https' | null {
   return null;
 }
 
-function toKebab(str: string): string {
-  return str
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-');
-}
-
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
 
 function AgentStatusBadge({ status }: { status: AgentDto['status'] }) {
@@ -437,9 +428,7 @@ export function ProvisionModal({
 
     await linkMutation.mutateAsync({
       agentId: selectedAgentId,
-      remoteRepoUrl: data.remoteRepoUrl,
-      remoteBranch: 'main',
-      remotePath: `/home/dev/projetos/${toKebab(spaceName)}`,
+      repoUrl: data.remoteRepoUrl,
     });
 
     if (detectedProtocol === 'ssh') {
