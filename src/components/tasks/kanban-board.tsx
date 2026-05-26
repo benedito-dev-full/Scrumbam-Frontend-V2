@@ -14,6 +14,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core';
 import { useQueryClient } from '@tanstack/react-query';
+import { Play, Bot, Loader2 } from 'lucide-react';
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { useTasksByProject, useUpdateTaskStatus } from '@/hooks/use-tasks';
@@ -26,6 +27,7 @@ import {
 import { qk } from '@/lib/query-keys';
 import { cn } from '@/lib/utils';
 import { TaskDetailDrawer } from '@/components/tasks/task-detail-drawer';
+import { useTaskExecution } from '@/hooks/use-task-execution';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { KanbanColumnConfig } from '@/lib/mappers/task-status.mapper';
@@ -223,6 +225,9 @@ function TaskCard({
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: task.id });
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
   const prioColor = priorityToColor(task.priority);
+  const { assignedAgent, execution, startExecution } = useTaskExecution(task.id);
+  const isRunning = execution?.status === 'running';
+  const isDone = execution?.status === 'done';
 
   return (
     <div
@@ -233,22 +238,26 @@ function TaskCard({
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
       className={cn(
-        'cursor-grab rounded-lg border border-border bg-card p-3 shadow-sm transition-all active:cursor-grabbing',
+        'group relative cursor-grab rounded-lg border border-border bg-card p-3 shadow-sm transition-all active:cursor-grabbing',
         isDragging && !isDragOverlay && 'opacity-40',
         isDragOverlay && 'rotate-1 shadow-xl ring-1 ring-violet-500/40',
         !isDragging && !isDragOverlay && 'hover:border-border/80 hover:bg-muted/30',
+        isRunning && 'border-violet-500/30 bg-violet-500/5',
+        isDone && 'border-green-500/20',
       )}
     >
       {/* Identifier + prioridade */}
       <div className="mb-1.5 flex items-center justify-between">
         <span className="font-mono text-[11px] text-muted-foreground">{task.identifier}</span>
-        {task.priority && (
-          <span
-            className="size-1.5 rounded-full"
-            style={{ background: prioColor }}
-            title={task.priority}
-          />
-        )}
+        <div className="flex items-center gap-1.5">
+          {task.priority && (
+            <span
+              className="size-1.5 rounded-full"
+              style={{ background: prioColor }}
+              title={task.priority}
+            />
+          )}
+        </div>
       </div>
 
       {/* Título */}
@@ -268,6 +277,48 @@ function TaskCard({
             <span className="rounded-sm bg-red-500/15 px-1 py-px text-[10px] font-medium text-red-400">
               atrasado
             </span>
+          )}
+        </div>
+      )}
+
+      {/* Footer: agente + botão executar */}
+      {(assignedAgent || isRunning || isDone) && (
+        <div className="mt-2.5 flex items-center justify-between border-t border-border pt-2">
+          {/* Badge do agente */}
+          <div className="flex items-center gap-1.5">
+            <Bot className="size-3 text-muted-foreground" />
+            <span className="text-[11px] text-muted-foreground">{assignedAgent?.name ?? '—'}</span>
+            {(isRunning || isDone) && (
+              <span
+                className={cn(
+                  'rounded-full px-1.5 py-px text-[9px] font-bold',
+                  isRunning && 'bg-violet-500/15 text-violet-400',
+                  isDone && 'bg-green-500/15 text-green-400',
+                )}
+              >
+                {isRunning ? 'executando' : 'concluído'}
+              </span>
+            )}
+          </div>
+
+          {/* Botão executar rápido — só aparece no hover se idle */}
+          {assignedAgent && !execution && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                startExecution();
+              }}
+              title="Executar com IA"
+              className="flex items-center gap-1 rounded-md bg-violet-600/80 px-2 py-1 text-[11px] font-semibold text-white opacity-0 transition-all hover:bg-violet-500 group-hover:opacity-100"
+            >
+              <Play className="size-2.5" />
+              Executar
+            </button>
+          )}
+
+          {isRunning && (
+            <Loader2 className="size-3.5 animate-spin text-violet-400" />
           )}
         </div>
       )}

@@ -2,7 +2,7 @@
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
 import { useState } from 'react';
-import { X, Calendar } from 'lucide-react';
+import { X, Calendar, Bot, Play, ChevronDown, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { useTask, useUpdateTask, useUpdateTaskStatus } from '@/hooks/use-tasks';
@@ -13,6 +13,14 @@ import {
   isOverdue,
 } from '@/lib/mappers/task-status.mapper';
 import { cn } from '@/lib/utils';
+import {
+  useTaskExecution,
+  detectTaskType,
+  TASK_TYPE_LABELS,
+  TASK_TYPE_COLORS,
+  MOCK_AGENTS,
+} from '@/hooks/use-task-execution';
+import type { MockAgent } from '@/hooks/use-task-execution';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { V3Intention } from '@/lib/types/api';
@@ -146,8 +154,316 @@ export function TaskDetailDrawer({
             disabled={isUpdating}
           />
         </Field>
+
+        {/* Execução IA */}
+        <ExecutionSection taskId={taskId} taskName={task.nome} />
       </div>
     </DrawerShell>
+  );
+}
+
+// ─── ExecutionSection ─────────────────────────────────────────────────────────
+
+function ExecutionSection({ taskId, taskName }: { taskId: string; taskName: string }) {
+  const { assignedAgent, execution, assignAgent, startExecution, clearExecution } =
+    useTaskExecution(taskId);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [agentPickerOpen, setAgentPickerOpen] = useState(false);
+
+  const taskType = detectTaskType(taskName);
+  const typeColor = TASK_TYPE_COLORS[taskType];
+  const typeLabel = TASK_TYPE_LABELS[taskType];
+
+  return (
+    <>
+      <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-muted/10 p-3.5">
+        {/* Header da seção */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bot className="size-3.5 text-muted-foreground" />
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Execução IA
+            </span>
+            <span
+              className="rounded-full px-1.5 py-px text-[10px] font-semibold"
+              style={{ background: `${typeColor}20`, color: typeColor }}
+            >
+              {typeLabel}
+            </span>
+          </div>
+        </div>
+
+        {/* Agente atribuído */}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[11px] text-muted-foreground">Agente</span>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setAgentPickerOpen((v) => !v)}
+              className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-[13px] transition-colors hover:border-ring/60"
+            >
+              {assignedAgent ? (
+                <div className="flex items-center gap-2">
+                  <span
+                    className="size-2 rounded-full"
+                    style={{
+                      background: assignedAgent.status === 'online' ? '#22c55e' : '#71717a',
+                    }}
+                  />
+                  <span className="font-medium text-foreground">{assignedAgent.name}</span>
+                  <span className="text-muted-foreground">{assignedAgent.hostname}</span>
+                </div>
+              ) : (
+                <span className="text-muted-foreground">Nenhum agente atribuído</span>
+              )}
+              <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+            </button>
+
+            {agentPickerOpen && (
+              <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border bg-popover shadow-lg">
+                <div className="flex flex-col gap-0.5 p-1">
+                  {MOCK_AGENTS.map((agent) => (
+                    <button
+                      key={agent.id}
+                      type="button"
+                      onClick={() => {
+                        assignAgent(agent.id);
+                        setAgentPickerOpen(false);
+                        clearExecution();
+                      }}
+                      className={cn(
+                        'flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted',
+                        assignedAgent?.id === agent.id && 'bg-muted',
+                        agent.status === 'offline' && 'opacity-50',
+                      )}
+                      disabled={agent.status === 'offline'}
+                    >
+                      <span
+                        className="size-2 shrink-0 rounded-full"
+                        style={{
+                          background: agent.status === 'online' ? '#22c55e' : '#71717a',
+                        }}
+                      />
+                      <div className="flex flex-1 flex-col">
+                        <span className="font-medium text-foreground">{agent.name}</span>
+                        <span className="text-[11px] text-muted-foreground">{agent.hostname}</span>
+                      </div>
+                      {agent.status === 'offline' && (
+                        <span className="text-[10px] text-muted-foreground">offline</span>
+                      )}
+                    </button>
+                  ))}
+                  {assignedAgent && (
+                    <>
+                      <div className="my-1 border-t border-border" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          assignAgent(null);
+                          setAgentPickerOpen(false);
+                          clearExecution();
+                        }}
+                        className="rounded-md px-2.5 py-2 text-left text-[12px] text-red-400 transition-colors hover:bg-red-500/10"
+                      >
+                        Remover agente
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Estado da execução */}
+        {execution?.status === 'running' && (
+          <div className="flex items-center gap-2 rounded-lg border border-violet-500/20 bg-violet-500/5 px-3 py-2.5">
+            <Loader2 className="size-3.5 shrink-0 animate-spin text-violet-400" />
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[12px] font-semibold text-violet-300">Executando...</span>
+              <span className="text-[11px] text-muted-foreground">
+                {assignedAgent?.name} está processando a task
+              </span>
+            </div>
+          </div>
+        )}
+
+        {execution?.status === 'done' && (
+          <div className="flex flex-col gap-2 rounded-lg border border-green-500/20 bg-green-500/5 p-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="size-3.5 shrink-0 text-green-400" />
+              <span className="text-[12px] font-semibold text-green-300">Concluído</span>
+              {execution.finishedAt && (
+                <span className="ml-auto text-[11px] text-muted-foreground">
+                  {new Date(execution.finishedAt).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              )}
+            </div>
+            {execution.output && (
+              <p className="text-[12px] leading-relaxed text-muted-foreground">{execution.output}</p>
+            )}
+            <button
+              type="button"
+              onClick={clearExecution}
+              className="self-start text-[11px] text-muted-foreground underline hover:text-foreground"
+            >
+              Limpar
+            </button>
+          </div>
+        )}
+
+        {execution?.status === 'failed' && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
+            <AlertCircle className="size-3.5 shrink-0 text-red-400" />
+            <span className="text-[12px] text-red-300">Execução falhou</span>
+            <button
+              type="button"
+              onClick={clearExecution}
+              className="ml-auto text-[11px] text-muted-foreground underline hover:text-foreground"
+            >
+              Limpar
+            </button>
+          </div>
+        )}
+
+        {/* Botão executar */}
+        {assignedAgent && !execution && (
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-violet-600 px-3 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-violet-500"
+          >
+            <Play className="size-3.5" />
+            Executar com IA
+          </button>
+        )}
+
+        {assignedAgent && execution?.status === 'done' && (
+          <button
+            type="button"
+            onClick={() => { clearExecution(); setConfirmOpen(true); }}
+            className="flex items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-[12px] text-muted-foreground transition-colors hover:border-ring/60 hover:text-foreground"
+          >
+            <Play className="size-3.5" />
+            Executar novamente
+          </button>
+        )}
+      </div>
+
+      {/* Modal de confirmação */}
+      {confirmOpen && assignedAgent && (
+        <ExecutionConfirmModal
+          taskName={taskName}
+          taskType={taskType}
+          agent={assignedAgent}
+          onConfirm={() => {
+            setConfirmOpen(false);
+            startExecution();
+          }}
+          onCancel={() => setConfirmOpen(false)}
+        />
+      )}
+    </>
+  );
+}
+
+// ─── ExecutionConfirmModal ────────────────────────────────────────────────────
+
+function ExecutionConfirmModal({
+  taskName,
+  taskType,
+  agent,
+  onConfirm,
+  onCancel,
+}: {
+  taskName: string;
+  taskType: ReturnType<typeof detectTaskType>;
+  agent: MockAgent;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const typeColor = TASK_TYPE_COLORS[taskType];
+  const typeLabel = TASK_TYPE_LABELS[taskType];
+
+  return (
+    <>
+      <div
+        className="fixed inset-0 z-[60] bg-black/50 backdrop-blur-sm"
+        onClick={onCancel}
+        aria-hidden="true"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="fixed left-1/2 top-1/2 z-[61] w-full max-w-[400px] -translate-x-1/2 -translate-y-1/2 px-4"
+      >
+        <div className="rounded-2xl border border-border bg-background shadow-2xl">
+          {/* Header */}
+          <div className="border-b border-border p-5">
+            <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-violet-500/10">
+              <Bot className="size-5 text-violet-400" />
+            </div>
+            <h2 className="text-[16px] font-bold text-foreground">Confirmar execução</h2>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              O agente vai executar esta task automaticamente.
+            </p>
+          </div>
+
+          {/* Detalhes */}
+          <div className="flex flex-col gap-3 p-5">
+            {/* Task */}
+            <div className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3">
+              <div className="flex flex-col gap-1 min-w-0">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Task
+                </span>
+                <span className="truncate text-[13px] font-medium text-foreground">{taskName}</span>
+              </div>
+              <span
+                className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold"
+                style={{ background: `${typeColor}20`, color: typeColor }}
+              >
+                {typeLabel}
+              </span>
+            </div>
+
+            {/* Agente */}
+            <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/20 p-3">
+              <span className="size-2 shrink-0 rounded-full bg-green-500" />
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  Agente
+                </span>
+                <span className="text-[13px] font-medium text-foreground">{agent.name}</span>
+                <span className="text-[11px] text-muted-foreground">{agent.hostname}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Ações */}
+          <div className="flex gap-2 border-t border-border p-4">
+            <button
+              type="button"
+              onClick={onCancel}
+              className="flex-1 rounded-lg border border-border py-2.5 text-[13px] font-medium text-foreground transition-colors hover:bg-muted"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-violet-600 py-2.5 text-[13px] font-bold text-white transition-colors hover:bg-violet-500"
+            >
+              <Play className="size-3.5" />
+              Executar
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
