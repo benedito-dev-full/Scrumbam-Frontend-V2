@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import {
@@ -23,12 +23,32 @@ interface CreateSpaceDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// ─── Paleta de cores ──────────────────────────────────────────────────────────
+// ─── Dados do picker ──────────────────────────────────────────────────────────
 
 const COLOR_PALETTE = [
-  "#ef4444", "#f97316", "#eab308", "#22c55e",
-  "#14b8a6", "#3b82f6", "#8b5cf6", "#ec4899",
-  "#64748b", "#0ea5e9", "#10b981", "#f43f5e",
+  "#ef4444", "#f97316", "#f59e0b", "#84cc16",
+  "#22c55e", "#14b8a6", "#06b6d4", "#3b82f6",
+  "#6366f1", "#8b5cf6", "#a855f7", "#ec4899",
+  "#f43f5e", "#64748b", "#78716c", "#0ea5e9",
+];
+
+const ICON_LIST = [
+  "⚡","🚀","🎯","💡","🔥","⭐","🌟","💫",
+  "🎨","🎭","🎪","🎬","🎤","🎵","🎶","🎸",
+  "📱","💻","🖥️","⌨️","🖱️","🖨️","📷","📸",
+  "📊","📈","📉","📋","📌","📍","🗺️","🗓️",
+  "🔑","🔒","🔓","🔔","🔕","📣","📢","🔊",
+  "🏆","🥇","🏅","🎖️","🏵️","🎗️","🎀","🎁",
+  "🌍","🌎","🌏","🌐","🗾","🧭","🌋","🏔️",
+  "🏠","🏢","🏣","🏤","🏥","🏦","🏨","🏩",
+  "🚗","🚕","🚙","🚌","🚎","🏎️","🚓","🚑",
+  "✈️","🚀","🛸","🚁","⛵","🚢","🛳️","⚓",
+  "🍕","🍔","🍟","🌮","🌯","🥗","🍜","🍣",
+  "⚽","🏀","🏈","⚾","🎾","🏐","🏉","🎱",
+  "🌸","🌺","🌻","🌹","🌷","🌿","🍀","🍃",
+  "💎","💍","👑","🏆","🎭","🎨","🖼️","🎠",
+  "🔬","🔭","🧬","⚗️","🧪","🧫","🧲","💊",
+  "📚","📖","📝","✏️","🖊️","🖋️","📓","📔",
 ];
 
 // ─── Switch ───────────────────────────────────────────────────────────────────
@@ -65,44 +85,172 @@ function Switch({
   );
 }
 
-// ─── SpaceAvatar ──────────────────────────────────────────────────────────────
+// ─── IconColorPicker (popover inline) ─────────────────────────────────────────
 
-function SpaceAvatar({ nome, color, icon }: { nome: string; color: string; icon: string }) {
-  const letter = nome.trim().charAt(0).toUpperCase() || "S";
-  return (
-    <div
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-base font-semibold text-white select-none transition-colors"
-      style={{ backgroundColor: color }}
-    >
-      {icon || letter}
-    </div>
-  );
-}
-
-// ─── ColorPicker ──────────────────────────────────────────────────────────────
-
-function ColorPicker({
-  value,
-  onChange,
+function IconColorPicker({
+  color,
+  icon,
+  nome,
+  onColorChange,
+  onIconChange,
 }: {
-  value: string;
-  onChange: (color: string) => void;
+  color: string;
+  icon: string;
+  nome: string;
+  onColorChange: (c: string) => void;
+  onIconChange: (i: string) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<"icon" | "color">("icon");
+  const [search, setSearch] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+
+  const letter = nome.trim().charAt(0).toUpperCase() || "S";
+  const display = icon || letter;
+
+  const filtered = search.trim()
+    ? ICON_LIST.filter((ic) => ic.includes(search.trim()))
+    : ICON_LIST;
+
+  // Fecha ao clicar fora
+  useEffect(() => {
+    function handle(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {COLOR_PALETTE.map((c) => (
-        <button
-          key={c}
-          type="button"
-          onClick={() => onChange(c)}
-          className={cn(
-            "h-6 w-6 rounded-full transition-transform hover:scale-110 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
-            value === c && "ring-2 ring-white ring-offset-2 ring-offset-background scale-110",
+    <div ref={ref} className="relative shrink-0">
+      {/* Avatar clicável */}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "flex h-11 w-11 items-center justify-center rounded-md text-lg font-semibold text-white select-none",
+          "transition-all hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        )}
+        style={{ backgroundColor: color }}
+        aria-label="Escolher ícone e cor"
+      >
+        {display}
+      </button>
+
+      {/* Popover */}
+      {open && (
+        <div className="absolute left-0 top-13 z-50 w-[300px] rounded-lg border border-border bg-popover shadow-xl">
+          {/* Tabs */}
+          <div className="flex border-b border-border">
+            <button
+              type="button"
+              onClick={() => setTab("icon")}
+              className={cn(
+                "flex-1 py-2.5 text-xs font-semibold transition-colors",
+                tab === "icon"
+                  ? "border-b-2 border-primary text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Ícone
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("color")}
+              className={cn(
+                "flex-1 py-2.5 text-xs font-semibold transition-colors",
+                tab === "color"
+                  ? "border-b-2 border-primary text-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Cor
+            </button>
+          </div>
+
+          {tab === "icon" && (
+            <div className="p-3 space-y-2">
+              {/* Search + botão limpar */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Pesquisar..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className={cn(
+                    "flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-xs",
+                    "placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring",
+                  )}
+                />
+                <button
+                  type="button"
+                  title="Limpar ícone"
+                  onClick={() => { onIconChange(""); setSearch(""); }}
+                  className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground text-xs transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Grid de ícones */}
+              <div className="grid grid-cols-8 gap-0.5 max-h-[220px] overflow-y-auto pr-0.5">
+                {/* Letra/inicial como primeira opção */}
+                <button
+                  type="button"
+                  onClick={() => { onIconChange(""); setOpen(false); }}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded text-sm font-bold transition-colors",
+                    "hover:bg-muted text-white",
+                    !icon ? "ring-2 ring-primary" : "",
+                  )}
+                  style={{ backgroundColor: color }}
+                  title="Usar inicial"
+                >
+                  {letter}
+                </button>
+
+                {filtered.map((ic, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => { onIconChange(ic); setOpen(false); }}
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded text-base transition-colors hover:bg-muted",
+                      icon === ic && "bg-muted ring-1 ring-primary",
+                    )}
+                    title={ic}
+                  >
+                    {ic}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
-          style={{ backgroundColor: c }}
-          aria-label={`Cor ${c}`}
-        />
-      ))}
+
+          {tab === "color" && (
+            <div className="p-4 space-y-3">
+              <p className="text-xs text-muted-foreground">Cor do espaço</p>
+              <div className="grid grid-cols-8 gap-2">
+                {COLOR_PALETTE.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => { onColorChange(c); }}
+                    className={cn(
+                      "h-7 w-7 rounded-full transition-transform hover:scale-110 focus:outline-none",
+                      color === c && "ring-2 ring-white ring-offset-2 ring-offset-popover scale-110",
+                    )}
+                    style={{ backgroundColor: c }}
+                    aria-label={`Cor ${c}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -113,7 +261,7 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
   const [privado, setPrivado] = useState(false);
-  const [color, setColor] = useState(COLOR_PALETTE[5]); // azul padrão
+  const [color, setColor] = useState(COLOR_PALETTE[7]); // rosa padrão igual ClickUp
   const [icon, setIcon] = useState("");
   const [nomeError, setNomeError] = useState<string | null>(null);
 
@@ -124,7 +272,7 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
       setNome("");
       setDescricao("");
       setPrivado(false);
-      setColor(COLOR_PALETTE[5]);
+      setColor(COLOR_PALETTE[7]);
       setIcon("");
       setNomeError(null);
     }
@@ -132,18 +280,9 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
 
   function validate(): boolean {
     const trimmed = nome.trim();
-    if (!trimmed) {
-      setNomeError("Nome é obrigatório");
-      return false;
-    }
-    if (trimmed.length < 3) {
-      setNomeError("Mínimo de 3 caracteres");
-      return false;
-    }
-    if (trimmed.length > 255) {
-      setNomeError("Máximo de 255 caracteres");
-      return false;
-    }
+    if (!trimmed) { setNomeError("Nome é obrigatório"); return false; }
+    if (trimmed.length < 3) { setNomeError("Mínimo de 3 caracteres"); return false; }
+    if (trimmed.length > 255) { setNomeError("Máximo de 255 caracteres"); return false; }
     setNomeError(null);
     return true;
   }
@@ -164,9 +303,7 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
           onOpenChange(false);
         },
         onError: (err) => {
-          toast.error("Erro ao criar space", {
-            description: getApiErrorMessage(err),
-          });
+          toast.error("Erro ao criar space", { description: getApiErrorMessage(err) });
         },
       },
     );
@@ -174,7 +311,7 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-hidden">
+      <DialogContent className="sm:max-w-[520px] p-0 gap-0 overflow-visible">
         {/* Cabeçalho */}
         <div className="px-7 pt-7 pb-5">
           <DialogHeader className="space-y-1.5">
@@ -188,16 +325,20 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
 
         <form onSubmit={handleSubmit} noValidate>
           <div className="px-7 space-y-6">
+
             {/* Ícone e nome */}
             <div className="space-y-2">
-              <label
-                htmlFor="create-space-nome"
-                className="text-sm font-medium text-foreground"
-              >
+              <label htmlFor="create-space-nome" className="text-sm font-medium text-foreground">
                 Ícone e nome
               </label>
               <div className="flex items-center gap-3">
-                <SpaceAvatar nome={nome} color={color} icon={icon} />
+                <IconColorPicker
+                  color={color}
+                  icon={icon}
+                  nome={nome}
+                  onColorChange={setColor}
+                  onIconChange={setIcon}
+                />
                 <div className="flex-1 space-y-1">
                   <Input
                     id="create-space-nome"
@@ -211,45 +352,14 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
                     aria-invalid={!!nomeError}
                     className="h-10 text-sm"
                   />
-                  {nomeError && (
-                    <p className="text-xs text-destructive">{nomeError}</p>
-                  )}
+                  {nomeError && <p className="text-xs text-destructive">{nomeError}</p>}
                 </div>
               </div>
             </div>
 
-            {/* Cor do espaço */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">
-                Cor do espaço
-              </label>
-              <ColorPicker value={color} onChange={setColor} />
-            </div>
-
-            {/* Ícone (emoji) */}
-            <div className="space-y-2">
-              <label
-                htmlFor="create-space-icon"
-                className="text-sm font-medium text-foreground"
-              >
-                Ícone<span className="ml-1 text-muted-foreground font-normal text-xs">(opcional — emoji)</span>
-              </label>
-              <Input
-                id="create-space-icon"
-                placeholder="ex: 🚀 🎯 💡"
-                value={icon}
-                onChange={(e) => setIcon(e.target.value)}
-                className="h-10 text-sm w-40"
-                maxLength={10}
-              />
-            </div>
-
             {/* Descrição */}
             <div className="space-y-2">
-              <label
-                htmlFor="create-space-descricao"
-                className="text-sm font-medium text-foreground"
-              >
+              <label htmlFor="create-space-descricao" className="text-sm font-medium text-foreground">
                 Descrição<span className="ml-1 text-muted-foreground font-normal text-xs">(opcional)</span>
               </label>
               <textarea
@@ -274,11 +384,7 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
                   Somente você e membros convidados têm acesso
                 </p>
               </div>
-              <Switch
-                checked={privado}
-                onCheckedChange={setPrivado}
-                ariaLabel="Tornar space privado"
-              />
+              <Switch checked={privado} onCheckedChange={setPrivado} ariaLabel="Tornar space privado" />
             </div>
           </div>
 
@@ -287,7 +393,6 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
             <button
               type="button"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => {}}
             >
               Usar modelos
             </button>
