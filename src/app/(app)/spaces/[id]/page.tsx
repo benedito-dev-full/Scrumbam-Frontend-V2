@@ -7,11 +7,12 @@ import {
 } from "lucide-react";
 import { SpaceChip } from "@/components/shell/space-chip";
 import {
-  IcList, IcFolder, IcDoc, IcCaret, IcMenu, IcVoice,
+  IcList, IcFolder, IcDoc, IcMenu, IcVoice,
   TopBtn, ListRow, AddListRow,
 } from "@/components/shell/entity-page";
 import Link from "next/link";
 import { AgentPopover } from "@/components/spaces/agent-popover";
+import { SpaceSwitcher } from "@/components/spaces/space-switcher";
 import { useSpaces, useFolders, useLists } from "@/hooks/use-projects";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
@@ -57,11 +58,13 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
       }}>
         {/* esquerda: chip + nome + estrela + menu */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <SpaceChip iniciais={entidade.nome.slice(0, 2).toUpperCase()} cor="#6366f1" size="sm" />
-          <button type="button" style={{ display: "flex", alignItems: "center", gap: 4, border: 0, background: "none", cursor: "pointer", color: "#e4e4e4", fontSize: 14, fontWeight: 600 }}>
-            {entidade.nome}
-            <IcCaret />
-          </button>
+          <SpaceChip
+            iniciais={entidade.nome.slice(0, 2).toUpperCase()}
+            cor={entidade.color ?? "#6366f1"}
+            iconName={entidade.icon}
+            size="sm"
+          />
+          <SpaceSwitcher currentSpaceId={id} currentSpaceName={entidade.nome} />
           <button type="button" style={{ display: "grid", width: 24, height: 24, placeItems: "center", borderRadius: 5, border: 0, background: "none", cursor: "pointer", color: "#606068" }}
             onMouseEnter={e => { e.currentTarget.style.color = "#f59e0b"; }}
             onMouseLeave={e => { e.currentTarget.style.color = "#606068"; }}
