@@ -151,6 +151,37 @@ export function isOverdue(
   return new Date(dueDate) < new Date();
 }
 
+/**
+ * Verifica se uma task vence hoje (timezone local).
+ *
+ * Tasks em estado terminal nunca sao consideradas "para hoje" — a regra
+ * espelha `isOverdue` para que as duas listas (Atrasadas / Hoje) sejam
+ * mutuamente exclusivas e cubram exatamente os mesmos status.
+ *
+ * @param dueDate - Data de vencimento ISO 8601 (ou null/undefined).
+ * @param intention - V3 Intention atual da task.
+ * @returns `true` se a task vence hoje e nao esta em estado terminal.
+ *
+ * @example
+ * isDueToday(new Date().toISOString(), 'EXECUTING')  // true
+ * isDueToday('2030-12-31', 'EXECUTING')              // false (futuro)
+ * isDueToday(new Date().toISOString(), 'DONE')       // false (terminal)
+ */
+export function isDueToday(
+  dueDate: string | null | undefined,
+  intention: V3Intention,
+): boolean {
+  if (!dueDate) return false;
+  if (TERMINAL_INTENTIONS.includes(intention)) return false;
+  const due = new Date(dueDate);
+  const now = new Date();
+  return (
+    due.getFullYear() === now.getFullYear() &&
+    due.getMonth() === now.getMonth() &&
+    due.getDate() === now.getDate()
+  );
+}
+
 // ─── Mapeamento de prioridade ─────────────────────────────────────────────────
 
 const PRIORITY_LABEL_MAP: Record<string, string> = {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronRight, Plus, Flag, Users, Search, PanelLeftClose } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { HojeEAtrasadasSection } from "@/components/shell/planner/hoje-e-atrasadas-section";
 
 function Divider() {
   return <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />;
@@ -123,7 +124,7 @@ export function PlannerPanel() {
 
           {/* Hoje e atrasadas */}
           <div style={{ padding: "6px 0" }}>
-            <CollapsibleRow label="Hoje e atrasadas" />
+            <HojeEAtrasadasSection />
           </div>
 
           <Divider />
