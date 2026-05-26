@@ -30,6 +30,29 @@ import { useOrgMembers } from "@/hooks/use-org-members";
 import { intentionToColumn, isOverdue, priorityToColor, priorityToLabel } from "@/lib/mappers/task-status.mapper";
 import type { TaskResponseDto, TaskPriority, V3Intention } from "@/lib/types/api";
 
+// ─── Claude avatar SVG (logo pixel-art laranja da Anthropic) ─────────────────
+function ClaudeAvatar({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      <rect width="40" height="40" rx="8" fill="#1a1a1a" />
+      {/* cabeça */}
+      <rect x="10" y="8" width="20" height="14" rx="2" fill="#d97757" />
+      {/* olho esquerdo */}
+      <rect x="13" y="12" width="5" height="5" fill="#1a1a1a" />
+      {/* olho direito */}
+      <rect x="22" y="12" width="5" height="5" fill="#1a1a1a" />
+      {/* pescoço */}
+      <rect x="17" y="22" width="6" height="4" fill="#d97757" />
+      {/* corpo */}
+      <rect x="10" y="26" width="20" height="8" rx="2" fill="#d97757" />
+      {/* perna esquerda */}
+      <rect x="12" y="34" width="6" height="4" rx="1" fill="#d97757" />
+      {/* perna direita */}
+      <rect x="22" y="34" width="6" height="4" rx="1" fill="#d97757" />
+    </svg>
+  );
+}
+
 // ─── Tipo de status visual (espelha StatusTarefa da main) ────────────────────
 type StatusVisual = "backlog" | "pronto" | "em-progresso" | "concluido" | "falhou" | "atrasado";
 
@@ -877,12 +900,8 @@ function TaskRowBackend({
         >
           {isAiAssignee ? (
             <>
-              <span style={{
-                width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
-                background: "#1a1a4e", fontSize: 13,
-                display: "inline-flex", alignItems: "center", justifyContent: "center",
-              }}>🤖</span>
-              <span style={{ fontSize: 12, color: "#818cf8" }}>IA</span>
+              <ClaudeAvatar size={22} />
+              <span style={{ fontSize: 12, color: "#d97757", fontWeight: 600 }}>Claude</span>
             </>
           ) : assignee ? (
             <>
@@ -936,13 +955,9 @@ function TaskRowBackend({
                 );
               })}
               <div style={{ borderTop: "1px solid #2e2e38", margin: "6px 4px" }} />
-              <button type="button" onClick={() => handleAssigneeChange(AI_ASSIGNEE_ID)} style={{ ...assigneeItemStyle("#818cf8"), gap: 10, background: task.assigneeId === AI_ASSIGNEE_ID ? "rgba(129,140,248,0.14)" : "none" }}>
-                <span style={{
-                  width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-                  background: "#1a1a4e", fontSize: 15,
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                }}>🤖</span>
-                <span style={{ flex: 1, fontSize: 13, color: "#818cf8" }}>IA</span>
+              <button type="button" onClick={() => handleAssigneeChange(AI_ASSIGNEE_ID)} style={{ ...assigneeItemStyle("#d97757"), gap: 10, background: task.assigneeId === AI_ASSIGNEE_ID ? "rgba(217,119,87,0.14)" : "none" }}>
+                <ClaudeAvatar size={28} />
+                <span style={{ flex: 1, fontSize: 13, color: "#d97757", fontWeight: 600 }}>Claude</span>
                 {task.assigneeId === AI_ASSIGNEE_ID && <IcCheck size={12} />}
               </button>
             </div>
