@@ -12,12 +12,13 @@ const SNAP_RATIO = 0.25;
 /** Resistencia elastica durante o drag (1 = sem resistencia, 0 = sem movimento). */
 const DRAG_RESISTANCE = 0.5;
 
-/** Duracao da animacao de snap em ms. */
-const SNAP_DURATION_MS = 380;
+/** Duracao da animacao de snap em ms — valor alto para o spring ser perceptivel. */
+const SNAP_DURATION_MS = 650;
 
 /**
- * Curva de easing do snap: inicia rapido e desacelera suavemente no final.
- * Inspirado em spring physics — da a sensacao de peso e sofisticacao.
+ * Spring easing: dispara em velocidade maxima e desacelera
+ * progressivamente, como uma mola amortecida parando no lugar.
+ * Quanto maior SNAP_DURATION_MS, mais suave e visivel o efeito.
  */
 const SNAP_EASING = "cubic-bezier(0.16, 1, 0.3, 1)";
 
@@ -105,18 +106,6 @@ export function useDragNavigation(
     [1]: shiftDate(view, cursorDate, 1),
   };
 
-  /** Bloqueia selecao de texto no documento inteiro enquanto arrasta. */
-  function lockSelection() {
-    document.body.style.userSelect = "none";
-    document.body.style.webkitUserSelect = "none";
-  }
-
-  /** Libera selecao de texto. */
-  function unlockSelection() {
-    document.body.style.userSelect = "";
-    document.body.style.webkitUserSelect = "";
-  }
-
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     if (e.button !== 0 && e.pointerType === "mouse") return;
     const tag = (e.target as HTMLElement).closest("button, a, input, [role='button']");
@@ -137,7 +126,6 @@ export function useDragNavigation(
       if (!dragActiveRef.current) {
         dragActiveRef.current = true;
         setIsDragging(true);
-        lockSelection();
       }
 
       const offset = baseOffsetRef.current + delta * DRAG_RESISTANCE;
@@ -154,7 +142,6 @@ export function useDragNavigation(
       startXRef.current = null;
       dragActiveRef.current = false;
       setIsDragging(false);
-      unlockSelection();
 
       const w = containerRef.current?.getBoundingClientRect().width ?? containerWidth;
       const threshold = w * SNAP_RATIO;
@@ -194,7 +181,6 @@ export function useDragNavigation(
     startXRef.current = null;
     dragActiveRef.current = false;
     setIsDragging(false);
-    unlockSelection();
     setIsSnapping(true);
     setRailOffset(baseOffsetRef.current);
     setTimeout(() => setIsSnapping(false), SNAP_DURATION_MS);

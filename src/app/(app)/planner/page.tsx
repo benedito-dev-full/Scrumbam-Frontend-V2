@@ -52,7 +52,7 @@ export default function PlannerPage() {
       {/* Container do carrossel: overflow hidden, captura pointer events */}
       <div
         ref={containerRef}
-        className="relative flex-1 overflow-hidden"
+        className="relative flex-1 select-none overflow-hidden"
         {...pointerHandlers}
         style={{ touchAction: "pan-y", cursor: isDragging ? "grabbing" : "default" }}
       >
