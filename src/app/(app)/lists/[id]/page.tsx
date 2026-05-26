@@ -55,6 +55,8 @@ import {
   useUpdateTaskStatus,
   useCreateTask,
   useSubtasks,
+  useBlocks,
+  useCreateBlock,
 } from "@/hooks/use-tasks";
 import { AI_ASSIGNEE_ID, useTaskExecution } from "@/hooks/use-task-execution";
 import { useProjectMembers, type ProjectMemberDto } from "@/hooks/use-members";
@@ -63,11 +65,13 @@ import {
   isOverdue,
   priorityToColor,
   priorityToLabel,
+  calcBlockProgress,
 } from "@/lib/mappers/task-status.mapper";
 import type {
   TaskResponseDto,
   TaskPriority,
   V3Intention,
+  BlockDto,
 } from "@/lib/types/api";
 
 // ─── Claude avatar SVG (logo pixel-art laranja da Anthropic) ─────────────────
@@ -307,23 +311,6 @@ function BoardContent({
 
 // ─── BlocksContent — grid de cards ───────────────────────────────────────────
 
-type MockBlockTask = {
-  id: string;
-  nome: string;
-  status: "DONE" | "FAILED" | "INBOX" | "EXECUTING" | "READY";
-  dueDate: string | null;
-  createdAt: string;
-};
-
-type MockBlock = {
-  id: string;
-  nome: string;
-  startDate: string;
-  endDate: string;
-  cor: string;
-  tasks: MockBlockTask[];
-};
-
 type BlockSortKey = "recent" | "oldest" | "deadline_asc" | "deadline_desc" | "status";
 
 const SORT_OPTIONS: { key: BlockSortKey; label: string }[] = [
@@ -334,94 +321,49 @@ const SORT_OPTIONS: { key: BlockSortKey; label: string }[] = [
   { key: "status",       label: "Status"                 },
 ];
 
-const STATUS_ORDER: Record<MockBlockTask["status"], number> = {
-  EXECUTING: 0,
-  READY: 1,
-  INBOX: 2,
-  FAILED: 3,
-  DONE: 4,
+const STATUS_ORDER: Partial<Record<V3Intention, number>> = {
+  EXECUTING:  0,
+  VALIDATING: 1,
+  READY:      2,
+  INBOX:      3,
+  FAILED:     4,
+  DISCARDED:  4,
+  DONE:       5,
+  VALIDATED:  5,
+  CANCELLED:  5,
 };
 
-const STATUS_LABEL: Record<MockBlockTask["status"], string> = {
-  EXECUTING: "Em progresso",
-  READY: "Pronto",
-  INBOX: "Backlog",
-  FAILED: "Falhou",
-  DONE: "Concluído",
+const STATUS_LABEL: Partial<Record<V3Intention, string>> = {
+  EXECUTING:  "Em progresso",
+  VALIDATING: "Validando",
+  READY:      "Pronto",
+  INBOX:      "Backlog",
+  FAILED:     "Falhou",
+  DISCARDED:  "Descartado",
+  DONE:       "Concluído",
+  VALIDATED:  "Validado",
+  CANCELLED:  "Cancelado",
 };
 
-const STATUS_COLOR: Record<MockBlockTask["status"], string> = {
-  EXECUTING: "#f59e0b",
-  READY: "#60a5fa",
-  INBOX: "#6b7280",
-  FAILED: "#ef4444",
-  DONE: "#22c55e",
+const STATUS_COLOR: Partial<Record<V3Intention, string>> = {
+  EXECUTING:  "#f59e0b",
+  VALIDATING: "#a78bfa",
+  READY:      "#60a5fa",
+  INBOX:      "#6b7280",
+  FAILED:     "#ef4444",
+  DISCARDED:  "#ef4444",
+  DONE:       "#22c55e",
+  VALIDATED:  "#22c55e",
+  CANCELLED:  "#6b7280",
 };
 
-const TODAY_MOCK = new Date("2026-05-26T12:00:00");
-
-const MOCK_BLOCKS: MockBlock[] = [
-  {
-    id: "blk-001",
-    nome: "Sprint de Fundação",
-    startDate: "2026-05-12",
-    endDate: "2026-05-23",
-    cor: "#7c5cff",
-    tasks: [
-      { id: "t1", nome: "Configurar banco de dados",  status: "DONE",      dueDate: "2026-05-14", createdAt: "2026-05-12" },
-      { id: "t2", nome: "Setup do repositório V2",    status: "DONE",      dueDate: "2026-05-15", createdAt: "2026-05-12" },
-      { id: "t3", nome: "Estrutura de pastas NestJS", status: "DONE",      dueDate: "2026-05-19", createdAt: "2026-05-13" },
-      { id: "t4", nome: "Migrations iniciais",        status: "DONE",      dueDate: "2026-05-23", createdAt: "2026-05-14" },
-    ],
-  },
-  {
-    id: "blk-002",
-    nome: "Autenticação & RBAC",
-    startDate: "2026-05-26",
-    endDate: "2026-06-06",
-    cor: "#0ea5e9",
-    tasks: [
-      { id: "t5", nome: "Login com JWT",              status: "DONE",      dueDate: "2026-05-28", createdAt: "2026-05-26" },
-      { id: "t6", nome: "Refresh token",              status: "DONE",      dueDate: "2026-05-28", createdAt: "2026-05-26" },
-      { id: "t7", nome: "Permissões via DVincula",    status: "EXECUTING", dueDate: "2026-06-02", createdAt: "2026-05-27" },
-      { id: "t8", nome: "Testes de autenticação",     status: "INBOX",     dueDate: "2026-06-05", createdAt: "2026-05-27" },
-      { id: "t9", nome: "Guard de organização",       status: "INBOX",     dueDate: "2026-06-06", createdAt: "2026-05-28" },
-    ],
-  },
-  {
-    id: "blk-003",
-    nome: "Engine de Execução (F6)",
-    startDate: "2026-06-09",
-    endDate: "2026-06-20",
-    cor: "#f59e0b",
-    tasks: [
-      { id: "t10", nome: "OperacaoExecucaoClaude",       status: "INBOX", dueDate: "2026-06-13", createdAt: "2026-06-09" },
-      { id: "t11", nome: "Risk Gate (-301/-302/-303)",   status: "INBOX", dueDate: "2026-06-17", createdAt: "2026-06-09" },
-      { id: "t12", nome: "Polling de DPedido",           status: "INBOX", dueDate: "2026-06-20", createdAt: "2026-06-10" },
-    ],
-  },
-  {
-    id: "blk-004",
-    nome: "Webhooks & Notificações",
-    startDate: "2026-06-23",
-    endDate: "2026-07-04",
-    cor: "#22c55e",
-    tasks: [
-      { id: "t13", nome: "DEvento outbound HMAC",      status: "INBOX", dueDate: "2026-06-26", createdAt: "2026-06-23" },
-      { id: "t14", nome: "Retry logic exponencial",    status: "INBOX", dueDate: "2026-06-28", createdAt: "2026-06-23" },
-      { id: "t15", nome: "Inbox de notificações",      status: "INBOX", dueDate: "2026-07-01", createdAt: "2026-06-24" },
-      { id: "t16", nome: "Testes de webhook",          status: "INBOX", dueDate: "2026-07-04", createdAt: "2026-06-24" },
-    ],
-  },
-];
-
-function sortTasks(tasks: MockBlockTask[], key: BlockSortKey): MockBlockTask[] {
+function sortTasks(tasks: TaskResponseDto[], key: BlockSortKey): TaskResponseDto[] {
   const copy = [...tasks];
   switch (key) {
     case "recent":
-      return copy.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      return copy.sort((a, b) => b.criadoEm.localeCompare(a.criadoEm));
     case "oldest":
-      return copy.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+      return copy.sort((a, b) => a.criadoEm.localeCompare(b.criadoEm));
     case "deadline_asc":
       return copy.sort((a, b) => {
         if (!a.dueDate && !b.dueDate) return 0;
@@ -437,7 +379,11 @@ function sortTasks(tasks: MockBlockTask[], key: BlockSortKey): MockBlockTask[] {
         return b.dueDate.localeCompare(a.dueDate);
       });
     case "status":
-      return copy.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status]);
+      return copy.sort(
+        (a, b) =>
+          (STATUS_ORDER[a.status as V3Intention] ?? 99) -
+          (STATUS_ORDER[b.status as V3Intention] ?? 99),
+      );
   }
 }
 
@@ -446,14 +392,16 @@ function BlockDrawer({
   block,
   onClose,
 }: {
-  block: MockBlock;
+  block: BlockDto;
   onClose: () => void;
 }) {
   const [sortKey, setSortKey] = useState<BlockSortKey>("recent");
   const [sortOpen, setSortOpen] = useState(false);
-  const { done, total, percent } = calcProgress(block.tasks);
-  const dl = deadlineInfo(block.endDate, percent);
-  const sorted = sortTasks(block.tasks, sortKey);
+  const { data: tasks = [], isLoading: loadingTasks } = useSubtasks(block.id, true);
+  const { done, total, percent } = calcBlockProgress(tasks);
+  const endDate = block.dados?.endDate ?? null;
+  const dl = deadlineInfo(endDate, percent);
+  const sorted = sortTasks(tasks, sortKey);
   const currentSort = SORT_OPTIONS.find((o) => o.key === sortKey)!;
 
   return (
@@ -501,7 +449,7 @@ function BlockDrawer({
                 width: 10,
                 height: 10,
                 borderRadius: "50%",
-                background: block.cor,
+                background: block.dados?.cor ?? "#7c5cff",
                 flexShrink: 0,
               }}
             />
@@ -675,76 +623,95 @@ function BlockDrawer({
 
         {/* lista de tasks */}
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {sorted.map((task, idx) => (
-            <div
-              key={task.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 10,
-                padding: "11px 20px",
-                borderBottom: idx < sorted.length - 1 ? "1px solid #1f1f25" : "none",
-                cursor: "default",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              {/* status dot */}
-              <span
+          {loadingTasks ? (
+            <div style={{ padding: "16px 20px" }}>
+              {[1, 2, 3].map((i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: 36,
+                    marginBottom: 4,
+                    borderRadius: 6,
+                    background: "var(--accent)",
+                  }}
+                />
+              ))}
+            </div>
+          ) : sorted.map((task, idx) => {
+            const taskColor = STATUS_COLOR[task.status as V3Intention] ?? "#6b7280";
+            const taskLabel = STATUS_LABEL[task.status as V3Intention] ?? task.status;
+            const isTerminal = ["DONE", "VALIDATED", "CANCELLED"].includes(task.status);
+            return (
+              <div
+                key={task.id}
                 style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: "50%",
-                  background: STATUS_COLOR[task.status],
-                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "11px 20px",
+                  borderBottom: idx < sorted.length - 1 ? "1px solid #1f1f25" : "none",
+                  cursor: "default",
                 }}
-                title={STATUS_LABEL[task.status]}
-              />
-
-              {/* nome */}
-              <span
-                style={{
-                  flex: 1,
-                  fontSize: 13,
-                  color: task.status === "DONE" ? "var(--muted-foreground)" : "var(--foreground)",
-                  textDecoration: task.status === "DONE" ? "line-through" : "none",
-                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.03)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
               >
-                {task.nome}
-              </span>
+                {/* status dot */}
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: taskColor,
+                    flexShrink: 0,
+                  }}
+                  title={taskLabel}
+                />
 
-              {/* dueDate */}
-              {task.dueDate && (
+                {/* nome */}
+                <span
+                  style={{
+                    flex: 1,
+                    fontSize: 13,
+                    color: isTerminal ? "var(--muted-foreground)" : "var(--foreground)",
+                    textDecoration: isTerminal ? "line-through" : "none",
+                  }}
+                >
+                  {task.nome}
+                </span>
+
+                {/* dueDate */}
+                {task.dueDate && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "var(--muted-foreground)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {new Date(task.dueDate + "T12:00:00").toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "short",
+                    })}
+                  </span>
+                )}
+
+                {/* status badge */}
                 <span
                   style={{
                     fontSize: 11,
-                    color: "var(--muted-foreground)",
+                    padding: "2px 8px",
+                    borderRadius: 4,
+                    background: taskColor + "20",
+                    color: taskColor,
+                    fontWeight: 600,
                     flexShrink: 0,
                   }}
                 >
-                  {new Date(task.dueDate + "T12:00:00").toLocaleDateString("pt-BR", {
-                    day: "2-digit",
-                    month: "short",
-                  })}
+                  {taskLabel}
                 </span>
-              )}
-
-              {/* status badge */}
-              <span
-                style={{
-                  fontSize: 11,
-                  padding: "2px 8px",
-                  borderRadius: 4,
-                  background: STATUS_COLOR[task.status] + "20",
-                  color: STATUS_COLOR[task.status],
-                  fontWeight: 600,
-                  flexShrink: 0,
-                }}
-              >
-                {STATUS_LABEL[task.status]}
-              </span>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
         {/* rodapé — adicionar task */}
@@ -790,44 +757,39 @@ function BlockDrawer({
   );
 }
 
-function calcProgress(tasks: MockBlockTask[]) {
-  if (tasks.length === 0) return { done: 0, total: 0, percent: 0 };
-  const done = tasks.filter((t) => t.status === "DONE").length;
-  return { done, total: tasks.length, percent: Math.round((done / tasks.length) * 100) };
-}
-
 function daysUntil(isoEnd: string): number {
   const end = new Date(isoEnd + "T12:00:00");
-  const diff = end.getTime() - TODAY_MOCK.getTime();
+  const diff = end.getTime() - new Date().getTime();
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-function deadlineInfo(isoEnd: string, percent: number): {
-  label: string;
-  color: string;
-  bg: string;
-} {
-  const days = daysUntil(isoEnd);
+function deadlineInfo(
+  isoEnd: string | null | undefined,
+  percent: number,
+): { label: string; color: string; bg: string } {
   if (percent === 100) {
     return { label: "Concluído", color: "#22c55e", bg: "rgba(34,197,94,0.12)" };
   }
-  if (days < 0) {
+  if (!isoEnd) {
+    return { label: "Sem prazo", color: "#6b7280", bg: "rgba(107,114,128,0.12)" };
+  }
+  const days = daysUntil(isoEnd);
+  if (days < 0)
     return { label: `${Math.abs(days)}d atrasado`, color: "#ef4444", bg: "rgba(239,68,68,0.12)" };
-  }
-  if (days < 10) {
+  if (days < 10)
     return { label: `${days}d restantes`, color: "#ef4444", bg: "rgba(239,68,68,0.12)" };
-  }
-  if (days < 30) {
+  if (days < 30)
     return { label: `${days}d restantes`, color: "#f59e0b", bg: "rgba(245,158,11,0.12)" };
-  }
   return { label: `${days}d restantes`, color: "#22c55e", bg: "rgba(34,197,94,0.12)" };
 }
 
-function BlockCard({ block, onClick }: { block: MockBlock; onClick: () => void }) {
-  const { done, total, percent } = calcProgress(block.tasks);
-  const dl = deadlineInfo(block.endDate, percent);
-  const barColor =
-    percent === 100 ? "#22c55e" : percent > 60 ? "#7c5cff" : "#60a5fa";
+function BlockCard({ block, onClick }: { block: BlockDto; onClick: () => void }) {
+  const { data: subtasks = [] } = useSubtasks(block.id, true);
+  const { done, total, percent } = calcBlockProgress(subtasks);
+  const cor = block.dados?.cor ?? "#7c5cff";
+  const endDate = block.dados?.endDate ?? null;
+  const dl = deadlineInfo(endDate, percent);
+  const barColor = percent === 100 ? "#22c55e" : percent > 60 ? "#7c5cff" : "#60a5fa";
 
   return (
     <div
@@ -843,8 +805,8 @@ function BlockCard({ block, onClick }: { block: MockBlock; onClick: () => void }
         transition: "border-color .15s, box-shadow .15s",
       }}
       onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = block.cor + "60";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 20px ${block.cor}18`;
+        (e.currentTarget as HTMLDivElement).style.borderColor = cor + "60";
+        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 20px ${cor}18`;
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLDivElement).style.borderColor = "#26262d";
@@ -852,7 +814,7 @@ function BlockCard({ block, onClick }: { block: MockBlock; onClick: () => void }
       }}
     >
       {/* topo colorido */}
-      <div style={{ height: 4, background: block.cor, flexShrink: 0 }} />
+      <div style={{ height: 4, background: cor, flexShrink: 0 }} />
 
       {/* corpo do card */}
       <div style={{ padding: "16px 18px 14px", flex: 1 }}>
@@ -987,9 +949,11 @@ function BlocksContent({
   members: ProjectMemberDto[];
   onOpenTask: (task: TaskResponseDto) => void;
 }) {
+  const { data: blocks = [], isLoading: loadingBlocks } = useBlocks(projectId);
+  const createBlock = useCreateBlock();
   const [creating, setCreating] = useState(false);
   const [newBlockName, setNewBlockName] = useState("");
-  const [selectedBlock, setSelectedBlock] = useState<MockBlock | null>(null);
+  const [selectedBlock, setSelectedBlock] = useState<BlockDto | null>(null);
 
   return (
     <div
@@ -1016,7 +980,7 @@ function BlocksContent({
               textTransform: "uppercase",
             }}
           >
-            {MOCK_BLOCKS.length} blocos
+            {loadingBlocks ? "..." : blocks.length} blocos
           </span>
         </div>
         <button
@@ -1060,8 +1024,15 @@ function BlocksContent({
             onChange={(e) => setNewBlockName(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter" && newBlockName.trim()) {
-                setCreating(false);
-                setNewBlockName("");
+                createBlock.mutate(
+                  { nome: newBlockName.trim(), projectId },
+                  {
+                    onSuccess: () => {
+                      setCreating(false);
+                      setNewBlockName("");
+                    },
+                  },
+                );
               }
               if (e.key === "Escape") {
                 setCreating(false);
@@ -1086,17 +1057,29 @@ function BlocksContent({
       )}
 
       {/* grid de cards — 3 colunas base, 4 em telas largas */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-          gap: 16,
-        }}
-      >
-        {MOCK_BLOCKS.map((block) => (
-          <BlockCard key={block.id} block={block} onClick={() => setSelectedBlock(block)} />
-        ))}
-      </div>
+      {loadingBlocks ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} style={{ height: 180, borderRadius: 12, background: "var(--card)" }} />
+          ))}
+        </div>
+      ) : blocks.length === 0 ? (
+        <div style={{ padding: "60px 0", textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
+          Nenhum bloco ainda. Crie o primeiro clicando em &quot;Novo bloco&quot;.
+        </div>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+            gap: 16,
+          }}
+        >
+          {blocks.map((block) => (
+            <BlockCard key={block.id} block={block} onClick={() => setSelectedBlock(block)} />
+          ))}
+        </div>
+      )}
 
       {/* drawer de detalhes do bloco */}
       {selectedBlock && (
