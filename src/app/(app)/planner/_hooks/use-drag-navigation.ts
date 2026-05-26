@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { addDays, addMonths, addWeeks } from "date-fns";
+import { addDays, addMonths, addWeeks, addYears } from "date-fns";
 
 import type { PlannerView } from "@/lib/types/planner-event";
 
@@ -61,7 +61,8 @@ interface UseDragNavigationResult {
 function shiftDate(view: PlannerView, base: Date, dir: 1 | -1): Date {
   if (view === "day") return addDays(base, dir);
   if (view === "week") return addWeeks(base, dir);
-  return addMonths(base, dir);
+  if (view === "month") return addMonths(base, dir);
+  return addYears(base, dir);
 }
 
 /**

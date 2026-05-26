@@ -10,6 +10,7 @@ import { DayView } from "./_components/day-view";
 import { MonthView } from "./_components/month-view";
 import { PlannerToolbar } from "./_components/planner-toolbar";
 import { WeekView } from "./_components/week-view";
+import { YearView } from "./_components/year-view";
 import { useDragNavigation } from "./_hooks/use-drag-navigation";
 import { useKeyboardNavigation } from "./_hooks/use-keyboard-navigation";
 
@@ -93,6 +94,7 @@ export default function PlannerPage() {
 function SlideContent({ view, date }: { view: PlannerView; date: Date }) {
   if (view === "day") return <DayView cursorDate={date} events={mockPlannerEvents} />;
   if (view === "week") return <WeekView cursorDate={date} events={mockPlannerEvents} />;
+  if (view === "year") return <YearView cursorDate={date} events={mockPlannerEvents} />;
   return <MonthView cursorDate={date} events={mockPlannerEvents} />;
 }
 

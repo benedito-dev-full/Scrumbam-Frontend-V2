@@ -26,6 +26,7 @@ const VIEW_LABEL: Record<PlannerView, string> = {
   day: "Dia",
   week: "Semana",
   month: "Mes",
+  year: "Ano",
 };
 
 interface PlannerToolbarProps {

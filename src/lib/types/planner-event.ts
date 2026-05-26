@@ -38,4 +38,4 @@ export interface PlannerEvent {
  * Define tanto o layout quanto o passo de navegacao (prev/next) e o
  * formato do label do periodo na toolbar.
  */
-export type PlannerView = "day" | "week" | "month";
+export type PlannerView = "day" | "week" | "month" | "year";

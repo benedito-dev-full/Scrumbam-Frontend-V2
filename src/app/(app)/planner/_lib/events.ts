@@ -1,4 +1,4 @@
-import { isSameDay } from "date-fns";
+import { isSameDay, isSameMonth } from "date-fns";
 
 import type { PlannerEvent, PlannerEventColor } from "@/lib/types/planner-event";
 
@@ -17,6 +17,11 @@ export function getAllDayEventsForDay(events: PlannerEvent[], date: Date): Plann
 /** Todos os eventos (timed + all-day) que tocam o dia. */
 export function getEventsForDay(events: PlannerEvent[], date: Date): PlannerEvent[] {
   return events.filter((e) => isSameDay(new Date(e.start), date));
+}
+
+/** Todos os eventos que ocorrem no mes. */
+export function getEventsForMonth(events: PlannerEvent[], month: Date): PlannerEvent[] {
+  return events.filter((e) => isSameMonth(new Date(e.start), month));
 }
 
 /**

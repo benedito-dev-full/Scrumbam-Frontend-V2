@@ -2,6 +2,7 @@ import {
   addDays,
   addMonths,
   addWeeks,
+  addYears,
   endOfMonth,
   endOfWeek,
   format,
@@ -48,7 +49,8 @@ export function getMonthGrid(base: Date): Date[][] {
 export function stepDate(view: PlannerView, base: Date, dir: 1 | -1): Date {
   if (view === "day") return addDays(base, dir);
   if (view === "week") return addWeeks(base, dir);
-  return addMonths(base, dir);
+  if (view === "month") return addMonths(base, dir);
+  return addYears(base, dir);
 }
 
 /**
@@ -62,8 +64,13 @@ export function formatPeriodLabel(view: PlannerView, date: Date): string {
   if (view === "day") {
     return format(date, "EEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   }
-  const ref = view === "week" ? getWeekDates(date)[0] : date;
-  return format(ref, "MMMM yyyy", { locale: ptBR });
+  if (view === "week") {
+    return format(getWeekDates(date)[0], "MMMM yyyy", { locale: ptBR });
+  }
+  if (view === "year") {
+    return format(date, "yyyy");
+  }
+  return format(date, "MMMM yyyy", { locale: ptBR });
 }
 
 export { isSameDay, isSameMonth, isToday };
