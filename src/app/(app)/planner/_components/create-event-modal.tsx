@@ -7,7 +7,6 @@ import { ptBR } from "date-fns/locale";
 import {
   AlignLeft,
   Calendar,
-  ChevronDown,
   Clock,
   Coffee,
   Link2,
@@ -21,6 +20,14 @@ import {
   CheckSquare,
   CalendarDays,
 } from "lucide-react";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 import { cn } from "@/lib/utils";
 
@@ -113,21 +120,24 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
           {/* Tipo de evento */}
           <div className="flex items-center gap-2.5">
             <Tag size={13} className="flex-shrink-0 text-muted-foreground" />
-            <div className="relative flex-1">
-              <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-                <SelectedIcon size={13} className={selectedType.color} />
-              </div>
-              <select
-                value={eventType}
-                onChange={(e) => setEventType(e.target.value as EventTypeValue)}
-                className={cn(inputClass, "appearance-none cursor-pointer pl-8 pr-8")}
-              >
-                {EVENT_TYPES.map(({ value, label }) => (
-                  <option key={value} value={value}>{label}</option>
+            <Select value={eventType} onValueChange={(v) => setEventType(v as EventTypeValue)}>
+              <SelectTrigger className="flex-1 text-[13px]">
+                <div className="flex items-center gap-2">
+                  <SelectedIcon size={13} className={selectedType.color} />
+                  <SelectValue />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                {EVENT_TYPES.map(({ value, label, Icon, color }) => (
+                  <SelectItem key={value} value={value}>
+                    <div className="flex items-center gap-2">
+                      <Icon size={13} className={color} />
+                      <span>{label}</span>
+                    </div>
+                  </SelectItem>
                 ))}
-              </select>
-              <ChevronDown size={12} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            </div>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Data e hora */}
@@ -164,18 +174,18 @@ export function CreateEventModal({ date, hour, onClose }: CreateEventModalProps)
               <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
               <line x1="4" x2="4" y1="22" y2="15" />
             </svg>
-            <div className="relative flex-1">
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as PriorityValue)}
-                className={cn(inputClass, "appearance-none pr-8 cursor-pointer")}
-              >
-                {PRIORITIES.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
+            <Select value={priority} onValueChange={(v) => setPriority(v as PriorityValue)}>
+              <SelectTrigger className="flex-1 text-[13px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PRIORITIES.map(({ value, label }) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
                 ))}
-              </select>
-              <ChevronDown size={12} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            </div>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Link de reuniao — só aparece para Reunião e Ligação */}
