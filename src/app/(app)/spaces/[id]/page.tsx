@@ -80,7 +80,7 @@ export default function SpacePage({ params }: { params: Promise<{ id: string }> 
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <TopBtn icon={<IcVoice />} />
           <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)", margin: "0 4px" }} />
-          <AgentPopover spaceId={id} spaceName={entidade.nome} />
+          <AgentPopover projectId={id} projectName={entidade.nome} />
           <TopBtn icon={<Sparkles size={14} />} />
           <TopBtn icon={<span style={{ fontSize: 13 }}>✦</span>} label="Pergunte à IA" />
           <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)", margin: "0 4px" }} />

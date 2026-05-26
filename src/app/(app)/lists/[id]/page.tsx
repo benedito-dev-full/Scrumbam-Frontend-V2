@@ -1,7 +1,8 @@
 "use client";
 
 import React, { use, useEffect, useState } from "react";
-import { Star, Share2, Bot, Sparkles, GripVertical } from "lucide-react";
+import { Star, Share2, Sparkles, GripVertical } from "lucide-react";
+import { AgentPopover } from "@/components/spaces/agent-popover";
 import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   useDroppable, useDraggable,
@@ -73,7 +74,7 @@ export default function ListPage({
 
   return (
     <div className="flex h-full flex-col overflow-hidden" style={{ background: "#111111" }}>
-      <PageHeader nome={projeto.nome} />
+      <PageHeader id={id} nome={projeto.nome} />
       <ViewSwitcher
         defaultValue="list"
         value={view}
@@ -309,7 +310,7 @@ function ListContent({
 }
 
 // ─── PageHeader ───────────────────────────────────────────────────────────────
-function PageHeader({ nome }: { nome: string }) {
+function PageHeader({ id, nome }: { id: string; nome: string }) {
   return (
     <header
       className="flex h-11 shrink-0 items-center justify-between gap-4 px-5"
@@ -328,7 +329,7 @@ function PageHeader({ nome }: { nome: string }) {
         </button>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <TbBtn icon={<Bot className="size-3.5" />} label="Agentes" />
+        <AgentPopover projectId={id} projectName={nome} />
         <TbBtn icon={<Sparkles className="size-3.5" />} label="Pergunte à IA" />
         <div style={{ width: 1, height: 16, background: "#26262d", margin: "0 4px" }} />
         <TbBtn icon={<Share2 className="size-3.5" />} label="Compartilhar" bordered />

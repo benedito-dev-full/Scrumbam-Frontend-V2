@@ -2,7 +2,7 @@
 
 import { use, useState } from "react";
 import {
-  Star, Share2, Bot, Sparkles, Plus, Filter,
+  Star, Share2, Sparkles, Plus, Filter,
   RefreshCw, LayoutGrid,
 } from "lucide-react";
 import {
@@ -10,6 +10,7 @@ import {
   TopBtn, ListRow, AddListRow,
 } from "@/components/shell/entity-page";
 import Link from "next/link";
+import { AgentPopover } from "@/components/spaces/agent-popover";
 import { useProject, useLists } from "@/hooks/use-projects";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
@@ -76,7 +77,7 @@ export default function FolderPage({ params }: { params: Promise<{ id: string }>
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <TopBtn icon={<IcVoice />} />
           <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)", margin: "0 4px" }} />
-          <TopBtn icon={<Bot size={14} />} label="Agentes" />
+          <AgentPopover projectId={id} projectName={entidade.nome} />
           <TopBtn icon={<Sparkles size={14} />} />
           <TopBtn icon={<span style={{ fontSize: 13 }}>✦</span>} label="Pergunte à IA" />
           <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.08)", margin: "0 4px" }} />

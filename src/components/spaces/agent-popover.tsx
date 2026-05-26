@@ -16,8 +16,14 @@ import { ProvisionModal } from '@/components/spaces/provision-modal';
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 interface AgentPopoverProps {
-  spaceId: string;
-  spaceName: string;
+  /** ID do projeto (Space, Folder ou List). */
+  projectId: string;
+  /** Nome exibido no popover. */
+  projectName: string;
+  /** @deprecated use projectId */
+  spaceId?: string;
+  /** @deprecated use projectName */
+  spaceName?: string;
 }
 
 // ─── Sub-componentes ──────────────────────────────────────────────────────────
@@ -68,7 +74,10 @@ function InfoRow({ label, value, mono = false }: { label: string; value: string;
  * @example
  * <AgentPopover spaceId={id} spaceName={entidade.nome} />
  */
-export function AgentPopover({ spaceId, spaceName }: AgentPopoverProps) {
+export function AgentPopover({ projectId, projectName, spaceId, spaceName }: AgentPopoverProps) {
+  // Suporte a props legadas
+  const resolvedId = projectId || spaceId || '';
+  const resolvedName = projectName || spaceName || '';
   const [open, setOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [confirmUnlink, setConfirmUnlink] = useState(false);
@@ -77,8 +86,8 @@ export function AgentPopover({ spaceId, spaceName }: AgentPopoverProps) {
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const { data: agents = [] } = useAgents();
-  const { data: linkData, isLoading } = useSpaceAgentLink(spaceId);
-  const unlinkMutation = useUnlinkSpaceAgent(spaceId);
+  const { data: linkData, isLoading } = useSpaceAgentLink(resolvedId);
+  const unlinkMutation = useUnlinkSpaceAgent(resolvedId);
 
   const hasAgents = agents.length > 0;
   const isLinked = !!linkData?.link;
@@ -221,7 +230,7 @@ export function AgentPopover({ spaceId, spaceName }: AgentPopoverProps) {
                 Agente VPS
               </p>
               <p style={{ fontSize: 11, color: '#555', margin: 0 }}>
-                {isLinked ? `Espaço "${spaceName}" vinculado` : 'Sem agente vinculado'}
+                {isLinked ? `"${resolvedName}" vinculado` : 'Sem agente vinculado'}
               </p>
             </div>
           </div>
@@ -490,8 +499,8 @@ export function AgentPopover({ spaceId, spaceName }: AgentPopoverProps) {
 
       {/* Modal de provisionamento */}
       <ProvisionModal
-        spaceId={spaceId}
-        spaceName={spaceName}
+        spaceId={resolvedId}
+        spaceName={resolvedName}
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         initialStep={1}
