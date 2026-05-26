@@ -398,3 +398,90 @@ export function useDeleteTask() {
     },
   });
 }
+
+/**
+ * Atualiza nome e/ou datas de um bloco (idClasse=-200).
+ *
+ * Mapeia para `PUT /tasks/:id { nome?, dados? }`.
+ * `dados.startDate` e `dados.endDate` são strings ISO (YYYY-MM-DD) ou null para remover.
+ * `dados.cor` é hex string ou null para remover.
+ *
+ * Invalida `qk.tasks.blocks(projectId)` e `qk.tasks.byId(id)` após sucesso.
+ *
+ * @returns Resultado do useMutation
+ *
+ * @example
+ * ```tsx
+ * const { mutate } = useUpdateBlock();
+ * mutate({ id: blockId, projectId, dto: { dados: { startDate: '2026-06-01', endDate: '2026-06-14' } } });
+ * mutate({ id: blockId, projectId, dto: { nome: 'Novo nome' } });
+ * ```
+ */
+export function useUpdateBlock() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    BlockDto,
+    Error,
+    {
+      id: string;
+      projectId: string;
+      dto: {
+        nome?: string;
+        dados?: {
+          startDate?: string | null;
+          endDate?: string | null;
+          cor?: string | null;
+        };
+      };
+    }
+  >({
+    mutationFn: async ({ id, dto }) => {
+      const res = await api.put<BlockDto>(`/tasks/${id}`, dto);
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.blocks(variables.projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.byId(variables.id),
+      });
+    },
+  });
+}
+
+/**
+ * Deleta um bloco (idClasse=-200) e limpa o cache das tasks filhas.
+ *
+ * Mapeia para `DELETE /tasks/:id` (retorna 204).
+ * O backend executa cascade nas tasks filhas (idPai=<blockId>) automaticamente.
+ * O frontend limpa `qk.tasks.children(id)` para evitar dados órfãos no cache.
+ *
+ * Invalida após sucesso:
+ * - `qk.tasks.blocks(projectId)` — remove o bloco da lista
+ * - `qk.tasks.children(id)` — limpa cache das filhas órfãs
+ *
+ * @returns Resultado do useMutation
+ *
+ * @example
+ * ```tsx
+ * const { mutate } = useDeleteBlock();
+ * mutate({ id: blockId, projectId });
+ * ```
+ */
+export function useDeleteBlock() {
+  const queryClient = useQueryClient();
+  return useMutation<void, Error, { id: string; projectId: string }>({
+    mutationFn: async ({ id }) => {
+      await api.delete(`/tasks/${id}`);
+    },
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.blocks(variables.projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.children(variables.id),
+      });
+    },
+  });
+}
