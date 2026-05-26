@@ -671,6 +671,11 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
 
   if (!task) return null;
 
+  // Estado terminal (DONE/FAILED) = histórico. activeExecution zumbi não
+  // bloqueia ações em tasks já encerradas.
+  const isTerminalStatus = task.status === "DONE" || task.status === "FAILED";
+  const lockDelete = Boolean(task.activeExecution) && !isTerminalStatus;
+
   const dataTexto = formatarData(dataVencimento);
   const dataCor = corData(dataVencimento);
   const diasRestantes = diasUntilDate(dataVencimento);
@@ -1254,10 +1259,10 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
           >
             <button
               type="button"
-              disabled={Boolean(task.activeExecution)}
+              disabled={lockDelete}
               onClick={() => setDeleteOpen(true)}
               title={
-                task.activeExecution
+                lockDelete
                   ? "Não é possível excluir enquanto há execução ativa"
                   : undefined
               }
@@ -1274,18 +1279,18 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                 color: "#f87171",
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: task.activeExecution ? "not-allowed" : "pointer",
-                opacity: task.activeExecution ? 0.5 : 1,
+                cursor: lockDelete ? "not-allowed" : "pointer",
+                opacity: lockDelete ? 0.5 : 1,
                 transition: "background-color .15s",
                 fontFamily: "inherit",
               }}
               onMouseEnter={(e) => {
-                if (!task.activeExecution) {
+                if (!lockDelete) {
                   e.currentTarget.style.background = "rgba(239,68,68,0.20)";
                 }
               }}
               onMouseLeave={(e) => {
-                if (!task.activeExecution) {
+                if (!lockDelete) {
                   e.currentTarget.style.background = "rgba(239,68,68,0.10)";
                 }
               }}

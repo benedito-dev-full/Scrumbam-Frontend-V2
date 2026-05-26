@@ -94,9 +94,13 @@ export function TaskDetailDrawer({
   if (!task) return null;
 
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
+  // Estado terminal (DONE/FAILED) = histórico: nenhum lock, badge ou botão
+  // de execução. Task acabada não exige ação na UI mesmo que haja DPedido
+  // pendente (zumbi).
+  const isTerminalStatus = task.status === "DONE" || task.status === "FAILED";
   // Lock UI — `activeExecution` é a verdade canônica do backend.
-  // Quando não-null: campos viram read-only enquanto a execução IA roda.
-  const isLocked = task.activeExecution != null;
+  // Suprimido em estado terminal.
+  const isLocked = !isTerminalStatus && task.activeExecution != null;
   const lockTitle = isLocked
     ? "Em execução pela IA — aguarde a conclusão para editar"
     : undefined;
@@ -227,8 +231,9 @@ export function TaskDetailDrawer({
           />
         </Field>
 
-        {/* Execução IA — só aparece quando responsável = IA */}
-        {task.assigneeId === AI_ASSIGNEE_ID && (
+        {/* Execução IA — só em tasks com responsável IA e não-terminais.
+            Concluído/Falhou = histórico, sem ação de execução. */}
+        {task.assigneeId === AI_ASSIGNEE_ID && !isTerminalStatus && (
           <AiExecutionPanel
             taskId={taskId}
             taskName={task.nome}

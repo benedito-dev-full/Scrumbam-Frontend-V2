@@ -49,7 +49,6 @@ import { AI_ASSIGNEE_ID, useTaskExecution } from "@/hooks/use-task-execution";
 import { useProjectMembers, type ProjectMemberDto } from "@/hooks/use-members";
 import { useOrgMembers } from "@/hooks/use-org-members";
 import {
-  intentionToColumn,
   isOverdue,
   priorityToColor,
   priorityToLabel,
@@ -403,8 +402,12 @@ function ListContent({
               background: "none",
               border: 0,
             }}
-            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
-            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted-foreground)")}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.color = "var(--foreground)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.color = "var(--muted-foreground)")
+            }
           >
             <IcPlus size={13} />
             Novo status
@@ -457,7 +460,10 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
   return (
     <header
       className="flex h-11 shrink-0 items-center justify-between gap-4 px-5"
-      style={{ borderBottom: "1px solid #26262d", background: "var(--background)" }}
+      style={{
+        borderBottom: "1px solid #26262d",
+        background: "var(--background)",
+      }}
     >
       <div className="flex min-w-0 items-center gap-2">
         <IcList size={16} />
@@ -545,7 +551,9 @@ function TbBtn({
         cursor: "pointer",
       }}
       onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
-      onMouseLeave={(e) => (e.currentTarget.style.color = "var(--muted-foreground)")}
+      onMouseLeave={(e) =>
+        (e.currentTarget.style.color = "var(--muted-foreground)")
+      }
     >
       {icon}
       {label}
@@ -729,7 +737,13 @@ function Toolbar({
           <IcSearch size={15} />
         </button>
         {tarefasCount !== null && (
-          <span style={{ color: "var(--muted-foreground)", fontSize: 12, padding: "0 4px" }}>
+          <span
+            style={{
+              color: "var(--muted-foreground)",
+              fontSize: 12,
+              padding: "0 4px",
+            }}
+          >
             {tarefasCount} tarefas
           </span>
         )}
@@ -938,7 +952,13 @@ function GroupBlock({
           <StatusIcon size={11} />
           {cfg.label}
         </span>
-        <span style={{ color: "var(--muted-foreground)", fontSize: 12, marginLeft: 2 }}>
+        <span
+          style={{
+            color: "var(--muted-foreground)",
+            fontSize: 12,
+            marginLeft: 2,
+          }}
+        >
           {tarefasVisiveis.length}
         </span>
       </div>
@@ -1188,8 +1208,12 @@ function TaskRowBackend({
   const [addingSubtask, setAddingSubtask] = useState(false);
   const [newSubtaskName, setNewSubtaskName] = useState("");
 
+  // TODO: refatorar para derivar expandido do subtarefasMode sem useEffect.
+  // Preservado como-está nesta iteração para limitar escopo do fix de tasks
+  // terminais (mudança não relacionada ao bug original deste effect).
   useEffect(() => {
     if (subtarefasMode === "expandidas") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setExpanded(true);
     } else if (subtarefasMode === "recolhidas") {
       setExpanded(false);
@@ -1295,11 +1319,15 @@ function TaskRowBackend({
     ? PRIO_VISUAL_MAP[task.priority as TaskPriority]
     : null;
   const indent = 8 + depth * 30;
+  // Estado terminal (DONE/FAILED) = histórico: sem botão Executar, sem badge,
+  // sem bloqueio. Task acabada não exige ação nem trava UI mesmo que haja
+  // DPedido pendente (zumbi).
+  const isTerminalStatus = task.status === "DONE" || task.status === "FAILED";
+
   // Lock UI — `activeExecution` é a verdade canônica do backend (DPedido
-  // -300..-304 com baixado=false e dados.taskId=task.id). Quando não-null:
-  // drag desabilitado, inline edits gated, botão Executar oculto, badge
-  // visível na coluna Nome.
-  const isLocked = task.activeExecution != null;
+  // -300..-304 com baixado=false e dados.taskId=task.id). Suprimido em
+  // estado terminal.
+  const isLocked = !isTerminalStatus && task.activeExecution != null;
   const lockTitle = isLocked
     ? "Em execução pela IA — aguarde a conclusão para editar"
     : undefined;
@@ -1391,7 +1419,9 @@ function TaskRowBackend({
                 flexShrink: 0,
                 background: "none",
                 border: 0,
-                color: hovered ? "var(--foreground)" : "var(--muted-foreground)",
+                color: hovered
+                  ? "var(--foreground)"
+                  : "var(--muted-foreground)",
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
@@ -1458,8 +1488,9 @@ function TaskRowBackend({
                   : "executando"}
               </span>
             )}
-            {/* Botão Executar — só em tasks atribuídas ao Claude e sem lock ativo */}
-            {isAiAssignee && !isLocked && (
+            {/* Botão Executar — só em tasks atribuídas ao Claude, sem lock
+                ativo e fora de estado terminal (concluído/falhou é histórico) */}
+            {isAiAssignee && !isLocked && !isTerminalStatus && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -1641,10 +1672,15 @@ function TaskRowBackend({
                 <button
                   type="button"
                   onClick={() => handleAssigneeChange(null)}
-                  style={{ ...assigneeItemStyle("var(--muted-foreground)"), gap: 10 }}
+                  style={{
+                    ...assigneeItemStyle("var(--muted-foreground)"),
+                    gap: 10,
+                  }}
                 >
                   <IcUserInline size={14} color="var(--muted-foreground)" />
-                  <span style={{ color: "var(--foreground)" }}>Sem responsável</span>
+                  <span style={{ color: "var(--foreground)" }}>
+                    Sem responsável
+                  </span>
                   {!task.assigneeId && <IcCheck size={12} />}
                 </button>
                 {members.map((m) => {
@@ -1777,7 +1813,9 @@ function TaskRowBackend({
                   }}
                 >
                   <IcCalendarInline size={13} color="var(--muted-foreground)" />
-                  <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                  <span
+                    style={{ fontSize: 12, color: "var(--muted-foreground)" }}
+                  >
                     Definir data
                   </span>
                 </span>
@@ -1817,7 +1855,11 @@ function TaskRowBackend({
                 style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
               >
                 <IcFlagInline size={12} color="var(--muted-foreground)" />
-                <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Definir</span>
+                <span
+                  style={{ fontSize: 12, color: "var(--muted-foreground)" }}
+                >
+                  Definir
+                </span>
               </span>
             )}
           </button>
@@ -1847,7 +1889,9 @@ function TaskRowBackend({
                   style={dropItemStyle("var(--muted-foreground)")}
                 >
                   <IcFlagInline size={12} color="var(--muted-foreground)" />
-                  <span style={{ color: "var(--foreground)" }}>Sem prioridade</span>
+                  <span style={{ color: "var(--foreground)" }}>
+                    Sem prioridade
+                  </span>
                   {!task.priority && <IcCheck size={11} />}
                 </button>
                 {ALL_PRIO_VISUAL_ROW.map((p) => {
@@ -1860,7 +1904,9 @@ function TaskRowBackend({
                       style={dropItemStyle(cfg.color)}
                     >
                       <IcFlagInline size={12} color={cfg.color} />
-                      <span style={{ color: "var(--foreground)" }}>{cfg.label}</span>
+                      <span style={{ color: "var(--foreground)" }}>
+                        {cfg.label}
+                      </span>
                       {currentPrioVisual === p && <IcCheck size={11} />}
                     </button>
                   );
@@ -1942,7 +1988,9 @@ function TaskRowBackend({
                       }}
                     >
                       <Icon size={12} />
-                      <span style={{ color: "var(--foreground)" }}>{cfg.label}</span>
+                      <span style={{ color: "var(--foreground)" }}>
+                        {cfg.label}
+                      </span>
                       {isSelected && <IcCheck size={11} />}
                     </button>
                   );
@@ -1953,7 +2001,13 @@ function TaskRowBackend({
         </td>
 
         {/* Comentários */}
-        <td style={{ ...tdStyle, textAlign: "center", color: "var(--muted-foreground)" }}>
+        <td
+          style={{
+            ...tdStyle,
+            textAlign: "center",
+            color: "var(--muted-foreground)",
+          }}
+        >
           <IcChat size={13} />
         </td>
 
@@ -2204,7 +2258,14 @@ function EmptyState({ onAddTask }: { onAddTask: () => void }) {
       >
         <IcPlus size={18} />
       </div>
-      <p style={{ color: "var(--foreground)", fontSize: 14, fontWeight: 500, margin: 0 }}>
+      <p
+        style={{
+          color: "var(--foreground)",
+          fontSize: 14,
+          fontWeight: 500,
+          margin: 0,
+        }}
+      >
         Nenhuma tarefa nesta lista ainda
       </p>
       <p style={{ color: "var(--muted-foreground)", fontSize: 12, margin: 0 }}>

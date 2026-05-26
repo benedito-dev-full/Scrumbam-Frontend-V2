@@ -257,10 +257,15 @@ function TaskCard({
   onClick: () => void;
   isDragOverlay?: boolean;
 }) {
+  // Estado terminal (DONE/FAILED) = histórico: sem botão Executar, sem badge
+  // de execução, sem bloqueio — mesmo que haja DPedido pendente no banco
+  // (DPedidos zumbis de testes ou execuções anteriores não afetam UI final).
+  const isTerminalStatus = task.status === "DONE" || task.status === "FAILED";
+
   // Lock UI — `activeExecution` é a verdade canônica vinda do backend
   // (DPedido idClasse=-300..-304 com baixado=false e dados.taskId=task.id).
-  // Quando não-null: bloqueia drag, desabilita botão Executar e mostra cadeado.
-  const isLocked = task.activeExecution != null;
+  // Suprimido quando task está em estado terminal.
+  const isLocked = !isTerminalStatus && task.activeExecution != null;
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task.id,
     disabled: isLocked,
@@ -389,8 +394,8 @@ function TaskCard({
         </div>
       )}
 
-      {/* Footer: IA assignee + botão executar */}
-      {isAiAssigned && (
+      {/* Footer: IA assignee + botão executar — apenas em tasks não-terminais */}
+      {isAiAssigned && !isTerminalStatus && (
         <div className="mt-2.5 flex items-center justify-between border-t border-border pt-2">
           <div className="flex items-center gap-1.5">
             <div className="flex size-4 items-center justify-center rounded-full bg-violet-500/15">
