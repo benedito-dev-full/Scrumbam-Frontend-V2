@@ -318,9 +318,8 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
               {agent?.hostname && (
                 <InfoRow label="Host" value={agent.hostname} mono />
               )}
-              <InfoRow label="Repo" value={link.remoteRepoUrl} mono />
-              <InfoRow label="Branch" value={link.remoteBranch} />
-              <InfoRow label="Pasta" value={link.remotePath} mono />
+              {link.repoUrl && <InfoRow label="Repo" value={link.repoUrl} mono />}
+              {link.projectSlug && <InfoRow label="Slug" value={link.projectSlug} mono />}
             </div>
 
             {/* Rodapé: botão reconfigurar */}
@@ -370,7 +369,7 @@ export function SpaceAgentSection({ spaceId, spaceName }: SpaceAgentSectionProps
         onClose={() => { setModalOpen(false); setReconfiguring(false); }}
         initialStep={reconfiguring ? 1 : 1}
         initialAgentId={reconfiguring ? (link?.agentId ?? undefined) : undefined}
-        initialRepoUrl={reconfiguring ? (link?.remoteRepoUrl ?? undefined) : undefined}
+        initialRepoUrl={reconfiguring ? (link?.repoUrl ?? undefined) : undefined}
       />
     </>
   );

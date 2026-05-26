@@ -339,21 +339,20 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
                 </div>
 
                 {/* Info repo */}
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                  padding: '10px 12px',
-                  borderRadius: 8,
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                }}>
-                  <InfoRow label="Repositório" value={link.remoteRepoUrl} mono />
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <InfoRow label="Branch" value={link.remoteBranch} />
-                    <InfoRow label="Pasta" value={link.remotePath} mono />
+                {(link.repoUrl || link.projectSlug) && (
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: 'rgba(255,255,255,0.02)',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                  }}>
+                    {link.repoUrl && <InfoRow label="Repositório" value={link.repoUrl} mono />}
+                    {link.projectSlug && <InfoRow label="Slug" value={link.projectSlug} mono />}
                   </div>
-                </div>
+                )}
 
                 {/* Ações */}
                 {confirmUnlink ? (
@@ -505,7 +504,7 @@ export function AgentPopover({ projectId, projectName, spaceId, spaceName }: Age
         onClose={() => setModalOpen(false)}
         initialStep={1}
         initialAgentId={isLinked ? (link?.agentId ?? undefined) : undefined}
-        initialRepoUrl={isLinked ? (link?.remoteRepoUrl ?? undefined) : undefined}
+        initialRepoUrl={isLinked ? (link?.repoUrl ?? undefined) : undefined}
       />
     </>
   );
