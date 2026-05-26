@@ -24,7 +24,9 @@ import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
 import { useTasksByProject, useUpdateTask, useUpdateTaskStatus, useCreateTask, useSubtasks } from "@/hooks/use-tasks";
+import { AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
 import { useProjectMembers, type ProjectMemberDto } from "@/hooks/use-members";
+import { useOrgMembers } from "@/hooks/use-org-members";
 import { intentionToColumn, isOverdue, priorityToColor, priorityToLabel } from "@/lib/mappers/task-status.mapper";
 import type { TaskResponseDto, TaskPriority, V3Intention } from "@/lib/types/api";
 
@@ -41,7 +43,17 @@ export default function ListPage({
   const { data: projeto, isLoading: loadingProjeto } = useProject(id);
   const { data: tasks = [], isLoading: loadingTasks } = useTasksByProject(id);
   const { data: membersRaw = [] } = useProjectMembers(id);
-  const members = Array.isArray(membersRaw) ? membersRaw : [];
+  const { data: orgMembersRaw = [] } = useOrgMembers();
+  const projectMembers = Array.isArray(membersRaw) ? membersRaw : [];
+  // Espaço público: sem membros explícitos no projeto → usa org inteira como fallback
+  const orgAsProjectMembers: ProjectMemberDto[] = orgMembersRaw.map((m) => ({
+    userId: m.userId,
+    nome: m.nome,
+    email: m.email ?? null,
+    role: m.role,
+    cargo: null,
+  }));
+  const members = projectMembers.length > 0 ? projectMembers : orgAsProjectMembers;
 
   const [view, setView] = useState<"list" | "board">("list");
   const [subtarefasMode, setSubtarefasMode] = useState<SubtarefasMode>("recolhidas");
@@ -913,6 +925,16 @@ function TaskRowBackend({
                   </button>
                 );
               })}
+              <div style={{ borderTop: "1px solid #2e2e38", margin: "4px 0" }} />
+              <button type="button" onClick={() => handleAssigneeChange(AI_ASSIGNEE_ID)} style={{ ...dropItemStyle("#818cf8"), gap: 8, background: task.assigneeId === AI_ASSIGNEE_ID ? "rgba(129,140,248,0.12)" : "none" }}>
+                <span style={{
+                  width: 22, height: 22, borderRadius: "50%", flexShrink: 0,
+                  background: "#1a1a4e", fontSize: 13,
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                }}>🤖</span>
+                <span style={{ flex: 1, color: "#818cf8" }}>IA</span>
+                {task.assigneeId === AI_ASSIGNEE_ID && <IcCheck size={11} />}
+              </button>
             </div>
           </>
         )}
