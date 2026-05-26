@@ -166,13 +166,20 @@ type RailItem = {
   label: string;
   renderIcon: (active: boolean) => React.ReactNode;
   onClick?: () => void;
+  /**
+   * Quando `true`, o item permanece declarado aqui mas nao e renderizado.
+   * Util para ocultar abas temporariamente sem perder a definicao (icone,
+   * rota, label) — basta alterar para `false` para reativar.
+   */
+  hidden?: boolean;
 };
 
 const mainNav: RailItem[] = [
   { href: "/",         label: "Início",     renderIcon: (a) => <IcHome active={a} /> },
   { href: "/planner",  label: "Planejador", renderIcon: () => <IcPlanner /> },
   { href: "/ia",       label: "IA",         renderIcon: () => <IcAI /> },
-  { href: "/teams",    label: "Equipes",    renderIcon: () => <IcTeams /> },
+  // Aba Equipes oculta intencionalmente (mantida no codigo para reativacao futura).
+  { href: "/teams",    label: "Equipes",    renderIcon: () => <IcTeams />, hidden: true },
   { href: "/docs",     label: "Documen...", renderIcon: () => <IcDocs /> },
   { href: "/forms",    label: "Formulário", renderIcon: () => <IcForm /> },
 ];
@@ -270,7 +277,7 @@ export function IconRail() {
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-        {mainNav.map((item) => (
+        {mainNav.filter((item) => !item.hidden).map((item) => (
           <RailButton key={item.label} item={item} active={isActive(item.href)} />
         ))}
       </div>
