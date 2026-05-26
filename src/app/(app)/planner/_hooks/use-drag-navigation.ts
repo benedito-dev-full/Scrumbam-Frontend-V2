@@ -41,6 +41,8 @@ interface UseDragNavigationResult {
   containerWidth: number;
   /** Ref para o container — necessaria para medir a largura. */
   containerRef: React.RefObject<HTMLDivElement | null>;
+  /** Navega programaticamente com snap animado (teclado, botoes). */
+  navigateTo: (dir: 1 | -1) => void;
   /** Bind nos eventos de pointer do container. */
   pointerHandlers: {
     onPointerDown: (e: React.PointerEvent) => void;
@@ -188,6 +190,27 @@ export function useDragNavigation(
     setTimeout(() => setIsSnapping(false), SNAP_DURATION_MS);
   }, []);
 
+  /**
+   * Navega programaticamente com o mesmo snap animado do drag.
+   * Usar para teclado, botoes prev/next, etc.
+   */
+  const navigateTo = useCallback(
+    (dir: 1 | -1) => {
+      const w = containerRef.current?.getBoundingClientRect().width ?? containerWidth;
+      const newDate = shiftDate(view, cursorDate, dir);
+      const snapTarget = dir * -1 * w;
+      setIsSnapping(true);
+      setRailOffset(snapTarget);
+      setTimeout(() => {
+        baseOffsetRef.current = 0;
+        setRailOffset(0);
+        setIsSnapping(false);
+        onCursorChange(newDate);
+      }, SNAP_DURATION_MS);
+    },
+    [view, cursorDate, containerWidth, onCursorChange],
+  );
+
   return {
     slideDates,
     railOffset,
@@ -197,6 +220,7 @@ export function useDragNavigation(
     isDragging,
     containerWidth,
     containerRef,
+    navigateTo,
     pointerHandlers: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel },
   };
 }

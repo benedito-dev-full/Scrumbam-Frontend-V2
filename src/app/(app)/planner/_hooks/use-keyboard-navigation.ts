@@ -4,18 +4,17 @@ import { useEffect } from "react";
 
 import type { PlannerView } from "@/lib/types/planner-event";
 
-import { stepDate } from "../_lib/date";
-
 /**
  * Navega entre periodos via setas do teclado (ArrowLeft / ArrowRight).
  *
- * Ignorado quando o foco esta em input, textarea ou elemento editavel,
- * para nao conflitar com edicao de texto.
+ * Usa `navigateTo` do useDragNavigation para acionar o mesmo snap
+ * animado do drag — efeito consistente independente de como o usuario navega.
+ * Ignorado quando o foco esta em input, textarea ou elemento editavel.
  */
 export function useKeyboardNavigation(
   view: PlannerView,
-  cursorDate: Date,
-  onCursorChange: (date: Date) => void,
+  _cursorDate: Date,
+  navigateTo: (dir: 1 | -1) => void,
 ) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -29,11 +28,10 @@ export function useKeyboardNavigation(
       ) return;
 
       e.preventDefault();
-      const dir = e.key === "ArrowRight" ? 1 : -1;
-      onCursorChange(stepDate(view, cursorDate, dir as 1 | -1));
+      navigateTo(e.key === "ArrowRight" ? 1 : -1);
     }
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [view, cursorDate, onCursorChange]);
+  }, [navigateTo]);
 }

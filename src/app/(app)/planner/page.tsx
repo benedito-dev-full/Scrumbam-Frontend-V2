@@ -24,8 +24,6 @@ export default function PlannerPage() {
   const [view, setView] = useState<PlannerView>("week");
   const [cursorDate, setCursorDate] = useState<Date>(new Date());
 
-  useKeyboardNavigation(view, cursorDate, setCursorDate);
-
   const {
     slideDates,
     railOffset,
@@ -35,8 +33,11 @@ export default function PlannerPage() {
     isDragging,
     containerWidth,
     containerRef,
+    navigateTo,
     pointerHandlers,
   } = useDragNavigation(view, cursorDate, setCursorDate);
+
+  useKeyboardNavigation(view, cursorDate, navigateTo);
 
   return (
     <div
