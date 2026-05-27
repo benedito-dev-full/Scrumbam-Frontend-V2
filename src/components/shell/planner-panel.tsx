@@ -23,6 +23,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function PlannerPanel() {
+  const searchOpen = usePlannerUIStore((s) => s.searchOpen);
   const setSearchOpen = usePlannerUIStore((s) => s.setSearchOpen);
   const toggleSidebar = usePlannerUIStore((s) => s.toggleSidebar);
   const setCreateEventOpen = usePlannerUIStore((s) => s.setCreateEventOpen);
@@ -31,8 +32,14 @@ export function PlannerPanel() {
     Icon: React.ElementType;
     label: string;
     onClick: () => void;
+    'data-planner-search-trigger'?: boolean;
   }> = [
-    { Icon: Search, label: "Buscar eventos", onClick: () => setSearchOpen(true) },
+    {
+      Icon: Search,
+      label: "Buscar eventos",
+      onClick: () => setSearchOpen(!searchOpen),
+      'data-planner-search-trigger': true,
+    },
     { Icon: PanelLeftClose, label: "Recolher painel", onClick: toggleSidebar },
     { Icon: Plus, label: "Novo evento", onClick: () => setCreateEventOpen(true) },
   ];
@@ -46,13 +53,14 @@ export function PlannerPanel() {
       }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)" }}>Planejador</span>
         <div style={{ display: "flex", gap: 2 }}>
-          {headerActions.map(({ Icon, label, onClick }) => (
+          {headerActions.map(({ Icon, label, onClick, ...rest }) => (
             <button
               key={label}
               type="button"
               aria-label={label}
               title={label}
               onClick={onClick}
+              {...rest}
               style={{
                 width: 26, height: 26, borderRadius: 5, border: 0,
                 background: "none", cursor: "pointer", color: "var(--muted-foreground)",

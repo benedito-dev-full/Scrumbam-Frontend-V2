@@ -169,14 +169,31 @@ function PlannerSearchPanel({
 }) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     inputRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
+    /**
+     * Fecha quando o clique cai fora do painel — exceto se for no botao
+     * de lupa do PlannerPanel, que ja toggla por conta propria (clicar
+     * de novo na lupa fecha o painel).
+     */
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (panelRef.current?.contains(target)) return;
+      if (target.closest('[data-planner-search-trigger]')) return;
+      onClose();
+    };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onMouseDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onMouseDown);
+    };
   }, [onClose]);
 
   const results = useMemo(() => {
@@ -187,6 +204,7 @@ function PlannerSearchPanel({
 
   return (
     <div
+      ref={panelRef}
       role="dialog"
       aria-label="Buscar eventos no Planner"
       className="absolute left-1/2 top-3 z-30 w-[92%] max-w-3xl -translate-x-1/2 rounded-lg border border-border bg-popover shadow-xl"
