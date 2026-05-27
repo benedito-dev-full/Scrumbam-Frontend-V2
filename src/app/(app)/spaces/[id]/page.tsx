@@ -232,9 +232,8 @@ export default function SpacePage({
   const docs: typeof listas = [];
   const recentes = [...pastas, ...listas].slice(0, 6);
 
-  // Favoritos que são filhos deste espaço (pasta ou lista) ou o próprio espaço
+  // Favoritos filhos deste espaço (pastas + listas) — o próprio espaço fica de fora
   const childIds = new Set([
-    id,
     ...pastas.map((p) => p.id),
     ...listas.map((l) => l.id),
   ]);
