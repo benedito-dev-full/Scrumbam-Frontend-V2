@@ -63,6 +63,7 @@ import {
 import { AI_ASSIGNEE_ID, useTaskExecution } from "@/hooks/use-task-execution";
 import { useProjectMembers, type ProjectMemberDto } from "@/hooks/use-members";
 import { useOrgMembers } from "@/hooks/use-org-members";
+import { useTeams } from "@/hooks/use-teams";
 import {
   isOverdue,
   priorityToColor,
@@ -2456,6 +2457,7 @@ function TaskRowBackend({
   const updateTask = useUpdateTask();
   const updateStatus = useUpdateTaskStatus();
   const createTask = useCreateTask();
+  const { data: teams = [] } = useTeams();
 
   const [hovered, setHovered] = useState(false);
   const [openCell, setOpenCell] = useState<
@@ -2569,7 +2571,17 @@ function TaskRowBackend({
     updateTask.mutate({
       id: task.id,
       projectId: task.projectId,
-      dto: { assigneeId: memberId },
+      dto: { assigneeId: memberId, assigneeTeamId: null },
+    });
+  }
+
+  function handleTeamChange(teamId: string | null) {
+    closeDropdown();
+    if (isLocked) return;
+    updateTask.mutate({
+      id: task.id,
+      projectId: task.projectId,
+      dto: { assigneeTeamId: teamId, assigneeId: null },
     });
   }
 
@@ -2956,7 +2968,7 @@ function TaskRowBackend({
                       onClick={() => handleAssigneeChange(m.userId)}
                       style={{
                         ...assigneeItemStyle("var(--foreground)"),
-                        gap: 10,
+                        gap: 8,
                         background: isSelected
                           ? "rgba(124,92,255,0.14)"
                           : "none",
@@ -2964,13 +2976,13 @@ function TaskRowBackend({
                     >
                       <span
                         style={{
-                          width: 28,
-                          height: 28,
+                          width: 16,
+                          height: 16,
                           borderRadius: "50%",
                           flexShrink: 0,
                           background: "var(--accent)",
                           color: "#d8ccff",
-                          fontSize: 11,
+                          fontSize: 9,
                           fontWeight: 700,
                           display: "inline-flex",
                           alignItems: "center",
@@ -2979,7 +2991,7 @@ function TaskRowBackend({
                       >
                         {initials}
                       </span>
-                      <span style={{ flex: 1, fontSize: 13 }}>{m.nome}</span>
+                      <span style={{ flex: 1, fontSize: 12 }}>{m.nome}</span>
                       {isSelected && <IcCheck size={12} />}
                     </button>
                   );
@@ -2992,18 +3004,18 @@ function TaskRowBackend({
                   onClick={() => handleAssigneeChange(AI_ASSIGNEE_ID)}
                   style={{
                     ...assigneeItemStyle("#d97757"),
-                    gap: 10,
+                    gap: 8,
                     background:
                       task.assigneeId === AI_ASSIGNEE_ID
                         ? "rgba(217,119,87,0.14)"
                         : "none",
                   }}
                 >
-                  <ClaudeAvatar size={28} />
+                  <ClaudeAvatar size={16} />
                   <span
                     style={{
                       flex: 1,
-                      fontSize: 13,
+                      fontSize: 12,
                       color: "#d97757",
                       fontWeight: 600,
                     }}
@@ -3012,6 +3024,58 @@ function TaskRowBackend({
                   </span>
                   {task.assigneeId === AI_ASSIGNEE_ID && <IcCheck size={12} />}
                 </button>
+                {/* Seção Times */}
+                {teams.length > 0 && (
+                  <>
+                    <div
+                      style={{ borderTop: "1px solid #2e2e38", margin: "6px 4px" }}
+                    />
+                    <span
+                      style={{
+                        display: "block",
+                        padding: "2px 12px 4px",
+                        fontSize: 10,
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        color: "var(--muted-foreground)",
+                      }}
+                    >
+                      Times
+                    </span>
+                    {teams.map((team) => {
+                      const isTeamSelected = task.assigneeTeamId === team.id;
+                      return (
+                        <button
+                          key={team.id}
+                          type="button"
+                          onClick={() =>
+                            handleTeamChange(isTeamSelected ? null : team.id)
+                          }
+                          style={{
+                            ...assigneeItemStyle("var(--foreground)"),
+                            gap: 8,
+                            background: isTeamSelected
+                              ? "rgba(124,92,255,0.14)"
+                              : "none",
+                          }}
+                        >
+                          <span
+                            style={{
+                              width: 16,
+                              height: 16,
+                              borderRadius: "50%",
+                              flexShrink: 0,
+                              background: team.color ?? "var(--muted-foreground)",
+                            }}
+                          />
+                          <span style={{ flex: 1, fontSize: 12 }}>{team.nome}</span>
+                          {isTeamSelected && <IcCheck size={12} />}
+                        </button>
+                      );
+                    })}
+                  </>
+                )}
               </div>
             </>
           )}
@@ -3439,13 +3503,13 @@ function assigneeItemStyle(color: string): React.CSSProperties {
     display: "flex",
     alignItems: "center",
     width: "100%",
-    padding: "9px 12px",
-    borderRadius: 7,
+    padding: "5px 8px",
+    borderRadius: 6,
     background: "none",
     border: 0,
     cursor: "pointer",
     color,
-    fontSize: 13,
+    fontSize: 12,
     textAlign: "left" as const,
     transition: "background .1s",
   };
