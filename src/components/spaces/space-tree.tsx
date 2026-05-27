@@ -519,6 +519,7 @@ function SpaceNode({
   const paddingLeft = 8 + depth * 20;
 
   const { data: folders, isLoading } = useFolders(open ? space.id : null);
+  const { data: directLists, isLoading: isLoadingLists } = useLists(open ? space.id : null);
 
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
   const [createListOpen, setCreateListOpen] = useState(false);
@@ -612,7 +613,7 @@ function SpaceNode({
       {open && (
         <div className="relative mt-0.5 space-y-0.5">
           <IndentGuide depth={depth + 1} />
-          {isLoading && (
+          {(isLoading || isLoadingLists) && (
             <div className="space-y-0.5" style={{ paddingLeft: 8 + (depth + 1) * 14 }}>
               <SkeletonRow width="65%" />
             </div>
@@ -625,6 +626,9 @@ function SpaceNode({
               isExpanded={isExpanded}
               onToggle={onToggle}
             />
+          ))}
+          {!isLoadingLists && directLists?.map((list) => (
+            <ListNode key={list.id} list={list} depth={depth + 1} />
           ))}
         </div>
       )}
