@@ -359,6 +359,31 @@ export interface TeamMemberDto {
   cargo: "LEAD" | "MEMBER";
 }
 
+export type TeamFeedAction =
+  | "TASK_CREATED"
+  | "TASK_ASSIGNED"
+  | "TASK_STATUS_CHANGED"
+  | "TASK_COMPLETED";
+
+export interface TeamFeedItemDto {
+  id: string;
+  acao: TeamFeedAction | string;
+  descricao: string;
+  taskId: string | null;
+  taskNome: string | null;
+  userId: string | null;
+  userName: string | null;
+  statusAnterior: string | null;
+  statusNovo: string | null;
+  criadoEm: string;
+}
+
+export interface TeamFeedResponseDto {
+  items: TeamFeedItemDto[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
 // ─── Organizations ───────────────────────────────────────────────────────────
 
 export interface OrganizationResponseDto {

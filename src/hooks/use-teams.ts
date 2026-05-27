@@ -4,7 +4,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
 import { useAuthStore } from "@/lib/stores/auth";
-import type { TeamResponseDto, TeamMemberDto } from "@/lib/types/api";
+import type {
+  TeamResponseDto,
+  TeamMemberDto,
+  TeamFeedResponseDto,
+} from "@/lib/types/api";
 
 interface CreateTeamPayload {
   nome: string;
@@ -170,5 +174,28 @@ export function useMyTeams() {
     },
     enabled: !!accessToken,
     staleTime: 30_000,
+  });
+}
+
+/**
+ * Feed de atividades do time (DEvento) — mapeia `GET /teams/:id/feed`.
+ *
+ * Retorna eventos TASK_CREATED, TASK_ASSIGNED, TASK_STATUS_CHANGED e
+ * TASK_COMPLETED em ordem decrescente (mais recente primeiro). Requer
+ * que o usuário logado seja membro do time (backend valida).
+ */
+export function useTeamFeed(teamId: string, limit = 20) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+
+  return useQuery<TeamFeedResponseDto>({
+    queryKey: qk.teams.feed(teamId),
+    queryFn: async () => {
+      const res = await api.get<TeamFeedResponseDto>(`/teams/${teamId}/feed`, {
+        params: { limit },
+      });
+      return res.data;
+    },
+    enabled: !!accessToken && !!teamId,
+    staleTime: 15_000,
   });
 }

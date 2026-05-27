@@ -57,6 +57,7 @@ export const qk = {
     all: ["teams"] as const,
     byId: (id: string) => ["teams", id] as const,
     members: (id: string) => ["teams", id, "members"] as const,
+    feed: (id: string) => ["teams", id, "feed"] as const,
   },
   organizations: {
     all: ["organizations"] as const,
