@@ -199,7 +199,7 @@ function NotificacaoRow({
   return (
     <div
       className={cn(
-        "group flex w-full items-start gap-3 bg-card px-4 py-3 transition-colors hover:bg-muted/40",
+        "group flex w-full items-start gap-3 bg-card px-4 py-[calc(var(--row-py)+2px)] transition-colors hover:bg-muted/40",
         !isLast && "border-b border-border",
         !n.read && "bg-primary/[0.03]",
       )}
