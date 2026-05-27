@@ -34,7 +34,9 @@ export function WorkspaceSwitcher() {
 
   const handleSwitchOrg = (orgId: string) => {
     if (switchOrg.isPending) return;
-    switchOrg.mutate(orgId);
+    switchOrg.mutate(orgId, {
+      onSuccess: () => router.push("/"),
+    });
   };
 
   return (
