@@ -274,6 +274,7 @@ export function useUpdateTask() {
         priority?: string;
         dueDate?: string | null;
         assigneeId?: string | null;
+        assigneeTeamId?: string | null;
       };
     }
   >({

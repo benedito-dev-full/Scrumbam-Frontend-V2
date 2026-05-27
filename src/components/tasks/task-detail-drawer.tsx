@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Loader2,
   User,
+  Users,
   Lock,
   Trash2,
 } from "lucide-react";
@@ -34,6 +35,7 @@ import {
   AI_ASSIGNEE_ID,
 } from "@/hooks/use-task-execution";
 import { useProjectMembers } from "@/hooks/use-members";
+import { useTeams } from "@/hooks/use-teams";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { V3Intention } from "@/lib/types/api";
@@ -231,6 +233,17 @@ export function TaskDetailDrawer({
           />
         </Field>
 
+        {/* Time responsável */}
+        <Field label="Time responsável">
+          <TeamPicker
+            current={task.assigneeTeamId ?? null}
+            disabled={isLocked}
+            onChange={(teamId) =>
+              updateTask({ id: taskId, projectId, dto: { assigneeTeamId: teamId } })
+            }
+          />
+        </Field>
+
         {/* Execução IA — só em tasks com responsável IA e não-terminais.
             Concluído/Falhou = histórico, sem ação de execução. */}
         {task.assigneeId === AI_ASSIGNEE_ID && !isTerminalStatus && (
@@ -400,6 +413,127 @@ function AssigneePicker({
                 >
                   <User className="size-3.5" />
                   Remover responsável
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── TeamPicker ───────────────────────────────────────────────────────────────
+
+/**
+ * Seletor dropdown para atribuição de time a uma task (assigneeTeamId).
+ * Carrega lista de times via `useTeams()`, permite selecionar ou remover.
+ * @param current - ID do time atualmente atribuído, ou null se nenhum
+ * @param onChange - Callback invocado quando team é selecionado ou removido
+ * @param disabled - Se true, desabilita a seleção (ex: task em execução)
+ */
+function TeamPicker({
+  current,
+  onChange,
+  disabled = false,
+}: {
+  current: string | null;
+  onChange: (id: string | null) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const { data: teams = [] } = useTeams();
+  const assignedTeam = teams.find((t) => t.id === current) ?? null;
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => {
+          if (disabled) return;
+          setOpen((v) => !v);
+        }}
+        disabled={disabled}
+        title={
+          disabled ? "Em execução pela IA — não é possível alterar" : undefined
+        }
+        className={cn(
+          "flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 py-2 text-[13px] transition-colors",
+          disabled ? "cursor-not-allowed opacity-60" : "hover:border-ring/60",
+        )}
+      >
+        {assignedTeam ? (
+          <div className="flex items-center gap-2">
+            <span
+              className="size-2.5 rounded-full"
+              style={{ background: assignedTeam.color ?? "var(--muted-foreground)" }}
+            />
+            <span className="font-medium text-foreground">{assignedTeam.nome}</span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Users className="size-3.5 text-muted-foreground" />
+            <span className="text-muted-foreground">Sem time</span>
+          </div>
+        )}
+        <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-border bg-popover shadow-lg">
+          <div className="flex flex-col gap-0.5 p-1">
+            {/* Times disponíveis */}
+            {teams.map((team) => (
+              <button
+                key={team.id}
+                type="button"
+                onClick={() => {
+                  onChange(team.id);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted",
+                  current === team.id && "bg-muted",
+                )}
+              >
+                <span
+                  className="size-2.5 shrink-0 rounded-full"
+                  style={{ background: team.color ?? "var(--muted-foreground)" }}
+                />
+                <div className="flex flex-1 flex-col">
+                  <span className="font-medium text-foreground">{team.nome}</span>
+                  {team.memberCount !== undefined && (
+                    <span className="text-[11px] text-muted-foreground">
+                      {team.memberCount} membro{team.memberCount !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+                {current === team.id && (
+                  <span className="size-1.5 rounded-full bg-foreground/40" />
+                )}
+              </button>
+            ))}
+
+            {teams.length === 0 && (
+              <span className="px-2.5 py-2 text-[12px] text-muted-foreground">
+                Nenhum time disponível
+              </span>
+            )}
+
+            {/* Remover time */}
+            {current && (
+              <>
+                <div className="my-1 border-t border-border" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(null);
+                    setOpen(false);
+                  }}
+                  className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-[12px] text-muted-foreground transition-colors hover:bg-muted"
+                >
+                  <Users className="size-3.5" />
+                  Remover time
                 </button>
               </>
             )}

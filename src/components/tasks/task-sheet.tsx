@@ -6,6 +6,7 @@ import { Trash2 } from "lucide-react";
 import { STATUS_CONFIG, PRIO_CONFIG } from "@/components/lists/config";
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
 import { useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
+import { useTeams } from "@/hooks/use-teams";
 import type {
   TaskResponseDto,
   V3Intention,
@@ -501,6 +502,187 @@ function PrioridadeSelect({
   );
 }
 
+/**
+ * Seletor dropdown para atribuição de time em TaskSheet.
+ * Renderizado com estilos inline; abre menu flutuante ao clique.
+ * @param value - ID do time selecionado, ou null
+ * @param onChange - Callback invocado ao selecionar ou remover time
+ */
+function TeamSelect({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { data: teams = [] } = useTeams();
+  const assignedTeam = teams.find((t) => t.id === value) ?? null;
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "4px 10px",
+          borderRadius: 6,
+          background: "var(--card)",
+          border: "1px solid #2e2e38",
+          color: assignedTeam ? "var(--foreground)" : "var(--muted-foreground)",
+          fontSize: 12,
+          fontWeight: 500,
+          cursor: "pointer",
+        }}
+      >
+        {assignedTeam ? (
+          <>
+            <span
+              style={{
+                display: "inline-block",
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: assignedTeam.color ?? "var(--muted-foreground)",
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ color: "var(--foreground)" }}>{assignedTeam.nome}</span>
+          </>
+        ) : (
+          <span style={{ color: "var(--muted-foreground)" }}>Sem time</span>
+        )}
+        <IcChevDown size={11} />
+      </button>
+      {open && (
+        <>
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 1 }}
+            onClick={() => setOpen(false)}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: "calc(100% + 4px)",
+              left: 0,
+              zIndex: 2,
+              background: "var(--card)",
+              border: "1px solid #2e2e38",
+              borderRadius: 8,
+              padding: 4,
+              minWidth: 180,
+              boxShadow: "0 8px 24px rgba(0,0,0,.4)",
+            }}
+          >
+            {/* Sem time */}
+            <button
+              type="button"
+              onClick={() => {
+                onChange(null);
+                setOpen(false);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                width: "100%",
+                padding: "7px 10px",
+                borderRadius: 5,
+                background: value === null ? "rgba(124,92,255,0.12)" : "none",
+                border: 0,
+                color: "var(--muted-foreground)",
+                fontSize: 12,
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+              onMouseEnter={(e) => {
+                if (value !== null)
+                  e.currentTarget.style.background = "var(--accent)";
+              }}
+              onMouseLeave={(e) => {
+                if (value !== null) e.currentTarget.style.background = "none";
+              }}
+            >
+              <span style={{ color: "var(--foreground)" }}>Sem time</span>
+              {value === null && (
+                <span style={{ marginLeft: "auto", color: "#7c5cff" }}>
+                  <IcCheck size={11} />
+                </span>
+              )}
+            </button>
+            {/* Lista de times */}
+            {teams.map((team) => (
+              <button
+                key={team.id}
+                type="button"
+                onClick={() => {
+                  onChange(team.id);
+                  setOpen(false);
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  width: "100%",
+                  padding: "7px 10px",
+                  borderRadius: 5,
+                  background:
+                    team.id === value ? "rgba(124,92,255,0.12)" : "none",
+                  border: 0,
+                  color: "var(--foreground)",
+                  fontSize: 12,
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+                onMouseEnter={(e) => {
+                  if (team.id !== value)
+                    e.currentTarget.style.background = "var(--accent)";
+                }}
+                onMouseLeave={(e) => {
+                  if (team.id !== value)
+                    e.currentTarget.style.background = "none";
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    background: team.color ?? "var(--muted-foreground)",
+                    flexShrink: 0,
+                  }}
+                />
+                <span>{team.nome}</span>
+                {team.id === value && (
+                  <span style={{ marginLeft: "auto", color: "#7c5cff" }}>
+                    <IcCheck size={11} />
+                  </span>
+                )}
+              </button>
+            ))}
+            {teams.length === 0 && (
+              <span
+                style={{
+                  display: "block",
+                  padding: "7px 10px",
+                  fontSize: 12,
+                  color: "var(--muted-foreground)",
+                }}
+              >
+                Nenhum time disponível
+              </span>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function PropRow({
   label,
   children,
@@ -550,6 +732,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
   const [comentario, setComentario] = useState("");
   const [visivel, setVisivel] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [assigneeTeamId, setAssigneeTeamId] = useState<string | null>(null);
 
   const tituloInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -567,6 +750,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
         setEditandoNome(false);
         setEditandoData(false);
         setSubtarefas([]);
+        setAssigneeTeamId(task.assigneeTeamId ?? null);
       }, 0);
       requestAnimationFrame(() => setVisivel(true));
       return () => clearTimeout(id);
@@ -648,6 +832,19 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
         id: task.id,
         projectId: task.projectId,
         dto: { dueDate: val },
+      });
+    },
+    [task, updateTask],
+  );
+
+  const handleAssigneeTeamChange = useCallback(
+    (teamId: string | null) => {
+      if (!task) return;
+      setAssigneeTeamId(teamId);
+      updateTask.mutate({
+        id: task.id,
+        projectId: task.projectId,
+        dto: { assigneeTeamId: teamId },
       });
     },
     [task, updateTask],
@@ -893,6 +1090,29 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
               <PrioridadeSelect
                 value={prioridade}
                 onChange={handlePrioridadeChange}
+              />
+            </PropRow>
+
+            <div
+              style={{
+                height: 1,
+                background: "var(--accent)",
+                margin: "4px 0",
+              }}
+            />
+
+            <div
+              style={{
+                height: 1,
+                background: "var(--accent)",
+                margin: "4px 0",
+              }}
+            />
+
+            <PropRow label="Time responsável">
+              <TeamSelect
+                value={assigneeTeamId}
+                onChange={handleAssigneeTeamChange}
               />
             </PropRow>
 

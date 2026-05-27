@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { TaskDetailDrawer } from "@/components/tasks/task-detail-drawer";
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
 import { useTaskExecution, AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
+import { useTeams } from "@/hooks/use-teams";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { KanbanColumnConfig } from "@/lib/mappers/task-status.mapper";
@@ -445,6 +446,31 @@ function TaskCard({
           <span className="text-[11px] text-muted-foreground">Atribuído</span>
         </div>
       )}
+
+      {/* Footer: time responsável */}
+      {task.assigneeTeamId && <TeamBadge teamId={task.assigneeTeamId} />}
+    </div>
+  );
+}
+
+// ─── TeamBadge ────────────────────────────────────────────────────────────────
+
+/**
+ * Exibe badge do time responsável (assigneeTeamId) no footer do TaskCard.
+ * Carrega dados do time via `useTeams()` e renderiza nome + cor.
+ * @param teamId - ID do time a exibir
+ */
+function TeamBadge({ teamId }: { teamId: string }) {
+  const { data: teams = [] } = useTeams();
+  const team = teams.find((t) => t.id === teamId);
+  if (!team) return null;
+  return (
+    <div className="mt-1.5 flex items-center gap-1.5 border-t border-border pt-1.5">
+      <span
+        className="size-2 rounded-full"
+        style={{ background: team.color ?? "var(--muted-foreground)" }}
+      />
+      <span className="text-[11px] text-muted-foreground">{team.nome}</span>
     </div>
   );
 }

@@ -209,6 +209,8 @@ export interface TaskResponseDto {
   /** ID do DProject (List, idClasse=-352) ao qual a task pertence. */
   projectId: string;
   assigneeId?: string;
+  /** ID do time responsável pela task, ou null quando sem time atribuído. */
+  assigneeTeamId?: string | null;
   /** ID da task pai (fase, idClasse=-200), ou undefined se task raiz. */
   idPai?: string;
   /**
@@ -266,6 +268,7 @@ export interface UpdateTaskDto {
   priority?: TaskPriority;
   dueDate?: string | null;
   assigneeId?: string | null;
+  assigneeTeamId?: string | null;
 }
 
 export interface TaskFilters {
