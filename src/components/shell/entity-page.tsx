@@ -194,10 +194,14 @@ export function TopBtn({
 export function ListRow({
   id,
   nome,
+  isBookmarked,
+  onBookmark,
   onDelete,
 }: {
   id: string;
   nome: string;
+  isBookmarked?: boolean;
+  onBookmark?: () => void;
   onDelete?: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -335,54 +339,75 @@ export function ListRow({
         <div />
       </Link>
 
-      {/* Botão de deletar — aparece no hover */}
-      {hovered && onDelete && (
-        <button
-          type="button"
-          aria-label="Excluir lista"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onDelete();
-          }}
+      {/* Botões de ação — aparecem no hover */}
+      {hovered && (
+        <div
           style={{
             position: "absolute",
             right: 10,
             top: "50%",
             transform: "translateY(-50%)",
-            display: "grid",
-            placeItems: "center",
-            width: 24,
-            height: 24,
-            borderRadius: 5,
-            border: 0,
-            background: "none",
-            cursor: "pointer",
-            color: "var(--muted-foreground)",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--destructive)";
-            e.currentTarget.style.color = "white";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "none";
-            e.currentTarget.style.color = "var(--muted-foreground)";
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
           }}
         >
-          <svg
-            width={13}
-            height={13}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.8}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-            <path d="M10 11v6M14 11v6" />
-          </svg>
-        </button>
+          {onBookmark && (
+            <button
+              type="button"
+              aria-label={isBookmarked ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onBookmark(); }}
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: 24,
+                height: 24,
+                borderRadius: 5,
+                border: 0,
+                background: "none",
+                cursor: "pointer",
+                color: isBookmarked ? "#f59e0b" : "var(--muted-foreground)",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = "#f59e0b"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = isBookmarked ? "#f59e0b" : "var(--muted-foreground)"; }}
+            >
+              <svg width={13} height={13} viewBox="0 0 24 24" fill={isBookmarked ? "#f59e0b" : "none"} stroke={isBookmarked ? "#f59e0b" : "currentColor"} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+              </svg>
+            </button>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              aria-label="Excluir lista"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(); }}
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: 24,
+                height: 24,
+                borderRadius: 5,
+                border: 0,
+                background: "none",
+                cursor: "pointer",
+                color: "var(--muted-foreground)",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--destructive)";
+                e.currentTarget.style.color = "white";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "none";
+                e.currentTarget.style.color = "var(--muted-foreground)";
+              }}
+            >
+              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+                <path d="M10 11v6M14 11v6" />
+              </svg>
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

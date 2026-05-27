@@ -29,7 +29,7 @@ import { SpaceSwitcher } from "@/components/spaces/space-switcher";
 import { CreateFolderDialog } from "@/components/spaces/create-folder-dialog";
 import { CreateListDialog } from "@/components/spaces/create-list-dialog";
 import { useSpaces, useFolders, useLists, useArchiveProject } from "@/hooks/use-projects";
-import { useBookmarks } from "@/hooks/use-bookmarks";
+import { useBookmarks, useIsBookmarked, useToggleBookmark } from "@/hooks/use-bookmarks";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 type TabId =
@@ -180,6 +180,8 @@ export default function SpacePage({
   const { data: pastas = [] } = useFolders(entidade ? id : null);
   const { data: listas = [] } = useLists(entidade ? id : null);
   const { data: bookmarks = [] } = useBookmarks();
+  const { isBookmarked: spaceBookmarked, bookmark: spaceBookmark } = useIsBookmarked(id, "space");
+  const { toggle: toggleSpace, isPending: isTogglingSpace } = useToggleBookmark();
   const docs: typeof listas = [];
   const recentes = [...pastas, ...listas].slice(0, 6);
 
@@ -257,6 +259,9 @@ export default function SpacePage({
           <SpaceSwitcher currentSpaceId={id} currentSpaceName={entidade.nome} />
           <button
             type="button"
+            aria-label={spaceBookmarked ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            disabled={isTogglingSpace}
+            onClick={() => toggleSpace({ targetId: id, targetType: "space", bookmarkId: spaceBookmark?.id })}
             style={{
               display: "grid",
               width: 24,
@@ -266,16 +271,12 @@ export default function SpacePage({
               border: 0,
               background: "none",
               cursor: "pointer",
-              color: "var(--muted-foreground)",
+              color: spaceBookmarked ? "#f59e0b" : "var(--muted-foreground)",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#f59e0b";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--muted-foreground)";
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#f59e0b"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = spaceBookmarked ? "#f59e0b" : "var(--muted-foreground)"; }}
           >
-            <Star size={14} />
+            <Star size={14} fill={spaceBookmarked ? "#f59e0b" : "none"} />
           </button>
           <button
             type="button"
@@ -290,12 +291,8 @@ export default function SpacePage({
               cursor: "pointer",
               color: "var(--muted-foreground)",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--foreground)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--muted-foreground)";
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "var(--foreground)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
           >
             <IcMenu />
           </button>
@@ -1012,14 +1009,19 @@ export default function SpacePage({
             </div>
 
             {listas.length > 0 ? (
-              listas.map((lista) => (
+              listas.map((lista) => {
+                const bm = bookmarks.find((b) => b.targetId === lista.id && b.targetType === "list");
+                return (
                 <ListRow
                   key={lista.id}
                   id={lista.id}
                   nome={lista.nome}
+                  isBookmarked={!!bm}
+                  onBookmark={() => toggleSpace({ targetId: lista.id, targetType: "list", bookmarkId: bm?.id })}
                   onDelete={() => setDeleteTarget({ id: lista.id, nome: lista.nome })}
                 />
-              ))
+                );
+              })
             ) : (
               <div
                 style={{

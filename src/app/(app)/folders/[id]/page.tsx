@@ -26,6 +26,7 @@ import Link from "next/link";
 import { AgentPopover } from "@/components/spaces/agent-popover";
 import { CreateListDialog } from "@/components/spaces/create-list-dialog";
 import { useProject, useLists, useArchiveProject } from "@/hooks/use-projects";
+import { useBookmarks, useIsBookmarked, useToggleBookmark } from "@/hooks/use-bookmarks";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 type TabId =
@@ -172,8 +173,26 @@ export default function FolderPage({
 
   const { data: entidade, isLoading } = useProject(id);
   const { data: listas = [] } = useLists(entidade ? id : null);
+  const { data: bookmarks = [] } = useBookmarks();
+  const { isBookmarked: folderBookmarked, bookmark: folderBookmark } = useIsBookmarked(id, "folder");
+  const { toggle: toggleBookmark, isPending: isTogglingBookmark } = useToggleBookmark();
   const docs: typeof listas = [];
   const recentes = [...listas].slice(0, 6);
+
+  // Favoritos que são filhos desta pasta (listas) ou a própria pasta
+  const childIds = new Set([id, ...listas.map((l) => l.id)]);
+  const folderBookmarks = bookmarks.filter((bm) => childIds.has(bm.targetId));
+
+  function bookmarkHref(bm: { targetId: string; targetType: string }): string {
+    if (bm.targetType === "list") return `/lists/${bm.targetId}`;
+    if (bm.targetType === "folder") return `/folders/${bm.targetId}`;
+    return "/";
+  }
+
+  function bookmarkName(bm: { targetId: string; targetType: string }): string {
+    if (bm.targetType === "folder") return entidade?.nome ?? "Pasta";
+    return listas.find((l) => l.id === bm.targetId)?.nome ?? "Lista";
+  }
 
   if (isLoading) {
     return (
@@ -246,6 +265,9 @@ export default function FolderPage({
           </button>
           <button
             type="button"
+            aria-label={folderBookmarked ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            disabled={isTogglingBookmark}
+            onClick={() => toggleBookmark({ targetId: id, targetType: "folder", bookmarkId: folderBookmark?.id })}
             style={{
               display: "grid",
               width: 24,
@@ -255,16 +277,12 @@ export default function FolderPage({
               border: 0,
               background: "none",
               cursor: "pointer",
-              color: "var(--muted-foreground)",
+              color: folderBookmarked ? "#f59e0b" : "var(--muted-foreground)",
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "#f59e0b";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--muted-foreground)";
-            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#f59e0b"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = folderBookmarked ? "#f59e0b" : "var(--muted-foreground)"; }}
           >
-            <Star size={14} />
+            <Star size={14} fill={folderBookmarked ? "#f59e0b" : "none"} />
           </button>
           <button
             type="button"
@@ -720,51 +738,33 @@ export default function FolderPage({
             >
               Bookmarks
             </p>
-            {docs.length > 0 ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  background: "var(--secondary)",
-                  border: "1px solid var(--border)",
-                  cursor: "pointer",
-                  transition: "background 120ms, border-color 120ms",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--accent)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "var(--secondary)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
-              >
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 7,
-                    background: "#3b82f6",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <IcDoc color="#ffffff" size={16} strokeWidth={2} />
-                </div>
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: "var(--foreground)",
-                    fontWeight: 500,
-                  }}
-                >
-                  {docs[0].nome}
-                </span>
+            {folderBookmarks.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {folderBookmarks.map((bm) => (
+                  <Link
+                    key={bm.id}
+                    href={bookmarkHref(bm)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 7,
+                      padding: "5px 8px",
+                      margin: "0 -8px",
+                      borderRadius: 6,
+                      textDecoration: "none",
+                      transition: "background 120ms",
+                    }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                  >
+                    <span style={{ flexShrink: 0 }}>
+                      {bm.targetType === "list" ? <IcList /> : <IcFolder />}
+                    </span>
+                    <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>
+                      {bookmarkName(bm)}
+                    </span>
+                  </Link>
+                ))}
               </div>
             ) : (
               <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
@@ -854,14 +854,19 @@ export default function FolderPage({
             </div>
 
             {listas.length > 0 ? (
-              listas.map((lista) => (
+              listas.map((lista) => {
+                const bm = bookmarks.find((b) => b.targetId === lista.id && b.targetType === "list");
+                return (
                 <ListRow
                   key={lista.id}
                   id={lista.id}
                   nome={lista.nome}
+                  isBookmarked={!!bm}
+                  onBookmark={() => toggleBookmark({ targetId: lista.id, targetType: "list", bookmarkId: bm?.id })}
                   onDelete={() => setDeleteTarget({ id: lista.id, nome: lista.nome })}
                 />
-              ))
+                );
+              })
             ) : (
               <div
                 style={{
