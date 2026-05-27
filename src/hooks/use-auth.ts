@@ -178,8 +178,11 @@ export function useSwitchOrg() {
     onSuccess: (data) => {
       useAuthStore.getState().setTokens(data.accessToken, data.refreshToken);
       useAuthStore.getState().setUser(data.user);
-      // Invalida TODO o cache — org nova => spaces/tasks/sprints são diferentes
-      queryClient.invalidateQueries();
+      // Remove TODO o cache (não só invalida) — org nova => spaces/tasks/sprints
+      // são diferentes. removeQueries força refetch limpo, evitando que telas
+      // dependentes (ex.: HomePage redirecionando para spaces[0]) usem dados
+      // stale da org anterior antes do refetch completar.
+      queryClient.removeQueries();
     },
     onError: (error) => {
       toast.error(getApiErrorMessage(error));
