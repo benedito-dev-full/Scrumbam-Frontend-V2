@@ -156,7 +156,7 @@ export function TaskDetailDrawer({
       </div>
 
       {/* Campos */}
-      <div className="flex flex-col gap-4 overflow-y-auto p-4">
+      <div className="flex flex-col gap-[var(--section-gap)] overflow-y-auto p-4">
         {/* Status */}
         <Field label="Status">
           <StatusPicker
@@ -232,7 +232,11 @@ export function TaskDetailDrawer({
               updateTask({ id: taskId, projectId, dto: { assigneeId: id } })
             }
             onTeamChange={(teamId) =>
-              updateTask({ id: taskId, projectId, dto: { assigneeTeamId: teamId } })
+              updateTask({
+                id: taskId,
+                projectId,
+                dto: { assigneeTeamId: teamId },
+              })
             }
           />
         </Field>
@@ -333,9 +337,13 @@ function AssigneePicker({
           <div className="flex items-center gap-2">
             <span
               className="size-5 shrink-0 rounded-full"
-              style={{ background: assignedTeam.color ?? "var(--muted-foreground)" }}
+              style={{
+                background: assignedTeam.color ?? "var(--muted-foreground)",
+              }}
             />
-            <span className="font-medium text-foreground">{assignedTeam.nome}</span>
+            <span className="font-medium text-foreground">
+              {assignedTeam.nome}
+            </span>
             <span className="rounded-full bg-muted px-1.5 py-px text-[10px] text-muted-foreground">
               time
             </span>
@@ -423,7 +431,9 @@ function AssigneePicker({
                     onClick={() => {
                       // Selecionar um time limpa o responsável individual (e vice-versa)
                       onChange(null);
-                      onTeamChange?.(currentTeamId === team.id ? null : team.id);
+                      onTeamChange?.(
+                        currentTeamId === team.id ? null : team.id,
+                      );
                       setOpen(false);
                     }}
                     className={cn(
@@ -433,9 +443,13 @@ function AssigneePicker({
                   >
                     <span
                       className="size-5 shrink-0 rounded-full"
-                      style={{ background: team.color ?? "var(--muted-foreground)" }}
+                      style={{
+                        background: team.color ?? "var(--muted-foreground)",
+                      }}
                     />
-                    <span className="font-medium text-foreground">{team.nome}</span>
+                    <span className="font-medium text-foreground">
+                      {team.nome}
+                    </span>
                     {currentTeamId === team.id && (
                       <span className="ml-auto size-1.5 rounded-full bg-foreground/40" />
                     )}
@@ -478,6 +492,7 @@ function AssigneePicker({
  * @param onChange - Callback invocado quando team é selecionado ou removido
  * @param disabled - Se true, desabilita a seleção (ex: task em execução)
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function TeamPicker({
   current,
   onChange,
@@ -512,9 +527,13 @@ function TeamPicker({
           <div className="flex items-center gap-2">
             <span
               className="size-2.5 rounded-full"
-              style={{ background: assignedTeam.color ?? "var(--muted-foreground)" }}
+              style={{
+                background: assignedTeam.color ?? "var(--muted-foreground)",
+              }}
             />
-            <span className="font-medium text-foreground">{assignedTeam.nome}</span>
+            <span className="font-medium text-foreground">
+              {assignedTeam.nome}
+            </span>
           </div>
         ) : (
           <div className="flex items-center gap-2">
@@ -544,13 +563,18 @@ function TeamPicker({
               >
                 <span
                   className="size-2.5 shrink-0 rounded-full"
-                  style={{ background: team.color ?? "var(--muted-foreground)" }}
+                  style={{
+                    background: team.color ?? "var(--muted-foreground)",
+                  }}
                 />
                 <div className="flex flex-1 flex-col">
-                  <span className="font-medium text-foreground">{team.nome}</span>
+                  <span className="font-medium text-foreground">
+                    {team.nome}
+                  </span>
                   {team.memberCount !== undefined && (
                     <span className="text-[11px] text-muted-foreground">
-                      {team.memberCount} membro{team.memberCount !== 1 ? "s" : ""}
+                      {team.memberCount} membro
+                      {team.memberCount !== 1 ? "s" : ""}
                     </span>
                   )}
                 </div>
@@ -849,7 +873,7 @@ function DrawerShell({
 
 function DrawerSkeleton() {
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div className="flex flex-col gap-[var(--section-gap)] p-4">
       <div className="h-6 w-32 animate-pulse rounded bg-muted" />
       <div className="h-4 w-full animate-pulse rounded bg-muted" />
       <div className="h-4 w-3/4 animate-pulse rounded bg-muted" />
