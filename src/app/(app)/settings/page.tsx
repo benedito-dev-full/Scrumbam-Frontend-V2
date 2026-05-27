@@ -34,7 +34,7 @@ export default function SettingsPage() {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-3xl space-y-4 px-4 py-6">
+        <div className="mx-auto w-full max-w-3xl space-y-[var(--section-gap)] px-4 py-6">
           {/* Aparência */}
           <AparenciaCard />
 
@@ -106,7 +106,7 @@ function AparenciaCard() {
 
   return (
     <Card title="Aparência">
-      <div className="space-y-5">
+      <div className="space-y-[calc(var(--section-gap)+4px)]">
         <SettingRow
           icon={<Sun className="size-4" />}
           title="Tema"
@@ -213,7 +213,7 @@ function IdiomaCard() {
         Salvo no servidor. Aplicação completa (i18n, formatação server-side) em
         próximas versões.
       </p>
-      <div className="space-y-5">
+      <div className="space-y-[calc(var(--section-gap)+4px)]">
         <SettingRow
           icon={<Globe className="size-4" />}
           title="Idioma"
@@ -375,7 +375,7 @@ function ToggleRow({
   return (
     <div
       className={cn(
-        "flex items-start justify-between gap-4 rounded-md px-2 py-2.5 transition-colors hover:bg-muted/30",
+        "flex items-start justify-between gap-4 rounded-md px-2 py-[var(--row-py)] transition-colors hover:bg-muted/30",
         disabled && "opacity-60",
       )}
     >
@@ -412,7 +412,7 @@ function NavRow({ icon, title, subtitle, shortcut, onClick }: NavRowProps) {
       type="button"
       onClick={onClick}
       className={cn(
-        "flex w-full items-center justify-between rounded-md px-3 py-2.5",
+        "flex w-full items-center justify-between rounded-md px-3 py-[var(--row-py)]",
         "border border-border/70 bg-background/30 text-left",
         "transition-colors hover:border-border hover:bg-muted/30",
       )}
