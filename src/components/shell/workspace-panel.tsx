@@ -611,7 +611,9 @@ function useAllFoldersAndLists(spaceIds: string[], enabled: boolean) {
 function AddFavoriteDropdown() {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [pos, setPos] = useState({ top: 0, left: 0 });
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { data: spaces = [] } = useSpaces();
@@ -658,10 +660,15 @@ function AddFavoriteDropdown() {
   }
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref}>
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          const rect = btnRef.current?.getBoundingClientRect();
+          if (rect) setPos({ top: rect.top, left: rect.right + 6 });
+          setOpen((v) => !v);
+        }}
         className={cn(
           "group flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 transition-colors",
           "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
@@ -674,10 +681,11 @@ function AddFavoriteDropdown() {
         <span className="flex-1 text-left">Adicione à sua barra lateral</span>
       </button>
 
-      {open && (
+      {open && typeof window !== "undefined" && (
         <div
-          className="absolute z-50 overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
-          style={{ left: "calc(100% + 6px)", top: 0, width: 260 }}
+          className="fixed z-50 overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
+          style={{ top: pos.top, left: pos.left, width: 260 }}
+          ref={ref}
         >
           {/* campo de busca */}
           <div className="flex items-center gap-2 border-b border-border px-3 py-2">
