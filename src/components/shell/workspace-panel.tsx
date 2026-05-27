@@ -769,12 +769,17 @@ function AddFavoriteDropdown() {
 
       {open && typeof window !== "undefined" && (
         <div
-          className="fixed z-50 overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
-          style={{ top: pos.top, left: pos.left, width: 260 }}
+          className="fixed z-50 flex flex-col overflow-hidden rounded-xl border border-border bg-popover shadow-2xl"
+          style={{
+            top: pos.top,
+            left: pos.left,
+            width: 260,
+            maxHeight: Math.min(440, window.innerHeight - pos.top - 16),
+          }}
           ref={ref}
         >
           {/* campo de busca */}
-          <div className="flex items-center gap-2 border-b border-border px-3 py-2">
+          <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-2">
             <Search className="size-3.5 shrink-0 text-muted-foreground" />
             <input
               ref={inputRef}
@@ -785,7 +790,7 @@ function AddFavoriteDropdown() {
             />
           </div>
 
-          <ScrollArea className="max-h-[360px]">
+          <ScrollArea className="min-h-0 flex-1">
             <div className="py-1.5">
               {!hasResults && (
                 <p className="px-3 py-4 text-center text-[12px] text-muted-foreground">

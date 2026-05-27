@@ -28,6 +28,7 @@ import { SpaceSwitcher } from "@/components/spaces/space-switcher";
 import { CreateFolderDialog } from "@/components/spaces/create-folder-dialog";
 import { CreateListDialog } from "@/components/spaces/create-list-dialog";
 import { useSpaces, useFolders, useLists } from "@/hooks/use-projects";
+import { useBookmarks } from "@/hooks/use-bookmarks";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 type TabId =
@@ -175,8 +176,33 @@ export default function SpacePage({
   const entidade = spaces?.find((s) => s.id === id) ?? null;
   const { data: pastas = [] } = useFolders(entidade ? id : null);
   const { data: listas = [] } = useLists(entidade ? id : null);
+  const { data: bookmarks = [] } = useBookmarks();
   const docs: typeof listas = [];
   const recentes = [...pastas, ...listas].slice(0, 6);
+
+  // Favoritos que são filhos deste espaço (pasta ou lista) ou o próprio espaço
+  const childIds = new Set([
+    id,
+    ...pastas.map((p) => p.id),
+    ...listas.map((l) => l.id),
+  ]);
+  const spaceBookmarks = bookmarks.filter((bm) => childIds.has(bm.targetId));
+
+  function bookmarkHref(bm: { targetId: string; targetType: string }): string {
+    if (bm.targetType === "folder") return `/folders/${bm.targetId}`;
+    if (bm.targetType === "list") return `/lists/${bm.targetId}`;
+    if (bm.targetType === "space") return `/spaces/${bm.targetId}`;
+    return "/";
+  }
+
+  function bookmarkName(bm: { targetId: string; targetType: string }): string {
+    if (bm.targetType === "space") return entidade?.nome ?? "Espaço";
+    const pasta = pastas.find((p) => p.id === bm.targetId);
+    if (pasta) return pasta.nome;
+    const lista = listas.find((l) => l.id === bm.targetId);
+    if (lista) return lista.nome;
+    return "Favorito";
+  }
 
   if (isLoading) {
     return (
@@ -715,51 +741,43 @@ export default function SpacePage({
             >
               Bookmarks
             </p>
-            {docs.length > 0 ? (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "8px 10px",
-                  borderRadius: 8,
-                  background: "var(--secondary)",
-                  border: "1px solid var(--border)",
-                  cursor: "pointer",
-                  transition: "background 120ms, border-color 120ms",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--accent)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "var(--secondary)";
-                  e.currentTarget.style.borderColor = "var(--border)";
-                }}
-              >
-                <div
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 7,
-                    background: "#3b82f6",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <IcDoc color="#ffffff" size={16} strokeWidth={2} />
-                </div>
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: "var(--foreground)",
-                    fontWeight: 500,
-                  }}
-                >
-                  {docs[0].nome}
-                </span>
+            {spaceBookmarks.length > 0 ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {spaceBookmarks.map((bm) => (
+                  <Link
+                    key={bm.id}
+                    href={bookmarkHref(bm)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 7,
+                      padding: "5px 8px",
+                      margin: "0 -8px",
+                      borderRadius: 6,
+                      textDecoration: "none",
+                      transition: "background 120ms",
+                    }}
+                    onMouseEnter={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = "var(--accent)";
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLElement).style.background = "transparent";
+                    }}
+                  >
+                    <span style={{ flexShrink: 0 }}>
+                      {bm.targetType === "folder" ? (
+                        <IcFolder />
+                      ) : bm.targetType === "list" ? (
+                        <IcList />
+                      ) : (
+                        <IcDoc />
+                      )}
+                    </span>
+                    <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>
+                      {bookmarkName(bm)}
+                    </span>
+                  </Link>
+                ))}
               </div>
             ) : (
               <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
