@@ -301,7 +301,7 @@ export function useAllLists() {
 export function useCreateSpace() {
   const queryClient = useQueryClient();
 
-  return useMutation<DProjectDto, Error, Pick<CreateProjectDto, 'nome' | 'privado' | 'color' | 'icon'>>({
+  return useMutation<DProjectDto, Error, Pick<CreateProjectDto, 'nome' | 'privado' | 'color' | 'icon' | 'description'>>({
     mutationFn: async (dto) => {
       const res = await api.post<DProjectDto>('/projects', {
         ...dto,

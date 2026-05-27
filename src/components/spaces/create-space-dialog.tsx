@@ -391,7 +391,13 @@ export function CreateSpaceDialog({ open, onOpenChange }: CreateSpaceDialogProps
     if (!validate()) return;
 
     mutate(
-      { nome: nome.trim(), privado, color, icon: iconId || undefined },
+      {
+        nome: nome.trim(),
+        privado,
+        color,
+        icon: iconId || undefined,
+        description: descricao.trim() || undefined,
+      },
       {
         onSuccess: (created) => {
           toast.success(`Space "${created.nome}" criado`, {
