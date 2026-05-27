@@ -221,24 +221,17 @@ export function TaskDetailDrawer({
           />
         </Field>
 
-        {/* Responsável */}
+        {/* Responsável + Time (picker unificado) */}
         <Field label="Responsável">
           <AssigneePicker
             projectId={projectId}
             current={task.assigneeId ?? null}
+            currentTeamId={task.assigneeTeamId ?? null}
             disabled={isLocked}
             onChange={(id) =>
               updateTask({ id: taskId, projectId, dto: { assigneeId: id } })
             }
-          />
-        </Field>
-
-        {/* Time responsável */}
-        <Field label="Time responsável">
-          <TeamPicker
-            current={task.assigneeTeamId ?? null}
-            disabled={isLocked}
-            onChange={(teamId) =>
+            onTeamChange={(teamId) =>
               updateTask({ id: taskId, projectId, dto: { assigneeTeamId: teamId } })
             }
           />
@@ -280,19 +273,25 @@ export function TaskDetailDrawer({
 function AssigneePicker({
   projectId,
   current,
+  currentTeamId = null,
   onChange,
+  onTeamChange,
   disabled = false,
 }: {
   projectId: string;
   current: string | null;
+  currentTeamId?: string | null;
   onChange: (id: string | null) => void;
+  onTeamChange?: (id: string | null) => void;
   disabled?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const { data: members = [] } = useProjectMembers(projectId);
+  const { data: teams = [] } = useTeams();
 
   const isAi = current === AI_ASSIGNEE_ID;
   const assignedMember = members.find((m) => m.userId === current) ?? null;
+  const assignedTeam = teams.find((t) => t.id === currentTeamId) ?? null;
 
   return (
     <div className="relative">
@@ -328,6 +327,17 @@ function AssigneePicker({
             </div>
             <span className="font-medium text-foreground">
               {assignedMember.nome}
+            </span>
+          </div>
+        ) : assignedTeam ? (
+          <div className="flex items-center gap-2">
+            <span
+              className="size-5 shrink-0 rounded-full"
+              style={{ background: assignedTeam.color ?? "var(--muted-foreground)" }}
+            />
+            <span className="font-medium text-foreground">{assignedTeam.nome}</span>
+            <span className="rounded-full bg-muted px-1.5 py-px text-[10px] text-muted-foreground">
+              time
             </span>
           </div>
         ) : (
@@ -399,14 +409,50 @@ function AssigneePicker({
               </button>
             ))}
 
+            {/* Seção Times */}
+            {teams.length > 0 && (
+              <>
+                <div className="my-1 border-t border-border" />
+                <p className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Times
+                </p>
+                {teams.map((team) => (
+                  <button
+                    key={team.id}
+                    type="button"
+                    onClick={() => {
+                      // Selecionar um time limpa o responsável individual (e vice-versa)
+                      onChange(null);
+                      onTeamChange?.(currentTeamId === team.id ? null : team.id);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-[13px] transition-colors hover:bg-muted",
+                      currentTeamId === team.id && "bg-muted",
+                    )}
+                  >
+                    <span
+                      className="size-5 shrink-0 rounded-full"
+                      style={{ background: team.color ?? "var(--muted-foreground)" }}
+                    />
+                    <span className="font-medium text-foreground">{team.nome}</span>
+                    {currentTeamId === team.id && (
+                      <span className="ml-auto size-1.5 rounded-full bg-foreground/40" />
+                    )}
+                  </button>
+                ))}
+              </>
+            )}
+
             {/* Remover */}
-            {current && (
+            {(current || currentTeamId) && (
               <>
                 <div className="my-1 border-t border-border" />
                 <button
                   type="button"
                   onClick={() => {
                     onChange(null);
+                    onTeamChange?.(null);
                     setOpen(false);
                   }}
                   className="flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-[12px] text-muted-foreground transition-colors hover:bg-muted"
