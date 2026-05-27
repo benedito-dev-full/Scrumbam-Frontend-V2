@@ -2969,7 +2969,7 @@ function TaskRowBackend({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                height: 36,
+                height: "calc(var(--row-h) - 4px)",
                 cursor: "grab",
                 color: hovered ? "var(--muted-foreground)" : "transparent",
                 transition: "color .15s",
@@ -2986,7 +2986,7 @@ function TaskRowBackend({
               display: "flex",
               alignItems: "center",
               gap: 6,
-              height: 36,
+              height: "calc(var(--row-h) - 4px)",
               paddingLeft: indent,
             }}
           >
@@ -3872,7 +3872,7 @@ function AddRow({ onAddTask }: { onAddTask: () => void }) {
       <td
         colSpan={8}
         style={{
-          height: 34,
+          height: "calc(var(--row-h) - 6px)",
           borderBottom: "1px solid #1f1f25",
           background: hovered ? "var(--accent)" : "transparent",
         }}
@@ -3880,7 +3880,7 @@ function AddRow({ onAddTask }: { onAddTask: () => void }) {
         <div
           style={{
             paddingLeft: 30,
-            height: 34,
+            height: "calc(var(--row-h) - 6px)",
             display: "flex",
             alignItems: "center",
             gap: 7,
