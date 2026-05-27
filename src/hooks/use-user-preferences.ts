@@ -29,7 +29,6 @@ export const PREFERENCES_DEFAULTS = {
   appearance: {
     theme: "system",
     density: "normal",
-    accent: "#6366F1",
   } as Required<UserAppearancePreferences>,
   locale: {
     language: "pt-BR",

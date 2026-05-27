@@ -97,7 +97,7 @@ export default function SettingsPage() {
 
 function AparenciaCard() {
   const { setTheme } = useTheme();
-  const { preferences, isLoading, setAppearance } = useUserPreferences();
+  const { preferences, setAppearance } = useUserPreferences();
 
   const handleTheme = (v: "light" | "dark") => {
     setTheme(v);
@@ -147,21 +147,6 @@ function AparenciaCard() {
               { value: "normal", label: "Padrão" },
               { value: "cozy", label: "Espaçada" },
             ]}
-          />
-        </SettingRow>
-
-        <SettingRow
-          icon={<SettingsIcon className="size-4" />}
-          title="Cor de destaque"
-          description="Salvo no servidor — aplicação visual em breve"
-        >
-          <input
-            type="color"
-            value={preferences.appearance.accent ?? "#6366F1"}
-            onChange={(e) => void setAppearance({ accent: e.target.value })}
-            disabled={isLoading}
-            className="h-8 w-12 cursor-pointer rounded border border-border/70 bg-background/40 disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="Cor de destaque"
           />
         </SettingRow>
       </div>

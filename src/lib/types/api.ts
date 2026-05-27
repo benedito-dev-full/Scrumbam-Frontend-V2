@@ -12,7 +12,6 @@
 export interface UserAppearancePreferences {
   theme?: "light" | "dark" | "system";
   density?: "compact" | "normal" | "cozy";
-  accent?: string;
 }
 export interface UserLocalePreferences {
   language?: string;
