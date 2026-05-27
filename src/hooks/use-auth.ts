@@ -183,6 +183,12 @@ export function useSwitchOrg() {
       // dependentes (ex.: HomePage redirecionando para spaces[0]) usem dados
       // stale da org anterior antes do refetch completar.
       queryClient.removeQueries();
+      // Popula o cache do useMe com o user retornado pelo switch-org. O
+      // response já traz organizationId/Name e availableOrgs atualizados, o
+      // que evita depender de um refetch posterior de /auth/me (que em alguns
+      // cenarios retorna dados stale e mantem o WorkspaceSwitcher com nomes
+      // da org anterior).
+      queryClient.setQueryData(qk.auth.me, data.user);
     },
     onError: (error) => {
       toast.error(getApiErrorMessage(error));
