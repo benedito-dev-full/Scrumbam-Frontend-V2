@@ -4,8 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, FileText, Sparkles, CalendarDays, Flag,
-  MoreHorizontal, Paperclip, Bell, ChevronDown,
-  Table2, Columns3, List,
+  MoreHorizontal, ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -94,7 +93,7 @@ export function CreateTaskModal({
   const [status, setStatus] = useState<StatusVisual>(defaultStatus ?? 'backlog');
   const [prioridade, setPrioridade] = useState<keyof typeof PRIO_CONFIG | null>(null);
   const [dataVencimento, setDataVencimento] = useState<string>('');
-  const [abaAtiva, setAbaAtiva] = useState<'tarefa' | 'documento' | 'lembrete' | 'quadro' | 'paineis'>('tarefa');
+  const [abaAtiva, setAbaAtiva] = useState<'tarefa' | 'documento'>('tarefa');
   const [openDropdown, setOpenDropdown] = useState<'status' | 'prioridade' | 'data' | null>(null);
   const [descAberta, setDescAberta] = useState(false);
   const [docNome, setDocNome] = useState('');
@@ -217,9 +216,6 @@ export function CreateTaskModal({
           {([
             ['tarefa', 'Tarefa'],
             ['documento', 'Documento'],
-            ['lembrete', 'Lembrete'],
-            ['quadro', 'Quadro branco'],
-            ['paineis', 'Painéis'],
           ] as const).map(([id, label]) => (
             <button
               key={id}
@@ -544,31 +540,6 @@ export function CreateTaskModal({
               </button>
             </div>
 
-            <p style={{ fontSize: 12, color: '#4a4a54', margin: '0 0 8px', fontWeight: 400 }}>
-              Add new
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {([
-                [Table2, 'Tabela'],
-                [Columns3, 'Coluna'],
-                [List, 'Lista'],
-              ] as const).map(([Icon, label]) => (
-                <button key={label} type="button" style={docActionStyle} {...docItemHover}>
-                  <Icon size={15} style={{ color: '#71717a', flexShrink: 0 }} />
-                  <span>{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── Corpo: abas stub ── */}
-        {(abaAtiva === 'lembrete' || abaAtiva === 'quadro' || abaAtiva === 'paineis') && (
-          <div style={{
-            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#4a4a54', fontSize: 13,
-          }}>
-            Em breve
           </div>
         )}
 
@@ -581,19 +552,7 @@ export function CreateTaskModal({
         }}>
           {abaAtiva === 'tarefa' ? (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <button type="button" style={footerBtnStyle}>
-                  <span style={{ fontSize: 12 }}>≋</span>
-                  Modelos
-                </button>
-                <button type="button" style={{ ...footerBtnStyle, padding: '0 8px' }}>
-                  <Paperclip size={13} />
-                </button>
-                <button type="button" style={{ ...footerBtnStyle, padding: '0 8px', gap: 4 }}>
-                  <Bell size={13} />
-                  <span style={{ fontSize: 11, color: '#6b6b74' }}>1</span>
-                </button>
-              </div>
+              <div />
               <div style={{ display: 'flex', alignItems: 'stretch', height: 32, borderRadius: 8, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.3)' }}>
                 <button
                   type="button"
@@ -746,11 +705,3 @@ const itemHover = {
   },
 };
 
-const footerBtnStyle: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: 6,
-  height: 30, padding: '0 12px', borderRadius: 6,
-  border: '1px solid var(--border)',
-  background: 'none', cursor: 'pointer',
-  color: '#6b6b74', fontSize: 12,
-  transition: 'background 120ms, color 120ms',
-};

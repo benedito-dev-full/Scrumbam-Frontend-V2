@@ -180,16 +180,17 @@ Arquivo: `src/app/(app)/planner/_components/create-event-modal.tsx`
 
 Arquivo: `src/components/tasks/create-task-modal.tsx`
 
-- [ ] **R** — Botão "Tabela" (linha ~551) → sem onClick
-- [ ] **R** — Botão "Coluna" (linha ~555) → sem onClick
-- [ ] **R** — Botão "Lista" (linha ~560) → sem onClick
-- [ ] **R** — Botão footer `attachments` (linha ~585) → sem onClick
-- [ ] **R** — Botão footer `bell` (linha ~595) → sem onClick
-- [ ] **R** — Aba "lembrete" (linhas ~566-573) → "Em breve"
-- [ ] **R** — Aba "quadro" → "Em breve"
-- [ ] **R** — Aba "paineis" → "Em breve"
+- [x] **R** — Botão "Tabela" → removido (2026-05-27)
+- [x] **R** — Botão "Coluna" → removido (2026-05-27)
+- [x] **R** — Botão "Lista" → removido (2026-05-27)
+- [x] **R** — Botão footer `Modelos` → removido (2026-05-27)
+- [x] **R** — Botão footer `Paperclip` (attachments) → removido (2026-05-27)
+- [x] **R** — Botão footer `Bell` → removido (2026-05-27)
+- [x] **R** — Aba "lembrete" → removida (2026-05-27)
+- [x] **R** — Aba "quadro branco" → removida (2026-05-27)
+- [x] **R** — Aba "Painéis" → removida (2026-05-27)
 
-> **Decisão:** simplificar modal. Manter só o form essencial (título, descrição, assignee, due date, prioridade, lista).
+> **Decisão aplicada:** modal simplificado. Apenas abas "Tarefa" e "Documento", footer enxuto. Também removida a seção "Add new" (Tabela/Coluna/Lista) da aba Documento.
 
 ---
 
@@ -305,3 +306,4 @@ Remover de cara, sem dó:
 
 - **2026-05-27** — documento criado a partir da auditoria inicial. 58+ elementos mapeados.
 - **2026-05-27** — Fase 1 / Shell global: removidos 4 itens "Gerenciar" (Aplicativos, Modelos, Campos personalizados, Automações) do Workspace Switcher.
+- **2026-05-27** — Fase 1 / Create Task Modal: removidas 3 abas decorativas ("Lembrete", "Quadro branco", "Painéis"), 3 cards "Add new" (Tabela, Coluna, Lista) e 3 botões do footer (Modelos, Paperclip, Bell). Modal agora tem apenas "Tarefa" e "Documento".
