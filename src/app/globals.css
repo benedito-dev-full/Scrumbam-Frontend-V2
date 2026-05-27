@@ -149,20 +149,20 @@
  * Componentes podem opt-in via var(--row-h) / var(--row-py).
  * ============================================================ */
 :root {
-  --row-h: 32px;
-  --row-py: 8px;
+  --row-h: 40px;
+  --row-py: 10px;
   --row-gap: 8px;
-  --section-gap: 24px;
-}
-html[data-density="compact"] {
-  --row-h: 28px;
-  --row-py: 4px;
-  --row-gap: 4px;
   --section-gap: 16px;
 }
+html[data-density="compact"] {
+  --row-h: 32px;
+  --row-py: 6px;
+  --row-gap: 4px;
+  --section-gap: 12px;
+}
 html[data-density="cozy"] {
-  --row-h: 40px;
-  --row-py: 12px;
+  --row-h: 48px;
+  --row-py: 14px;
   --row-gap: 12px;
-  --section-gap: 32px;
+  --section-gap: 24px;
 }

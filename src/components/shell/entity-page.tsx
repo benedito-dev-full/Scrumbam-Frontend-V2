@@ -230,7 +230,7 @@ export function ListRow({
           display: "grid",
           gridTemplateColumns:
             "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
-          height: 40,
+          minHeight: "var(--row-h)",
           padding: "0 16px",
           textDecoration: "none",
           borderBottom: "1px solid var(--border)",
@@ -522,7 +522,7 @@ export function AddListRow({ onClick }: { onClick?: () => void } = {}) {
         alignItems: "center",
         gap: 7,
         width: "100%",
-        height: 36,
+        minHeight: "var(--row-h)",
         padding: "0 16px",
         border: 0,
         background: hovered ? "var(--border)" : "transparent",

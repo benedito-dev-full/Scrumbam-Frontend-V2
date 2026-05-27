@@ -648,8 +648,8 @@ export default function SpacePage({
                 display: "grid",
                 gridTemplateColumns: "1fr 1fr 1fr",
                 gap: 12,
-                marginTop: 16,
-                marginBottom: 16,
+                marginTop: "var(--section-gap)",
+                marginBottom: "var(--section-gap)",
               }}
             >
               {/* Recent */}
@@ -878,7 +878,7 @@ export default function SpacePage({
             {pastas.length > 0 && (
               <section
                 style={{
-                  marginBottom: 12,
+                  marginBottom: "var(--section-gap)",
                   border: "1px solid var(--border)",
                   borderRadius: 10,
                   overflow: "hidden",
@@ -987,7 +987,7 @@ export default function SpacePage({
                         alignItems: "center",
                         gap: 8,
                         width: 200,
-                        padding: "10px 14px",
+                        padding: "var(--row-py) 14px",
                         borderRadius: 8,
                         border: "1px solid var(--border)",
                         background: "var(--card)",
@@ -1066,10 +1066,11 @@ export default function SpacePage({
                     display: "grid",
                     gridTemplateColumns:
                       "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
-                    height: 34,
+                    minHeight: "calc(var(--row-h) - 6px)",
                     borderBottom: "1px solid var(--border)",
                     padding: "0 16px",
                     background: "var(--card)",
+                    alignItems: "center",
                   }}
                 >
                   {[
