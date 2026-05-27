@@ -24,6 +24,8 @@ import {
   useRenameProject,
   useArchiveProject,
 } from "@/hooks/use-projects";
+import { useIsBookmarked, useToggleBookmark } from "@/hooks/use-bookmarks";
+import type { BookmarkTargetType } from "@/lib/types/api";
 import { CreateSpaceDialog } from "./create-space-dialog";
 import { CreateFolderDialog } from "./create-folder-dialog";
 import { CreateListDialog } from "./create-list-dialog";
@@ -664,6 +666,13 @@ function MoreMenu({
   const menuRef = useRef<HTMLDivElement>(null);
   const { mutate: archive } = useArchiveProject();
 
+  const targetType: BookmarkTargetType =
+    project.idClasse === "-350" ? "space"
+    : project.idClasse === "-351" ? "folder"
+    : "list";
+  const { isBookmarked, bookmark } = useIsBookmarked(project.id, targetType);
+  const { toggle: toggleBookmark, isPending: isTogglingBookmark } = useToggleBookmark();
+
   useEffect(() => {
     if (!open) return;
     function handleClickOutside(e: MouseEvent) {
@@ -729,9 +738,21 @@ function MoreMenu({
           className="w-[200px] overflow-hidden rounded-xl border border-[#2a2a2f] bg-[#1a1a1f] py-1.5 shadow-2xl"
         >
           <Item
-            icon={<Star className="size-3.5" />}
-            label="Favorito"
-            onClick={() => setOpen(false)}
+            icon={
+              <Star
+                className={cn(
+                  "size-3.5 transition-colors",
+                  isBookmarked ? "fill-yellow-400 text-yellow-400" : "",
+                )}
+              />
+            }
+            label={isBookmarked ? "Remover favorito" : "Favorito"}
+            onClick={() => {
+              if (!isTogglingBookmark) {
+                toggleBookmark({ targetId: project.id, targetType, bookmarkId: bookmark?.id });
+              }
+              setOpen(false);
+            }}
           />
           <Item
             icon={<Pencil className="size-3.5" />}

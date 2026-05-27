@@ -574,6 +574,8 @@ function SpaceChipMini({ name, color }: { name: string; color?: string | null })
 /* ─── Sub-hook: agrega pastas e listas de todos os espaços ───────────────── */
 function useAllFoldersAndLists(spaceIds: string[], enabled: boolean) {
   const accessToken = useAuthStore((s) => s.accessToken);
+
+  // Pastas de cada espaço
   const folderQueries = useQueries({
     queries: spaceIds.map((id) => ({
       queryKey: qk.projects.folders(id),
@@ -588,7 +590,8 @@ function useAllFoldersAndLists(spaceIds: string[], enabled: boolean) {
     })),
   });
 
-  const listQueries = useQueries({
+  // Listas diretas de cada espaço (Space → List)
+  const spaceListQueries = useQueries({
     queries: spaceIds.map((id) => ({
       queryKey: qk.projects.lists(id),
       queryFn: async () => {
@@ -603,7 +606,30 @@ function useAllFoldersAndLists(spaceIds: string[], enabled: boolean) {
   });
 
   const folders = folderQueries.flatMap((q) => q.data ?? []);
-  const lists = listQueries.flatMap((q) => q.data ?? []);
+  const folderIds = folders.map((f) => f.id);
+
+  // Listas dentro de cada pasta (Folder → List)
+  const folderListQueries = useQueries({
+    queries: folderIds.map((fid) => ({
+      queryKey: qk.projects.lists(fid),
+      queryFn: async () => {
+        const res = await api.get<{ items: DProjectDto[] }>("/projects", {
+          params: { idClasse: "-352", idPai: fid, limit: 100 },
+        });
+        return res.data.items;
+      },
+      enabled: enabled && !!accessToken && folderIds.length > 0,
+      staleTime: 30_000,
+    })),
+  });
+
+  const spaceLists = spaceListQueries.flatMap((q) => q.data ?? []);
+  const folderLists = folderListQueries.flatMap((q) => q.data ?? []);
+  // Dedup por ID caso uma lista apareça em ambas as queries
+  const listMap = new Map<string, DProjectDto>();
+  [...spaceLists, ...folderLists].forEach((l) => listMap.set(l.id, l));
+  const lists = Array.from(listMap.values());
+
   return { folders, lists };
 }
 
