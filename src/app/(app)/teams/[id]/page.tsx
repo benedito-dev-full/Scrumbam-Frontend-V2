@@ -19,50 +19,16 @@ import {
   Search,
   Check,
 } from "lucide-react";
-import { useTeams, useTeamMembers, useRemoveTeamMember, useAddTeamMember } from "@/hooks/use-teams";
+import {
+  useTeam,
+  useTeams,
+  useUpdateTeam,
+  useTeamMembers,
+  useRemoveTeamMember,
+  useAddTeamMember,
+} from "@/hooks/use-teams";
 import { useOrgMembers } from "@/hooks/use-org-members";
-import type { TeamMemberDto, OrgMemberDto } from "@/lib/types/api";
-
-/* ══════════════════════════════════════════════════════════════════
-   TIPOS (localStorage — sem backend)
-══════════════════════════════════════════════════════════════════ */
-
-interface TeamLocal {
-  id: string;
-  nome: string;
-  memberCount: number;
-  color: string;
-  criadoEm: string;
-  descricao?: string;
-  membros?: MemberLocal[];
-}
-
-interface MemberLocal {
-  id: string;
-  nome: string;
-  cargo: string;
-  color: string;
-}
-
-const STORAGE_KEY = "scrumban_teams_proto";
-
-function loadTeams(): TeamLocal[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveTeams(teams: TeamLocal[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(teams));
-}
-
-function getInitials(nome: string) {
-  return nome.trim().charAt(0).toUpperCase();
-}
+import type { TeamMemberDto, TeamResponseDto, OrgMemberDto } from "@/lib/types/api";
 
 /* ══════════════════════════════════════════════════════════════════
    ABAS
@@ -91,13 +57,7 @@ const TAB_ICONS: Record<TabId, React.ReactNode> = {
 };
 
 /* ══════════════════════════════════════════════════════════════════
-   MODAL ADICIONAR MEMBRO
-══════════════════════════════════════════════════════════════════ */
-
-const MEMBER_COLORS = ["#e74c3c","#e67e22","#f1c40f","#2ecc71","#3498db","#9b59b6","#e91e63","#1abc9c"];
-
-/* ══════════════════════════════════════════════════════════════════
-   ABA VISÃO GERAL
+   HELPERS
 ══════════════════════════════════════════════════════════════════ */
 
 function avatarColor(str: string) {
@@ -107,7 +67,13 @@ function avatarColor(str: string) {
   return colors[Math.abs(h) % colors.length];
 }
 
-// ─── Popover de adicionar membro ─────────────────────────────────────────────
+function getInitials(nome: string) {
+  return nome.trim().charAt(0).toUpperCase();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   POPOVER ADICIONAR MEMBRO
+══════════════════════════════════════════════════════════════════ */
 
 function AddMemberPopover({
   teamId,
@@ -129,7 +95,6 @@ function AddMemberPopover({
 
   const { data: orgMembers = [] } = useOrgMembers();
   const addMember = useAddTeamMember(teamId);
-
   const alreadyInTeam = new Set(currentMembers.map((m) => m.userId));
 
   const filtered = orgMembers.filter((m: OrgMemberDto) => {
@@ -141,20 +106,16 @@ function AddMemberPopover({
   });
 
   useEffect(() => {
-    // Calcula posição baseada no botão âncora
     if (anchorRef.current) {
       const rect = anchorRef.current.getBoundingClientRect();
-      setPos({
-        top: rect.bottom + 6,
-        right: window.innerWidth - rect.right,
-      });
+      setPos({ top: rect.bottom + 6, right: window.innerWidth - rect.right });
     }
     setTimeout(() => inputRef.current?.focus(), 50);
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node) &&
-          anchorRef.current && !anchorRef.current.contains(e.target as Node)) {
-        onClose();
-      }
+      if (
+        ref.current && !ref.current.contains(e.target as Node) &&
+        anchorRef.current && !anchorRef.current.contains(e.target as Node)
+      ) onClose();
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -166,9 +127,7 @@ function AddMemberPopover({
     try {
       await addMember.mutateAsync({ userId: member.userId, cargo: "MEMBER" });
       setAdded((prev) => new Set(prev).add(member.userId));
-    } catch {
-      // silencia
-    } finally {
+    } catch { /* silencia */ } finally {
       setAdding(null);
     }
   };
@@ -177,19 +136,12 @@ function AddMemberPopover({
     <div
       ref={ref}
       style={{
-        position: "fixed",
-        top: pos.top,
-        right: pos.right,
-        width: 260,
-        borderRadius: 10,
-        background: "var(--card)",
-        border: "1px solid var(--border)",
-        boxShadow: "0 16px 48px rgba(0,0,0,0.7)",
-        zIndex: 9999,
-        overflow: "hidden",
+        position: "fixed", top: pos.top, right: pos.right,
+        width: 260, borderRadius: 10, background: "var(--card)",
+        border: "1px solid var(--border)", boxShadow: "0 16px 48px rgba(0,0,0,0.7)",
+        zIndex: 9999, overflow: "hidden",
       }}
     >
-      {/* busca */}
       <div style={{ padding: "10px 10px 6px", borderBottom: "1px solid var(--border)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7, height: 32, borderRadius: 7, background: "var(--border)", padding: "0 10px" }}>
           <Search size={13} strokeWidth={2} style={{ color: "var(--muted-foreground)", flexShrink: 0 }} />
@@ -203,8 +155,6 @@ function AddMemberPopover({
           />
         </div>
       </div>
-
-      {/* lista */}
       <div style={{ maxHeight: 260, overflowY: "auto", padding: "4px 0" }}>
         {filtered.length === 0 ? (
           <p style={{ fontSize: 12, color: "var(--muted-foreground)", padding: "12px 14px" }}>
@@ -220,33 +170,17 @@ function AddMemberPopover({
                 type="button"
                 onClick={() => handleAdd(m)}
                 disabled={isAdded || isLoading}
-                style={{
-                  display: "flex", alignItems: "center", gap: 9,
-                  width: "100%", padding: "7px 12px",
-                  border: "none", background: "none",
-                  cursor: isAdded ? "default" : "pointer",
-                  textAlign: "left",
-                }}
+                style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "7px 12px", border: "none", background: "none", cursor: isAdded ? "default" : "pointer", textAlign: "left" }}
                 onMouseEnter={(e) => { if (!isAdded) e.currentTarget.style.background = "var(--border)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
               >
-                {/* avatar */}
-                <div style={{
-                  width: 26, height: 26, borderRadius: "50%",
-                  background: avatarColor(m.nome), flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: 10, fontWeight: 700, color: "#fff",
-                }}>
+                <div style={{ width: 26, height: 26, borderRadius: "50%", background: avatarColor(m.nome), flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#fff" }}>
                   {m.nome.charAt(0).toUpperCase()}
                 </div>
-
-                {/* info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: 12, color: "var(--foreground)", fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.nome}</p>
                   {m.email && <p style={{ fontSize: 10, color: "var(--muted-foreground)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{m.email}</p>}
                 </div>
-
-                {/* status */}
                 {isLoading && <Loader2 size={13} strokeWidth={2} style={{ color: "var(--muted-foreground)", flexShrink: 0, animation: "spin 1s linear infinite" }} />}
                 {isAdded && <Check size={13} strokeWidth={2.5} style={{ color: "#22c55e", flexShrink: 0 }} />}
               </button>
@@ -258,9 +192,12 @@ function AddMemberPopover({
   );
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   MEMBER ROW
+══════════════════════════════════════════════════════════════════ */
+
 function MemberRow({ member, onRemove, isRemoving }: { member: TeamMemberDto; onRemove: () => void; isRemoving: boolean }) {
   const [hovered, setHovered] = useState(false);
-
   return (
     <div
       style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 4px", borderRadius: 6, background: hovered ? "var(--border)" : "none", transition: "background .12s" }}
@@ -279,12 +216,7 @@ function MemberRow({ member, onRemove, isRemoving }: { member: TeamMemberDto; on
         title="Remover do time"
         disabled={isRemoving}
         onClick={onRemove}
-        style={{
-          width: 22, height: 22, borderRadius: 5, border: "none", background: "none",
-          cursor: isRemoving ? "not-allowed" : "pointer",
-          color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0, transition: "background .12s",
-        }}
+        style={{ width: 22, height: 22, borderRadius: 5, border: "none", background: "none", cursor: isRemoving ? "not-allowed" : "pointer", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
         onMouseEnter={e => { e.currentTarget.style.background = "rgba(220,38,38,0.15)"; }}
         onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
       >
@@ -294,13 +226,11 @@ function MemberRow({ member, onRemove, isRemoving }: { member: TeamMemberDto; on
   );
 }
 
-function MembersPanel({
-  teamId,
-  onAddMember,
-}: {
-  teamId: string;
-  onAddMember: () => void;
-}) {
+/* ══════════════════════════════════════════════════════════════════
+   MEMBERS PANEL
+══════════════════════════════════════════════════════════════════ */
+
+function MembersPanel({ teamId }: { teamId: string }) {
   const { data: members = [], isLoading } = useTeamMembers(teamId);
   const removeMember = useRemoveTeamMember(teamId);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -318,7 +248,8 @@ function MembersPanel({
           onClick={() => setPopoverOpen((v) => !v)}
           style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", display: "flex", alignItems: "center", justifyContent: "center" }}
           onMouseEnter={e => { e.currentTarget.style.color = "var(--foreground)"; }}
-          onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}>
+          onMouseLeave={e => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
+        >
           <Plus size={13} strokeWidth={2} />
         </button>
         {popoverOpen && (
@@ -330,7 +261,6 @@ function MembersPanel({
           />
         )}
       </div>
-
       {isLoading ? (
         <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 0", color: "var(--muted-foreground)" }}>
           <Loader2 size={13} strokeWidth={2} style={{ animation: "spin 1s linear infinite" }} />
@@ -354,15 +284,33 @@ function MembersPanel({
   );
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   ABA VISÃO GERAL
+══════════════════════════════════════════════════════════════════ */
+
 function TabVisaoGeral({
   team,
-  onDescricaoChange,
-  onAddMember,
+  teamId,
 }: {
-  team: TeamLocal;
-  onDescricaoChange: (v: string) => void;
-  onAddMember: () => void;
+  team: TeamResponseDto;
+  teamId: string;
 }) {
+  const updateTeam = useUpdateTeam(teamId);
+  const [descricao, setDescricao] = useState(team.description ?? "");
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sincroniza se o dado da API mudar
+  useEffect(() => {
+    setDescricao(team.description ?? "");
+  }, [team.description]);
+
+  const handleDescricao = (v: string) => {
+    setDescricao(v);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      updateTeam.mutate({ description: v });
+    }, 800);
+  };
 
   return (
     <div style={{ display: "flex", gap: 16, flex: 1, overflow: "hidden", padding: "16px 20px", minHeight: 0 }}>
@@ -372,8 +320,8 @@ function TabVisaoGeral({
         {/* descrição */}
         <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", overflow: "hidden" }}>
           <textarea
-            value={team.descricao ?? ""}
-            onChange={e => onDescricaoChange(e.target.value)}
+            value={descricao}
+            onChange={e => handleDescricao(e.target.value)}
             placeholder="Adicione a descrição, informações e wiki da equipe"
             style={{ width: "100%", minHeight: 80, padding: "14px 16px", background: "transparent", border: "none", outline: "none", color: "var(--muted-foreground)", fontSize: 13, resize: "none", lineHeight: 1.6, boxSizing: "border-box", fontFamily: "inherit" }}
           />
@@ -409,25 +357,11 @@ function TabVisaoGeral({
                 Filtrar por tipo <ChevronDown size={11} strokeWidth={2} />
               </button>
               <button type="button" style={{ height: 26, padding: "0 10px", borderRadius: 6, border: "1px solid var(--border)", background: "var(--border)", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
-                Subtarefas: Mostrados
-                <X size={11} strokeWidth={2} />
+                Subtarefas: Mostrados <X size={11} strokeWidth={2} />
               </button>
             </div>
           </div>
-
-          {/* empty feed */}
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "24px 0 32px" }}>
-            <div style={{ width: 64, height: 48, position: "relative" }}>
-              {/* ícone decorativo de "sem atividade" */}
-              <div style={{ width: 52, height: 38, borderRadius: 6, background: "var(--border)", border: "1px solid var(--border)", position: "absolute", top: 0, left: 0 }}>
-                <div style={{ margin: "8px 10px 0", height: 4, borderRadius: 2, background: "var(--border)" }} />
-                <div style={{ margin: "5px 10px 0", height: 4, borderRadius: 2, background: "var(--border)", width: "60%" }} />
-                <div style={{ margin: "5px 10px 0", height: 4, borderRadius: 2, background: "var(--border)", width: "40%" }} />
-              </div>
-              <div style={{ width: 22, height: 22, borderRadius: "50%", background: "var(--card)", border: "2px solid #161616", position: "absolute", bottom: -2, right: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <BarChart2 size={11} strokeWidth={2} color="var(--muted-foreground)" />
-              </div>
-            </div>
             <p style={{ fontSize: 14, fontWeight: 600, color: "var(--foreground)" }}>Nada para ver aqui</p>
             <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>Parece que você ainda não tem nenhuma atividade de tarefas.</p>
           </div>
@@ -436,75 +370,16 @@ function TabVisaoGeral({
 
       {/* coluna direita */}
       <div style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14, overflowY: "auto" }}>
-
-        {/* membros — dinâmico via backend */}
-        <MembersPanel teamId={team.id} onAddMember={onAddMember} />
+        <MembersPanel teamId={teamId} />
 
         {/* análises */}
         <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", padding: "14px 16px" }}>
           <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", marginBottom: 16 }}>Análises da equipe</p>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "8px 0 12px" }}>
-            <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--border)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
-              <BarChart2 size={20} strokeWidth={1.4} color="var(--muted-foreground)" />
-              <div style={{ position: "absolute", bottom: -3, right: -3, width: 16, height: 16, borderRadius: "50%", background: "var(--card)", border: "2px solid #161616", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <BarChart2 size={8} strokeWidth={2} color="var(--muted-foreground)" />
-              </div>
-            </div>
+            <BarChart2 size={20} strokeWidth={1.4} color="var(--muted-foreground)" />
             <p style={{ fontSize: 11, color: "var(--muted-foreground)" }}>Não há dados suficientes.</p>
           </div>
         </div>
-
-        {/* prioridades card */}
-        <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", overflow: "hidden" }}>
-          {/* preview colorido */}
-          <div style={{ height: 90, background: "linear-gradient(135deg,#1e1040 0%,#120c30 100%)", padding: "10px 12px", display: "flex", gap: 8 }}>
-            {[
-              { name: "Priya Gupta", role: "UI designer", color: "#f472b6" },
-              { name: "Sarah C.",    role: "Software Eng", color: "#60a5fa" },
-            ].map(m => (
-              <div key={m.name} style={{ flex: 1, background: "var(--border)", borderRadius: 6, padding: "6px 8px" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
-                  <div style={{ width: 16, height: 16, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
-                  <p style={{ fontSize: 9, color: "var(--foreground)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</p>
-                </div>
-                {[1,2,3].map(i => (
-                  <div key={i} style={{ height: 3, borderRadius: 2, background: "var(--border)", marginBottom: 3 }} />
-                ))}
-              </div>
-            ))}
-          </div>
-          <div style={{ padding: "12px 14px 14px" }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", marginBottom: 4 }}>Use as prioridades para manter o foco</p>
-            <p style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.5, marginBottom: 10 }}>
-              Saiba instantaneamente no que cada membro da equipe está trabalhando agora e o que está por vir na agenda deles.
-            </p>
-            <button type="button" style={{ height: 26, padding: "0 12px", borderRadius: 6, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--foreground)", fontSize: 11, fontWeight: 500 }}
-              onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "none"; }}>
-              Acessar Prioridades
-            </button>
-          </div>
-        </div>
-
-        {/* espaços card */}
-        <div style={{ borderRadius: 10, border: "1px solid var(--border)", background: "var(--card)", overflow: "hidden" }}>
-          <div style={{ height: 64, background: "linear-gradient(135deg,#1a2a1a 0%,#0d1a0d 100%)", padding: "8px 12px", display: "flex", gap: 8, alignItems: "center" }}>
-            <div style={{ flex: 1, background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 6, height: 44, padding: "6px 8px" }}>
-              <p style={{ fontSize: 9, color: "#f59e0b", fontWeight: 600 }}>Needs Updates</p>
-              <p style={{ fontSize: 11, color: "#f59e0b", fontWeight: 700 }}>5</p>
-            </div>
-            <div style={{ flex: 1, background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.25)", borderRadius: 6, height: 44, padding: "6px 8px" }}>
-              <p style={{ fontSize: 9, color: "#22c55e", fontWeight: 600 }}>Closed</p>
-            </div>
-          </div>
-          <div style={{ padding: "12px 14px 14px" }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", marginBottom: 4 }}>Espaços da equipe - Veja apenas o que importa</p>
-            <p style={{ fontSize: 11, color: "var(--muted-foreground)", lineHeight: 1.5 }}>
-              Filtre espaços para ver apenas o trabalho relevante para sua equipe.
-            </p>
-          </div>
-        </div>
-
       </div>
     </div>
   );
@@ -531,37 +406,23 @@ export default function TeamDetailPage() {
   const router  = useRouter();
   const teamId  = params?.id as string;
 
-  const [team, setTeam]           = useState<TeamLocal | null>(null);
-  const [teams, setTeams]         = useState<TeamLocal[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>("visao-geral");
   const [topPopoverOpen, setTopPopoverOpen] = useState(false);
-  const [hydrated, setHydrated]   = useState(false);
   const addMemberBtnRef = useRef<HTMLButtonElement>(null);
+
+  const { data: team, isLoading, isError } = useTeam(teamId);
+  const { data: allTeams = [] } = useTeams();
   const { data: teamMembers = [] } = useTeamMembers(teamId);
 
-  useEffect(() => {
-    const all = loadTeams();
-    setTeams(all);
-    const found = all.find(t => t.id === teamId) ?? null;
-    setTeam(found);
-    setHydrated(true);
-  }, [teamId]);
+  if (isLoading) {
+    return (
+      <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", background: "var(--background)" }}>
+        <Loader2 size={20} strokeWidth={2} style={{ animation: "spin 1s linear infinite", color: "var(--muted-foreground)" }} />
+      </div>
+    );
+  }
 
-  const persist = (updated: TeamLocal) => {
-    const newAll = teams.map(t => t.id === updated.id ? updated : t);
-    setTeams(newAll);
-    setTeam(updated);
-    saveTeams(newAll);
-  };
-
-  const handleDescricao = (v: string) => {
-    if (!team) return;
-    persist({ ...team, descricao: v });
-  };
-
-  if (!hydrated) return null;
-
-  if (!team) {
+  if (isError || !team) {
     return (
       <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", background: "var(--background)", flexDirection: "column", gap: 12 }}>
         <p style={{ color: "var(--muted-foreground)", fontSize: 14 }}>Equipe não encontrada.</p>
@@ -572,21 +433,21 @@ export default function TeamDetailPage() {
     );
   }
 
+  const teamColor = team.color ?? avatarColor(team.nome);
   const slug = "@" + team.nome.toLowerCase().replace(/\s+/g, "").slice(0, 16);
 
   return (
     <div style={{ display: "flex", height: "100%", overflow: "hidden", background: "var(--background)" }}>
 
-      {/* sidebar — igual à página /teams */}
+      {/* sidebar */}
       <aside style={{ width: 260, flexShrink: 0, borderRight: "1px solid var(--border)", background: "var(--card)", display: "flex", flexDirection: "column" }}>
         <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 12px", height: 44, borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <span style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)" }}>Equipes</span>
         </header>
         <div style={{ padding: "8px 6px" }}>
           {[
-            { label: "Todas as equipes", icon: <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> },
-            { label: "Todas as pessoas",  icon: <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20v-2a8 8 0 0 1 16 0v2"/></svg> },
-            { label: "Dados analíticos",  icon: <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
+            { label: "Todas as equipes", icon: <Users size={14} strokeWidth={1.7} /> },
+            { label: "Dados analíticos",  icon: <BarChart2 size={14} strokeWidth={1.7} /> },
           ].map(item => (
             <button key={item.label} type="button" onClick={() => router.push("/teams")}
               style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", height: 34, padding: "0 8px", borderRadius: 5, border: 0, cursor: "pointer", background: "none", color: "var(--muted-foreground)", fontSize: 13 }}
@@ -599,45 +460,41 @@ export default function TeamDetailPage() {
 
           <p style={{ fontSize: 11, fontWeight: 600, color: "var(--muted-foreground)", textTransform: "uppercase", letterSpacing: "0.06em", padding: "12px 8px 6px" }}>Minhas equipes</p>
 
-          {teams.map(t => (
-            <button key={t.id} type="button" onClick={() => router.push(`/teams/${t.id}`)}
-              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", height: 32, padding: "0 8px", borderRadius: 5, border: 0, cursor: "pointer", background: t.id === teamId ? "var(--accent)" : "none", color: t.id === teamId ? "var(--foreground)" : "var(--muted-foreground)", fontSize: 13 }}
-              onMouseEnter={e => { if (t.id !== teamId) e.currentTarget.style.background = "var(--accent)"; }}
-              onMouseLeave={e => { if (t.id !== teamId) e.currentTarget.style.background = "none"; }}>
-              <div style={{ width: 18, height: 18, borderRadius: "50%", background: t.color, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#fff" }}>
-                {getInitials(t.nome)}
-              </div>
-              <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.nome}</span>
-            </button>
-          ))}
+          {allTeams.map((t: TeamResponseDto) => {
+            const tc = t.color ?? avatarColor(t.nome);
+            return (
+              <button key={t.id} type="button" onClick={() => router.push(`/teams/${t.id}`)}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", height: 32, padding: "0 8px", borderRadius: 5, border: 0, cursor: "pointer", background: t.id === teamId ? "var(--accent)" : "none", color: t.id === teamId ? "var(--foreground)" : "var(--muted-foreground)", fontSize: 13 }}
+                onMouseEnter={e => { if (t.id !== teamId) e.currentTarget.style.background = "var(--accent)"; }}
+                onMouseLeave={e => { if (t.id !== teamId) e.currentTarget.style.background = "none"; }}>
+                <div style={{ width: 18, height: 18, borderRadius: "50%", background: tc, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#fff" }}>
+                  {getInitials(t.nome)}
+                </div>
+                <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{t.nome}</span>
+              </button>
+            );
+          })}
         </div>
       </aside>
 
       {/* conteúdo principal */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
-        {/* header do time */}
+        {/* header */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 20px", height: 52, borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            {/* avatar */}
-            <div style={{ width: 30, height: 30, borderRadius: "50%", background: team.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: teamColor, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
               {getInitials(team.nome)}
             </div>
             <span style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)" }}>{team.nome}</span>
             <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>{slug}</span>
-            {/* ícone de editar nome — decorativo */}
-            <button type="button" style={{ width: 22, height: 22, borderRadius: 5, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>
-              </svg>
-            </button>
           </div>
 
           <button
             ref={addMemberBtnRef}
             type="button"
             onClick={() => setTopPopoverOpen(v => !v)}
-            style={{ height: 30, padding: "0 14px", borderRadius: 7, background: "var(--primary)", border: "none", cursor: "pointer", color: "var(--primary-foreground)", fontSize: 13, fontWeight: 600, transition: "filter 120ms" }}
+            style={{ height: 30, padding: "0 14px", borderRadius: 7, background: "var(--primary)", border: "none", cursor: "pointer", color: "var(--primary-foreground)", fontSize: 13, fontWeight: 600 }}
             onMouseEnter={e => { e.currentTarget.style.filter = "brightness(1.1)"; }}
             onMouseLeave={e => { e.currentTarget.style.filter = "none"; }}
           >
@@ -661,9 +518,8 @@ export default function TeamDetailPage() {
                 height: 42, padding: "0 12px", border: 0, background: "none", cursor: "pointer",
                 fontSize: 13, fontWeight: activeTab === tab.id ? 600 : 400,
                 color: activeTab === tab.id ? "var(--foreground)" : "var(--muted-foreground)",
-                display: "flex", alignItems: "center", gap: 5, position: "relative",
+                display: "flex", alignItems: "center", gap: 5,
                 borderBottom: activeTab === tab.id ? "2px solid #e4e4e4" : "2px solid transparent",
-                transition: "color .15s",
               }}
               onMouseEnter={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "var(--foreground)"; }}
               onMouseLeave={e => { if (activeTab !== tab.id) e.currentTarget.style.color = "var(--muted-foreground)"; }}
@@ -679,17 +535,12 @@ export default function TeamDetailPage() {
         {/* conteúdo da aba */}
         <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
           {activeTab === "visao-geral" ? (
-            <TabVisaoGeral
-              team={team}
-              onDescricaoChange={handleDescricao}
-              onAddMember={() => setTopPopoverOpen(true)}
-            />
+            <TabVisaoGeral team={team} teamId={teamId} />
           ) : (
             <TabPlaceholder label={TABS.find(t => t.id === activeTab)?.label ?? ""} />
           )}
         </div>
       </div>
-
     </div>
   );
 }

@@ -102,6 +102,39 @@ export function useRemoveTeamMember(teamId: string) {
   });
 }
 
+export function useTeam(teamId: string) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+
+  return useQuery<TeamResponseDto>({
+    queryKey: qk.teams.byId(teamId),
+    queryFn: async () => {
+      const res = await api.get<TeamResponseDto>(`/teams/${teamId}`);
+      return res.data;
+    },
+    enabled: !!accessToken && !!teamId,
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateTeam(teamId: string) {
+  const qc = useQueryClient();
+
+  return useMutation<
+    TeamResponseDto,
+    Error,
+    { nome?: string; description?: string | null; color?: string | null }
+  >({
+    mutationFn: async (payload) => {
+      const res = await api.patch<TeamResponseDto>(`/teams/${teamId}`, payload);
+      return res.data;
+    },
+    onSuccess: (updated) => {
+      qc.setQueryData(qk.teams.byId(teamId), updated);
+      qc.invalidateQueries({ queryKey: qk.teams.all });
+    },
+  });
+}
+
 export function useTeams() {
   const accessToken = useAuthStore((s) => s.accessToken);
   const user = useAuthStore((s) => s.user);
