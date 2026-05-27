@@ -3,10 +3,12 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { Trash2 } from "lucide-react";
 
+import { CommentsPanel } from "@/components/comments/CommentsPanel";
 import { STATUS_CONFIG, PRIO_CONFIG } from "@/components/lists/config";
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
 import { useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
 import { useTeams } from "@/hooks/use-teams";
+import { CommentTargetType } from "@/lib/types/comment";
 import type {
   TaskResponseDto,
   V3Intention,
@@ -550,7 +552,9 @@ function TeamSelect({
                 flexShrink: 0,
               }}
             />
-            <span style={{ color: "var(--foreground)" }}>{assignedTeam.nome}</span>
+            <span style={{ color: "var(--foreground)" }}>
+              {assignedTeam.nome}
+            </span>
           </>
         ) : (
           <span style={{ color: "var(--muted-foreground)" }}>Sem time</span>
@@ -729,7 +733,6 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
   const [descricao, setDescricao] = useState("");
   const [novaSubtarefa, setNovaSubtarefa] = useState("");
   const [subtarefas, setSubtarefas] = useState<SubtarefaItem[]>([]);
-  const [comentario, setComentario] = useState("");
   const [visivel, setVisivel] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [assigneeTeamId, setAssigneeTeamId] = useState<string | null>(null);
@@ -746,7 +749,6 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
         setDataVencimento(task.dueDate ?? null);
         setDescricao(task.description ?? "");
         setNovaSubtarefa("");
-        setComentario("");
         setEditandoNome(false);
         setEditandoData(false);
         setSubtarefas([]);
@@ -1374,99 +1376,10 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
             >
               Atividade
             </p>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
-              }}
-            >
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  flexShrink: 0,
-                  background: "var(--accent)",
-                  color: "#d8ccff",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                RB
-              </div>
-              <div
-                style={{
-                  flex: 1,
-                  background: "var(--card)",
-                  border: "1px solid #26262d",
-                  borderRadius: 8,
-                  padding: "8px 12px",
-                  transition: "border-color .15s",
-                }}
-                onFocusCapture={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor =
-                    "#7c5cff";
-                }}
-                onBlurCapture={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor =
-                    "var(--accent)";
-                }}
-              >
-                <textarea
-                  value={comentario}
-                  onChange={(e) => setComentario(e.target.value)}
-                  placeholder="Adicionar comentário..."
-                  rows={2}
-                  style={{
-                    width: "100%",
-                    background: "none",
-                    border: "none",
-                    outline: "none",
-                    color: "var(--foreground)",
-                    fontSize: 13,
-                    resize: "none",
-                    lineHeight: 1.6,
-                    fontFamily: "inherit",
-                  }}
-                />
-                {comentario.trim() && (
-                  <div
-                    style={{
-                      display: "flex",
-                      justifyContent: "flex-end",
-                      marginTop: 6,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setComentario("")}
-                      style={{
-                        padding: "4px 12px",
-                        borderRadius: 5,
-                        background: "#7c5cff",
-                        border: "none",
-                        color: "#fff",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "#6d4fee";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "#7c5cff";
-                      }}
-                    >
-                      Comentar
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+            <CommentsPanel
+              targetType={CommentTargetType.TASK}
+              targetId={task.id}
+            />
           </section>
 
           {/* Ação destrutiva — excluir task */}

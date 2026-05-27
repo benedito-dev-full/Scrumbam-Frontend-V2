@@ -1,4 +1,5 @@
 import type { TaskFilters } from "@/lib/types/api";
+import type { CommentTargetType } from "@/lib/types/comment";
 
 export const qk = {
   auth: {
@@ -80,5 +81,18 @@ export const qk = {
     all: ["bookmarks"] as const,
     /** Lista filtrada por targetType. */
     byType: (targetType: string) => ["bookmarks", "type", targetType] as const,
+  },
+  comments: {
+    /** Raiz da árvore de comentários — usar para invalidação ampla. */
+    all: ["comments"] as const,
+    /**
+     * Lista paginada de comentários para um alvo polimórfico
+     * (`task`, `project`, `folder`, `list`).
+     *
+     * @param targetType - Tipo do alvo do comentário.
+     * @param targetId   - ID do alvo (string — BigInt serializado).
+     */
+    byTarget: (targetType: CommentTargetType, targetId: string) =>
+      ["comments", targetType, targetId] as const,
   },
 } as const;
