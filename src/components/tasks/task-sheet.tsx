@@ -999,7 +999,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
         {/* ── Body scrollável ──────────────────────────────────────────── */}
         <div style={{ flex: 1, overflowY: "auto", padding: "24px 24px 40px" }}>
           {/* Título editável inline */}
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: "calc(var(--section-gap) + 8px)" }}>
             {editandoNome ? (
               <input
                 ref={tituloInputRef}
@@ -1057,7 +1057,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
               borderRadius: 10,
               border: "1px solid #26262d",
               padding: "12px 16px",
-              marginBottom: 24,
+              marginBottom: "calc(var(--section-gap) + 8px)",
             }}
           >
             <p
@@ -1206,7 +1206,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
           </section>
 
           {/* Seção Descrição */}
-          <section style={{ marginBottom: 28 }}>
+          <section style={{ marginBottom: "calc(var(--section-gap) + 12px)" }}>
             <p
               style={{
                 fontSize: 12,
@@ -1249,7 +1249,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
           </section>
 
           {/* Seção Subtarefas */}
-          <section style={{ marginBottom: 28 }}>
+          <section style={{ marginBottom: "calc(var(--section-gap) + 12px)" }}>
             <p
               style={{
                 fontSize: 12,
