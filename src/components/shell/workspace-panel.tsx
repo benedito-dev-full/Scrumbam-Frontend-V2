@@ -774,7 +774,6 @@ function AddFavoriteDropdown() {
             top: pos.top,
             left: pos.left,
             width: 260,
-            maxHeight: Math.min(440, window.innerHeight - pos.top - 16),
           }}
           ref={ref}
         >
@@ -790,7 +789,12 @@ function AddFavoriteDropdown() {
             />
           </div>
 
-          <ScrollArea className="min-h-0 flex-1">
+          <div
+            style={{
+              overflowY: "auto",
+              maxHeight: Math.min(360, window.innerHeight - pos.top - 48),
+            }}
+          >
             <div className="py-1.5">
               {!hasResults && (
                 <p className="px-3 py-4 text-center text-[12px] text-muted-foreground">
@@ -898,7 +902,7 @@ function AddFavoriteDropdown() {
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
         </div>
       )}
     </div>
