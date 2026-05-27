@@ -273,7 +273,7 @@ export default function MinhasTarefasPage() {
             fontWeight: 700,
             color: "var(--foreground)",
             margin: 0,
-            marginBottom: 20,
+            marginBottom: "calc(var(--section-gap) + 4px)",
             letterSpacing: "-0.02em",
           }}
         >
@@ -282,7 +282,11 @@ export default function MinhasTarefasPage() {
 
         {/* Grid 2x2 */}
         <div
-          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "calc(var(--row-gap) + 6px)",
+          }}
         >
           {/* ─── Recentes ─── */}
           <Card title="Recentes">
