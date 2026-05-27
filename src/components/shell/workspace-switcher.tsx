@@ -7,9 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
-import {
-  Settings, Users, LayoutGrid, FileText, SlidersHorizontal, Zap,
-} from "lucide-react";
+import { Settings, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMe, useSwitchOrg } from "@/hooks/use-auth";
 import { useAuthStore } from "@/lib/stores/auth";
@@ -148,29 +146,6 @@ export function WorkspaceSwitcher() {
         </div>
 
         <DropdownMenuSeparator />
-
-        {/* Gerenciar */}
-        <p style={{ fontSize: 11, color: "var(--muted-foreground)", padding: "8px 14px 4px", fontWeight: 500 }}>Gerenciar</p>
-        {[
-          { icon: <LayoutGrid size={14} style={{ color: "#e879f9" }} />,        label: "Aplicativos" },
-          { icon: <FileText size={14} style={{ color: "#9ca3af" }} />,           label: "Modelos" },
-          { icon: <SlidersHorizontal size={14} style={{ color: "#9ca3af" }} />, label: "Campos personalizados" },
-          { icon: <Zap size={14} style={{ color: "#f59e0b" }} />,               label: "Automações" },
-        ].map(({ icon, label }) => (
-          <button key={label} type="button" style={{
-            display: "flex", alignItems: "center", gap: 10,
-            width: "100%", height: 34, padding: "0 14px",
-            border: 0, background: "none", cursor: "pointer",
-            color: "var(--foreground)", fontSize: 13, textAlign: "left",
-          }}
-            onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}
-            onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
-          >
-            {icon}{label}
-          </button>
-        ))}
-
-        <DropdownMenuSeparator style={{ margin: "6px 0" }} />
 
         {/* Alternar Espaços de trabalho */}
         <p style={{ fontSize: 11, color: "var(--muted-foreground)", padding: "4px 14px", fontWeight: 500 }}>
