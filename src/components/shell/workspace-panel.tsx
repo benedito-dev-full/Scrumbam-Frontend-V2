@@ -11,7 +11,6 @@ import { SpaceTree } from "@/components/spaces/space-tree";
 import { PlannerPanel } from "./planner-panel";
 import { FormsPanel } from "./forms-panel";
 import { DocsPanel } from "./docs-panel";
-import { useMe } from "@/hooks/use-auth";
 import { useQueries } from "@tanstack/react-query";
 import { useSpaces } from "@/hooks/use-projects";
 import { useTeams } from "@/hooks/use-teams";
@@ -129,48 +128,6 @@ function IcStar() {
   );
 }
 
-/* Canal de anúncio — antena com sinal (igual ClickUp Geral) */
-function IcChannel() {
-  return (
-    <svg
-      width={15}
-      height={15}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.7}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M22 8.35V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8.35A2 2 0 0 1 3.26 6.5l8-3.2a2 2 0 0 1 1.48 0l8 3.2A2 2 0 0 1 22 8.35z" />
-      <path d="M6 18h12" />
-      <path d="M6 14h12" />
-      <path d="M6 10h12" />
-    </svg>
-  );
-}
-
-/* Canal público — hashtag */
-function IcHash() {
-  return (
-    <svg
-      width={15}
-      height={15}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.7}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="4" y1="9" x2="20" y2="9" />
-      <line x1="4" y1="15" x2="20" y2="15" />
-      <line x1="10" y1="3" x2="8" y2="21" />
-      <line x1="16" y1="3" x2="14" y2="21" />
-    </svg>
-  );
-}
-
 /* ─── Tipos ───────────────────────────────────────────────────────────────── */
 type LeafItem = {
   href: string;
@@ -207,7 +164,7 @@ type Section = {
   showAddButton?: boolean;
 };
 
-function buildSections(orgName?: string): Section[] {
+function buildSections(): Section[] {
   return [
     {
       id: "favoritos",
@@ -217,25 +174,6 @@ function buildSections(orgName?: string): Section[] {
           href: "/favorites",
           label: "Adicione à sua barra lateral",
           renderIcon: () => <IcStar />,
-        },
-      ],
-    },
-    {
-      id: "canais",
-      label: "Canais",
-      showAddButton: true,
-      items: [
-        {
-          href: "/channels/geral",
-          label: "Geral",
-          suffix: orgName,
-          renderIcon: () => <IcChannel />,
-        },
-        {
-          href: "/channels/welcome",
-          label: "Welcome",
-          suffix: orgName,
-          renderIcon: () => <IcHash />,
         },
       ],
     },
@@ -308,28 +246,6 @@ const MORE_ENTRIES: MoreEntry[] = [
       >
         <rect x="3" y="3" width="18" height="18" rx="2" />
         <path d="M3 9h18M9 21V9" />
-      </svg>
-    ),
-  },
-  {
-    id: "all-channels",
-    label: "Todos os canais",
-    href: "/channels/geral",
-    renderIcon: () => (
-      <svg
-        width={15}
-        height={15}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={1.7}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <line x1="4" y1="9" x2="20" y2="9" />
-        <line x1="4" y1="15" x2="20" y2="15" />
-        <line x1="10" y1="3" x2="8" y2="21" />
-        <line x1="16" y1="3" x2="14" y2="21" />
       </svg>
     ),
   },
@@ -977,73 +893,6 @@ function SectionBlock({ section }: { section: Section }) {
               </li>
             ))
           )}
-          {section.id === "canais" && (
-            <li>
-              <button
-                type="button"
-                className="flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-muted-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              >
-                <Plus className="size-3.5 shrink-0" />
-                Adicionar canal
-              </button>
-            </li>
-          )}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-/* ─── Seção Mensagens Diretas ─────────────────────────────────────────────── */
-function DirectMessagesSection({ userName }: { userName?: string }) {
-  const [open, setOpen] = useState(true);
-  const initials = userName
-    ? userName
-        .split(" ")
-        .slice(0, 2)
-        .map((w) => w[0])
-        .join("")
-        .toUpperCase()
-    : "?";
-
-  return (
-    <div>
-      <div className="mb-1 flex h-7 items-center justify-between px-3">
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          className="flex flex-1 items-center gap-1 text-[12px] font-semibold text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
-        >
-          Mensagens diretas
-        </button>
-      </div>
-      {open && (
-        <ul className="space-y-1">
-          {userName && (
-            <li>
-              <Link
-                href={`/dm/${encodeURIComponent(userName)}`}
-                className="flex h-[34px] items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-              >
-                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-indigo-600 text-[9px] font-bold text-white">
-                  {initials}
-                </span>
-                <span className="flex-1 truncate">
-                  {userName}
-                  <span className="ml-1 text-muted-foreground/50">— Você</span>
-                </span>
-              </Link>
-            </li>
-          )}
-          <li>
-            <button
-              type="button"
-              className="flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-muted-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-            >
-              <Plus className="size-3.5 shrink-0" />
-              Nova mensagem
-            </button>
-          </li>
         </ul>
       )}
     </div>
@@ -1054,9 +903,8 @@ function DirectMessagesSection({ userName }: { userName?: string }) {
 export function WorkspacePanel() {
   const pathname = usePathname();
   const [homeOpen, setHomeOpen] = useState(true);
-  const { data: me } = useMe();
 
-  const sections = buildSections(me?.organizationName);
+  const sections = buildSections();
 
   /* painéis alternativos por rota */
   if (pathname.startsWith("/planner")) {
@@ -1152,9 +1000,6 @@ export function WorkspacePanel() {
               {section.id === "favoritos" && <SpaceTree />}
             </Fragment>
           ))}
-
-          {/* Mensagens diretas */}
-          <DirectMessagesSection userName={me?.name} />
         </div>
       </ScrollArea>
 

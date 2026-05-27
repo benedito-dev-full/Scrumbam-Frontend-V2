@@ -135,17 +135,13 @@ Arquivo: `src/app/(app)/forms/page.tsx`
 
 Arquivo: `src/app/(app)/channels/[slug]/page.tsx`
 
-- [ ] **R** — Abas além de "Canal" (linha ~182) → mostram "Visualização {tab} em breve"
-- [ ] **R** — ToolbarBtn `Plus` (linha ~226) → sem onClick
-- [ ] **R** — ToolbarBtn `Smile` (linha ~227) → sem onClick
-- [ ] **R** — ToolbarBtn `AtSign` (linha ~228) → sem onClick
-- [ ] **R** — ToolbarBtn `Paperclip` (linha ~229) → sem onClick
-- [ ] **R** — Botão "Descartar" do hint banner (linha ~202) → sem onClick
-- [ ] **R** — ActionCard "Track Tasks" (linhas ~159-177) → sem onClick
-- [ ] **R** — ActionCard "Add Doc" → sem onClick
-- [ ] **R** — ActionCard "Start SyncUp" → sem onClick
+**Decisão aplicada (2026-05-27):** rota **escondida do menu** até ter backend de mensagens. Arquivos da página preservados como referência. Removidos os pontos de acesso:
+- Seção "Canais" do `workspace-panel.tsx` (com "Geral", "Welcome" e botão "Adicionar canal")
+- Item "Todos os canais" do menu "Mais"
+- Atalho "Canal Geral" do Command Palette
+- Componentes auxiliares `IcChannel` e `IcHash` removidos
 
-> **Decisão estratégica:** Chat virou casca. Se manter no produto, vira épico próprio. Senão, **esconder rota** até ter backend de mensagens.
+Os 9 elementos não-funcionais internos da página (`ToolbarBtn`, `ActionCard`, abas em breve, etc.) ficam adiados — serão tratados quando a feature for retomada como épico próprio.
 
 ---
 
@@ -153,15 +149,10 @@ Arquivo: `src/app/(app)/channels/[slug]/page.tsx`
 
 Arquivo: `src/app/(app)/dm/[username]/page.tsx`
 
-- [ ] **R** — Botão `Phone` chamada (linha ~59) → sem onClick
-- [ ] **R** — Botão `Video` (linha ~62) → sem onClick
-- [ ] **R** — Botão "Adicionar anotação" (linha ~114) → sem onClick
-- [ ] **R** — Botão "Agendar reunião" → sem onClick
-- [ ] **R** — ToolbarBtn `Plus` (linha ~160) → sem onClick
-- [ ] **R** — ToolbarBtn `Smile` (linha ~161) → sem onClick
-- [ ] **R** — ToolbarBtn `AtSign` (linha ~162) → sem onClick
-- [ ] **R** — ToolbarBtn `Paperclip` (linha ~163) → sem onClick
-- [x] — Botão "Descartar" do hint banner (linha ~132) → **JÁ FUNCIONA** (`setDismissed(true)`)
+**Decisão aplicada (2026-05-27):** rota **escondida do menu** junto com `/channels`. Arquivos da página preservados. Ponto de acesso removido:
+- Componente `DirectMessagesSection` inteiro do `workspace-panel.tsx` (seção "Mensagens diretas" com link do próprio usuário + botão "Nova mensagem")
+
+Os 8 elementos não-funcionais internos (`Phone`, `Video`, "Adicionar anotação", "Agendar reunião", 4 ToolbarBtn) ficam adiados — serão tratados quando o épico de mensagens for retomado.
 
 ---
 
@@ -307,3 +298,4 @@ Remover de cara, sem dó:
 - **2026-05-27** — documento criado a partir da auditoria inicial. 58+ elementos mapeados.
 - **2026-05-27** — Fase 1 / Shell global: removidos 4 itens "Gerenciar" (Aplicativos, Modelos, Campos personalizados, Automações) do Workspace Switcher.
 - **2026-05-27** — Fase 1 / Create Task Modal: removidas 3 abas decorativas ("Lembrete", "Quadro branco", "Painéis"), 3 cards "Add new" (Tabela, Coluna, Lista) e 3 botões do footer (Modelos, Paperclip, Bell). Modal agora tem apenas "Tarefa" e "Documento".
+- **2026-05-27** — Fase 1 / Chat (`/channels` e `/dm`): rotas escondidas do menu até existir backend de mensagens. Removidos: seção "Canais" do painel lateral (Geral, Welcome, "Adicionar canal"), seção "Mensagens diretas" inteira, item "Todos os canais" do menu "Mais", atalho "Canal Geral" do Command Palette, e ícones auxiliares (IcChannel, IcHash). Arquivos das páginas preservados como referência. `/ia` também foi pulado (será implementado no futuro).

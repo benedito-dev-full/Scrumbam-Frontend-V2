@@ -16,7 +16,6 @@ import {
   Moon,
   Sun,
   Keyboard,
-  Hash,
   CalendarDays,
   Settings,
   CornerDownLeft,
@@ -108,15 +107,6 @@ export function CommandPalette() {
       iconColor: "#94a3b8",
       keywords: ["docs", "documento", "notas"],
       onSelect: run(() => router.push("/docs")),
-    },
-    {
-      id: "r:channels",
-      label: "Canal Geral",
-      sublabel: "Canais",
-      icon: Hash,
-      iconColor: "#38bdf8",
-      keywords: ["canal", "geral", "chat"],
-      onSelect: run(() => router.push("/channels/geral")),
     },
   ];
 
