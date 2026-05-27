@@ -140,7 +140,7 @@ export function KanbanBoard({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex h-full gap-3 overflow-x-auto p-4">
+        <div className="flex h-full gap-[calc(var(--row-gap)+4px)] overflow-x-auto p-4">
           {KANBAN_COLUMNS.map((col) => {
             const colTasks = tasks.filter(
               (t) =>
@@ -213,7 +213,7 @@ function KanbanColumn({
       <div
         ref={setNodeRef}
         className={cn(
-          "flex min-h-[80px] flex-col gap-2 rounded-xl p-1 transition-colors",
+          "flex min-h-[80px] flex-col gap-[var(--row-gap)] rounded-xl p-1 transition-colors",
           isOver && "bg-muted/40 ring-1 ring-border",
           isDragging && !isOver && "bg-muted/10",
         )}
@@ -300,7 +300,7 @@ function TaskCard({
           : undefined
       }
       className={cn(
-        "group relative rounded-lg border border-border bg-card p-3 shadow-sm transition-all",
+        "group relative rounded-lg border border-border bg-card p-[calc(var(--row-py)+2px)] shadow-sm transition-all",
         isLocked
           ? "cursor-not-allowed opacity-60"
           : "cursor-grab active:cursor-grabbing",
@@ -479,7 +479,7 @@ function TeamBadge({ teamId }: { teamId: string }) {
 
 function KanbanSkeleton() {
   return (
-    <div className="flex h-full gap-3 overflow-x-auto p-4">
+    <div className="flex h-full gap-[calc(var(--row-gap)+4px)] overflow-x-auto p-4">
       {[1, 2, 3, 4, 5].map((i) => (
         <div key={i} className="flex w-[280px] shrink-0 flex-col gap-2">
           <div className="h-5 w-24 animate-pulse rounded bg-muted" />
