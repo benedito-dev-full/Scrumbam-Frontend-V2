@@ -1645,7 +1645,40 @@ function BlocksContent({
   const createBlock = useCreateBlock();
   const [creating, setCreating] = useState(false);
   const [newBlockName, setNewBlockName] = useState("");
+  const [newBlockStart, setNewBlockStart] = useState("");
+  const [newBlockEnd, setNewBlockEnd] = useState("");
   const [selectedBlock, setSelectedBlock] = useState<BlockDto | null>(null);
+
+  /**
+   * Reseta o form inline de criacao de bloco. Usado pelo botao Cancelar,
+   * pelo Esc do input e apos um submit bem-sucedido.
+   */
+  const cancelCreate = () => {
+    setCreating(false);
+    setNewBlockName("");
+    setNewBlockStart("");
+    setNewBlockEnd("");
+  };
+
+  /**
+   * Dispara a mutation `useCreateBlock` com os campos do form e fecha o
+   * form em caso de sucesso. Bloqueia submit quando o nome esta vazio.
+   */
+  const submitCreate = () => {
+    const nome = newBlockName.trim();
+    if (!nome) return;
+    const dados: { startDate?: string; endDate?: string } = {};
+    if (newBlockStart) dados.startDate = newBlockStart;
+    if (newBlockEnd) dados.endDate = newBlockEnd;
+    createBlock.mutate(
+      {
+        nome,
+        projectId,
+        ...(Object.keys(dados).length > 0 ? { dados } : {}),
+      },
+      { onSuccess: cancelCreate },
+    );
+  };
 
   return (
     <div
@@ -1719,21 +1752,11 @@ function BlocksContent({
             value={newBlockName}
             onChange={(e) => setNewBlockName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && newBlockName.trim()) {
-                createBlock.mutate(
-                  { nome: newBlockName.trim(), projectId },
-                  {
-                    onSuccess: () => {
-                      setCreating(false);
-                      setNewBlockName("");
-                    },
-                  },
-                );
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submitCreate();
               }
-              if (e.key === "Escape") {
-                setCreating(false);
-                setNewBlockName("");
-              }
+              if (e.key === "Escape") cancelCreate();
             }}
             placeholder="Nome do bloco…"
             style={{
@@ -1746,14 +1769,93 @@ function BlocksContent({
               color: "var(--foreground)",
             }}
           />
+
+          {/* datas de inicio e prazo */}
           <div
             style={{
-              marginTop: 8,
-              fontSize: 12,
-              color: "var(--muted-foreground)",
+              marginTop: 12,
+              display: "flex",
+              gap: 12,
+              flexWrap: "wrap",
             }}
           >
-            Enter para salvar · Esc para cancelar
+            <label style={blockDateLabelStyle}>
+              <span style={blockDateLabelText}>Inicio</span>
+              <input
+                type="date"
+                value={newBlockStart}
+                onChange={(e) => setNewBlockStart(e.target.value)}
+                max={newBlockEnd || undefined}
+                style={blockDateInputStyle}
+              />
+            </label>
+            <label style={blockDateLabelStyle}>
+              <span style={blockDateLabelText}>Prazo</span>
+              <input
+                type="date"
+                value={newBlockEnd}
+                onChange={(e) => setNewBlockEnd(e.target.value)}
+                min={newBlockStart || undefined}
+                style={blockDateInputStyle}
+              />
+            </label>
+          </div>
+
+          {/* acoes */}
+          <div
+            style={{
+              marginTop: 14,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12,
+            }}
+          >
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+              Enter salva, Esc cancela
+            </span>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={cancelCreate}
+                disabled={createBlock.isPending}
+                style={{
+                  height: 30,
+                  padding: "0 14px",
+                  borderRadius: 6,
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  color: "var(--muted-foreground)",
+                  fontSize: 13,
+                  cursor: createBlock.isPending ? "not-allowed" : "pointer",
+                  opacity: createBlock.isPending ? 0.6 : 1,
+                }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={submitCreate}
+                disabled={!newBlockName.trim() || createBlock.isPending}
+                style={{
+                  height: 30,
+                  padding: "0 14px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: !newBlockName.trim() || createBlock.isPending
+                    ? "#7c5cff80"
+                    : "#7c5cff",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: !newBlockName.trim() || createBlock.isPending
+                    ? "not-allowed"
+                    : "pointer",
+                }}
+              >
+                {createBlock.isPending ? "Criando…" : "Criar bloco"}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -4002,3 +4104,30 @@ function IcFlagInline({ size, color }: { size: number; color?: string }) {
     </svg>
   );
 }
+
+/* ─── Estilos do form inline de criacao de bloco ──────────────────────────── */
+const blockDateLabelStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  fontSize: 12,
+  color: "var(--muted-foreground)",
+};
+
+const blockDateLabelText: React.CSSProperties = {
+  fontWeight: 500,
+  textTransform: "uppercase",
+  letterSpacing: ".4px",
+  fontSize: 11,
+};
+
+const blockDateInputStyle: React.CSSProperties = {
+  background: "var(--card)",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  color: "var(--foreground)",
+  fontSize: 12,
+  padding: "5px 8px",
+  outline: "none",
+  colorScheme: "dark",
+};
