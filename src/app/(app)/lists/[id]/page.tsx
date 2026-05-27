@@ -1,6 +1,6 @@
 "use client";
 
-import React, { use, useEffect, useState } from "react";
+import React, { use, useEffect, useRef, useState } from "react";
 import {
   Star,
   Share2,
@@ -59,6 +59,7 @@ import {
   useBlockTasks,
   useBlocks,
   useCreateBlock,
+  useUpdateBlock,
 } from "@/hooks/use-tasks";
 import { AI_ASSIGNEE_ID, useTaskExecution } from "@/hooks/use-task-execution";
 import { useProjectMembers, type ProjectMemberDto } from "@/hooks/use-members";
@@ -1466,18 +1467,66 @@ function deadlineInfo(
 
 function BlockCard({
   block,
+  projectId,
   onClick,
 }: {
   block: BlockDto;
+  projectId: string;
   onClick: () => void;
 }) {
   const { data: subtasks = [] } = useBlockTasks(block.id, true);
   const { done, total, percent } = calcBlockProgress(subtasks);
   const cor = block.dados?.cor ?? "#7c5cff";
+  const startDate = block.dados?.startDate ?? null;
   const endDate = block.dados?.endDate ?? null;
   const dl = deadlineInfo(endDate, percent);
   const barColor =
     percent === 100 ? "#22c55e" : percent > 60 ? "#7c5cff" : "#60a5fa";
+
+  const updateBlock = useUpdateBlock();
+  const [editingDeadline, setEditingDeadline] = useState(false);
+  const [draftEnd, setDraftEnd] = useState(endDate ?? "");
+  const deadlineWrapperRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Aborta a edicao do prazo descartando o draft e voltando para o
+   * badge somente-leitura.
+   */
+  const cancelDeadlineEdit = () => {
+    setDraftEnd(endDate ?? "");
+    setEditingDeadline(false);
+  };
+
+  /**
+   * Persiste o novo prazo via useUpdateBlock. Passa null quando o
+   * usuario apagou o campo para que o backend remova o endDate.
+   * Otimismo simples — fechamos o editor antes do retorno do servidor.
+   */
+  const saveDeadline = () => {
+    const next = draftEnd || null;
+    if (next === endDate) {
+      setEditingDeadline(false);
+      return;
+    }
+    if (next && startDate && next < startDate) return;
+    updateBlock.mutate(
+      { id: block.id, projectId, dto: { dados: { endDate: next } } },
+      { onSettled: () => setEditingDeadline(false) },
+    );
+  };
+
+  // Fecha o editor ao clicar fora do badge
+  useEffect(() => {
+    if (!editingDeadline) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (!deadlineWrapperRef.current?.contains(e.target as Node)) {
+        cancelDeadlineEdit();
+      }
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    return () => document.removeEventListener("mousedown", onMouseDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingDeadline]);
 
   return (
     <div
@@ -1562,30 +1611,130 @@ function BlockCard({
           </span>
         </div>
 
-        {/* badge de prazo */}
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-            padding: "3px 9px",
-            borderRadius: 6,
-            background: dl.bg,
-            fontSize: 12,
-            fontWeight: 600,
-            color: dl.color,
-          }}
-        >
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: "50%",
-              background: dl.color,
-              flexShrink: 0,
-            }}
-          />
-          {dl.label}
+        {/* badge de prazo — clicavel para editar inline */}
+        <div ref={deadlineWrapperRef} style={{ display: "inline-block" }}>
+          {editingDeadline ? (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "3px 6px",
+                borderRadius: 6,
+                background: "var(--card)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              <input
+                autoFocus
+                type="date"
+                value={draftEnd}
+                min={startDate ?? undefined}
+                onChange={(e) => setDraftEnd(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    saveDeadline();
+                  }
+                  if (e.key === "Escape") cancelDeadlineEdit();
+                }}
+                disabled={updateBlock.isPending}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  color: "var(--foreground)",
+                  fontSize: 12,
+                  padding: 0,
+                  colorScheme: "dark",
+                }}
+              />
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); saveDeadline(); }}
+                disabled={updateBlock.isPending}
+                aria-label="Salvar prazo"
+                style={{
+                  border: "none",
+                  background: "#7c5cff",
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "2px 7px",
+                  borderRadius: 4,
+                  cursor: updateBlock.isPending ? "not-allowed" : "pointer",
+                  opacity: updateBlock.isPending ? 0.6 : 1,
+                }}
+              >
+                {updateBlock.isPending ? "…" : "OK"}
+              </button>
+              {endDate && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDraftEnd("");
+                    updateBlock.mutate(
+                      {
+                        id: block.id,
+                        projectId,
+                        dto: { dados: { endDate: null } },
+                      },
+                      { onSettled: () => setEditingDeadline(false) },
+                    );
+                  }}
+                  disabled={updateBlock.isPending}
+                  aria-label="Remover prazo"
+                  title="Remover prazo"
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    color: "var(--muted-foreground)",
+                    fontSize: 12,
+                    cursor: updateBlock.isPending ? "not-allowed" : "pointer",
+                    padding: "0 2px",
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDraftEnd(endDate ?? "");
+                setEditingDeadline(true);
+              }}
+              title={endDate ? "Editar prazo" : "Definir prazo"}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "3px 9px",
+                borderRadius: 6,
+                background: dl.bg,
+                fontSize: 12,
+                fontWeight: 600,
+                color: dl.color,
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              <span
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  background: dl.color,
+                  flexShrink: 0,
+                }}
+              />
+              {dl.label}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1904,6 +2053,7 @@ function BlocksContent({
             <BlockCard
               key={block.id}
               block={block}
+              projectId={projectId}
               onClick={() => setSelectedBlock(block)}
             />
           ))}
