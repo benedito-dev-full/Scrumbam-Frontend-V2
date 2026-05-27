@@ -185,7 +185,11 @@ export default function ListPage({
     setModalOpen(true);
   }
 
-  const grupos = agruparTasks(tasks);
+  // Blocos (idClasse=-200) têm aba dedicada "Blocos" — não devem aparecer
+  // na Lista por Status nem no Quadro. Só os agrupam-se no view="blocks"
+  // via BlocksContent (que usa hook próprio).
+  const tasksWithoutBlocks = tasks.filter((t) => t.idClasse !== "-200");
+  const grupos = agruparTasks(tasksWithoutBlocks);
 
   return (
     <div
@@ -200,7 +204,7 @@ export default function ListPage({
         onChange={(v) => setView(v as "list" | "board" | "blocks")}
       />
       <Toolbar
-        tarefasCount={loadingTasks ? null : tasks.length}
+        tarefasCount={loadingTasks ? null : tasksWithoutBlocks.length}
         onAddTask={() => openModal()}
         subtarefasMode={subtarefasMode}
         onSubtarefasMode={setSubtarefasMode}
@@ -214,10 +218,14 @@ export default function ListPage({
           onOpenTask={setSelectedTask}
           members={members}
           projectId={id}
-          allTasks={tasks}
+          allTasks={tasksWithoutBlocks}
         />
       ) : view === "board" ? (
-        <BoardContent listId={id} tasks={tasks} onOpenTask={setSelectedTask} />
+        <BoardContent
+          listId={id}
+          tasks={tasksWithoutBlocks}
+          onOpenTask={setSelectedTask}
+        />
       ) : (
         <BlocksContent
           projectId={id}
