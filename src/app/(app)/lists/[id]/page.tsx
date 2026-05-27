@@ -9,7 +9,6 @@ import {
   Lock,
   Layers,
   ChevronDown,
-  ChevronRight,
   Columns3,
   List as LucideList,
 } from "lucide-react";
@@ -1637,8 +1636,6 @@ function BlockCard({
 
 function BlocksContent({
   projectId,
-  members,
-  onOpenTask,
 }: {
   projectId: string;
   members: ProjectMemberDto[];
@@ -2072,7 +2069,11 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
         <AgentPopover projectId={id} projectName={nome} />
-        <TbBtn icon={<Sparkles className="size-3.5" />} label="Pergunte à IA" />
+        <TbBtn
+          icon={<Sparkles className="size-3.5" />}
+          label="Pergunte à IA"
+          href="https://scrumban.com.br/ia"
+        />
         <div
           style={{
             width: 1,
@@ -2095,32 +2096,44 @@ function TbBtn({
   icon,
   label,
   bordered,
+  href,
 }: {
   icon: React.ReactNode;
   label: string;
   bordered?: boolean;
+  /** Se presente, renderiza como `<a>` para navegar (ex: link para /ia). */
+  href?: string;
 }) {
+  const style: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    height: 28,
+    padding: "0 10px",
+    borderRadius: 6,
+    border: bordered ? "1px solid #2a2a32" : "none",
+    background: bordered ? "var(--card)" : "none",
+    color: "var(--muted-foreground)",
+    fontSize: 13,
+    cursor: "pointer",
+    textDecoration: "none",
+  };
+  const handlers = {
+    onMouseEnter: (e: React.MouseEvent<HTMLElement>) =>
+      (e.currentTarget.style.color = "var(--foreground)"),
+    onMouseLeave: (e: React.MouseEvent<HTMLElement>) =>
+      (e.currentTarget.style.color = "var(--muted-foreground)"),
+  };
+  if (href) {
+    return (
+      <a href={href} style={style} {...handlers}>
+        {icon}
+        {label}
+      </a>
+    );
+  }
   return (
-    <button
-      type="button"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        height: 28,
-        padding: "0 10px",
-        borderRadius: 6,
-        border: bordered ? "1px solid #2a2a32" : "none",
-        background: bordered ? "var(--card)" : "none",
-        color: "var(--muted-foreground)",
-        fontSize: 13,
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.color = "var(--foreground)")}
-      onMouseLeave={(e) =>
-        (e.currentTarget.style.color = "var(--muted-foreground)")
-      }
-    >
+    <button type="button" style={style} {...handlers}>
       {icon}
       {label}
     </button>

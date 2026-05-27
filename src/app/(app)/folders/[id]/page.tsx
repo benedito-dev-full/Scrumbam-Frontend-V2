@@ -26,7 +26,13 @@ import Link from "next/link";
 import { AgentPopover } from "@/components/spaces/agent-popover";
 import { CreateListDialog } from "@/components/spaces/create-list-dialog";
 import { useProject, useLists, useArchiveProject } from "@/hooks/use-projects";
-import { useBookmarks, useIsBookmarked, useToggleBookmark } from "@/hooks/use-bookmarks";
+import {
+  useBookmarks,
+  useIsBookmarked,
+  useToggleBookmark,
+} from "@/hooks/use-bookmarks";
+import { CommentsPanel } from "@/components/comments/CommentsPanel";
+import { CommentTargetType } from "@/lib/types/comment";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 type TabId =
@@ -35,7 +41,8 @@ type TabId =
   | "quadro"
   | "calendario"
   | "gantt"
-  | "tabela";
+  | "tabela"
+  | "comentarios";
 
 const TABS: { id: TabId; label: string; icon?: React.ReactNode }[] = [
   { id: "overview", label: "Overview" },
@@ -157,7 +164,37 @@ const TABS: { id: TabId; label: string; icon?: React.ReactNode }[] = [
       </svg>
     ),
   },
+  {
+    id: "comentarios",
+    label: "Comentários",
+    icon: (
+      <svg
+        width={12}
+        height={12}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="#38bdf8"
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+    ),
+  },
 ];
+
+/* Render do painel de comentários — usado dentro do scroll container abaixo. */
+function CommentsTab({ projectId }: { projectId: string }) {
+  return (
+    <div style={{ padding: "16px 0" }}>
+      <CommentsPanel
+        targetType={CommentTargetType.FOLDER}
+        targetId={projectId}
+      />
+    </div>
+  );
+}
 
 /* ─── Página ──────────────────────────────────────────────────────────────── */
 export default function FolderPage({
@@ -168,14 +205,19 @@ export default function FolderPage({
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [listDialogOpen, setListDialogOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; nome: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    nome: string;
+  } | null>(null);
   const { mutate: archiveList, isPending: isDeleting } = useArchiveProject();
 
   const { data: entidade, isLoading } = useProject(id);
   const { data: listas = [] } = useLists(entidade ? id : null);
   const { data: bookmarks = [] } = useBookmarks();
-  const { isBookmarked: folderBookmarked, bookmark: folderBookmark } = useIsBookmarked(id, "folder");
-  const { toggle: toggleBookmark, isPending: isTogglingBookmark } = useToggleBookmark();
+  const { isBookmarked: folderBookmarked, bookmark: folderBookmark } =
+    useIsBookmarked(id, "folder");
+  const { toggle: toggleBookmark, isPending: isTogglingBookmark } =
+    useToggleBookmark();
   const docs: typeof listas = [];
   const recentes = [...listas].slice(0, 6);
 
@@ -265,9 +307,19 @@ export default function FolderPage({
           </button>
           <button
             type="button"
-            aria-label={folderBookmarked ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+            aria-label={
+              folderBookmarked
+                ? "Remover dos favoritos"
+                : "Adicionar aos favoritos"
+            }
             disabled={isTogglingBookmark}
-            onClick={() => toggleBookmark({ targetId: id, targetType: "folder", bookmarkId: folderBookmark?.id })}
+            onClick={() =>
+              toggleBookmark({
+                targetId: id,
+                targetType: "folder",
+                bookmarkId: folderBookmark?.id,
+              })
+            }
             style={{
               display: "grid",
               width: 24,
@@ -279,8 +331,14 @@ export default function FolderPage({
               cursor: "pointer",
               color: folderBookmarked ? "#f59e0b" : "var(--muted-foreground)",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = "#f59e0b"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = folderBookmarked ? "#f59e0b" : "var(--muted-foreground)"; }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "#f59e0b";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = folderBookmarked
+                ? "#f59e0b"
+                : "var(--muted-foreground)";
+            }}
           >
             <Star size={14} fill={folderBookmarked ? "#f59e0b" : "none"} />
           </button>
@@ -323,6 +381,7 @@ export default function FolderPage({
           <TopBtn
             icon={<span style={{ fontSize: 13 }}>✦</span>}
             label="Pergunte à IA"
+            href="https://scrumban.com.br/ia"
           />
           <div
             style={{
@@ -479,409 +538,446 @@ export default function FolderPage({
 
       {/* ── Conteúdo scrollável ── */}
       <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 40px" }}>
-        {/* Toolbar */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            height: 44,
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
-          <button
-            type="button"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              height: 28,
-              padding: "0 10px",
-              borderRadius: 6,
-              border: "1px solid var(--border)",
-              background: "none",
-              cursor: "pointer",
-              color: "var(--muted-foreground)",
-              fontSize: 12,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "var(--accent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "none";
-            }}
-          >
-            <Filter size={11} />
-            Filtros
-          </button>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                fontSize: 11,
-                color: "var(--muted-foreground)",
-              }}
-            >
-              <RefreshCw size={11} />
-              Atualização: 10 minutos atrás
-            </span>
-            <span
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 5,
-                fontSize: 11,
-                color: "var(--muted-foreground)",
-              }}
-            >
-              <RefreshCw size={11} style={{ color: "#22c55e" }} />
-              Atualização automática: Ligado
-            </span>
-            <button
-              type="button"
-              style={{
-                fontSize: 12,
-                color: "var(--muted-foreground)",
-                border: 0,
-                background: "none",
-                cursor: "pointer",
-                padding: "0 6px",
-              }}
-            >
-              Personalizar
-            </button>
-            <button
-              type="button"
-              style={{
-                height: 28,
-                padding: "0 12px",
-                borderRadius: 6,
-                border: 0,
-                background: "var(--primary)",
-                cursor: "pointer",
-                color: "var(--primary-foreground)",
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "#fff";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "var(--foreground)";
-              }}
-            >
-              Adicionar cartão
-            </button>
-          </div>
-        </div>
-
-        {/* ── Cards: Recent | Docs | Bookmarks ── */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr 1fr",
-            gap: 12,
-            marginTop: 16,
-            marginBottom: 16,
-          }}
-        >
-          {/* Recent */}
-          <div
-            style={{
-              background: "var(--card)",
-              borderRadius: 10,
-              border: "1px solid var(--border)",
-              padding: "16px 18px",
-              minHeight: 200,
-            }}
-          >
-            <p
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--muted-foreground)",
-                marginBottom: 12,
-              }}
-            >
-              Recent
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {recentes.length > 0 ? (
-                recentes.map((item) => (
-                  <Link
-                    key={item.id}
-                    href={`/lists/${item.id}`}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 7,
-                      padding: "5px 8px",
-                      margin: "0 -8px",
-                      borderRadius: 6,
-                      textDecoration: "none",
-                      transition: "background 120ms",
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.background =
-                        "var(--accent)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.background =
-                        "transparent";
-                    }}
-                  >
-                    <IcList />
-                    <span
-                      style={{
-                        fontSize: 13,
-                        color: "var(--foreground)",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {item.nome}
-                    </span>
-                  </Link>
-                ))
-              ) : (
-                <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                  Nada por aqui ainda
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Docs */}
-          <div
-            style={{
-              background: "var(--card)",
-              borderRadius: 10,
-              border: "1px solid var(--border)",
-              padding: "16px 18px",
-              minHeight: 200,
-            }}
-          >
-            <p
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--muted-foreground)",
-                marginBottom: 12,
-              }}
-            >
-              Docs
-            </p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {docs.length > 0 ? (
-                docs.map((doc) => (
-                  <Link
-                    key={doc.id}
-                    href={`/docs/${doc.id}`}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 7,
-                      padding: "5px 8px",
-                      margin: "0 -8px",
-                      borderRadius: 6,
-                      textDecoration: "none",
-                      transition: "background 120ms",
-                    }}
-                    onMouseEnter={(e) => {
-                      (e.currentTarget as HTMLElement).style.background =
-                        "var(--accent)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.background =
-                        "transparent";
-                    }}
-                  >
-                    <IcDoc />
-                    <span
-                      style={{
-                        fontSize: 13,
-                        color: "var(--foreground)",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {doc.nome}
-                    </span>
-                  </Link>
-                ))
-              ) : (
-                <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                  Nenhum documento ainda
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Bookmarks */}
-          <div
-            style={{
-              background: "var(--card)",
-              borderRadius: 10,
-              border: "1px solid var(--border)",
-              padding: "16px 18px",
-              minHeight: 200,
-            }}
-          >
-            <p
-              style={{
-                fontSize: 12,
-                fontWeight: 600,
-                color: "var(--muted-foreground)",
-                marginBottom: 12,
-              }}
-            >
-              Bookmarks
-            </p>
-            {folderBookmarks.length > 0 ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {folderBookmarks.map((bm) => (
-                  <Link
-                    key={bm.id}
-                    href={bookmarkHref(bm)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 7,
-                      padding: "5px 8px",
-                      margin: "0 -8px",
-                      borderRadius: 6,
-                      textDecoration: "none",
-                      transition: "background 120ms",
-                    }}
-                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "var(--accent)"; }}
-                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-                  >
-                    <span style={{ flexShrink: 0 }}>
-                      {bm.targetType === "list" ? <IcList /> : <IcFolder />}
-                    </span>
-                    <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>
-                      {bookmarkName(bm)}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            ) : (
-              <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                Nenhum favorito ainda
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* ── Lists — container próprio com borda ── */}
-        <section
-          style={{
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            overflow: "hidden",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "10px 16px",
-              borderBottom: "1px solid var(--border)",
-              background: "var(--card)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <LayoutGrid
-                size={13}
-                style={{ color: "var(--muted-foreground)" }}
-              />
-              <span
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: "var(--foreground)",
-                }}
-              >
-                Lists
-              </span>
-            </div>
-          </div>
-
-          <div
-            style={{
-              background: "var(--background)",
-              minHeight: "28vh",
-              maxHeight: "33vh",
-              overflowY: "auto",
-            }}
-          >
+        {activeTab === "comentarios" && <CommentsTab projectId={id} />}
+        {activeTab !== "comentarios" && (
+          <>
+            {/* Toolbar */}
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns:
-                  "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
-                height: 34,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                height: 44,
                 borderBottom: "1px solid var(--border)",
-                padding: "0 16px",
-                background: "var(--card)",
               }}
             >
-              {[
-                "Nome",
-                "Cor",
-                "Progresso",
-                "Início",
-                "Término",
-                "Prioridade",
-                "Proprietário",
-                "",
-              ].map((col, i) => (
-                <div
-                  key={i}
+              <button
+                type="button"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 5,
+                  height: 28,
+                  padding: "0 10px",
+                  borderRadius: 6,
+                  border: "1px solid var(--border)",
+                  background: "none",
+                  cursor: "pointer",
+                  color: "var(--muted-foreground)",
+                  fontSize: 12,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "var(--accent)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "none";
+                }}
+              >
+                <Filter size={11} />
+                Filtros
+              </button>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span
                   style={{
                     display: "flex",
                     alignItems: "center",
+                    gap: 5,
                     fontSize: 11,
                     color: "var(--muted-foreground)",
-                    fontWeight: 500,
                   }}
                 >
-                  {col}
-                </div>
-              ))}
+                  <RefreshCw size={11} />
+                  Atualização: 10 minutos atrás
+                </span>
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 11,
+                    color: "var(--muted-foreground)",
+                  }}
+                >
+                  <RefreshCw size={11} style={{ color: "#22c55e" }} />
+                  Atualização automática: Ligado
+                </span>
+                <button
+                  type="button"
+                  style={{
+                    fontSize: 12,
+                    color: "var(--muted-foreground)",
+                    border: 0,
+                    background: "none",
+                    cursor: "pointer",
+                    padding: "0 6px",
+                  }}
+                >
+                  Personalizar
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    height: 28,
+                    padding: "0 12px",
+                    borderRadius: 6,
+                    border: 0,
+                    background: "var(--primary)",
+                    cursor: "pointer",
+                    color: "var(--primary-foreground)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "#fff";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "var(--foreground)";
+                  }}
+                >
+                  Adicionar cartão
+                </button>
+              </div>
             </div>
 
-            {listas.length > 0 ? (
-              listas.map((lista) => {
-                const bm = bookmarks.find((b) => b.targetId === lista.id && b.targetType === "list");
-                return (
-                <ListRow
-                  key={lista.id}
-                  id={lista.id}
-                  nome={lista.nome}
-                  isBookmarked={!!bm}
-                  onBookmark={() => toggleBookmark({ targetId: lista.id, targetType: "list", bookmarkId: bm?.id })}
-                  onDelete={() => setDeleteTarget({ id: lista.id, nome: lista.nome })}
-                />
-                );
-              })
-            ) : (
+            {/* ── Cards: Recent | Docs | Bookmarks ── */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: 12,
+                marginTop: 16,
+                marginBottom: 16,
+              }}
+            >
+              {/* Recent */}
               <div
                 style={{
-                  padding: "20px 16px",
-                  fontSize: 12,
-                  color: "var(--muted-foreground)",
+                  background: "var(--card)",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  padding: "16px 18px",
+                  minHeight: 200,
                 }}
               >
-                Nenhuma lista ainda
+                <p
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--muted-foreground)",
+                    marginBottom: 12,
+                  }}
+                >
+                  Recent
+                </p>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 2 }}
+                >
+                  {recentes.length > 0 ? (
+                    recentes.map((item) => (
+                      <Link
+                        key={item.id}
+                        href={`/lists/${item.id}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 7,
+                          padding: "5px 8px",
+                          margin: "0 -8px",
+                          borderRadius: 6,
+                          textDecoration: "none",
+                          transition: "background 120ms",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLElement).style.background =
+                            "var(--accent)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLElement).style.background =
+                            "transparent";
+                        }}
+                      >
+                        <IcList />
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "var(--foreground)",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {item.nome}
+                        </span>
+                      </Link>
+                    ))
+                  ) : (
+                    <p
+                      style={{ fontSize: 12, color: "var(--muted-foreground)" }}
+                    >
+                      Nada por aqui ainda
+                    </p>
+                  )}
+                </div>
               </div>
-            )}
 
-            <AddListRow onClick={() => setListDialogOpen(true)} />
-          </div>
-        </section>
+              {/* Docs */}
+              <div
+                style={{
+                  background: "var(--card)",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  padding: "16px 18px",
+                  minHeight: 200,
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--muted-foreground)",
+                    marginBottom: 12,
+                  }}
+                >
+                  Docs
+                </p>
+                <div
+                  style={{ display: "flex", flexDirection: "column", gap: 2 }}
+                >
+                  {docs.length > 0 ? (
+                    docs.map((doc) => (
+                      <Link
+                        key={doc.id}
+                        href={`/docs/${doc.id}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 7,
+                          padding: "5px 8px",
+                          margin: "0 -8px",
+                          borderRadius: 6,
+                          textDecoration: "none",
+                          transition: "background 120ms",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLElement).style.background =
+                            "var(--accent)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLElement).style.background =
+                            "transparent";
+                        }}
+                      >
+                        <IcDoc />
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "var(--foreground)",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {doc.nome}
+                        </span>
+                      </Link>
+                    ))
+                  ) : (
+                    <p
+                      style={{ fontSize: 12, color: "var(--muted-foreground)" }}
+                    >
+                      Nenhum documento ainda
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Bookmarks */}
+              <div
+                style={{
+                  background: "var(--card)",
+                  borderRadius: 10,
+                  border: "1px solid var(--border)",
+                  padding: "16px 18px",
+                  minHeight: 200,
+                }}
+              >
+                <p
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "var(--muted-foreground)",
+                    marginBottom: 12,
+                  }}
+                >
+                  Bookmarks
+                </p>
+                {folderBookmarks.length > 0 ? (
+                  <div
+                    style={{ display: "flex", flexDirection: "column", gap: 2 }}
+                  >
+                    {folderBookmarks.map((bm) => (
+                      <Link
+                        key={bm.id}
+                        href={bookmarkHref(bm)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 7,
+                          padding: "5px 8px",
+                          margin: "0 -8px",
+                          borderRadius: 6,
+                          textDecoration: "none",
+                          transition: "background 120ms",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLElement).style.background =
+                            "var(--accent)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLElement).style.background =
+                            "transparent";
+                        }}
+                      >
+                        <span style={{ flexShrink: 0 }}>
+                          {bm.targetType === "list" ? <IcList /> : <IcFolder />}
+                        </span>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "var(--foreground)",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {bookmarkName(bm)}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+                    Nenhum favorito ainda
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* ── Lists — container próprio com borda ── */}
+            <section
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 10,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 16px",
+                  borderBottom: "1px solid var(--border)",
+                  background: "var(--card)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <LayoutGrid
+                    size={13}
+                    style={{ color: "var(--muted-foreground)" }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--foreground)",
+                    }}
+                  >
+                    Lists
+                  </span>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "var(--background)",
+                  minHeight: "28vh",
+                  maxHeight: "33vh",
+                  overflowY: "auto",
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
+                    height: 34,
+                    borderBottom: "1px solid var(--border)",
+                    padding: "0 16px",
+                    background: "var(--card)",
+                  }}
+                >
+                  {[
+                    "Nome",
+                    "Cor",
+                    "Progresso",
+                    "Início",
+                    "Término",
+                    "Prioridade",
+                    "Proprietário",
+                    "",
+                  ].map((col, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        fontSize: 11,
+                        color: "var(--muted-foreground)",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {col}
+                    </div>
+                  ))}
+                </div>
+
+                {listas.length > 0 ? (
+                  listas.map((lista) => {
+                    const bm = bookmarks.find(
+                      (b) => b.targetId === lista.id && b.targetType === "list",
+                    );
+                    return (
+                      <ListRow
+                        key={lista.id}
+                        id={lista.id}
+                        nome={lista.nome}
+                        isBookmarked={!!bm}
+                        onBookmark={() =>
+                          toggleBookmark({
+                            targetId: lista.id,
+                            targetType: "list",
+                            bookmarkId: bm?.id,
+                          })
+                        }
+                        onDelete={() =>
+                          setDeleteTarget({ id: lista.id, nome: lista.nome })
+                        }
+                      />
+                    );
+                  })
+                ) : (
+                  <div
+                    style={{
+                      padding: "20px 16px",
+                      fontSize: 12,
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
+                    Nenhuma lista ainda
+                  </div>
+                )}
+
+                <AddListRow onClick={() => setListDialogOpen(true)} />
+              </div>
+            </section>
+          </>
+        )}
       </div>
 
       <CreateListDialog
