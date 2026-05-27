@@ -96,6 +96,10 @@ export default function PlannerPage() {
           <PlannerSearchPanel
             events={mockPlannerEvents}
             onClose={() => setSearchOpen(false)}
+            onSelectEvent={(event) => {
+              setCursorDate(new Date(event.start));
+              setSearchOpen(false);
+            }}
           />
         )}
 
@@ -163,9 +167,11 @@ export default function PlannerPage() {
 function PlannerSearchPanel({
   events,
   onClose,
+  onSelectEvent,
 }: {
   events: typeof mockPlannerEvents;
   onClose: () => void;
+  onSelectEvent: (event: (typeof mockPlannerEvents)[number]) => void;
 }) {
   const [query, setQuery] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -243,6 +249,7 @@ function PlannerSearchPanel({
               <li key={event.id}>
                 <button
                   type="button"
+                  onClick={() => onSelectEvent(event)}
                   className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-accent"
                 >
                   <span
