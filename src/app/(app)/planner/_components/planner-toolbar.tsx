@@ -6,7 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCw,
-  Settings,
   Sparkles,
 } from "lucide-react";
 
@@ -32,22 +31,26 @@ const VIEW_LABEL: Record<PlannerView, string> = {
 interface PlannerToolbarProps {
   view: PlannerView;
   cursorDate: Date;
+  isRefreshing?: boolean;
   onViewChange: (view: PlannerView) => void;
   onCursorChange: (date: Date) => void;
+  onRefresh?: () => void;
 }
 
 /**
  * Toolbar superior do Planner.
  *
  * Concentra navegacao (prev/next/Hoje), label do periodo e o switcher de
- * view (Dia/Semana/Mes). Acoes secundarias (Anotacoes com IA, ajustes)
- * ficam a direita — visuais por enquanto, sem handler real.
+ * view (Dia/Semana/Mes). A direita: atalho "Anotacoes com IA", mini
+ * calendario e refresh do periodo (anima enquanto recarrega).
  */
 export function PlannerToolbar({
   view,
   cursorDate,
+  isRefreshing = false,
   onViewChange,
   onCursorChange,
+  onRefresh,
 }: PlannerToolbarProps) {
   const goPrev = () => onCursorChange(stepDate(view, cursorDate, -1));
   const goNext = () => onCursorChange(stepDate(view, cursorDate, 1));
@@ -91,11 +94,16 @@ export function PlannerToolbar({
         <ToolbarIconBtn aria-label="Mini calendario">
           <CalendarDays size={14} strokeWidth={1.7} />
         </ToolbarIconBtn>
-        <ToolbarIconBtn aria-label="Recarregar">
-          <RefreshCw size={14} strokeWidth={1.7} />
-        </ToolbarIconBtn>
-        <ToolbarIconBtn aria-label="Configuracoes">
-          <Settings size={14} strokeWidth={1.7} />
+        <ToolbarIconBtn
+          aria-label="Recarregar"
+          onClick={onRefresh}
+          disabled={isRefreshing}
+        >
+          <RefreshCw
+            size={14}
+            strokeWidth={1.7}
+            className={isRefreshing ? "animate-spin" : undefined}
+          />
         </ToolbarIconBtn>
 
         <DropdownMenu>
@@ -141,7 +149,7 @@ function ToolbarIconBtn({
     <button
       type="button"
       {...rest}
-      className="flex h-7 w-7 items-center justify-center rounded-md border-0 bg-transparent text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+      className="flex h-7 w-7 items-center justify-center rounded-md border-0 bg-transparent text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
     >
       {children}
     </button>

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Loader2, Search } from "lucide-react";
 
 import { mockPlannerEvents } from "@/lib/mocks/planner-events";
 import type { PlannerView } from "@/lib/types/planner-event";
@@ -24,6 +24,27 @@ import { useKeyboardNavigation } from "./_hooks/use-keyboard-navigation";
 export default function PlannerPage() {
   const [view, setView] = useState<PlannerView>("week");
   const [cursorDate, setCursorDate] = useState<Date>(new Date());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /**
+   * Refresh dos eventos do calendario.
+   *
+   * Hoje usa um delay simulado de 1s porque os eventos vem de mock. Quando
+   * o endpoint do Planner existir no backend V2, substituir o setTimeout
+   * por `queryClient.refetchQueries({ queryKey: qk.plannerEvents... })`.
+   */
+  const handleRefresh = () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    refreshTimeoutRef.current = setTimeout(() => setIsRefreshing(false), 1000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
+    };
+  }, []);
 
   const {
     slideDates,
@@ -48,8 +69,10 @@ export default function PlannerPage() {
       <PlannerToolbar
         view={view}
         cursorDate={cursorDate}
+        isRefreshing={isRefreshing}
         onViewChange={setView}
         onCursorChange={setCursorDate}
+        onRefresh={handleRefresh}
       />
 
       {/* Container do carrossel: overflow hidden, captura pointer events */}
@@ -59,6 +82,20 @@ export default function PlannerPage() {
         {...pointerHandlers}
         style={{ touchAction: "pan-y", cursor: isDragging ? "grabbing" : "default" }}
       >
+        {/* Overlay de refresh — bloqueia interacao e mostra spinner enquanto recarrega */}
+        {isRefreshing && (
+          <div
+            aria-busy="true"
+            aria-live="polite"
+            className="absolute inset-0 z-20 flex items-center justify-center backdrop-blur-[1px]"
+            style={{ background: "rgba(0,0,0,0.25)" }}
+          >
+            <div className="flex items-center gap-2 rounded-md border border-border bg-background px-3 py-1.5 text-[12px] text-muted-foreground shadow-sm">
+              <Loader2 size={13} className="animate-spin" />
+              Atualizando…
+            </div>
+          </div>
+        )}
         {/* Trilho: 3 slides lado a lado, se move como um bloco */}
         <div
           className="flex h-full"
