@@ -89,7 +89,10 @@ export default function PlannerPage() {
         ref={containerRef}
         className="relative flex-1 select-none overflow-hidden"
         {...pointerHandlers}
-        style={{ touchAction: "pan-y", cursor: isDragging ? "grabbing" : "default" }}
+        style={{
+          touchAction: "pan-y",
+          cursor: isDragging ? "grabbing" : "default",
+        }}
       >
         {/* Painel de busca de eventos — flutua sobre o calendario */}
         {searchOpen && (
@@ -123,21 +126,32 @@ export default function PlannerPage() {
           style={{
             width: containerWidth ? `${containerWidth * 3}px` : "300%",
             transform: `translateX(${-containerWidth + railOffset}px)`,
-            transition: isSnapping ? `transform ${snapDuration}ms ${snapEasing}` : "none",
+            transition: isSnapping
+              ? `transform ${snapDuration}ms ${snapEasing}`
+              : "none",
             userSelect: isDragging ? "none" : undefined,
             willChange: "transform",
           }}
         >
           {/* Slide anterior */}
-          <div className="h-full flex-shrink-0" style={{ width: containerWidth || "33.333%" }}>
+          <div
+            className="h-full flex-shrink-0"
+            style={{ width: containerWidth || "33.333%" }}
+          >
             <SlideContent view={view} date={slideDates[-1]} />
           </div>
           {/* Slide atual */}
-          <div className="h-full flex-shrink-0" style={{ width: containerWidth || "33.333%" }}>
+          <div
+            className="h-full flex-shrink-0"
+            style={{ width: containerWidth || "33.333%" }}
+          >
             <SlideContent view={view} date={slideDates[0]} />
           </div>
           {/* Slide proximo */}
-          <div className="h-full flex-shrink-0" style={{ width: containerWidth || "33.333%" }}>
+          <div
+            className="h-full flex-shrink-0"
+            style={{ width: containerWidth || "33.333%" }}
+          >
             <SlideContent view={view} date={slideDates[1]} />
           </div>
         </div>
@@ -191,7 +205,7 @@ function PlannerSearchPanel({
       const target = e.target as HTMLElement | null;
       if (!target) return;
       if (panelRef.current?.contains(target)) return;
-      if (target.closest('[data-planner-search-trigger]')) return;
+      if (target.closest("[data-planner-search-trigger]")) return;
       onClose();
     };
     document.addEventListener("keydown", onKey);
@@ -215,7 +229,7 @@ function PlannerSearchPanel({
       aria-label="Buscar eventos no Planner"
       className="absolute left-1/2 top-3 z-30 w-[92%] max-w-3xl -translate-x-1/2 rounded-lg border border-border bg-popover shadow-xl"
     >
-      <header className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+      <header className="flex items-center gap-2 border-b border-border px-3 py-[var(--row-py)]">
         <Search size={14} className="text-muted-foreground" />
         <input
           ref={inputRef}
@@ -258,7 +272,9 @@ function PlannerSearchPanel({
                     style={{ background: EVENT_COLOR_DOT[event.color] }}
                   />
                   <span className="flex-1 truncate">{event.title}</span>
-                  <span className="text-[11px] text-muted-foreground">{label}</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {label}
+                  </span>
                 </button>
               </li>
             );
@@ -280,9 +296,12 @@ const EVENT_COLOR_DOT: Record<string, string> = {
 
 /** Renderiza a view correta para um slide do carrossel. */
 function SlideContent({ view, date }: { view: PlannerView; date: Date }) {
-  if (view === "day") return <DayView cursorDate={date} events={mockPlannerEvents} />;
-  if (view === "week") return <WeekView cursorDate={date} events={mockPlannerEvents} />;
-  if (view === "year") return <YearView cursorDate={date} events={mockPlannerEvents} />;
+  if (view === "day")
+    return <DayView cursorDate={date} events={mockPlannerEvents} />;
+  if (view === "week")
+    return <WeekView cursorDate={date} events={mockPlannerEvents} />;
+  if (view === "year")
+    return <YearView cursorDate={date} events={mockPlannerEvents} />;
   return <MonthView cursorDate={date} events={mockPlannerEvents} />;
 }
 
@@ -293,7 +312,7 @@ function SlideContent({ view, date }: { view: PlannerView; date: Date }) {
 function PlannerSearchBar() {
   return (
     <div
-      className="flex flex-shrink-0 justify-center border-t border-border px-4 py-2.5"
+      className="flex flex-shrink-0 justify-center border-t border-border px-4 py-[var(--row-py)]"
       style={{ background: "var(--background)" }}
     >
       <div
@@ -312,7 +331,13 @@ function PlannerSearchBar() {
 
 function SparklesGradient({ className }: { className?: string }) {
   return (
-    <svg width={15} height={15} viewBox="0 0 24 24" fill="none" className={className}>
+    <svg
+      width={15}
+      height={15}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+    >
       <defs>
         <linearGradient id="pl-spark" x1="0" y1="0" x2="1" y2="1">
           <stop offset="0%" stopColor="#7c5cff" />
