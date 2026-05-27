@@ -50,6 +50,7 @@ import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
+import { useIsBookmarked, useToggleBookmark } from "@/hooks/use-bookmarks";
 import {
   useTasksByProject,
   useUpdateTask,
@@ -1716,6 +1717,9 @@ function ListContent({
 
 // ─── PageHeader ───────────────────────────────────────────────────────────────
 function PageHeader({ id, nome }: { id: string; nome: string }) {
+  const { isBookmarked, bookmark } = useIsBookmarked(id, "list");
+  const { toggle, isPending } = useToggleBookmark();
+
   return (
     <header
       className="flex h-11 shrink-0 items-center justify-between gap-4 px-5"
@@ -1749,18 +1753,28 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
         </button>
         <button
           type="button"
+          aria-label={isBookmarked ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+          disabled={isPending}
+          onClick={() => toggle({ targetId: id, targetType: "list", bookmarkId: bookmark?.id })}
           style={{
             display: "grid",
             width: 24,
             height: 24,
             placeItems: "center",
             borderRadius: 4,
-            color: "var(--muted-foreground)",
+            color: isBookmarked ? "#f59e0b" : "var(--muted-foreground)",
             background: "none",
             border: 0,
+            cursor: "pointer",
           }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = "#f59e0b"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = isBookmarked ? "#f59e0b" : "var(--muted-foreground)"; }}
         >
-          <Star className="size-3.5" />
+          <Star
+            className="size-3.5"
+            fill={isBookmarked ? "#f59e0b" : "none"}
+            stroke={isBookmarked ? "#f59e0b" : "currentColor"}
+          />
         </button>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>

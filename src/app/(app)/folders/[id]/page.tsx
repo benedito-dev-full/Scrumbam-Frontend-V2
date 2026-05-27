@@ -179,8 +179,8 @@ export default function FolderPage({
   const docs: typeof listas = [];
   const recentes = [...listas].slice(0, 6);
 
-  // Favoritos que são filhos desta pasta (listas) ou a própria pasta
-  const childIds = new Set([id, ...listas.map((l) => l.id)]);
+  // Favoritos que são filhos desta pasta (só listas — a própria pasta não aparece aqui)
+  const childIds = new Set(listas.map((l) => l.id));
   const folderBookmarks = bookmarks.filter((bm) => childIds.has(bm.targetId));
 
   function bookmarkHref(bm: { targetId: string; targetType: string }): string {
