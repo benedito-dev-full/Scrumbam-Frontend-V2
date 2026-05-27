@@ -3,7 +3,18 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Fragment, useState, useEffect, useRef, useMemo } from "react";
-import { ChevronDown, ChevronRight, Plus, Star, Settings2, Search, Folder, List, Users, PanelLeftOpen } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Star,
+  Settings2,
+  Search,
+  Folder,
+  List,
+  Users,
+  PanelLeftOpen,
+} from "lucide-react";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -315,7 +326,7 @@ function MoreItem() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "group flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 transition-colors",
+          "group flex h-[calc(var(--row-h)-6px)] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 transition-colors",
           "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
           open && "bg-sidebar-accent text-sidebar-accent-foreground",
         )}
@@ -341,7 +352,7 @@ function MoreItem() {
                   setOpen(false);
                   if (entry.href) router.push(entry.href);
                 }}
-                className="group flex h-9 w-full items-center gap-3 px-3 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                className="group flex h-[calc(var(--row-h)-4px)] w-full items-center gap-3 px-3 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
                 <span className="shrink-0">{entry.renderIcon()}</span>
                 <span className="flex-1 text-left">{entry.label}</span>
@@ -355,7 +366,7 @@ function MoreItem() {
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="flex h-9 w-full items-center gap-3 px-3 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              className="flex h-[calc(var(--row-h)-4px)] w-full items-center gap-3 px-3 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
               <Settings2 className="size-3.5 shrink-0" />
               <span>Personalizar</span>
@@ -383,7 +394,7 @@ function Leaf({
       data-active={active ? "" : undefined}
       style={depth ? { paddingLeft: `${0.5 + depth * 1.125}rem` } : undefined}
       className={cn(
-        "group flex h-[34px] items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 outline-none transition-colors",
+        "group flex h-[calc(var(--row-h)-6px)] items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 outline-none transition-colors",
         "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
         "focus-visible:bg-sidebar-accent focus-visible:text-sidebar-accent-foreground focus-visible:ring-1 focus-visible:ring-sidebar-ring",
         "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:font-medium",
@@ -427,7 +438,7 @@ function ExpandableItem({
     <div>
       <div
         className={cn(
-          "group flex h-[34px] items-center rounded-[4px] text-[13px] text-sidebar-foreground/80 transition-colors",
+          "group flex h-[calc(var(--row-h)-6px)] items-center rounded-[4px] text-[13px] text-sidebar-foreground/80 transition-colors",
           "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
           active &&
             "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
@@ -475,9 +486,25 @@ function ExpandableItem({
 }
 
 /* ─── Ícone de Space (chip colorido mini) ─────────────────────────────────── */
-function SpaceChipMini({ name, color }: { name: string; color?: string | null }) {
-  const FALLBACK_COLORS = ["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6","#ef4444","#14b8a6"];
-  const bg = color ?? FALLBACK_COLORS[name.charCodeAt(0) % FALLBACK_COLORS.length];
+function SpaceChipMini({
+  name,
+  color,
+}: {
+  name: string;
+  color?: string | null;
+}) {
+  const FALLBACK_COLORS = [
+    "#6366f1",
+    "#8b5cf6",
+    "#ec4899",
+    "#f59e0b",
+    "#10b981",
+    "#3b82f6",
+    "#ef4444",
+    "#14b8a6",
+  ];
+  const bg =
+    color ?? FALLBACK_COLORS[name.charCodeAt(0) % FALLBACK_COLORS.length];
   return (
     <span
       className="grid size-4 shrink-0 place-items-center rounded text-[9px] font-bold text-white"
@@ -560,32 +587,47 @@ function FavoritesList() {
   const pathname = usePathname();
 
   const spaceIds = useMemo(() => spaces.map((s) => s.id), [spaces]);
-  const { folders, lists } = useAllFoldersAndLists(spaceIds, bookmarks.length > 0);
+  const { folders, lists } = useAllFoldersAndLists(
+    spaceIds,
+    bookmarks.length > 0,
+  );
 
   if (isLoading || bookmarks.length === 0) return null;
 
   const spaceMap = new Map(spaces.map((s) => [s.id, s]));
   const folderMap = new Map((folders as DProjectDto[]).map((f) => [f.id, f]));
   const listMap = new Map((lists as DProjectDto[]).map((l) => [l.id, l]));
-  const teamMap = new Map((teams as { id: string; nome: string }[]).map((t) => [t.id, t]));
+  const teamMap = new Map(
+    (teams as { id: string; nome: string }[]).map((t) => [t.id, t]),
+  );
 
   function resolveHref(bm: { targetId: string; targetType: string }): string {
     switch (bm.targetType) {
-      case "space": return `/spaces/${bm.targetId}`;
-      case "folder": return `/folders/${bm.targetId}`;
-      case "list": return `/lists/${bm.targetId}`;
-      case "team": return `/teams/${bm.targetId}`;
-      default: return "/";
+      case "space":
+        return `/spaces/${bm.targetId}`;
+      case "folder":
+        return `/folders/${bm.targetId}`;
+      case "list":
+        return `/lists/${bm.targetId}`;
+      case "team":
+        return `/teams/${bm.targetId}`;
+      default:
+        return "/";
     }
   }
 
   function resolveName(bm: { targetId: string; targetType: string }): string {
     switch (bm.targetType) {
-      case "space": return spaceMap.get(bm.targetId)?.nome ?? "Espaço";
-      case "folder": return folderMap.get(bm.targetId)?.nome ?? "Pasta";
-      case "list": return listMap.get(bm.targetId)?.nome ?? "Lista";
-      case "team": return teamMap.get(bm.targetId)?.nome ?? "Time";
-      default: return "Favorito";
+      case "space":
+        return spaceMap.get(bm.targetId)?.nome ?? "Espaço";
+      case "folder":
+        return folderMap.get(bm.targetId)?.nome ?? "Pasta";
+      case "list":
+        return listMap.get(bm.targetId)?.nome ?? "Lista";
+      case "team":
+        return teamMap.get(bm.targetId)?.nome ?? "Time";
+      default:
+        return "Favorito";
     }
   }
 
@@ -594,9 +636,12 @@ function FavoritesList() {
       const space = spaceMap.get(bm.targetId);
       return <SpaceChipMini name={space?.nome ?? "S"} color={space?.color} />;
     }
-    if (bm.targetType === "folder") return <Folder className="size-3.5 shrink-0 text-muted-foreground" />;
-    if (bm.targetType === "list") return <List className="size-3.5 shrink-0 text-muted-foreground" />;
-    if (bm.targetType === "team") return <Users className="size-3.5 shrink-0 text-muted-foreground" />;
+    if (bm.targetType === "folder")
+      return <Folder className="size-3.5 shrink-0 text-muted-foreground" />;
+    if (bm.targetType === "list")
+      return <List className="size-3.5 shrink-0 text-muted-foreground" />;
+    if (bm.targetType === "team")
+      return <Users className="size-3.5 shrink-0 text-muted-foreground" />;
     return <IcStar />;
   }
 
@@ -612,19 +657,31 @@ function FavoritesList() {
               href={href}
               data-active={isActive ? "" : undefined}
               className={cn(
-                "flex h-[34px] items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 outline-none transition-colors",
+                "flex h-[calc(var(--row-h)-6px)] items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 outline-none transition-colors",
                 "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground pr-8",
                 "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:font-medium",
               )}
             >
-              <span className="shrink-0 text-muted-foreground">{renderIcon(bm)}</span>
+              <span className="shrink-0 text-muted-foreground">
+                {renderIcon(bm)}
+              </span>
               <span className="flex-1 truncate">{name}</span>
             </Link>
             <button
               type="button"
               aria-label="Remover dos favoritos"
               disabled={isPending}
-              onClick={() => toggle({ targetId: bm.targetId, targetType: bm.targetType as "space" | "folder" | "list" | "team", bookmarkId: bm.id })}
+              onClick={() =>
+                toggle({
+                  targetId: bm.targetId,
+                  targetType: bm.targetType as
+                    | "space"
+                    | "folder"
+                    | "list"
+                    | "team",
+                  bookmarkId: bm.id,
+                })
+              }
               className="absolute right-2 top-1/2 -translate-y-1/2 grid size-5 place-items-center rounded text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-sidebar-accent hover:text-sidebar-foreground"
             >
               <Star className="size-3 fill-yellow-400 text-yellow-400" />
@@ -647,12 +704,18 @@ function AddFavoriteDropdown() {
 
   const { data: spaces = [] } = useSpaces();
   const spaceIds = useMemo(() => spaces.map((s) => s.id), [spaces]);
-  const { folders: allFolders, lists: allLists } = useAllFoldersAndLists(spaceIds, open);
+  const { folders: allFolders, lists: allLists } = useAllFoldersAndLists(
+    spaceIds,
+    open,
+  );
   const { data: teamsData } = useTeams();
   const teams = teamsData ?? [];
 
   const { data: bookmarks = [] } = useBookmarks();
-  const bookmarkedIds = useMemo(() => new Set(bookmarks.map((b) => b.targetId)), [bookmarks]);
+  const bookmarkedIds = useMemo(
+    () => new Set(bookmarks.map((b) => b.targetId)),
+    [bookmarks],
+  );
 
   const { toggle, isPending } = useToggleBookmark();
 
@@ -676,15 +739,30 @@ function AddFavoriteDropdown() {
   const q = search.toLowerCase();
 
   const filteredSpaces = spaces.filter((s) => s.nome.toLowerCase().includes(q));
-  const filteredFolders = (allFolders as DProjectDto[]).filter((f) => f.nome.toLowerCase().includes(q));
-  const filteredLists = (allLists as DProjectDto[]).filter((l) => l.nome.toLowerCase().includes(q));
-  const filteredTeams = teams.filter((t: { nome: string }) => t.nome.toLowerCase().includes(q));
+  const filteredFolders = (allFolders as DProjectDto[]).filter((f) =>
+    f.nome.toLowerCase().includes(q),
+  );
+  const filteredLists = (allLists as DProjectDto[]).filter((l) =>
+    l.nome.toLowerCase().includes(q),
+  );
+  const filteredTeams = teams.filter((t: { nome: string }) =>
+    t.nome.toLowerCase().includes(q),
+  );
 
   const hasResults =
-    filteredSpaces.length + filteredFolders.length + filteredLists.length + filteredTeams.length > 0;
+    filteredSpaces.length +
+      filteredFolders.length +
+      filteredLists.length +
+      filteredTeams.length >
+    0;
 
-  function handleToggle(targetId: string, targetType: "space" | "folder" | "list" | "team") {
-    const existing = bookmarks.find((b) => b.targetId === targetId && b.targetType === targetType);
+  function handleToggle(
+    targetId: string,
+    targetType: "space" | "folder" | "list" | "team",
+  ) {
+    const existing = bookmarks.find(
+      (b) => b.targetId === targetId && b.targetType === targetType,
+    );
     toggle({ targetId, targetType, bookmarkId: existing?.id });
   }
 
@@ -699,7 +777,7 @@ function AddFavoriteDropdown() {
           setOpen((v) => !v);
         }}
         className={cn(
-          "group flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 transition-colors",
+          "group flex h-[calc(var(--row-h)-6px)] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 transition-colors",
           "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
           open && "bg-sidebar-accent/50 text-sidebar-foreground",
         )}
@@ -759,11 +837,20 @@ function AddFavoriteDropdown() {
                         type="button"
                         disabled={isPending}
                         onClick={() => handleToggle(space.id, "space")}
-                        className="flex h-9 w-full items-center gap-2.5 px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+                        className="flex h-[calc(var(--row-h)-4px)] w-full items-center gap-2.5 px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
                       >
                         <SpaceChipMini name={space.nome} color={space.color} />
-                        <span className="flex-1 truncate text-left">{space.nome}</span>
-                        <Star className={cn("size-3.5 shrink-0 transition-colors", active ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40")} />
+                        <span className="flex-1 truncate text-left">
+                          {space.nome}
+                        </span>
+                        <Star
+                          className={cn(
+                            "size-3.5 shrink-0 transition-colors",
+                            active
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-muted-foreground/40",
+                          )}
+                        />
                       </button>
                     );
                   })}
@@ -784,11 +871,20 @@ function AddFavoriteDropdown() {
                         type="button"
                         disabled={isPending}
                         onClick={() => handleToggle(folder.id, "folder")}
-                        className="flex h-9 w-full items-center gap-2.5 px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+                        className="flex h-[calc(var(--row-h)-4px)] w-full items-center gap-2.5 px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
                       >
                         <Folder className="size-3.5 shrink-0 text-muted-foreground" />
-                        <span className="flex-1 truncate text-left">{folder.nome}</span>
-                        <Star className={cn("size-3.5 shrink-0 transition-colors", active ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40")} />
+                        <span className="flex-1 truncate text-left">
+                          {folder.nome}
+                        </span>
+                        <Star
+                          className={cn(
+                            "size-3.5 shrink-0 transition-colors",
+                            active
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-muted-foreground/40",
+                          )}
+                        />
                       </button>
                     );
                   })}
@@ -809,11 +905,20 @@ function AddFavoriteDropdown() {
                         type="button"
                         disabled={isPending}
                         onClick={() => handleToggle(list.id, "list")}
-                        className="flex h-9 w-full items-center gap-2.5 px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+                        className="flex h-[calc(var(--row-h)-4px)] w-full items-center gap-2.5 px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
                       >
                         <List className="size-3.5 shrink-0 text-muted-foreground" />
-                        <span className="flex-1 truncate text-left">{list.nome}</span>
-                        <Star className={cn("size-3.5 shrink-0 transition-colors", active ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40")} />
+                        <span className="flex-1 truncate text-left">
+                          {list.nome}
+                        </span>
+                        <Star
+                          className={cn(
+                            "size-3.5 shrink-0 transition-colors",
+                            active
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-muted-foreground/40",
+                          )}
+                        />
                       </button>
                     );
                   })}
@@ -834,11 +939,20 @@ function AddFavoriteDropdown() {
                         type="button"
                         disabled={isPending}
                         onClick={() => handleToggle(team.id, "team")}
-                        className="flex h-9 w-full items-center gap-2.5 px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+                        className="flex h-[calc(var(--row-h)-4px)] w-full items-center gap-2.5 px-3 text-[13px] text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
                       >
                         <Users className="size-3.5 shrink-0 text-muted-foreground" />
-                        <span className="flex-1 truncate text-left">{team.nome}</span>
-                        <Star className={cn("size-3.5 shrink-0 transition-colors", active ? "fill-yellow-400 text-yellow-400" : "text-muted-foreground/40")} />
+                        <span className="flex-1 truncate text-left">
+                          {team.nome}
+                        </span>
+                        <Star
+                          className={cn(
+                            "size-3.5 shrink-0 transition-colors",
+                            active
+                              ? "fill-yellow-400 text-yellow-400"
+                              : "text-muted-foreground/40",
+                          )}
+                        />
                       </button>
                     );
                   })}
@@ -1035,7 +1149,7 @@ export function WorkspacePanel() {
       <div className="shrink-0 border-t border-border px-2 py-2">
         <button
           type="button"
-          className="flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[12px] text-muted-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+          className="flex h-[calc(var(--row-h)-6px)] w-full items-center gap-2 rounded-[5px] px-3 text-[12px] text-muted-foreground/70 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
         >
           <Settings2 className="size-3.5 shrink-0" />
           Personalizar a barra lateral
