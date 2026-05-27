@@ -10,14 +10,28 @@ import { useInviteDialogStore } from "@/lib/stores/invite-dialog";
 function IcHome({ active }: { active?: boolean }) {
   if (active) {
     return (
-      <div style={{
-        width: 30, height: 30,
-        borderRadius: "50%",
-        background: "linear-gradient(135deg, #3b5bdb 0%, #4c6ef5 100%)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        flexShrink: 0,
-      }}>
-        <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+      <div
+        style={{
+          width: 30,
+          height: 30,
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #3b5bdb 0%, #4c6ef5 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <svg
+          width={15}
+          height={15}
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="white"
+          strokeWidth={2.2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
           <path d="M3 12L12 3l9 9v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9z" />
           <path d="M9 21V12h6v9" />
         </svg>
@@ -25,7 +39,16 @@ function IcHome({ active }: { active?: boolean }) {
     );
   }
   return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.7}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M3 12L12 3l9 9v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-9z" />
       <path d="M9 21V12h6v9" />
     </svg>
@@ -36,11 +59,21 @@ function IcHome({ active }: { active?: boolean }) {
 function IcPlanner() {
   const day = new Date().getDate();
   return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="3" y="4" width="18" height="18" rx="2" />
       <path d="M16 2v4M8 2v4M3 10h18" />
       <text
-        x="12" y="19"
+        x="12"
+        y="19"
         textAnchor="middle"
         fontSize="7"
         fontWeight="700"
@@ -62,19 +95,28 @@ function IcAI() {
       const a = (Math.PI / 180) * (60 * i - 30);
       return `${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`;
     }).join(" ");
-    return <polygon key={`${cx}-${cy}`} points={pts} fill="none" stroke="currentColor" strokeWidth={1.5} />;
+    return (
+      <polygon
+        key={`${cx}-${cy}`}
+        points={pts}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.5}
+      />
+    );
   };
 
-  const R = 4.2;   /* raio do hexágono */
-  const D = 7.5;   /* distância centro→centro */
-  const cx = 12, cy = 12;
+  const R = 4.2; /* raio do hexágono */
+  const D = 7.5; /* distância centro→centro */
+  const cx = 12,
+    cy = 12;
   const neighbors = [
-    [cx,       cy - D    ],
-    [cx + D * Math.cos(Math.PI/6), cy - D * 0.5],
-    [cx + D * Math.cos(Math.PI/6), cy + D * 0.5],
-    [cx,       cy + D    ],
-    [cx - D * Math.cos(Math.PI/6), cy + D * 0.5],
-    [cx - D * Math.cos(Math.PI/6), cy - D * 0.5],
+    [cx, cy - D],
+    [cx + D * Math.cos(Math.PI / 6), cy - D * 0.5],
+    [cx + D * Math.cos(Math.PI / 6), cy + D * 0.5],
+    [cx, cy + D],
+    [cx - D * Math.cos(Math.PI / 6), cy + D * 0.5],
+    [cx - D * Math.cos(Math.PI / 6), cy - D * 0.5],
   ] as [number, number][];
 
   return (
@@ -88,7 +130,16 @@ function IcAI() {
 /* Equipes — duas silhuetas de pessoas */
 function IcTeams() {
   return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="9" cy="7" r="3" />
       <path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" />
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
@@ -100,7 +151,16 @@ function IcTeams() {
 /* Documentos — documento com dobra no canto superior direito */
 function IcDocs() {
   return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
       <polyline points="14 2 14 8 20 8" />
       <line x1="16" y1="13" x2="8" y2="13" />
@@ -113,22 +173,18 @@ function IcDocs() {
 /* Formulário — quadrado com checkmark dentro, igual ClickUp */
 function IcForm() {
   return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <rect x="3" y="3" width="18" height="18" rx="3" />
       <path d="M8 12l3 3 5-5" />
-    </svg>
-  );
-}
-
-/* Mais — grid 3×3 de pontos preenchidos */
-function IcGrid() {
-  return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="currentColor">
-      {([4, 12, 20] as number[]).flatMap((cx) =>
-        ([4, 12, 20] as number[]).map((cy) => (
-          <circle key={`${cx}-${cy}`} cx={cx} cy={cy} r={1.8} />
-        ))
-      )}
     </svg>
   );
 }
@@ -136,7 +192,16 @@ function IcGrid() {
 /* Convidar — silhueta com + */
 function IcInvite() {
   return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="9" cy="7" r="4" />
       <path d="M3 21v-2a4 4 0 0 1 4-4h4" />
       <path d="M19 15v6M16 18h6" />
@@ -147,7 +212,16 @@ function IcInvite() {
 /* Configurações — engrenagem (gear) */
 function IcSettings() {
   return (
-    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <circle cx="12" cy="12" r="3" />
       <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
     </svg>
@@ -163,12 +237,12 @@ type RailItem = {
 };
 
 const mainNav: RailItem[] = [
-  { href: "/",         label: "Início",     renderIcon: (a) => <IcHome active={a} /> },
-  { href: "/planner",  label: "Planejador", renderIcon: () => <IcPlanner /> },
-  { href: "/ia",       label: "IA",         renderIcon: () => <IcAI /> },
-  { href: "/teams",    label: "Equipes",    renderIcon: () => <IcTeams /> },
-  { href: "/docs",     label: "Documen...", renderIcon: () => <IcDocs /> },
-  { href: "/forms",    label: "Formulário", renderIcon: () => <IcForm /> },
+  { href: "/", label: "Início", renderIcon: (a) => <IcHome active={a} /> },
+  { href: "/planner", label: "Planejador", renderIcon: () => <IcPlanner /> },
+  { href: "/ia", label: "IA", renderIcon: () => <IcAI /> },
+  { href: "/teams", label: "Equipes", renderIcon: () => <IcTeams /> },
+  { href: "/docs", label: "Documen...", renderIcon: () => <IcDocs /> },
+  { href: "/forms", label: "Formulário", renderIcon: () => <IcForm /> },
 ];
 
 /* ─── Botão do rail ───────────────────────────────────────────────────────── */
@@ -180,7 +254,7 @@ function RailButton({ item, active }: { item: RailItem; active?: boolean }) {
     justifyContent: "center",
     gap: 5,
     width: 56,
-    height: 54,
+    height: "calc(var(--row-h) + 14px)",
     borderRadius: 10,
     border: 0,
     background: active
@@ -228,14 +302,27 @@ function RailButton({ item, active }: { item: RailItem; active?: boolean }) {
 
   if (item.href) {
     return (
-      <Link href={item.href} aria-label={item.label} style={baseStyle} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+      <Link
+        href={item.href}
+        aria-label={item.label}
+        style={baseStyle}
+        onMouseEnter={onEnter}
+        onMouseLeave={onLeave}
+      >
         {content}
       </Link>
     );
   }
   // Botão sem href — onClick pode ser undefined (noop quando já ativo)
   return (
-    <button type="button" aria-label={item.label} onClick={item.onClick ?? (() => {})} style={baseStyle} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+    <button
+      type="button"
+      aria-label={item.label}
+      onClick={item.onClick ?? (() => {})}
+      style={baseStyle}
+      onMouseEnter={onEnter}
+      onMouseLeave={onLeave}
+    >
       {content}
     </button>
   );
@@ -248,7 +335,10 @@ export function IconRail() {
   const openInvite = useInviteDialogStore((s) => s.openDialog);
 
   // Início fica ativo em qualquer rota que não pertença aos outros itens
-  const otherHrefs = mainNav.slice(1).map((i) => i.href).filter(Boolean) as string[];
+  const otherHrefs = mainNav
+    .slice(1)
+    .map((i) => i.href)
+    .filter(Boolean) as string[];
   const isHomeActive = !otherHrefs.some((href) => pathname.startsWith(href));
 
   const isActive = (href?: string) => {
@@ -282,15 +372,46 @@ export function IconRail() {
         padding: "6px 0",
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
         {navItems.map((item, i) => (
-          <RailButton key={item.label} item={item} active={i === 0 ? isHomeActive : isActive(item.href)} />
+          <RailButton
+            key={item.label}
+            item={item}
+            active={i === 0 ? isHomeActive : isActive(item.href)}
+          />
         ))}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
-        <RailButton item={{ label: "Convidar",     renderIcon: () => <IcInvite />,   onClick: openInvite }} />
-        <RailButton item={{ href: "/settings", label: "Configura...", renderIcon: () => <IcSettings /> }} active={isActive("/settings")} />
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 2,
+        }}
+      >
+        <RailButton
+          item={{
+            label: "Convidar",
+            renderIcon: () => <IcInvite />,
+            onClick: openInvite,
+          }}
+        />
+        <RailButton
+          item={{
+            href: "/settings",
+            label: "Configura...",
+            renderIcon: () => <IcSettings />,
+          }}
+          active={isActive("/settings")}
+        />
       </div>
     </nav>
   );
