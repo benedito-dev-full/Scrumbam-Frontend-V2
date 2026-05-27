@@ -46,6 +46,33 @@ type Block = keyof UserPreferences;
 type SubPatch<B extends Block> = NonNullable<UserPreferences[B]>;
 
 /**
+ * Whitelist de chaves aceitas em cada sub-bloco — espelha o DTO do
+ * backend (`UserAppearancePreferencesDto`, `UserLocalePreferencesDto`,
+ * `UserNotificationsPreferencesDto`).
+ *
+ * Existe para sanitizar campos órfãos vindos do `dados.preferences`
+ * polimórfico no banco (ex: `appearance.accent` que foi descontinuado
+ * mas pode estar gravado em usuários antigos). Sem sanitização, o
+ * backend rejeita o PATCH com 400 (`forbidNonWhitelisted: true` no
+ * ValidationPipe global).
+ */
+const ALLOWED_KEYS: Record<Block, ReadonlyArray<string>> = {
+  appearance: ["theme", "density"],
+  locale: ["language", "timezone", "dateFormat"],
+  notifications: ["emailOnMention", "emailDigest", "inAppEnabled"],
+};
+
+function sanitizeBlock<B extends Block>(
+  block: B,
+  patch: SubPatch<B>,
+): SubPatch<B> {
+  const allowed = ALLOWED_KEYS[block];
+  return Object.fromEntries(
+    Object.entries(patch).filter(([k]) => allowed.includes(k)),
+  ) as SubPatch<B>;
+}
+
+/**
  * Hook server-backed para preferências do usuário (Task E1 backend).
  *
  * - Lê via `useMe()` (`GET /auth/me`, cache compartilhado por `qk.auth.me`).
@@ -82,8 +109,11 @@ export function useUserPreferences() {
   >({
     mutationFn: async ({ block, patch }) => {
       if (USE_MOCK) return null;
+      // Sanitiza chaves orfas (ex: accent legado em usuarios antigos) —
+      // backend tem forbidNonWhitelisted: true e rejeitaria com 400.
+      const sanitized = sanitizeBlock(block, patch);
       const body: UpdateMeDto = {
-        preferences: { [block]: patch } as UserPreferences,
+        preferences: { [block]: sanitized } as UserPreferences,
       };
       const { data } = await api.patch("/auth/me", body);
       return data;
