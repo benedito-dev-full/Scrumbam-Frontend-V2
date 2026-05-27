@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Fragment, useState, useEffect, useRef, useMemo } from "react";
-import { ChevronDown, ChevronRight, Plus, Star, Settings2, Search, Folder, List, Users } from "lucide-react";
+import { ChevronDown, ChevronRight, Plus, Star, Settings2, Search, Folder, List, Users, PanelLeftOpen } from "lucide-react";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ import { useSpaces } from "@/hooks/use-projects";
 import { useTeams } from "@/hooks/use-teams";
 import { useToggleBookmark, useBookmarks } from "@/hooks/use-bookmarks";
 import { useAuthStore } from "@/lib/stores/auth";
+import { usePlannerUIStore } from "@/lib/stores/planner-ui";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
 import type { DProjectDto } from "@/lib/types/api";
@@ -899,6 +900,40 @@ function SectionBlock({ section }: { section: Section }) {
   );
 }
 
+/* ─── Aside do Planner (colapsavel) ───────────────────────────────────────── */
+function PlannerAside() {
+  const collapsed = usePlannerUIStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = usePlannerUIStore((s) => s.toggleSidebar);
+
+  if (collapsed) {
+    return (
+      <aside
+        aria-label="Painel do planejador recolhido"
+        className="flex h-full w-10 shrink-0 flex-col items-center border-r border-border bg-sidebar pt-2"
+      >
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label="Expandir painel"
+          title="Expandir painel"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <PanelLeftOpen size={15} strokeWidth={1.7} />
+        </button>
+      </aside>
+    );
+  }
+
+  return (
+    <aside
+      aria-label="Painel do planejador"
+      className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar border-r border-border"
+    >
+      <PlannerPanel />
+    </aside>
+  );
+}
+
 /* ─── Painel principal ────────────────────────────────────────────────────── */
 export function WorkspacePanel() {
   const pathname = usePathname();
@@ -908,14 +943,7 @@ export function WorkspacePanel() {
 
   /* painéis alternativos por rota */
   if (pathname.startsWith("/planner")) {
-    return (
-      <aside
-        aria-label="Painel do planejador"
-        className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar border-r border-border"
-      >
-        <PlannerPanel />
-      </aside>
-    );
+    return <PlannerAside />;
   }
 
   if (pathname.startsWith("/forms")) {

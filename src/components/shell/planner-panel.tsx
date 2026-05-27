@@ -5,6 +5,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AtribuidasAMimSection } from "@/components/shell/planner/atribuidas-a-mim-section";
 import { HojeEAtrasadasSection } from "@/components/shell/planner/hoje-e-atrasadas-section";
 import { PrioridadesSection } from "@/components/shell/planner/prioridades-section";
+import { usePlannerUIStore } from "@/lib/stores/planner-ui";
 
 function Divider() {
   return <div style={{ height: 1, background: "var(--border)", margin: "4px 0" }} />;
@@ -22,6 +23,20 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 export function PlannerPanel() {
+  const setSearchOpen = usePlannerUIStore((s) => s.setSearchOpen);
+  const toggleSidebar = usePlannerUIStore((s) => s.toggleSidebar);
+  const setCreateEventOpen = usePlannerUIStore((s) => s.setCreateEventOpen);
+
+  const headerActions: Array<{
+    Icon: React.ElementType;
+    label: string;
+    onClick: () => void;
+  }> = [
+    { Icon: Search, label: "Buscar eventos", onClick: () => setSearchOpen(true) },
+    { Icon: PanelLeftClose, label: "Recolher painel", onClick: toggleSidebar },
+    { Icon: Plus, label: "Novo evento", onClick: () => setCreateEventOpen(true) },
+  ];
+
   return (
     <>
       {/* header */}
@@ -31,12 +46,18 @@ export function PlannerPanel() {
       }}>
         <span style={{ fontSize: 14, fontWeight: 700, color: "var(--foreground)" }}>Planejador</span>
         <div style={{ display: "flex", gap: 2 }}>
-          {([Search, PanelLeftClose, Plus] as React.ElementType[]).map((Icon, i) => (
-            <button key={i} type="button" style={{
-              width: 26, height: 26, borderRadius: 5, border: 0,
-              background: "none", cursor: "pointer", color: "var(--muted-foreground)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-            }}
+          {headerActions.map(({ Icon, label, onClick }) => (
+            <button
+              key={label}
+              type="button"
+              aria-label={label}
+              title={label}
+              onClick={onClick}
+              style={{
+                width: 26, height: 26, borderRadius: 5, border: 0,
+                background: "none", cursor: "pointer", color: "var(--muted-foreground)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
               onMouseEnter={e => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "var(--foreground)"; }}
               onMouseLeave={e => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--muted-foreground)"; }}
             >

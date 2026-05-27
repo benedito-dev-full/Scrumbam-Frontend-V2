@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Loader2, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { Loader2, Search, X } from "lucide-react";
 
 import { mockPlannerEvents } from "@/lib/mocks/planner-events";
 import type { PlannerView } from "@/lib/types/planner-event";
+import { usePlannerUIStore } from "@/lib/stores/planner-ui";
 
+import { CreateEventModal } from "./_components/create-event-modal";
 import { DayView } from "./_components/day-view";
 import { MonthView } from "./_components/month-view";
 import { PlannerToolbar } from "./_components/planner-toolbar";
@@ -26,6 +30,11 @@ export default function PlannerPage() {
   const [cursorDate, setCursorDate] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const refreshTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const searchOpen = usePlannerUIStore((s) => s.searchOpen);
+  const setSearchOpen = usePlannerUIStore((s) => s.setSearchOpen);
+  const createEventOpen = usePlannerUIStore((s) => s.createEventOpen);
+  const setCreateEventOpen = usePlannerUIStore((s) => s.setCreateEventOpen);
 
   /**
    * Refresh dos eventos do calendario.
@@ -82,6 +91,14 @@ export default function PlannerPage() {
         {...pointerHandlers}
         style={{ touchAction: "pan-y", cursor: isDragging ? "grabbing" : "default" }}
       >
+        {/* Painel de busca de eventos — flutua sobre o calendario */}
+        {searchOpen && (
+          <PlannerSearchPanel
+            events={mockPlannerEvents}
+            onClose={() => setSearchOpen(false)}
+          />
+        )}
+
         {/* Overlay de refresh — bloqueia interacao e mostra spinner enquanto recarrega */}
         {isRefreshing && (
           <div
@@ -123,9 +140,118 @@ export default function PlannerPage() {
       </div>
 
       <PlannerSearchBar />
+
+      {/* Modal de novo evento (acionado pelo "+" do painel do Planner) */}
+      {createEventOpen && (
+        <CreateEventModal
+          date={cursorDate}
+          hour={null}
+          onClose={() => setCreateEventOpen(false)}
+        />
+      )}
     </div>
   );
 }
+
+/**
+ * Painel flutuante de busca de eventos.
+ *
+ * Renderizado dentro do container do carrossel (relative parent), aparece
+ * no topo do calendario cobrindo quase toda a largura mas com altura
+ * pequena. Filtra os eventos por titulo em tempo real.
+ */
+function PlannerSearchPanel({
+  events,
+  onClose,
+}: {
+  events: typeof mockPlannerEvents;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  const results = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return events.slice(0, 8);
+    return events.filter((e) => e.title.toLowerCase().includes(q)).slice(0, 20);
+  }, [query, events]);
+
+  return (
+    <div
+      role="dialog"
+      aria-label="Buscar eventos no Planner"
+      className="absolute left-1/2 top-3 z-30 w-[92%] max-w-3xl -translate-x-1/2 rounded-lg border border-border bg-popover shadow-xl"
+    >
+      <header className="flex items-center gap-2 border-b border-border px-3 py-2.5">
+        <Search size={14} className="text-muted-foreground" />
+        <input
+          ref={inputRef}
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar eventos por titulo…"
+          className="flex-1 bg-transparent text-[13px] text-foreground outline-none placeholder:text-muted-foreground"
+        />
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Fechar busca"
+          className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <X size={13} />
+        </button>
+      </header>
+      <ul className="max-h-[240px] divide-y divide-border overflow-y-auto py-1">
+        {results.length === 0 ? (
+          <li className="px-3 py-4 text-center text-[12px] text-muted-foreground">
+            Nenhum evento encontrado.
+          </li>
+        ) : (
+          results.map((event) => {
+            const start = new Date(event.start);
+            const label = event.allDay
+              ? format(start, "EEE, dd MMM", { locale: ptBR })
+              : format(start, "EEE, dd MMM 'as' HH:mm", { locale: ptBR });
+            return (
+              <li key={event.id}>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-foreground hover:bg-accent"
+                >
+                  <span
+                    aria-hidden
+                    className="h-2 w-2 flex-shrink-0 rounded-full"
+                    style={{ background: EVENT_COLOR_DOT[event.color] }}
+                  />
+                  <span className="flex-1 truncate">{event.title}</span>
+                  <span className="text-[11px] text-muted-foreground">{label}</span>
+                </button>
+              </li>
+            );
+          })
+        )}
+      </ul>
+    </div>
+  );
+}
+
+const EVENT_COLOR_DOT: Record<string, string> = {
+  blue: "#3b82f6",
+  violet: "#8b5cf6",
+  emerald: "#10b981",
+  amber: "#f59e0b",
+  rose: "#f43f5e",
+  slate: "#64748b",
+};
 
 /** Renderiza a view correta para um slide do carrossel. */
 function SlideContent({ view, date }: { view: PlannerView; date: Date }) {
