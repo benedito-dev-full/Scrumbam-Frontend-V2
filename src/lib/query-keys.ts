@@ -74,4 +74,10 @@ export const qk = {
     byProject: (projectId: string) =>
       ["workflow-statuses", "project", projectId] as const,
   },
+  bookmarks: {
+    /** Lista completa de bookmarks do usuário autenticado. */
+    all: ["bookmarks"] as const,
+    /** Lista filtrada por targetType. */
+    byType: (targetType: string) => ["bookmarks", "type", targetType] as const,
+  },
 } as const;

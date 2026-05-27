@@ -97,6 +97,36 @@ export interface DProjectDto {
 
 export type ProjectResponseDto = DProjectDto;
 
+// ─── Bookmarks ────────────────────────────────────────────────────────────────
+
+/** Tipos de item que podem ser favoritados. */
+export type BookmarkTargetType = "space" | "folder" | "list" | "doc" | "team";
+
+/**
+ * Resposta do backend para um bookmark (DVincula -187).
+ *
+ * `id` é o `chave` da DVincula serializado como string.
+ */
+export interface BookmarkDto {
+  id: string;
+  targetId: string;
+  targetType: BookmarkTargetType;
+  criadoEm: string;
+}
+
+/** DTO de criação de bookmark — espelha o CreateBookmarkDto do backend. */
+export interface CreateBookmarkDto {
+  targetId: string;
+  targetType: BookmarkTargetType;
+}
+
+/** Resposta paginada de GET /bookmarks. */
+export interface ListBookmarksResponseDto {
+  items: BookmarkDto[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
 export interface CreateProjectDto {
   nome: string;
   prefix?: string;
