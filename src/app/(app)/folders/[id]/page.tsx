@@ -20,11 +20,12 @@ import {
   TopBtn,
   ListRow,
   AddListRow,
+  DeleteListDialog,
 } from "@/components/shell/entity-page";
 import Link from "next/link";
 import { AgentPopover } from "@/components/spaces/agent-popover";
 import { CreateListDialog } from "@/components/spaces/create-list-dialog";
-import { useProject, useLists } from "@/hooks/use-projects";
+import { useProject, useLists, useArchiveProject } from "@/hooks/use-projects";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 type TabId =
@@ -166,6 +167,8 @@ export default function FolderPage({
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [listDialogOpen, setListDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; nome: string } | null>(null);
+  const { mutate: archiveList, isPending: isDeleting } = useArchiveProject();
 
   const { data: entidade, isLoading } = useProject(id);
   const { data: listas = [] } = useLists(entidade ? id : null);
@@ -852,7 +855,12 @@ export default function FolderPage({
 
             {listas.length > 0 ? (
               listas.map((lista) => (
-                <ListRow key={lista.id} id={lista.id} nome={lista.nome} />
+                <ListRow
+                  key={lista.id}
+                  id={lista.id}
+                  nome={lista.nome}
+                  onDelete={() => setDeleteTarget({ id: lista.id, nome: lista.nome })}
+                />
               ))
             ) : (
               <div
@@ -876,6 +884,19 @@ export default function FolderPage({
         parentName={entidade?.nome ?? ""}
         open={listDialogOpen}
         onOpenChange={setListDialogOpen}
+      />
+      <DeleteListDialog
+        open={!!deleteTarget}
+        listName={deleteTarget?.nome ?? ""}
+        isPending={isDeleting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          archiveList(
+            { id: deleteTarget.id, idClasse: "-352", idPai: id },
+            { onSuccess: () => setDeleteTarget(null) },
+          );
+        }}
       />
     </div>
   );

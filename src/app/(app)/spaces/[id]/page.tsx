@@ -21,13 +21,14 @@ import {
   TopBtn,
   ListRow,
   AddListRow,
+  DeleteListDialog,
 } from "@/components/shell/entity-page";
 import Link from "next/link";
 import { AgentPopover } from "@/components/spaces/agent-popover";
 import { SpaceSwitcher } from "@/components/spaces/space-switcher";
 import { CreateFolderDialog } from "@/components/spaces/create-folder-dialog";
 import { CreateListDialog } from "@/components/spaces/create-list-dialog";
-import { useSpaces, useFolders, useLists } from "@/hooks/use-projects";
+import { useSpaces, useFolders, useLists, useArchiveProject } from "@/hooks/use-projects";
 import { useBookmarks } from "@/hooks/use-bookmarks";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
@@ -171,6 +172,8 @@ export default function SpacePage({
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [listDialogOpen, setListDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; nome: string } | null>(null);
+  const { mutate: archiveList, isPending: isDeleting } = useArchiveProject();
 
   const { data: spaces, isLoading } = useSpaces();
   const entidade = spaces?.find((s) => s.id === id) ?? null;
@@ -1010,7 +1013,12 @@ export default function SpacePage({
 
             {listas.length > 0 ? (
               listas.map((lista) => (
-                <ListRow key={lista.id} id={lista.id} nome={lista.nome} />
+                <ListRow
+                  key={lista.id}
+                  id={lista.id}
+                  nome={lista.nome}
+                  onDelete={() => setDeleteTarget({ id: lista.id, nome: lista.nome })}
+                />
               ))
             ) : (
               <div
@@ -1039,6 +1047,19 @@ export default function SpacePage({
         parentName={entidade?.nome ?? ""}
         open={listDialogOpen}
         onOpenChange={setListDialogOpen}
+      />
+      <DeleteListDialog
+        open={!!deleteTarget}
+        listName={deleteTarget?.nome ?? ""}
+        isPending={isDeleting}
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => {
+          if (!deleteTarget) return;
+          archiveList(
+            { id: deleteTarget.id, idClasse: "-352", idPai: id },
+            { onSuccess: () => setDeleteTarget(null) },
+          );
+        }}
       />
     </div>
   );

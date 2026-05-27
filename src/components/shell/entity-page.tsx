@@ -2,6 +2,16 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 /* ─── Ícones compartilhados entre /spaces/[id] e /folders/[id] ───────────── */
 
@@ -181,138 +191,241 @@ export function TopBtn({
 }
 
 /* ─── Linha de lista (tabela de Lists dentro de space/folder) ────────────── */
-export function ListRow({ id, nome }: { id: string; nome: string }) {
+export function ListRow({
+  id,
+  nome,
+  onDelete,
+}: {
+  id: string;
+  nome: string;
+  onDelete?: () => void;
+}) {
   const [hovered, setHovered] = useState(false);
   return (
-    <Link
-      href={`/lists/${id}`}
+    <div
+      style={{ position: "relative" }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{
-        display: "grid",
-        gridTemplateColumns:
-          "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
-        height: 40,
-        padding: "0 16px",
-        textDecoration: "none",
-        borderBottom: "1px solid var(--border)",
-        background: hovered ? "var(--border)" : "transparent",
-        alignItems: "center",
-      }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-        <IcList />
-        <span
-          style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}
-        >
-          {nome}
-        </span>
-      </div>
-      <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>-</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div
-          style={{
-            flex: 1,
-            height: 4,
-            borderRadius: 2,
-            background: "var(--accent)",
-          }}
-        >
+      <Link
+        href={`/lists/${id}`}
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
+          height: 40,
+          padding: "0 16px",
+          textDecoration: "none",
+          borderBottom: "1px solid var(--border)",
+          background: hovered ? "var(--border)" : "transparent",
+          alignItems: "center",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+          <IcList />
+          <span
+            style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}
+          >
+            {nome}
+          </span>
+        </div>
+        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>-</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div
             style={{
-              width: "0%",
-              height: "100%",
+              flex: 1,
+              height: 4,
               borderRadius: 2,
-              background: "#7c3aed",
+              background: "var(--accent)",
             }}
-          />
+          >
+            <div
+              style={{
+                width: "0%",
+                height: "100%",
+                borderRadius: 2,
+                background: "#7c3aed",
+              }}
+            />
+          </div>
+          <span
+            style={{
+              fontSize: 11,
+              color: "var(--muted-foreground)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            0/0
+          </span>
         </div>
-        <span
+        <div
           style={{
-            fontSize: 11,
+            fontSize: 12,
             color: "var(--muted-foreground)",
-            whiteSpace: "nowrap",
+            display: "flex",
+            alignItems: "center",
           }}
         >
-          0/0
-        </span>
-      </div>
-      <div
-        style={{
-          fontSize: 12,
-          color: "var(--muted-foreground)",
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
-        <svg
-          width={13}
-          height={13}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--muted-foreground)"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          <svg
+            width={13}
+            height={13}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--muted-foreground)"
+            strokeWidth={1.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M3 10h18M8 3v4M16 3v4" />
+          </svg>
+        </div>
+        <div
+          style={{
+            fontSize: 12,
+            color: "var(--muted-foreground)",
+            display: "flex",
+            alignItems: "center",
+          }}
         >
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M3 10h18M8 3v4M16 3v4" />
-        </svg>
-      </div>
-      <div
-        style={{
-          fontSize: 12,
-          color: "var(--muted-foreground)",
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
-        <svg
-          width={13}
-          height={13}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--muted-foreground)"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
+          <svg
+            width={13}
+            height={13}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--muted-foreground)"
+            strokeWidth={1.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M3 10h18M8 3v4M16 3v4" />
+          </svg>
+        </div>
+        <div>
+          <svg
+            width={13}
+            height={13}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--muted-foreground)"
+            strokeWidth={1.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M5 21V4" />
+            <path d="M5 4h13l-2 4 2 4H5" />
+          </svg>
+        </div>
+        <div>
+          <svg
+            width={13}
+            height={13}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--muted-foreground)"
+            strokeWidth={1.6}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
+          </svg>
+        </div>
+        <div />
+      </Link>
+
+      {/* Botão de deletar — aparece no hover */}
+      {hovered && onDelete && (
+        <button
+          type="button"
+          aria-label="Excluir lista"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDelete();
+          }}
+          style={{
+            position: "absolute",
+            right: 10,
+            top: "50%",
+            transform: "translateY(-50%)",
+            display: "grid",
+            placeItems: "center",
+            width: 24,
+            height: 24,
+            borderRadius: 5,
+            border: 0,
+            background: "none",
+            cursor: "pointer",
+            color: "var(--muted-foreground)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--destructive)";
+            e.currentTarget.style.color = "white";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "none";
+            e.currentTarget.style.color = "var(--muted-foreground)";
+          }}
         >
-          <rect x="3" y="4" width="18" height="18" rx="2" />
-          <path d="M3 10h18M8 3v4M16 3v4" />
-        </svg>
-      </div>
-      <div>
-        <svg
-          width={13}
-          height={13}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--muted-foreground)"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M5 21V4" />
-          <path d="M5 4h13l-2 4 2 4H5" />
-        </svg>
-      </div>
-      <div>
-        <svg
-          width={13}
-          height={13}
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="var(--muted-foreground)"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
-        </svg>
-      </div>
-      <div />
-    </Link>
+          <svg
+            width={13}
+            height={13}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
+            <path d="M10 11v6M14 11v6" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ─── Modal de confirmação para excluir lista ─────────────────────────────── */
+export function DeleteListDialog({
+  open,
+  listName,
+  onConfirm,
+  onCancel,
+  isPending,
+}: {
+  open: boolean;
+  listName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending?: boolean;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={(v) => !v && onCancel()}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Excluir lista</AlertDialogTitle>
+          <AlertDialogDescription>
+            Tem certeza que deseja excluir a lista{" "}
+            <strong>&ldquo;{listName}&rdquo;</strong>? Essa ação não pode ser desfeita e todas as tarefas dentro dela serão removidas.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={onCancel} disabled={isPending}>
+            Cancelar
+          </AlertDialogCancel>
+          <AlertDialogAction
+            onClick={onConfirm}
+            disabled={isPending}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isPending ? "Excluindo…" : "Excluir"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
