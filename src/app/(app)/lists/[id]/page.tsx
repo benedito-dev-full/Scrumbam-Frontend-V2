@@ -219,7 +219,11 @@ export default function ListPage({
       ) : view === "board" ? (
         <BoardContent listId={id} tasks={tasks} onOpenTask={setSelectedTask} />
       ) : (
-        <BlocksContent projectId={id} members={members} onOpenTask={setSelectedTask} />
+        <BlocksContent
+          projectId={id}
+          members={members}
+          onOpenTask={setSelectedTask}
+        />
       )}
       <TaskSheet task={selectedTask} onClose={() => setSelectedTask(null)} />
       <CreateTaskModal
@@ -315,53 +319,61 @@ function BoardContent({
 
 // ─── BlocksContent — grid de cards ───────────────────────────────────────────
 
-type BlockSortKey = "recent" | "oldest" | "deadline_asc" | "deadline_desc" | "status";
+type BlockSortKey =
+  | "recent"
+  | "oldest"
+  | "deadline_asc"
+  | "deadline_desc"
+  | "status";
 
 const SORT_OPTIONS: { key: BlockSortKey; label: string }[] = [
-  { key: "recent",       label: "Mais recentes"         },
-  { key: "oldest",       label: "Mais antigas"           },
-  { key: "deadline_asc", label: "Prazo mais próximo"     },
-  { key: "deadline_desc",label: "Prazo mais distante"    },
-  { key: "status",       label: "Status"                 },
+  { key: "recent", label: "Mais recentes" },
+  { key: "oldest", label: "Mais antigas" },
+  { key: "deadline_asc", label: "Prazo mais próximo" },
+  { key: "deadline_desc", label: "Prazo mais distante" },
+  { key: "status", label: "Status" },
 ];
 
 const STATUS_ORDER: Partial<Record<V3Intention, number>> = {
-  EXECUTING:  0,
+  EXECUTING: 0,
   VALIDATING: 1,
-  READY:      2,
-  INBOX:      3,
-  FAILED:     4,
-  DISCARDED:  4,
-  DONE:       5,
-  VALIDATED:  5,
-  CANCELLED:  5,
+  READY: 2,
+  INBOX: 3,
+  FAILED: 4,
+  DISCARDED: 4,
+  DONE: 5,
+  VALIDATED: 5,
+  CANCELLED: 5,
 };
 
 const STATUS_LABEL: Partial<Record<V3Intention, string>> = {
-  EXECUTING:  "Em progresso",
+  EXECUTING: "Em progresso",
   VALIDATING: "Validando",
-  READY:      "Pronto",
-  INBOX:      "Backlog",
-  FAILED:     "Falhou",
-  DISCARDED:  "Descartado",
-  DONE:       "Concluído",
-  VALIDATED:  "Validado",
-  CANCELLED:  "Cancelado",
+  READY: "Pronto",
+  INBOX: "Backlog",
+  FAILED: "Falhou",
+  DISCARDED: "Descartado",
+  DONE: "Concluído",
+  VALIDATED: "Validado",
+  CANCELLED: "Cancelado",
 };
 
 const STATUS_COLOR: Partial<Record<V3Intention, string>> = {
-  EXECUTING:  "#f59e0b",
+  EXECUTING: "#f59e0b",
   VALIDATING: "#a78bfa",
-  READY:      "#60a5fa",
-  INBOX:      "#6b7280",
-  FAILED:     "#ef4444",
-  DISCARDED:  "#ef4444",
-  DONE:       "#22c55e",
-  VALIDATED:  "#22c55e",
-  CANCELLED:  "#6b7280",
+  READY: "#60a5fa",
+  INBOX: "#6b7280",
+  FAILED: "#ef4444",
+  DISCARDED: "#ef4444",
+  DONE: "#22c55e",
+  VALIDATED: "#22c55e",
+  CANCELLED: "#6b7280",
 };
 
-function sortTasks(tasks: TaskResponseDto[], key: BlockSortKey): TaskResponseDto[] {
+function sortTasks(
+  tasks: TaskResponseDto[],
+  key: BlockSortKey,
+): TaskResponseDto[] {
   const copy = [...tasks];
   switch (key) {
     case "recent":
@@ -431,8 +443,12 @@ function BlockDrawer({
           api.put(`/tasks/${taskId}`, { dados: { idBloco: null } }),
         ),
       );
-      void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
-      void queryClient.invalidateQueries({ queryKey: qk.tasks.blockTasks(block.id) });
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.byProject(projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.blockTasks(block.id),
+      });
       setUnlinkSelected(new Set());
     } finally {
       setUnlinking(false);
@@ -500,15 +516,22 @@ function BlockDrawer({
           api.put(`/tasks/${taskId}`, { dados: { idBloco: block.id } }),
         ),
       );
-      void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
-      void queryClient.invalidateQueries({ queryKey: qk.tasks.blockTasks(block.id) });
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.byProject(projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: qk.tasks.blockTasks(block.id),
+      });
       handleCancelLink();
     } finally {
       setLinking(false);
     }
   }
 
-  const { data: tasks = [], isLoading: loadingTasks } = useBlockTasks(block.id, true);
+  const { data: tasks = [], isLoading: loadingTasks } = useBlockTasks(
+    block.id,
+    true,
+  );
   const { done, total, percent } = calcBlockProgress(tasks);
   const endDate = block.dados?.endDate ?? null;
   const dl = deadlineInfo(endDate, percent);
@@ -553,7 +576,14 @@ function BlockDrawer({
             flexShrink: 0,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              marginBottom: 12,
+            }}
+          >
             {/* dot de cor */}
             <span
               style={{
@@ -564,7 +594,14 @@ function BlockDrawer({
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", flex: 1 }}>
+            <span
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: "var(--foreground)",
+                flex: 1,
+              }}
+            >
               {block.nome}
             </span>
             <button
@@ -597,9 +634,19 @@ function BlockDrawer({
           </div>
 
           {/* métricas rápidas */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
             <span style={{ fontSize: 13, color: "var(--muted-foreground)" }}>
-              <span style={{ fontWeight: 700, color: "var(--foreground)" }}>{done}/{total}</span> tarefas
+              <span style={{ fontWeight: 700, color: "var(--foreground)" }}>
+                {done}/{total}
+              </span>{" "}
+              tarefas
             </span>
             <span style={{ color: "#26262d" }}>·</span>
             <span
@@ -615,23 +662,49 @@ function BlockDrawer({
                 color: dl.color,
               }}
             >
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: dl.color }} />
+              <span
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: "50%",
+                  background: dl.color,
+                }}
+              />
               {dl.label}
             </span>
             <span style={{ color: "#26262d" }}>·</span>
-            <span style={{ fontSize: 13, fontWeight: 600, color: percent === 100 ? "#22c55e" : "var(--foreground)" }}>
+            <span
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+                color: percent === 100 ? "#22c55e" : "var(--foreground)",
+              }}
+            >
               {percent}%
             </span>
           </div>
 
           {/* barra de progresso */}
-          <div style={{ marginTop: 10, height: 4, borderRadius: 99, background: "#1f1f25", overflow: "hidden" }}>
+          <div
+            style={{
+              marginTop: 10,
+              height: 4,
+              borderRadius: 99,
+              background: "#1f1f25",
+              overflow: "hidden",
+            }}
+          >
             <div
               style={{
                 height: "100%",
                 width: `${percent}%`,
                 borderRadius: 99,
-                background: percent === 100 ? "#22c55e" : percent > 60 ? "#7c5cff" : "#60a5fa",
+                background:
+                  percent === 100
+                    ? "#22c55e"
+                    : percent > 60
+                      ? "#7c5cff"
+                      : "#60a5fa",
                 transition: "width .4s ease",
               }}
             />
@@ -671,12 +744,19 @@ function BlockDrawer({
                 fontSize: 12,
                 cursor: "pointer",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#3a3a45")}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#2a2a32")}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.borderColor = "#3a3a45")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.borderColor = "#2a2a32")
+              }
             >
               <IcLayers size={12} />
               {currentSort.label}
-              <ChevronDown size={11} style={{ color: "var(--muted-foreground)" }} />
+              <ChevronDown
+                size={11}
+                style={{ color: "var(--muted-foreground)" }}
+              />
             </button>
 
             {sortOpen && (
@@ -703,7 +783,10 @@ function BlockDrawer({
                     <button
                       key={opt.key}
                       type="button"
-                      onClick={() => { setSortKey(opt.key); setSortOpen(false); }}
+                      onClick={() => {
+                        setSortKey(opt.key);
+                        setSortOpen(false);
+                      }}
                       style={{
                         display: "flex",
                         alignItems: "center",
@@ -713,14 +796,21 @@ function BlockDrawer({
                         borderRadius: 5,
                         background: "none",
                         border: 0,
-                        color: sortKey === opt.key ? "var(--foreground)" : "var(--muted-foreground)",
+                        color:
+                          sortKey === opt.key
+                            ? "var(--foreground)"
+                            : "var(--muted-foreground)",
                         fontSize: 13,
                         cursor: "pointer",
                         fontWeight: sortKey === opt.key ? 600 : 400,
                         textAlign: "left",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.background = "var(--accent)")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.background = "none")
+                      }
                     >
                       {opt.label}
                       {sortKey === opt.key && <IcCheck size={13} />}
@@ -748,108 +838,141 @@ function BlockDrawer({
                 />
               ))}
             </div>
-          ) : sorted.map((task, idx) => {
-            const taskColor = STATUS_COLOR[task.status as V3Intention] ?? "#6b7280";
-            const taskLabel = STATUS_LABEL[task.status as V3Intention] ?? task.status;
-            const isTerminal = ["DONE", "VALIDATED", "CANCELLED"].includes(task.status);
-            const isUnlinkChecked = unlinkSelected.has(task.id);
-            return (
-              <div
-                key={task.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "11px 20px",
-                  borderBottom: idx < sorted.length - 1 ? "1px solid #1f1f25" : "none",
-                  cursor: "default",
-                  background: isUnlinkChecked ? "rgba(239,68,68,0.07)" : "transparent",
-                  transition: "background .1s",
-                }}
-                onMouseEnter={(e) => {
-                  if (!isUnlinkChecked)
-                    (e.currentTarget as HTMLDivElement).style.background = "rgba(255,255,255,0.03)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLDivElement).style.background =
-                    isUnlinkChecked ? "rgba(239,68,68,0.07)" : "transparent";
-                }}
-              >
-                {/* checkbox de desvincular */}
-                <span
-                  onClick={() => toggleUnlink(task.id)}
-                  title={isUnlinkChecked ? "Desmarcar" : "Marcar para desvincular"}
+          ) : (
+            sorted.map((task, idx) => {
+              const taskColor =
+                STATUS_COLOR[task.status as V3Intention] ?? "#6b7280";
+              const taskLabel =
+                STATUS_LABEL[task.status as V3Intention] ?? task.status;
+              const isTerminal = ["DONE", "VALIDATED", "CANCELLED"].includes(
+                task.status,
+              );
+              const isUnlinkChecked = unlinkSelected.has(task.id);
+              return (
+                <div
+                  key={task.id}
                   style={{
-                    width: 16,
-                    height: 16,
-                    borderRadius: 4,
-                    border: isUnlinkChecked ? "none" : "1.5px solid #3a3a45",
-                    background: isUnlinkChecked ? "#ef4444" : "transparent",
-                    flexShrink: 0,
-                    display: "grid",
-                    placeItems: "center",
-                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "11px 20px",
+                    borderBottom:
+                      idx < sorted.length - 1 ? "1px solid #1f1f25" : "none",
+                    cursor: "default",
+                    background: isUnlinkChecked
+                      ? "rgba(239,68,68,0.07)"
+                      : "transparent",
                     transition: "background .1s",
                   }}
-                >
-                  {isUnlinkChecked && (
-                    <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                      <path d="M2.5 2.5l5 5M7.5 2.5l-5 5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" />
-                    </svg>
-                  )}
-                </span>
-
-                {/* status dot */}
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: taskColor,
-                    flexShrink: 0,
+                  onMouseEnter={(e) => {
+                    if (!isUnlinkChecked)
+                      (e.currentTarget as HTMLDivElement).style.background =
+                        "rgba(255,255,255,0.03)";
                   }}
-                  title={taskLabel}
-                />
-
-                {/* nome */}
-                <span
-                  style={{
-                    flex: 1,
-                    fontSize: 13,
-                    color: isTerminal ? "var(--muted-foreground)" : "var(--foreground)",
-                    textDecoration: isTerminal ? "line-through" : "none",
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLDivElement).style.background =
+                      isUnlinkChecked ? "rgba(239,68,68,0.07)" : "transparent";
                   }}
                 >
-                  {task.nome}
-                </span>
-
-                {/* dueDate */}
-                {task.dueDate && (
-                  <span style={{ fontSize: 11, color: "var(--muted-foreground)", flexShrink: 0 }}>
-                    {new Date(task.dueDate + "T12:00:00").toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "short",
-                    })}
+                  {/* checkbox de desvincular */}
+                  <span
+                    onClick={() => toggleUnlink(task.id)}
+                    title={
+                      isUnlinkChecked ? "Desmarcar" : "Marcar para desvincular"
+                    }
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 4,
+                      border: isUnlinkChecked ? "none" : "1.5px solid #3a3a45",
+                      background: isUnlinkChecked ? "#ef4444" : "transparent",
+                      flexShrink: 0,
+                      display: "grid",
+                      placeItems: "center",
+                      cursor: "pointer",
+                      transition: "background .1s",
+                    }}
+                  >
+                    {isUnlinkChecked && (
+                      <svg
+                        width="10"
+                        height="10"
+                        viewBox="0 0 10 10"
+                        fill="none"
+                      >
+                        <path
+                          d="M2.5 2.5l5 5M7.5 2.5l-5 5"
+                          stroke="#fff"
+                          strokeWidth="1.5"
+                          strokeLinecap="round"
+                        />
+                      </svg>
+                    )}
                   </span>
-                )}
 
-                {/* status badge */}
-                <span
-                  style={{
-                    fontSize: 11,
-                    padding: "2px 8px",
-                    borderRadius: 4,
-                    background: taskColor + "20",
-                    color: taskColor,
-                    fontWeight: 600,
-                    flexShrink: 0,
-                  }}
-                >
-                  {taskLabel}
-                </span>
-              </div>
-            );
-          })}
+                  {/* status dot */}
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: taskColor,
+                      flexShrink: 0,
+                    }}
+                    title={taskLabel}
+                  />
+
+                  {/* nome */}
+                  <span
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      color: isTerminal
+                        ? "var(--muted-foreground)"
+                        : "var(--foreground)",
+                      textDecoration: isTerminal ? "line-through" : "none",
+                    }}
+                  >
+                    {task.nome}
+                  </span>
+
+                  {/* dueDate */}
+                  {task.dueDate && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "var(--muted-foreground)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {new Date(task.dueDate + "T12:00:00").toLocaleDateString(
+                        "pt-BR",
+                        {
+                          day: "2-digit",
+                          month: "short",
+                        },
+                      )}
+                    </span>
+                  )}
+
+                  {/* status badge */}
+                  <span
+                    style={{
+                      fontSize: 11,
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      background: taskColor + "20",
+                      color: taskColor,
+                      fontWeight: 600,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {taskLabel}
+                  </span>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* barra de desvincular — aparece quando há seleção */}
@@ -865,8 +988,16 @@ function BlockDrawer({
               flexShrink: 0,
             }}
           >
-            <span style={{ flex: 1, fontSize: 12, fontWeight: 600, color: "#ef4444" }}>
-              {unlinkSelected.size} selecionada{unlinkSelected.size !== 1 ? "s" : ""} para desvincular
+            <span
+              style={{
+                flex: 1,
+                fontSize: 12,
+                fontWeight: 600,
+                color: "#ef4444",
+              }}
+            >
+              {unlinkSelected.size} selecionada
+              {unlinkSelected.size !== 1 ? "s" : ""} para desvincular
             </span>
             <button
               type="button"
@@ -900,7 +1031,9 @@ function BlockDrawer({
                 cursor: "pointer",
               }}
             >
-              {unlinking ? "Desvinculando…" : `Desvincular ${unlinkSelected.size}`}
+              {unlinking
+                ? "Desvinculando…"
+                : `Desvincular ${unlinkSelected.size}`}
             </button>
           </div>
         )}
@@ -914,14 +1047,22 @@ function BlockDrawer({
         >
           {/* painel: criar nova tarefa */}
           {addMode === "new" && (
-            <div style={{ padding: "12px 20px", borderBottom: "1px solid #26262d" }}>
+            <div
+              style={{
+                padding: "12px 20px",
+                borderBottom: "1px solid #26262d",
+              }}
+            >
               <input
                 autoFocus
                 value={newTaskName}
                 onChange={(e) => setNewTaskName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleCreateTask();
-                  if (e.key === "Escape") { setAddMode(null); setNewTaskName(""); }
+                  if (e.key === "Escape") {
+                    setAddMode(null);
+                    setNewTaskName("");
+                  }
                 }}
                 placeholder="Nome da nova tarefa…"
                 style={{
@@ -959,7 +1100,10 @@ function BlockDrawer({
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setAddMode(null); setNewTaskName(""); }}
+                  onClick={() => {
+                    setAddMode(null);
+                    setNewTaskName("");
+                  }}
                   style={{
                     height: 30,
                     padding: "0 12px",
@@ -979,13 +1123,20 @@ function BlockDrawer({
 
           {/* painel: vincular tarefa existente — seleção múltipla */}
           {addMode === "link" && (
-            <div style={{ padding: "12px 20px 14px", borderBottom: "1px solid #26262d" }}>
+            <div
+              style={{
+                padding: "12px 20px 14px",
+                borderBottom: "1px solid #26262d",
+              }}
+            >
               {/* busca */}
               <input
                 autoFocus
                 value={linkSearch}
                 onChange={(e) => setLinkSearch(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Escape") handleCancelLink(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") handleCancelLink();
+                }}
                 placeholder="Buscar tarefa existente…"
                 style={{
                   width: "100%",
@@ -1012,7 +1163,13 @@ function BlockDrawer({
                 }}
               >
                 {filtered.length === 0 ? (
-                  <div style={{ padding: "14px 16px", fontSize: 13, color: "var(--muted-foreground)" }}>
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      fontSize: 13,
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
                     {unassigned.length === 0
                       ? "Todas as tarefas já estão em um bloco."
                       : "Nenhuma tarefa encontrada."}
@@ -1031,12 +1188,16 @@ function BlockDrawer({
                           padding: "9px 14px",
                           borderBottom: "1px solid #1f1f25",
                           cursor: "pointer",
-                          background: isChecked ? "rgba(124,92,255,0.10)" : "transparent",
+                          background: isChecked
+                            ? "rgba(124,92,255,0.10)"
+                            : "transparent",
                           transition: "background .1s",
                         }}
                         onMouseEnter={(e) => {
                           if (!isChecked)
-                            (e.currentTarget as HTMLDivElement).style.background = "var(--accent)";
+                            (
+                              e.currentTarget as HTMLDivElement
+                            ).style.background = "var(--accent)";
                         }}
                         onMouseLeave={(e) => {
                           (e.currentTarget as HTMLDivElement).style.background =
@@ -1058,8 +1219,19 @@ function BlockDrawer({
                           }}
                         >
                           {isChecked && (
-                            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                              <path d="M2 5l2.5 2.5L8 3" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            <svg
+                              width="10"
+                              height="10"
+                              viewBox="0 0 10 10"
+                              fill="none"
+                            >
+                              <path
+                                d="M2 5l2.5 2.5L8 3"
+                                stroke="#fff"
+                                strokeWidth="1.5"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              />
                             </svg>
                           )}
                         </span>
@@ -1070,7 +1242,9 @@ function BlockDrawer({
                             width: 7,
                             height: 7,
                             borderRadius: "50%",
-                            background: STATUS_COLOR[t.status as V3Intention] ?? "#6b7280",
+                            background:
+                              STATUS_COLOR[t.status as V3Intention] ??
+                              "#6b7280",
                             flexShrink: 0,
                           }}
                         />
@@ -1095,14 +1269,34 @@ function BlockDrawer({
               </div>
 
               {/* rodapé do painel: contador + confirmar + cancelar */}
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginTop: 10,
+                }}
+              >
                 {selected.size > 0 && (
-                  <span style={{ fontSize: 12, color: "#7c5cff", fontWeight: 600, flex: 1 }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "#7c5cff",
+                      fontWeight: 600,
+                      flex: 1,
+                    }}
+                  >
                     {selected.size} selecionada{selected.size !== 1 ? "s" : ""}
                   </span>
                 )}
                 {selected.size === 0 && (
-                  <span style={{ fontSize: 12, color: "var(--muted-foreground)", flex: 1 }}>
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "var(--muted-foreground)",
+                      flex: 1,
+                    }}
+                  >
                     Clique para selecionar
                   </span>
                 )}
@@ -1132,7 +1326,8 @@ function BlockDrawer({
                     borderRadius: 6,
                     border: "none",
                     background: selected.size > 0 ? "#7c5cff" : "#2a2a32",
-                    color: selected.size > 0 ? "#fff" : "var(--muted-foreground)",
+                    color:
+                      selected.size > 0 ? "#fff" : "var(--muted-foreground)",
                     fontSize: 13,
                     fontWeight: 600,
                     cursor: selected.size > 0 ? "pointer" : "default",
@@ -1169,8 +1364,12 @@ function BlockDrawer({
                   fontSize: 13,
                   cursor: "pointer",
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#7c5cff60")}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#2a2a32")}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.borderColor = "#7c5cff60")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.borderColor = "#2a2a32")
+                }
               >
                 <IcPlus size={13} />
                 Nova tarefa
@@ -1226,25 +1425,52 @@ function deadlineInfo(
     return { label: "Concluído", color: "#22c55e", bg: "rgba(34,197,94,0.12)" };
   }
   if (!isoEnd) {
-    return { label: "Sem prazo", color: "#6b7280", bg: "rgba(107,114,128,0.12)" };
+    return {
+      label: "Sem prazo",
+      color: "#6b7280",
+      bg: "rgba(107,114,128,0.12)",
+    };
   }
   const days = daysUntil(isoEnd);
   if (days < 0)
-    return { label: `${Math.abs(days)}d atrasado`, color: "#ef4444", bg: "rgba(239,68,68,0.12)" };
+    return {
+      label: `${Math.abs(days)}d atrasado`,
+      color: "#ef4444",
+      bg: "rgba(239,68,68,0.12)",
+    };
   if (days < 10)
-    return { label: `${days}d restantes`, color: "#ef4444", bg: "rgba(239,68,68,0.12)" };
+    return {
+      label: `${days}d restantes`,
+      color: "#ef4444",
+      bg: "rgba(239,68,68,0.12)",
+    };
   if (days < 30)
-    return { label: `${days}d restantes`, color: "#f59e0b", bg: "rgba(245,158,11,0.12)" };
-  return { label: `${days}d restantes`, color: "#22c55e", bg: "rgba(34,197,94,0.12)" };
+    return {
+      label: `${days}d restantes`,
+      color: "#f59e0b",
+      bg: "rgba(245,158,11,0.12)",
+    };
+  return {
+    label: `${days}d restantes`,
+    color: "#22c55e",
+    bg: "rgba(34,197,94,0.12)",
+  };
 }
 
-function BlockCard({ block, onClick }: { block: BlockDto; onClick: () => void }) {
+function BlockCard({
+  block,
+  onClick,
+}: {
+  block: BlockDto;
+  onClick: () => void;
+}) {
   const { data: subtasks = [] } = useBlockTasks(block.id, true);
   const { done, total, percent } = calcBlockProgress(subtasks);
   const cor = block.dados?.cor ?? "#7c5cff";
   const endDate = block.dados?.endDate ?? null;
   const dl = deadlineInfo(endDate, percent);
-  const barColor = percent === 100 ? "#22c55e" : percent > 60 ? "#7c5cff" : "#60a5fa";
+  const barColor =
+    percent === 100 ? "#22c55e" : percent > 60 ? "#7c5cff" : "#60a5fa";
 
   return (
     <div
@@ -1261,7 +1487,8 @@ function BlockCard({ block, onClick }: { block: BlockDto; onClick: () => void })
       }}
       onMouseEnter={(e) => {
         (e.currentTarget as HTMLDivElement).style.borderColor = cor + "60";
-        (e.currentTarget as HTMLDivElement).style.boxShadow = `0 4px 20px ${cor}18`;
+        (e.currentTarget as HTMLDivElement).style.boxShadow =
+          `0 4px 20px ${cor}18`;
       }}
       onMouseLeave={(e) => {
         (e.currentTarget as HTMLDivElement).style.borderColor = "#26262d";
@@ -1368,7 +1595,12 @@ function BlockCard({ block, onClick }: { block: BlockDto; onClick: () => void })
           }}
         >
           <span>Progresso</span>
-          <span style={{ fontWeight: 600, color: percent === 100 ? "#22c55e" : "var(--foreground)" }}>
+          <span
+            style={{
+              fontWeight: 600,
+              color: percent === 100 ? "#22c55e" : "var(--foreground)",
+            }}
+          >
             {percent}%
           </span>
         </div>
@@ -1454,8 +1686,12 @@ function BlocksContent({
             fontSize: 13,
             cursor: "pointer",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = "var(--secondary)")}
-          onMouseLeave={(e) => (e.currentTarget.style.background = "var(--card)")}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "var(--secondary)")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "var(--card)")
+          }
         >
           <IcPlus size={13} />
           Novo bloco
@@ -1505,7 +1741,13 @@ function BlocksContent({
               color: "var(--foreground)",
             }}
           />
-          <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted-foreground)" }}>
+          <div
+            style={{
+              marginTop: 8,
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+            }}
+          >
             Enter para salvar · Esc para cancelar
           </div>
         </div>
@@ -1513,14 +1755,35 @@ function BlocksContent({
 
       {/* grid de cards — 3 colunas base, 4 em telas largas */}
       {loadingBlocks ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 16 }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+            gap: 16,
+          }}
+        >
           {[1, 2, 3].map((i) => (
-            <div key={i} style={{ height: 180, borderRadius: 12, background: "var(--card)" }} />
+            <div
+              key={i}
+              style={{
+                height: 180,
+                borderRadius: 12,
+                background: "var(--card)",
+              }}
+            />
           ))}
         </div>
       ) : blocks.length === 0 ? (
-        <div style={{ padding: "60px 0", textAlign: "center", color: "var(--muted-foreground)", fontSize: 13 }}>
-          Nenhum bloco ainda. Crie o primeiro clicando em &quot;Novo bloco&quot;.
+        <div
+          style={{
+            padding: "60px 0",
+            textAlign: "center",
+            color: "var(--muted-foreground)",
+            fontSize: 13,
+          }}
+        >
+          Nenhum bloco ainda. Crie o primeiro clicando em &quot;Novo
+          bloco&quot;.
         </div>
       ) : (
         <div
@@ -1531,14 +1794,22 @@ function BlocksContent({
           }}
         >
           {blocks.map((block) => (
-            <BlockCard key={block.id} block={block} onClick={() => setSelectedBlock(block)} />
+            <BlockCard
+              key={block.id}
+              block={block}
+              onClick={() => setSelectedBlock(block)}
+            />
           ))}
         </div>
       )}
 
       {/* drawer de detalhes do bloco */}
       {selectedBlock && (
-        <BlockDrawer block={selectedBlock} projectId={projectId} onClose={() => setSelectedBlock(null)} />
+        <BlockDrawer
+          block={selectedBlock}
+          projectId={projectId}
+          onClose={() => setSelectedBlock(null)}
+        />
       )}
     </div>
   );
@@ -1753,9 +2024,17 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
         </button>
         <button
           type="button"
-          aria-label={isBookmarked ? "Remover dos favoritos" : "Adicionar aos favoritos"}
+          aria-label={
+            isBookmarked ? "Remover dos favoritos" : "Adicionar aos favoritos"
+          }
           disabled={isPending}
-          onClick={() => toggle({ targetId: id, targetType: "list", bookmarkId: bookmark?.id })}
+          onClick={() =>
+            toggle({
+              targetId: id,
+              targetType: "list",
+              bookmarkId: bookmark?.id,
+            })
+          }
           style={{
             display: "grid",
             width: 24,
@@ -1767,8 +2046,14 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
             border: 0,
             cursor: "pointer",
           }}
-          onMouseEnter={(e) => { e.currentTarget.style.color = "#f59e0b"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.color = isBookmarked ? "#f59e0b" : "var(--muted-foreground)"; }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "#f59e0b";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = isBookmarked
+              ? "#f59e0b"
+              : "var(--muted-foreground)";
+          }}
         >
           <Star
             className="size-3.5"
@@ -2528,6 +2813,10 @@ function TaskRowBackend({
         .join("")
         .toUpperCase()
     : null;
+  const assigneeTeam =
+    !assignee && !isAiAssignee && task.assigneeTeamId
+      ? teams.find((t) => t.id === task.assigneeTeamId)
+      : null;
 
   const dateLabel = task.dueDate
     ? new Date(task.dueDate.slice(0, 10) + "T12:00:00").toLocaleDateString(
@@ -2917,6 +3206,21 @@ function TaskRowBackend({
                   {assignee.nome.split(" ")[0]}
                 </span>
               </>
+            ) : assigneeTeam ? (
+              <>
+                <span
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    background: assigneeTeam.color ?? "var(--muted-foreground)",
+                  }}
+                />
+                <span style={{ fontSize: 12, color: "var(--foreground)" }}>
+                  {assigneeTeam.nome}
+                </span>
+              </>
             ) : (
               <span
                 style={{
@@ -3042,7 +3346,10 @@ function TaskRowBackend({
                 {teams.length > 0 && (
                   <>
                     <div
-                      style={{ borderTop: "1px solid #2e2e38", margin: "6px 4px" }}
+                      style={{
+                        borderTop: "1px solid #2e2e38",
+                        margin: "6px 4px",
+                      }}
                     />
                     <span
                       style={{
@@ -3080,10 +3387,13 @@ function TaskRowBackend({
                               height: 20,
                               borderRadius: "50%",
                               flexShrink: 0,
-                              background: team.color ?? "var(--muted-foreground)",
+                              background:
+                                team.color ?? "var(--muted-foreground)",
                             }}
                           />
-                          <span style={{ flex: 1, fontSize: 13 }}>{team.nome}</span>
+                          <span style={{ flex: 1, fontSize: 13 }}>
+                            {team.nome}
+                          </span>
                           {isTeamSelected && <IcCheck size={12} />}
                         </button>
                       );
