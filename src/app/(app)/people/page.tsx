@@ -12,7 +12,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInviteDialogStore } from "@/lib/stores/invite-dialog";
-import { useOrgMembers, useOrgInvites, useCancelInvite, useRemoveOrgMember, useUpdateOrgMemberRole } from "@/hooks/use-org-members";
+import {
+  useOrgMembers,
+  useOrgInvites,
+  useCancelInvite,
+  useRemoveOrgMember,
+  useUpdateOrgMemberRole,
+} from "@/hooks/use-org-members";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { OrgMemberDto, InviteResponseDto } from "@/lib/types/api";
 
@@ -34,11 +40,18 @@ function initials(name: string) {
 
 function avatarColor(str: string) {
   const colors = [
-    "#3b5bdb", "#ae3ec9", "#0ca678", "#e8590c",
-    "#f03e3e", "#1098ad", "#74b816", "#f59f00",
+    "#3b5bdb",
+    "#ae3ec9",
+    "#0ca678",
+    "#e8590c",
+    "#f03e3e",
+    "#1098ad",
+    "#74b816",
+    "#f59f00",
   ];
   let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < str.length; i++)
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
   return colors[Math.abs(hash) % colors.length];
 }
 
@@ -52,14 +65,20 @@ function roleLabel(role: string) {
 }
 
 function roleBadgeStyle(role: string): React.CSSProperties {
-  if (role === "ADMIN") return { background: "rgba(139,92,246,0.18)", color: "#a78bfa" };
-  if (role === "VIEWER") return { background: "rgba(100,116,139,0.18)", color: "#94a3b8" };
+  if (role === "ADMIN")
+    return { background: "rgba(139,92,246,0.18)", color: "#a78bfa" };
+  if (role === "VIEWER")
+    return { background: "rgba(100,116,139,0.18)", color: "#94a3b8" };
   return { background: "rgba(59,130,246,0.15)", color: "#60a5fa" };
 }
 
 function formatDate(iso: string) {
   try {
-    return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    return new Date(iso).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
   } catch {
     return "—";
   }
@@ -92,8 +111,7 @@ export default function PeoplePage() {
   const filteredInvites = invites.filter((inv) => {
     if (filter === "Membros") return false;
     if (filter === "Convidados") return true;
-    const matchSearch =
-      inv.email.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = inv.email.toLowerCase().includes(search.toLowerCase());
     return matchSearch;
   });
 
@@ -101,8 +119,8 @@ export default function PeoplePage() {
     filter === "Convidados"
       ? filteredInvites.length
       : filter === "Membros"
-      ? filteredMembers.length
-      : filteredMembers.length + filteredInvites.length;
+        ? filteredMembers.length
+        : filteredMembers.length + filteredInvites.length;
 
   const isLoading = loadingMembers || loadingInvites;
 
@@ -114,7 +132,10 @@ export default function PeoplePage() {
           <h1 className="text-[15px] font-semibold text-foreground">
             Gerenciar pessoas
           </h1>
-          <button type="button" className="text-[13px] text-primary hover:underline">
+          <button
+            type="button"
+            className="text-[13px] text-primary hover:underline"
+          >
             Saiba mais
           </button>
         </div>
@@ -167,10 +188,15 @@ export default function PeoplePage() {
                 <button
                   key={opt}
                   type="button"
-                  onClick={() => { setFilter(opt); setFilterOpen(false); }}
+                  onClick={() => {
+                    setFilter(opt);
+                    setFilterOpen(false);
+                  }}
                   className={cn(
                     "flex w-full items-center px-4 py-2 text-[13px] transition-colors hover:bg-muted",
-                    filter === opt ? "text-foreground font-medium" : "text-muted-foreground",
+                    filter === opt
+                      ? "text-foreground font-medium"
+                      : "text-muted-foreground",
                   )}
                 >
                   {opt}
@@ -193,18 +219,28 @@ export default function PeoplePage() {
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-border">
-                  <th className="px-6 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[300px]">Nome</th>
-                  <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[200px]">E-mail</th>
-                  <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[140px]">Função</th>
-                  <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[120px]">Membro desde</th>
-                  <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[120px]">Status</th>
+                  <th className="px-6 py-[var(--row-py)] text-left text-[12px] font-medium text-muted-foreground/70 w-[300px]">
+                    Nome
+                  </th>
+                  <th className="px-4 py-[var(--row-py)] text-left text-[12px] font-medium text-muted-foreground/70 w-[200px]">
+                    E-mail
+                  </th>
+                  <th className="px-4 py-[var(--row-py)] text-left text-[12px] font-medium text-muted-foreground/70 w-[140px]">
+                    Função
+                  </th>
+                  <th className="px-4 py-[var(--row-py)] text-left text-[12px] font-medium text-muted-foreground/70 w-[120px]">
+                    Membro desde
+                  </th>
+                  <th className="px-4 py-[var(--row-py)] text-left text-[12px] font-medium text-muted-foreground/70 w-[120px]">
+                    Status
+                  </th>
                   <th className="w-10" />
                 </tr>
               </thead>
               <tbody>
                 {/* Linha "Convidar pessoas" */}
                 <tr className="border-b border-border hover:bg-muted/30 transition-colors">
-                  <td colSpan={6} className="px-6 py-2.5">
+                  <td colSpan={6} className="px-6 py-[var(--row-py)]">
                     <button
                       type="button"
                       onClick={openInvite}
@@ -229,8 +265,20 @@ export default function PeoplePage() {
 
                 {filteredMembers.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-[13px] text-muted-foreground">
-                      {search ? <>Nenhum membro para <span className="text-foreground">"{search}"</span></> : "Nenhum membro encontrado"}
+                    <td
+                      colSpan={6}
+                      className="px-6 py-8 text-center text-[13px] text-muted-foreground"
+                    >
+                      {search ? (
+                        <>
+                          Nenhum membro para{" "}
+                          <span className="text-foreground">
+                            &ldquo;{search}&rdquo;
+                          </span>
+                        </>
+                      ) : (
+                        "Nenhum membro encontrado"
+                      )}
                     </td>
                   </tr>
                 )}
@@ -251,16 +299,26 @@ export default function PeoplePage() {
                 <table className="w-full text-[13px]">
                   <thead>
                     <tr className="border-b border-border">
-                      <th className="py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[300px]">E-mail convidado</th>
-                      <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[140px]">Função</th>
-                      <th className="px-4 py-2.5 text-left text-[12px] font-medium text-muted-foreground/70 w-[160px]">Expira em</th>
+                      <th className="py-[var(--row-py)] text-left text-[12px] font-medium text-muted-foreground/70 w-[300px]">
+                        E-mail convidado
+                      </th>
+                      <th className="px-4 py-[var(--row-py)] text-left text-[12px] font-medium text-muted-foreground/70 w-[140px]">
+                        Função
+                      </th>
+                      <th className="px-4 py-[var(--row-py)] text-left text-[12px] font-medium text-muted-foreground/70 w-[160px]">
+                        Expira em
+                      </th>
                       <th className="w-10" />
                     </tr>
                   </thead>
                   <tbody>
                     {invites
-                      .filter((inv) =>
-                        !search || inv.email.toLowerCase().includes(search.toLowerCase())
+                      .filter(
+                        (inv) =>
+                          !search ||
+                          inv.email
+                            .toLowerCase()
+                            .includes(search.toLowerCase()),
                       )
                       .map((invite) => (
                         <InviteRow
@@ -280,27 +338,74 @@ export default function PeoplePage() {
       {/* Modal de confirmação de remoção */}
       {removeTarget && (
         <div
-          style={{ position: "fixed", inset: 0, zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.55)" }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 999,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.55)",
+          }}
           onClick={() => setRemoveTarget(null)}
         >
           <div
-            style={{ width: 420, borderRadius: 12, background: "var(--card)", border: "1px solid var(--border)", padding: "28px 28px 24px", boxShadow: "0 24px 64px rgba(0,0,0,0.6)" }}
+            style={{
+              width: 420,
+              borderRadius: 12,
+              background: "var(--card)",
+              border: "1px solid var(--border)",
+              padding: "28px 28px 24px",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+            }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)", marginBottom: 8 }}>
+            <h2
+              style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: "var(--foreground)",
+                marginBottom: 8,
+              }}
+            >
               Remover membro
             </h2>
-            <p style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.6, marginBottom: 24 }}>
-              Tem certeza que deseja remover <strong style={{ color: "var(--foreground)" }}>{removeTarget.nome}</strong> da organização?
-              Essa ação não pode ser desfeita.
+            <p
+              style={{
+                fontSize: 13,
+                color: "var(--muted-foreground)",
+                lineHeight: 1.6,
+                marginBottom: 24,
+              }}
+            >
+              Tem certeza que deseja remover{" "}
+              <strong style={{ color: "var(--foreground)" }}>
+                {removeTarget.nome}
+              </strong>{" "}
+              da organização? Essa ação não pode ser desfeita.
             </p>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <div
+              style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}
+            >
               <button
                 type="button"
                 onClick={() => setRemoveTarget(null)}
-                style={{ height: 34, padding: "0 16px", borderRadius: 7, border: "1px solid var(--border)", background: "none", cursor: "pointer", color: "var(--muted-foreground)", fontSize: 13 }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = "var(--foreground)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = "var(--muted-foreground)"; }}
+                style={{
+                  height: 34,
+                  padding: "0 16px",
+                  borderRadius: 7,
+                  border: "1px solid var(--border)",
+                  background: "none",
+                  cursor: "pointer",
+                  color: "var(--muted-foreground)",
+                  fontSize: 13,
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = "var(--foreground)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = "var(--muted-foreground)";
+                }}
               >
                 Cancelar
               </button>
@@ -311,9 +416,26 @@ export default function PeoplePage() {
                   await removeMember.mutateAsync(removeTarget.userId);
                   setRemoveTarget(null);
                 }}
-                style={{ height: 34, padding: "0 20px", borderRadius: 7, border: "none", background: removeMember.isPending ? "#5a1a1a" : "#c0392b", cursor: removeMember.isPending ? "not-allowed" : "pointer", color: "#fff", fontSize: 13, fontWeight: 600, transition: "background .15s" }}
-                onMouseEnter={(e) => { if (!removeMember.isPending) e.currentTarget.style.background = "#e74c3c"; }}
-                onMouseLeave={(e) => { if (!removeMember.isPending) e.currentTarget.style.background = "#c0392b"; }}
+                style={{
+                  height: 34,
+                  padding: "0 20px",
+                  borderRadius: 7,
+                  border: "none",
+                  background: removeMember.isPending ? "#5a1a1a" : "#c0392b",
+                  cursor: removeMember.isPending ? "not-allowed" : "pointer",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  transition: "background .15s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!removeMember.isPending)
+                    e.currentTarget.style.background = "#e74c3c";
+                }}
+                onMouseLeave={(e) => {
+                  if (!removeMember.isPending)
+                    e.currentTarget.style.background = "#c0392b";
+                }}
               >
                 {removeMember.isPending ? "Removendo..." : "Remover"}
               </button>
@@ -327,13 +449,21 @@ export default function PeoplePage() {
 
 // ─── RoleDropdown ─────────────────────────────────────────────────────────────
 
-const ROLES: Array<{ value: 'ADMIN' | 'MEMBER' | 'VIEWER'; label: string }> = [
-  { value: 'ADMIN',  label: 'Administrador' },
-  { value: 'MEMBER', label: 'Membro' },
-  { value: 'VIEWER', label: 'Visualizador' },
+const ROLES: Array<{ value: "ADMIN" | "MEMBER" | "VIEWER"; label: string }> = [
+  { value: "ADMIN", label: "Administrador" },
+  { value: "MEMBER", label: "Membro" },
+  { value: "VIEWER", label: "Visualizador" },
 ];
 
-function RoleDropdown({ memberId, currentRole, disabled }: { memberId: string; currentRole: 'ADMIN' | 'MEMBER' | 'VIEWER'; disabled?: boolean }) {
+function RoleDropdown({
+  memberId,
+  currentRole,
+  disabled,
+}: {
+  memberId: string;
+  currentRole: "ADMIN" | "MEMBER" | "VIEWER";
+  disabled?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [optimisticRole, setOptimisticRole] = useState(currentRole);
   const ref = useRef<HTMLDivElement>(null);
@@ -343,27 +473,38 @@ function RoleDropdown({ memberId, currentRole, disabled }: { memberId: string; c
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(e.target as Node))
+        setOpen(false);
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, [open]);
 
-  const handleSelect = (role: 'ADMIN' | 'MEMBER' | 'VIEWER') => {
-    if (role === optimisticRole) { setOpen(false); return; }
+  const handleSelect = (role: "ADMIN" | "MEMBER" | "VIEWER") => {
+    if (role === optimisticRole) {
+      setOpen(false);
+      return;
+    }
     setOptimisticRole(role);
     setOpen(false);
-    updateRole.mutate({ userId: memberId, role }, {
-      onError: () => setOptimisticRole(currentRole), // reverte se falhar
-    });
+    updateRole.mutate(
+      { userId: memberId, role },
+      {
+        onError: () => setOptimisticRole(currentRole), // reverte se falhar
+      },
+    );
   };
 
   if (disabled) {
-    return <span className="text-[13px] text-muted-foreground">{roleLabel(optimisticRole)}</span>;
+    return (
+      <span className="text-[13px] text-muted-foreground">
+        {roleLabel(optimisticRole)}
+      </span>
+    );
   }
 
   return (
-    <div ref={ref} style={{ position: 'relative', display: 'inline-block' }}>
+    <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -373,23 +514,55 @@ function RoleDropdown({ memberId, currentRole, disabled }: { memberId: string; c
         <ChevronDown className="size-3 opacity-50" strokeWidth={4.5} />
       </button>
       {open && (
-        <div style={{
-          position: 'absolute', top: '100%', left: 0, zIndex: 50, marginTop: 4,
-          minWidth: 160, borderRadius: 8, overflow: 'hidden',
-          background: '#1e1e1e', border: '1px solid var(--border)',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-        }}>
+        <div
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            zIndex: 50,
+            marginTop: 4,
+            minWidth: 160,
+            borderRadius: 8,
+            overflow: "hidden",
+            background: "#1e1e1e",
+            border: "1px solid var(--border)",
+            boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
+          }}
+        >
           {ROLES.map((r) => (
             <button
               key={r.value}
               type="button"
               onClick={() => handleSelect(r.value)}
-              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '8px 14px', border: 0, background: 'none', cursor: 'pointer', textAlign: 'left' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                width: "100%",
+                padding: "8px 14px",
+                border: 0,
+                background: "none",
+                cursor: "pointer",
+                textAlign: "left",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--border)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "none";
+              }}
             >
-              <span style={{ fontSize: 13, color: optimisticRole === r.value ? '#e4e4e4' : '#888' }}>{r.label}</span>
-              {optimisticRole === r.value && <Check size={13} style={{ color: '#4f7ef7', flexShrink: 0 }} />}
+              <span
+                style={{
+                  fontSize: 13,
+                  color: optimisticRole === r.value ? "#e4e4e4" : "#888",
+                }}
+              >
+                {r.label}
+              </span>
+              {optimisticRole === r.value && (
+                <Check size={13} style={{ color: "#4f7ef7", flexShrink: 0 }} />
+              )}
             </button>
           ))}
         </div>
@@ -400,7 +573,15 @@ function RoleDropdown({ memberId, currentRole, disabled }: { memberId: string; c
 
 // ─── MemberRow ────────────────────────────────────────────────────────────────
 
-function MemberRow({ member, isMe, onRemove }: { member: OrgMemberDto; isMe: boolean; onRemove: () => void }) {
+function MemberRow({
+  member,
+  isMe,
+  onRemove,
+}: {
+  member: OrgMemberDto;
+  isMe: boolean;
+  onRemove: () => void;
+}) {
   const color = avatarColor(member.nome);
   const ini = initials(member.nome);
 
@@ -430,7 +611,11 @@ function MemberRow({ member, isMe, onRemove }: { member: OrgMemberDto; isMe: boo
       </td>
       <td className="px-4 py-3 text-muted-foreground">{member.email ?? "—"}</td>
       <td className="px-4 py-3">
-        <RoleDropdown memberId={member.userId} currentRole={member.role} disabled={isMe} />
+        <RoleDropdown
+          memberId={member.userId}
+          currentRole={member.role}
+          disabled={isMe}
+        />
       </td>
       <td className="px-4 py-3 text-muted-foreground">—</td>
       <td className="px-4 py-3">
@@ -475,7 +660,9 @@ function InviteRow({
             {ini}
           </div>
           <div className="flex items-center gap-2">
-            <span className="font-medium text-muted-foreground">{invite.email}</span>
+            <span className="font-medium text-muted-foreground">
+              {invite.email}
+            </span>
             <span className="rounded-sm bg-amber-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-amber-400">
               Pendente
             </span>
@@ -483,7 +670,9 @@ function InviteRow({
         </div>
       </td>
       <td className="px-4 py-3 text-muted-foreground">{invite.email}</td>
-      <td className="px-4 py-3 text-muted-foreground">{roleLabel(invite.role)}</td>
+      <td className="px-4 py-3 text-muted-foreground">
+        {roleLabel(invite.role)}
+      </td>
       <td className="px-4 py-3 text-muted-foreground">—</td>
       <td className="px-4 py-3">
         <span className="text-[11px] font-medium text-amber-400">
