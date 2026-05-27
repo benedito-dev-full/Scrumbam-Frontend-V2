@@ -522,7 +522,7 @@ export function AddListRow({ onClick }: { onClick?: () => void } = {}) {
         alignItems: "center",
         gap: 7,
         width: "100%",
-        minHeight: "var(--row-h)",
+        minHeight: "calc(var(--row-h) - 4px)",
         padding: "0 16px",
         border: 0,
         background: hovered ? "var(--border)" : "transparent",

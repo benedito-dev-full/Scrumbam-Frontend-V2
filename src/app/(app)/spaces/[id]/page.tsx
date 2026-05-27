@@ -878,7 +878,7 @@ export default function SpacePage({
             {pastas.length > 0 && (
               <section
                 style={{
-                  marginBottom: "var(--section-gap)",
+                  marginBottom: "calc(var(--section-gap) - 4px)",
                   border: "1px solid var(--border)",
                   borderRadius: 10,
                   overflow: "hidden",
