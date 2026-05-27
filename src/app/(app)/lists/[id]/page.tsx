@@ -2976,13 +2976,13 @@ function TaskRowBackend({
                     >
                       <span
                         style={{
-                          width: 16,
-                          height: 16,
+                          width: 20,
+                          height: 20,
                           borderRadius: "50%",
                           flexShrink: 0,
                           background: "var(--accent)",
                           color: "#d8ccff",
-                          fontSize: 9,
+                          fontSize: 11,
                           fontWeight: 700,
                           display: "inline-flex",
                           alignItems: "center",
@@ -2991,7 +2991,7 @@ function TaskRowBackend({
                       >
                         {initials}
                       </span>
-                      <span style={{ flex: 1, fontSize: 12 }}>{m.nome}</span>
+                      <span style={{ flex: 1, fontSize: 13 }}>{m.nome}</span>
                       {isSelected && <IcCheck size={12} />}
                     </button>
                   );
@@ -3011,11 +3011,11 @@ function TaskRowBackend({
                         : "none",
                   }}
                 >
-                  <ClaudeAvatar size={16} />
+                  <ClaudeAvatar size={20} />
                   <span
                     style={{
                       flex: 1,
-                      fontSize: 12,
+                      fontSize: 13,
                       color: "#d97757",
                       fontWeight: 600,
                     }}
@@ -3062,14 +3062,14 @@ function TaskRowBackend({
                         >
                           <span
                             style={{
-                              width: 16,
-                              height: 16,
+                              width: 20,
+                              height: 20,
                               borderRadius: "50%",
                               flexShrink: 0,
                               background: team.color ?? "var(--muted-foreground)",
                             }}
                           />
-                          <span style={{ flex: 1, fontSize: 12 }}>{team.nome}</span>
+                          <span style={{ flex: 1, fontSize: 13 }}>{team.nome}</span>
                           {isTeamSelected && <IcCheck size={12} />}
                         </button>
                       );
@@ -3503,13 +3503,13 @@ function assigneeItemStyle(color: string): React.CSSProperties {
     display: "flex",
     alignItems: "center",
     width: "100%",
-    padding: "5px 8px",
+    padding: "6px 10px",
     borderRadius: 6,
     background: "none",
     border: 0,
     cursor: "pointer",
     color,
-    fontSize: 12,
+    fontSize: 13,
     textAlign: "left" as const,
     transition: "background .1s",
   };
