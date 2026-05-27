@@ -4,13 +4,15 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   X, FileText, Sparkles, CalendarDays, Flag,
-  MoreHorizontal, ChevronDown,
+  MoreHorizontal, ChevronDown, Search, FolderTree,
+  Sparkle, Bug, Wrench, BookOpen, GitPullRequest, HelpCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { GROUP_PILL_STYLE, PRIO_CONFIG, STATUS_CONFIG } from '@/components/lists/config';
+import { useAllLists, type ListWithPath } from '@/hooks/use-projects';
 import { useCreateTask } from '@/hooks/use-tasks';
-import type { TaskPriority, V3Intention } from '@/lib/types/api';
+import type { TaskPriority, TaskType, V3Intention } from '@/lib/types/api';
 
 /* ─── Mapeamentos StatusVisual ↔ V3Intention ─────────────────────────────── */
 
@@ -41,6 +43,26 @@ const VISUAL_TO_BACKEND_PRIO: Record<keyof typeof PRIO_CONFIG, TaskPriority> = {
 
 const ALL_STATUS_VISUAL: StatusVisual[] = ['backlog', 'pronto', 'em-progresso', 'concluido', 'falhou'];
 const ALL_PRIO_VISUAL = Object.keys(PRIO_CONFIG) as (keyof typeof PRIO_CONFIG)[];
+
+/**
+ * Tipos canonicos de DTask espelhando o enum do backend (TaskType em
+ * `lib/types/api.ts`). Cada entry define icone, cor e label visivel.
+ *
+ * Ordem definida deliberadamente — Feature primeiro por ser o caso mais
+ * comum em backlog de produto.
+ */
+const TASK_TYPE_OPTIONS: Array<{
+  value: TaskType;
+  label: string;
+  Icon: typeof Sparkle;
+  color: string;
+}> = [
+  { value: 'FEATURE',     label: 'Feature',    Icon: Sparkle,          color: '#a78bfa' },
+  { value: 'BUG',         label: 'Bug',        Icon: Bug,              color: '#f87171' },
+  { value: 'IMPROVEMENT', label: 'Melhoria',   Icon: Wrench,           color: '#60a5fa' },
+  { value: 'REVIEW',      label: 'Revisao',    Icon: GitPullRequest,   color: '#34d399' },
+  { value: 'EXPLAIN',     label: 'Doc',        Icon: BookOpen,         color: '#fbbf24' },
+];
 
 /* ─── Portal de dropdown ─────────────────────────────────────────────────── */
 
@@ -74,7 +96,11 @@ function DropdownPortal({
 interface CreateTaskModalProps {
   open: boolean;
   onClose: () => void;
-  listId: string;
+  /**
+   * Lista pre-selecionada. Quando omitido, o usuario obrigatoriamente
+   * precisa escolher uma lista no seletor antes de criar.
+   */
+  listId?: string;
   defaultStatus?: StatusVisual;
 }
 
@@ -92,12 +118,17 @@ export function CreateTaskModal({
   const [descricao, setDescricao] = useState('');
   const [status, setStatus] = useState<StatusVisual>(defaultStatus ?? 'backlog');
   const [prioridade, setPrioridade] = useState<keyof typeof PRIO_CONFIG | null>(null);
+  const [tipo, setTipo] = useState<TaskType | null>(null);
+  const [selectedListId, setSelectedListId] = useState<string | null>(listId ?? null);
+  const [listQuery, setListQuery] = useState('');
   const [dataVencimento, setDataVencimento] = useState<string>('');
   const [abaAtiva, setAbaAtiva] = useState<'tarefa' | 'documento'>('tarefa');
-  const [openDropdown, setOpenDropdown] = useState<'status' | 'prioridade' | 'data' | null>(null);
+  const [openDropdown, setOpenDropdown] = useState<'status' | 'prioridade' | 'data' | 'tipo' | 'lista' | null>(null);
   const [descAberta, setDescAberta] = useState(false);
   const [docNome, setDocNome] = useState('');
   const [docPrivado, setDocPrivado] = useState(false);
+
+  const { lists: allLists, isLoading: listsLoading } = useAllLists();
 
   const nomeRef = useRef<HTMLTextAreaElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -105,9 +136,13 @@ export function CreateTaskModal({
   const statusBtnRef = useRef<HTMLButtonElement>(null);
   const dataBtnRef = useRef<HTMLButtonElement>(null);
   const prioridadeBtnRef = useRef<HTMLButtonElement>(null);
+  const tipoBtnRef = useRef<HTMLButtonElement>(null);
+  const listaBtnRef = useRef<HTMLButtonElement>(null);
 
   const statusPortalRef = useRef<HTMLDivElement>(null);
   const dataPortalRef = useRef<HTMLDivElement>(null);
+  const tipoPortalRef = useRef<HTMLDivElement>(null);
+  const listaPortalRef = useRef<HTMLDivElement>(null);
   const prioridadePortalRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -117,13 +152,16 @@ export function CreateTaskModal({
     setDescricao('');
     setStatus(defaultStatus ?? 'backlog');
     setPrioridade(null);
+    setTipo(null);
+    setSelectedListId(listId ?? null);
+    setListQuery('');
     setDataVencimento('');
     setOpenDropdown(null);
     setDescAberta(false);
     setDocNome('');
     setDocPrivado(false);
     setTimeout(() => nomeRef.current?.focus(), 50);
-  }, [open, defaultStatus]);
+  }, [open, defaultStatus, listId]);
 
   useEffect(() => {
     if (!open) return;
@@ -136,7 +174,13 @@ export function CreateTaskModal({
 
   useEffect(() => {
     if (!openDropdown) return;
-    const portalRefs = [statusPortalRef, dataPortalRef, prioridadePortalRef];
+    const portalRefs = [
+      statusPortalRef,
+      dataPortalRef,
+      prioridadePortalRef,
+      tipoPortalRef,
+      listaPortalRef,
+    ];
     function handleClick(e: MouseEvent) {
       const target = e.target as Node;
       const insideModal = modalRef.current?.contains(target);
@@ -154,13 +198,19 @@ export function CreateTaskModal({
       nomeRef.current?.focus();
       return;
     }
+    if (!selectedListId) {
+      toast.error('Selecione uma lista antes de criar a tarefa.');
+      setOpenDropdown('lista');
+      return;
+    }
     const intention = VISUAL_TO_INTENTION[status];
     const backendPrio = prioridade ? VISUAL_TO_BACKEND_PRIO[prioridade] : undefined;
     createTask.mutate(
       {
         titulo: nome.trim(),
-        idProject: listId,
+        idProject: selectedListId,
         priority: backendPrio,
+        tipo: tipo ?? undefined,
         dueDate: dataVencimento || undefined,
       },
       {
@@ -180,6 +230,19 @@ export function CreateTaskModal({
   const statusCfg = STATUS_CONFIG[status];
   const pillStyle = GROUP_PILL_STYLE[status];
   const prioCfg = prioridade ? PRIO_CONFIG[prioridade] : null;
+  const tipoCfg = tipo ? TASK_TYPE_OPTIONS.find((t) => t.value === tipo) : null;
+  const selectedList = allLists.find((l) => l.id === selectedListId) ?? null;
+
+  const filteredLists = listQuery.trim()
+    ? allLists.filter((l) => {
+        const q = listQuery.trim().toLowerCase();
+        return (
+          l.nome.toLowerCase().includes(q) ||
+          l.spaceName.toLowerCase().includes(q) ||
+          (l.folderName?.toLowerCase().includes(q) ?? false)
+        );
+      })
+    : allLists;
 
   return (
     <div
@@ -261,18 +324,91 @@ export function CreateTaskModal({
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 0' }}>
 
-              {/* Chip de tipo */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 18 }}>
-                <button type="button" style={chipStyle}>
+              {/* Seletor de Lista (substitui o antigo chip "Tarefa") */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 18, position: 'relative' }}>
+                <button
+                  ref={listaBtnRef}
+                  type="button"
+                  onClick={() => setOpenDropdown(openDropdown === 'lista' ? null : 'lista')}
+                  style={{ ...chipStyle, maxWidth: 360 }}
+                  title={selectedList ? `${selectedList.spaceName}${selectedList.folderName ? ' › ' + selectedList.folderName : ''} › ${selectedList.nome}` : 'Selecionar lista'}
+                >
+                  <FolderTree size={12} style={{ color: '#7c6ff7', flexShrink: 0 }} />
                   <span style={{
-                    width: 8, height: 8, borderRadius: '50%',
-                    background: pillStyle.bg === '#2a2a31' ? '#5c6bc0' : pillStyle.bg,
-                    display: 'inline-block', flexShrink: 0,
-                    boxShadow: '0 0 0 2px rgba(92,107,192,0.25)',
-                  }} />
-                  <span style={{ fontSize: 12, color: '#c4c4cc' }}>Tarefa</span>
-                  <ChevronDown size={11} color="var(--muted-foreground)" />
+                    fontSize: 12,
+                    color: selectedList ? '#c4c4cc' : '#6b6b74',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}>
+                    {selectedList ? selectedList.nome : 'Selecionar lista…'}
+                  </span>
+                  <ChevronDown size={11} color="var(--muted-foreground)" style={{ flexShrink: 0 }} />
                 </button>
+
+                {openDropdown === 'lista' && (
+                  <DropdownPortal triggerRef={listaBtnRef} portalRef={listaPortalRef}>
+                    <div style={{ ...dropdownStyle, minWidth: 320, padding: 0, overflow: 'hidden' }}>
+                      <div style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '8px 10px', borderBottom: '1px solid var(--border)',
+                      }}>
+                        <Search size={12} style={{ color: '#6b6b74', flexShrink: 0 }} />
+                        <input
+                          autoFocus
+                          type="search"
+                          value={listQuery}
+                          onChange={(e) => setListQuery(e.target.value)}
+                          placeholder="Buscar lista…"
+                          style={{
+                            flex: 1, background: 'none', border: 'none', outline: 'none',
+                            color: '#e4e4e4', fontSize: 12,
+                          }}
+                        />
+                      </div>
+                      <div style={{ maxHeight: 240, overflowY: 'auto', padding: 4 }}>
+                        {listsLoading ? (
+                          <div style={{ padding: '12px 10px', fontSize: 12, color: '#6b6b74', textAlign: 'center' }}>
+                            Carregando listas…
+                          </div>
+                        ) : filteredLists.length === 0 ? (
+                          <div style={{ padding: '12px 10px', fontSize: 12, color: '#6b6b74', textAlign: 'center' }}>
+                            Nenhuma lista encontrada.
+                          </div>
+                        ) : (
+                          filteredLists.map((l: ListWithPath) => (
+                            <button
+                              key={l.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedListId(l.id);
+                                setOpenDropdown(null);
+                                setListQuery('');
+                              }}
+                              data-selected={selectedListId === l.id ? '1' : '0'}
+                              style={{
+                                ...dropdownItemStyle,
+                                flexDirection: 'column',
+                                alignItems: 'flex-start',
+                                gap: 2,
+                                background: selectedListId === l.id ? 'var(--border)' : 'none',
+                              }}
+                              {...itemHover}
+                            >
+                              <span style={{ fontSize: 13, color: '#e4e4e4', lineHeight: 1.2 }}>
+                                {l.nome}
+                              </span>
+                              <span style={{ fontSize: 11, color: '#6b6b74', lineHeight: 1.2 }}>
+                                {l.spaceName}
+                                {l.folderName ? ` › ${l.folderName}` : ''}
+                              </span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </DropdownPortal>
+                )}
               </div>
 
               {/* Título */}
@@ -488,6 +624,57 @@ export function CreateTaskModal({
                             </button>
                           );
                         })}
+                      </div>
+                    </DropdownPortal>
+                  )}
+                </div>
+
+                {/* Tipo de tarefa (Feature/Bug/Melhoria/Revisao/Doc) */}
+                <div>
+                  <button
+                    ref={tipoBtnRef}
+                    type="button"
+                    onClick={() => setOpenDropdown(openDropdown === 'tipo' ? null : 'tipo')}
+                    style={{
+                      ...propChipStyle,
+                      color: tipoCfg ? tipoCfg.color : '#6b6b74',
+                    }}
+                  >
+                    {tipoCfg ? (
+                      <tipoCfg.Icon size={13} />
+                    ) : (
+                      <HelpCircle size={13} />
+                    )}
+                    {tipoCfg ? tipoCfg.label : 'Tipo'}
+                  </button>
+                  {openDropdown === 'tipo' && (
+                    <DropdownPortal triggerRef={tipoBtnRef} portalRef={tipoPortalRef}>
+                      <div style={dropdownStyle}>
+                        <button
+                          type="button"
+                          onClick={() => { setTipo(null); setOpenDropdown(null); }}
+                          style={{ ...dropdownItemStyle, color: '#6b6b74' }}
+                          {...itemHover}
+                        >
+                          Sem tipo
+                        </button>
+                        {TASK_TYPE_OPTIONS.map((opt) => (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            onClick={() => { setTipo(opt.value); setOpenDropdown(null); }}
+                            data-selected={tipo === opt.value ? '1' : '0'}
+                            style={{
+                              ...dropdownItemStyle,
+                              color: opt.color,
+                              background: tipo === opt.value ? 'var(--border)' : 'none',
+                            }}
+                            {...itemHover}
+                          >
+                            <opt.Icon size={12} />
+                            {opt.label}
+                          </button>
+                        ))}
                       </div>
                     </DropdownPortal>
                   )}

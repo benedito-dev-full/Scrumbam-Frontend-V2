@@ -182,6 +182,7 @@ export function useCreateTask() {
       dueDate?: string;
       assigneeId?: string;
       idPai?: string;
+      tipo?: string;
       dados?: Record<string, unknown>;
     }
   >({

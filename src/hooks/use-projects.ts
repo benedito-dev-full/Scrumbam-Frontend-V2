@@ -1,7 +1,8 @@
 'use client';
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { api } from '@/lib/api';
@@ -147,6 +148,138 @@ export function useLists(folderId: string | null) {
     enabled: !!accessToken && !!folderId,
     staleTime: 30_000,
   });
+}
+
+/**
+ * Item retornado por `useAllLists`, com contexto da hierarquia para exibir
+ * o caminho ate a List ("Space › Folder › List").
+ */
+export interface ListWithPath {
+  id: string;
+  nome: string;
+  idPai: string;
+  spaceId: string;
+  spaceName: string;
+  folderId?: string;
+  folderName?: string;
+}
+
+/**
+ * Lista achatada de TODAS as Lists do workspace ativo.
+ *
+ * Coordena 3 niveis de queries: spaces -> (folders + lists diretas) ->
+ * lists das folders. Cada item ja vem com o caminho completo para
+ * exibicao em UIs como o seletor de lista do CreateTaskModal.
+ *
+ * Use com parcimonia em telas onde o usuario tem muitas listas — pode
+ * disparar varias requests paralelas. O cache de 30s evita refetch
+ * agressivo entre montagens consecutivas.
+ *
+ * @returns `{ lists, isLoading }` com as listas ordenadas por caminho.
+ */
+export function useAllLists() {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const { data: spaces = [], isLoading: spacesLoading } = useSpaces();
+
+  const spaceIds = useMemo(() => spaces.map((s) => s.id), [spaces]);
+
+  const folderQueries = useQueries({
+    queries: spaceIds.map((id) => ({
+      queryKey: qk.projects.folders(id),
+      queryFn: async () => {
+        const res = await api.get<{ items: DProjectDto[] }>('/projects', {
+          params: { idClasse: ID_CLASSE_FOLDER, idPai: id, limit: 100 },
+        });
+        return res.data.items;
+      },
+      enabled: !!accessToken && spaceIds.length > 0,
+      staleTime: 30_000,
+    })),
+  });
+
+  const spaceListQueries = useQueries({
+    queries: spaceIds.map((id) => ({
+      queryKey: qk.projects.lists(id),
+      queryFn: async () => {
+        const res = await api.get<{ items: DProjectDto[] }>('/projects', {
+          params: { idClasse: ID_CLASSE_LIST, idPai: id, limit: 100 },
+        });
+        return res.data.items;
+      },
+      enabled: !!accessToken && spaceIds.length > 0,
+      staleTime: 30_000,
+    })),
+  });
+
+  const folders = folderQueries.flatMap((q) => q.data ?? []);
+  const folderIds = folders.map((f) => f.id);
+
+  const folderListQueries = useQueries({
+    queries: folderIds.map((fid) => ({
+      queryKey: qk.projects.lists(fid),
+      queryFn: async () => {
+        const res = await api.get<{ items: DProjectDto[] }>('/projects', {
+          params: { idClasse: ID_CLASSE_LIST, idPai: fid, limit: 100 },
+        });
+        return res.data.items;
+      },
+      enabled: !!accessToken && folderIds.length > 0,
+      staleTime: 30_000,
+    })),
+  });
+
+  const lists: ListWithPath[] = useMemo(() => {
+    const spaceMap = new Map(spaces.map((s) => [s.id, s]));
+    const folderMap = new Map(folders.map((f) => [f.id, f]));
+    const all: ListWithPath[] = [];
+
+    spaceListQueries.forEach((q, i) => {
+      const spaceId = spaceIds[i];
+      const space = spaceMap.get(spaceId);
+      (q.data ?? []).forEach((l) => {
+        all.push({
+          id: l.id,
+          nome: l.nome,
+          idPai: l.idPai!,
+          spaceId,
+          spaceName: space?.nome ?? '',
+        });
+      });
+    });
+
+    folderListQueries.forEach((q, i) => {
+      const folderId = folderIds[i];
+      const folder = folderMap.get(folderId);
+      const space = folder ? spaceMap.get(folder.idPai!) : undefined;
+      (q.data ?? []).forEach((l) => {
+        all.push({
+          id: l.id,
+          nome: l.nome,
+          idPai: l.idPai!,
+          spaceId: space?.id ?? '',
+          spaceName: space?.nome ?? '',
+          folderId: folder?.id,
+          folderName: folder?.nome,
+        });
+      });
+    });
+
+    const dedup = new Map<string, ListWithPath>();
+    all.forEach((l) => dedup.set(l.id, l));
+    return Array.from(dedup.values()).sort((a, b) => {
+      const aPath = `${a.spaceName}/${a.folderName ?? ''}/${a.nome}`;
+      const bPath = `${b.spaceName}/${b.folderName ?? ''}/${b.nome}`;
+      return aPath.localeCompare(bPath, 'pt-BR');
+    });
+  }, [spaces, folders, folderIds, spaceIds, spaceListQueries, folderListQueries]);
+
+  const isLoading =
+    spacesLoading ||
+    folderQueries.some((q) => q.isLoading) ||
+    spaceListQueries.some((q) => q.isLoading) ||
+    folderListQueries.some((q) => q.isLoading);
+
+  return { lists, isLoading };
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
