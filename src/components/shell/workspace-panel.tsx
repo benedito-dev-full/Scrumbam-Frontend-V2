@@ -607,6 +607,92 @@ function useAllFoldersAndLists(spaceIds: string[], enabled: boolean) {
   return { folders, lists };
 }
 
+/* ─── Lista global de favoritos na sidebar ────────────────────────────────── */
+function FavoritesList() {
+  const { data: bookmarks = [], isLoading } = useBookmarks();
+  const { data: spaces = [] } = useSpaces();
+  const { data: teamsData } = useTeams();
+  const teams = teamsData ?? [];
+  const { toggle, isPending } = useToggleBookmark();
+  const pathname = usePathname();
+
+  const spaceIds = useMemo(() => spaces.map((s) => s.id), [spaces]);
+  const { folders, lists } = useAllFoldersAndLists(spaceIds, bookmarks.length > 0);
+
+  if (isLoading || bookmarks.length === 0) return null;
+
+  const spaceMap = new Map(spaces.map((s) => [s.id, s]));
+  const folderMap = new Map((folders as DProjectDto[]).map((f) => [f.id, f]));
+  const listMap = new Map((lists as DProjectDto[]).map((l) => [l.id, l]));
+  const teamMap = new Map((teams as { id: string; nome: string }[]).map((t) => [t.id, t]));
+
+  function resolveHref(bm: { targetId: string; targetType: string }): string {
+    switch (bm.targetType) {
+      case "space": return `/spaces/${bm.targetId}`;
+      case "folder": return `/folders/${bm.targetId}`;
+      case "list": return `/lists/${bm.targetId}`;
+      case "team": return `/teams/${bm.targetId}`;
+      default: return "/";
+    }
+  }
+
+  function resolveName(bm: { targetId: string; targetType: string }): string {
+    switch (bm.targetType) {
+      case "space": return spaceMap.get(bm.targetId)?.nome ?? "Espaço";
+      case "folder": return folderMap.get(bm.targetId)?.nome ?? "Pasta";
+      case "list": return listMap.get(bm.targetId)?.nome ?? "Lista";
+      case "team": return teamMap.get(bm.targetId)?.nome ?? "Time";
+      default: return "Favorito";
+    }
+  }
+
+  function renderIcon(bm: { targetId: string; targetType: string }) {
+    if (bm.targetType === "space") {
+      const space = spaceMap.get(bm.targetId);
+      return <SpaceChipMini name={space?.nome ?? "S"} color={space?.color} />;
+    }
+    if (bm.targetType === "folder") return <Folder className="size-3.5 shrink-0 text-muted-foreground" />;
+    if (bm.targetType === "list") return <List className="size-3.5 shrink-0 text-muted-foreground" />;
+    if (bm.targetType === "team") return <Users className="size-3.5 shrink-0 text-muted-foreground" />;
+    return <IcStar />;
+  }
+
+  return (
+    <>
+      {bookmarks.map((bm) => {
+        const href = resolveHref(bm);
+        const name = resolveName(bm);
+        const isActive = pathname === href;
+        return (
+          <li key={bm.id} className="group relative">
+            <Link
+              href={href}
+              data-active={isActive ? "" : undefined}
+              className={cn(
+                "flex h-[34px] items-center gap-2 rounded-[5px] px-3 text-[13px] text-sidebar-foreground/80 outline-none transition-colors",
+                "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground pr-8",
+                "data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground data-active:font-medium",
+              )}
+            >
+              <span className="shrink-0 text-muted-foreground">{renderIcon(bm)}</span>
+              <span className="flex-1 truncate">{name}</span>
+            </Link>
+            <button
+              type="button"
+              aria-label="Remover dos favoritos"
+              disabled={isPending}
+              onClick={() => toggle({ targetId: bm.targetId, targetType: bm.targetType as "space" | "folder" | "list" | "team", bookmarkId: bm.id })}
+              className="absolute right-2 top-1/2 -translate-y-1/2 grid size-5 place-items-center rounded text-muted-foreground/40 opacity-0 transition-opacity group-hover:opacity-100 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            >
+              <Star className="size-3 fill-yellow-400 text-yellow-400" />
+            </button>
+          </li>
+        );
+      })}
+    </>
+  );
+}
+
 /* ─── Dropdown "Adicionar à sua barra lateral" ────────────────────────────── */
 function AddFavoriteDropdown() {
   const [open, setOpen] = useState(false);
@@ -843,9 +929,12 @@ function SectionBlock({ section }: { section: Section }) {
       {open && (
         <ul className="space-y-1">
           {section.id === "favoritos" ? (
-            <li>
-              <AddFavoriteDropdown />
-            </li>
+            <>
+              <FavoritesList />
+              <li>
+                <AddFavoriteDropdown />
+              </li>
+            </>
           ) : (
             section.items.map((item) => (
               <li key={item.href}>
