@@ -7,6 +7,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { Toaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuthStore } from "@/lib/stores/auth";
+import { PreferencesSync } from "@/components/shell/preferences-sync";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Hidrata o store manualmente — necessário porque persist usa skipHydration: true.
@@ -36,9 +37,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
       storageKey="scrumbam-theme"
     >
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider delay={250}>{children}</TooltipProvider>
+        <TooltipProvider delay={250}>
+          <PreferencesSync>{children}</PreferencesSync>
+        </TooltipProvider>
         <Toaster richColors closeButton position="bottom-right" />
-        <ReactQueryDevtools initialIsOpen={false} buttonPosition="bottom-left" />
+        <ReactQueryDevtools
+          initialIsOpen={false}
+          buttonPosition="bottom-left"
+        />
       </QueryClientProvider>
     </ThemeProvider>
   );

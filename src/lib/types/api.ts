@@ -1,5 +1,35 @@
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
+/**
+ * Preferências pessoais do usuário (Task E1 backend — `DEntidade.dados.preferences`).
+ *
+ * Persistidas via `PATCH /auth/me` com merge por chave de 1º nível:
+ * mandar `appearance` substitui o sub-bloco inteiro, sem tocar `locale`
+ * ou `notifications`. Backend hoje só CONSOME `appearance.theme` ativamente
+ * (next-themes no cliente). Os demais ficam salvos aguardando o backend
+ * ligar a leitura (EmailService, NotificationsService, i18n, etc.).
+ */
+export interface UserAppearancePreferences {
+  theme?: "light" | "dark" | "system";
+  density?: "compact" | "normal" | "cozy";
+  accent?: string;
+}
+export interface UserLocalePreferences {
+  language?: string;
+  timezone?: string;
+  dateFormat?: string;
+}
+export interface UserNotificationsPreferences {
+  emailOnMention?: boolean;
+  emailDigest?: boolean;
+  inAppEnabled?: boolean;
+}
+export interface UserPreferences {
+  appearance?: UserAppearancePreferences;
+  locale?: UserLocalePreferences;
+  notifications?: UserNotificationsPreferences;
+}
+
 export interface UserDto {
   id: string;
   email: string;
@@ -14,6 +44,24 @@ export interface UserDto {
     role: "ADMIN" | "MEMBER" | "VIEWER";
   }>;
   isOrphan: boolean;
+  /**
+   * Preferências pessoais — backend retorna apenas em `GET /auth/me`;
+   * `undefined` para usuários sem preferências salvas.
+   */
+  preferences?: UserPreferences;
+}
+
+/**
+ * Payload aceito por `PATCH /auth/me`. Os campos `preferences.*` fazem
+ * merge por chave de 1º nível no backend.
+ */
+export interface UpdateMeDto {
+  name?: string;
+  email?: string;
+  defaultProjectId?: string;
+  defaultTeamId?: string;
+  onboardingCompleted?: boolean;
+  preferences?: UserPreferences;
 }
 
 export interface AuthResponseDto {
