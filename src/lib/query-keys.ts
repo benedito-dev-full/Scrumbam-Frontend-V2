@@ -82,6 +82,12 @@ export const qk = {
     /** Lista filtrada por targetType. */
     byType: (targetType: string) => ["bookmarks", "type", targetType] as const,
   },
+  nexus: {
+    /** Raiz das queries do chat Nexus — usar para invalidação ampla. */
+    all: ["nexus"] as const,
+    /** Histórico de mensagens do chat Nexus do usuário autenticado. */
+    history: ["nexus", "history"] as const,
+  },
   comments: {
     /** Raiz da árvore de comentários — usar para invalidação ampla. */
     all: ["comments"] as const,
