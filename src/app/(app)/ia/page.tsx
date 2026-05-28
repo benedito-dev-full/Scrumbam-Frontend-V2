@@ -388,60 +388,50 @@ function IAPageContent() {
   return (
     <div
       style={{
-        position: "relative",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
-        justifyContent:
-          tab === "agentes" || hasConversation ? "flex-start" : "center",
         height: "100%",
         width: "100%",
         background: "var(--background)",
-        overflowY: "auto",
-        overflowX: "hidden",
-        paddingTop: tab === "agentes" || hasConversation ? 32 : 0,
+        overflow: "hidden",
       }}
     >
-      {/* ── gradiente aurora no topo ── */}
+      {/* ══ HEADER FIXO — logo Nexus sempre visível ══ */}
       <div
         style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 220,
-          background:
-            "radial-gradient(ellipse 80% 100% at 50% -20%, #7c3aed55 0%, #2563eb44 30%, #ea580c33 60%, transparent 80%)",
-          pointerEvents: "none",
-        }}
-      />
-
-      {/* ── conteúdo central ── */}
-      <div
-        style={{
-          position: "relative",
-          zIndex: 1,
-          width: "100%",
-          maxWidth: 700,
-          padding: "0 24px",
+          flexShrink: 0,
           display: "flex",
-          flexDirection: "column",
           alignItems: "center",
+          justifyContent: "center",
+          height: 72,
+          borderBottom: "1px solid var(--border)",
+          background: "var(--background)",
+          position: "relative",
+          zIndex: 10,
         }}
       >
-        {/* logo Nexus */}
+        {/* gradiente aurora atrás do header */}
         <div
           style={{
+            position: "absolute",
+            inset: 0,
+            background:
+              "radial-gradient(ellipse 80% 200% at 50% -60%, #7c3aed44 0%, #2563eb33 40%, #ea580c22 70%, transparent 100%)",
+            pointerEvents: "none",
+          }}
+        />
+        <div
+          style={{
+            position: "relative",
             display: "flex",
             alignItems: "center",
-            gap: 14,
-            marginBottom: 32,
+            gap: 12,
           }}
         >
-          <NexusIcon size={40} />
+          <NexusIcon size={32} />
           <span
             style={{
-              fontSize: 36,
+              fontSize: 28,
               fontWeight: 700,
               color: "var(--foreground)",
               letterSpacing: "-0.02em",
@@ -451,7 +441,7 @@ function IAPageContent() {
             Nexus
             <sup
               style={{
-                fontSize: 12,
+                fontSize: 10,
                 fontWeight: 400,
                 color: "var(--muted-foreground)",
                 verticalAlign: "super",
@@ -462,71 +452,239 @@ function IAPageContent() {
             </sup>
           </span>
         </div>
+      </div>
 
-        {/* ── área de conversa — só quando há mensagens ou envio em curso ── */}
-        {hasConversation && (
-          <div
-            style={{
-              width: "100%",
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-              marginBottom: 20,
-            }}
-          >
-            {messages.map((msg) => (
+      {/* ══ ÁREA SCROLLÁVEL — mensagens ou conteúdo da aba ══ */}
+      <div
+        style={{
+          flex: 1,
+          overflowY: "auto",
+          overflowX: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 700,
+            padding: "24px 24px 16px",
+          }}
+        >
+          {/* aba "pergunta" — histórico de mensagens */}
+          {tab === "pergunta" && (
+            <>
+              {/* estado vazio: quick actions centralizadas */}
+              {!hasConversation && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: 6,
+                    marginTop: 32,
+                  }}
+                >
+                  {QUICK_ACTIONS.map((a) => (
+                    <button
+                      key={a.label}
+                      type="button"
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "flex-start",
+                        gap: 8,
+                        padding: "12px 14px",
+                        borderRadius: 10,
+                        border: "none",
+                        overflow: "hidden",
+                        background: "var(--card)",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        minWidth: 0,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--accent)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "var(--card)";
+                      }}
+                    >
+                      <span style={{ color: "var(--foreground)", flexShrink: 0 }}>
+                        {a.icon}
+                      </span>
+                      <div style={{ minWidth: 0, width: "100%" }}>
+                        <p
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 700,
+                            color: "var(--foreground)",
+                            marginBottom: 3,
+                          }}
+                        >
+                          {a.label}
+                        </p>
+                        <p
+                          style={{
+                            fontSize: 11,
+                            color: "var(--muted-foreground)",
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {a.sublabel}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* histórico de mensagens */}
+              {hasConversation && (
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 12,
+                  }}
+                >
+                  {messages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      style={{
+                        display: "flex",
+                        justifyContent:
+                          msg.role === "user" ? "flex-end" : "flex-start",
+                      }}
+                    >
+                      <div
+                        style={{
+                          maxWidth: "82%",
+                          padding: "10px 14px",
+                          borderRadius: 14,
+                          background:
+                            msg.role === "user" ? "#2563eb" : "var(--card)",
+                          color:
+                            msg.role === "user" ? "#fff" : "var(--foreground)",
+                          fontSize: 14,
+                          lineHeight: 1.55,
+                          whiteSpace: "pre-wrap",
+                          wordBreak: "break-word",
+                        }}
+                      >
+                        {msg.content}
+                      </div>
+                    </div>
+                  ))}
+
+                  {isSending && (
+                    <div style={{ display: "flex", justifyContent: "flex-start" }}>
+                      <div
+                        style={{
+                          padding: "10px 14px",
+                          borderRadius: 14,
+                          background: "var(--card)",
+                          color: "var(--muted-foreground)",
+                          fontSize: 14,
+                          fontStyle: "italic",
+                        }}
+                      >
+                        Nexus está pensando...
+                      </div>
+                    </div>
+                  )}
+
+                  <div ref={messagesEndRef} />
+                </div>
+              )}
+            </>
+          )}
+
+          {/* aba "agentes" */}
+          {tab === "agentes" && (
+            <div style={{ width: "100%" }}>
               <div
-                key={msg.id}
                 style={{
                   display: "flex",
-                  justifyContent:
-                    msg.role === "user" ? "flex-end" : "flex-start",
+                  gap: 2,
+                  padding: "4px 0 16px",
+                  borderBottom: "1px solid var(--border)",
+                  marginBottom: 20,
                 }}
               >
-                <div
+                <button
+                  type="button"
+                  onClick={() => setTab("pergunta")}
                   style={{
-                    maxWidth: "82%",
-                    padding: "10px 14px",
-                    borderRadius: 14,
-                    background: msg.role === "user" ? "#2563eb" : "var(--card)",
-                    color: msg.role === "user" ? "#fff" : "var(--foreground)",
-                    fontSize: 14,
-                    lineHeight: 1.55,
-                    whiteSpace: "pre-wrap",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {msg.content}
-                </div>
-              </div>
-            ))}
-
-            {isSending && (
-              <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                <div
-                  style={{
-                    padding: "10px 14px",
-                    borderRadius: 14,
-                    background: "var(--card)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    height: 30,
+                    padding: "0 14px",
+                    borderRadius: 7,
+                    border: 0,
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    background: "transparent",
                     color: "var(--muted-foreground)",
-                    fontSize: 14,
-                    fontStyle: "italic",
                   }}
                 >
-                  Nexus está pensando...
-                </div>
+                  <NexusMiniIcon />
+                  Faça uma pergunta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTab("agentes")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    height: 30,
+                    padding: "0 14px",
+                    borderRadius: 7,
+                    border: 0,
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    background: "rgba(34,211,238,0.08)",
+                    color: "#22d3ee",
+                  }}
+                >
+                  <svg
+                    width={14}
+                    height={14}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.8}
+                  >
+                    <path d="M12 12c-2-2.5-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.5 6-4z" />
+                    <path d="M12 12c2 2.5 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.5-6 4z" />
+                  </svg>
+                  Agentes
+                </button>
               </div>
-            )}
+              <AgentsTab />
+            </div>
+          )}
+        </div>
+      </div>
 
-            <div ref={messagesEndRef} />
-          </div>
-        )}
-
-        {/* card com borda gradiente — só na aba "pergunta" */}
-        {tab === "pergunta" && (
+      {/* ══ FOOTER FIXO — input sempre visível ══ */}
+      {tab === "pergunta" && (
+        <div
+          style={{
+            flexShrink: 0,
+            padding: "12px 24px 20px",
+            background: "var(--background)",
+            borderTop: "1px solid var(--border)",
+          }}
+        >
           <div
             style={{
-              width: "100%",
+              maxWidth: 700,
+              margin: "0 auto",
               borderRadius: 16,
               padding: 2,
               background:
@@ -558,17 +716,9 @@ function IAPageContent() {
                     cursor: "pointer",
                     fontSize: 13,
                     fontWeight: 500,
-                    background: tab === "pergunta" ? "#2563eb" : "transparent",
-                    color: tab === "pergunta" ? "#fff" : "var(--foreground)",
+                    background: "#2563eb",
+                    color: "#fff",
                     transition: "background .12s, color .12s",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (tab !== "pergunta")
-                      e.currentTarget.style.background = "var(--accent)";
-                  }}
-                  onMouseLeave={(e) => {
-                    if (tab !== "pergunta")
-                      e.currentTarget.style.background = "transparent";
                   }}
                 >
                   <NexusMiniIcon />
@@ -614,7 +764,7 @@ function IAPageContent() {
                 </button>
               </div>
 
-              {/* textarea — altura maior igual ClickUp */}
+              {/* textarea */}
               <div style={{ padding: "16px 18px 4px" }}>
                 <textarea
                   value={input}
@@ -647,7 +797,6 @@ function IAPageContent() {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {/* botão + */}
                   <button
                     type="button"
                     style={{
@@ -673,13 +822,10 @@ function IAPageContent() {
                   >
                     <Plus size={14} strokeWidth={2} />
                   </button>
-
-                  {/* botão Nexus ▾ com dropdown */}
                   <ModelDropdown />
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  {/* globo */}
                   <button
                     type="button"
                     style={{
@@ -704,7 +850,6 @@ function IAPageContent() {
                     <Globe size={15} strokeWidth={1.7} />
                   </button>
 
-                  {/* enviar */}
                   <button
                     type="button"
                     onClick={handleSend}
@@ -715,12 +860,9 @@ function IAPageContent() {
                       height: 30,
                       borderRadius: 7,
                       border: "none",
-                      cursor:
-                        input.trim() && !isSending ? "pointer" : "default",
+                      cursor: input.trim() && !isSending ? "pointer" : "default",
                       background:
-                        input.trim() && !isSending
-                          ? "#2563eb"
-                          : "var(--accent)",
+                        input.trim() && !isSending ? "#2563eb" : "var(--accent)",
                       color:
                         input.trim() && !isSending
                           ? "#fff"
@@ -732,7 +874,6 @@ function IAPageContent() {
                       opacity: isSending ? 0.7 : 1,
                     }}
                   >
-                    {/* seta preenchida igual ClickUp */}
                     <svg
                       width={13}
                       height={13}
@@ -746,144 +887,8 @@ function IAPageContent() {
               </div>
             </div>
           </div>
-        )}
-
-        {/* aba "agentes" — sem card gradiente, sem quick actions */}
-        {tab === "agentes" && (
-          <div style={{ width: "100%" }}>
-            {/* abas — repetidas fora do card para manter navegação */}
-            <div
-              style={{
-                display: "flex",
-                gap: 2,
-                padding: "4px 0 16px",
-                borderBottom: "1px solid var(--border)",
-                marginBottom: 20,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setTab("pergunta")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  height: 30,
-                  padding: "0 14px",
-                  borderRadius: 7,
-                  border: 0,
-                  cursor: "pointer",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  background: "transparent",
-                  color: "var(--muted-foreground)",
-                }}
-              >
-                <NexusMiniIcon />
-                Faça uma pergunta
-              </button>
-              <button
-                type="button"
-                onClick={() => setTab("agentes")}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 6,
-                  height: 30,
-                  padding: "0 14px",
-                  borderRadius: 7,
-                  border: 0,
-                  cursor: "pointer",
-                  fontSize: 13,
-                  fontWeight: 500,
-                  background: "rgba(34,211,238,0.08)",
-                  color: "#22d3ee",
-                }}
-              >
-                <svg
-                  width={14}
-                  height={14}
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={1.8}
-                >
-                  <path d="M12 12c-2-2.5-4-4-6-4a4 4 0 0 0 0 8c2 0 4-1.5 6-4z" />
-                  <path d="M12 12c2 2.5 4 4 6 4a4 4 0 0 0 0-8c-2 0-4 1.5-6 4z" />
-                </svg>
-                Agentes
-              </button>
-            </div>
-
-            <AgentsTab />
-          </div>
-        )}
-
-        {/* cards de ação rápida — só na aba "pergunta" sem conversa em curso */}
-        {tab === "pergunta" && !hasConversation && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 6,
-              marginTop: 14,
-              width: "100%",
-            }}
-          >
-            {QUICK_ACTIONS.map((a) => (
-              <button
-                key={a.label}
-                type="button"
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "flex-start",
-                  gap: 8,
-                  padding: "12px 14px 12px",
-                  borderRadius: 10,
-                  border: "none",
-                  overflow: "hidden",
-                  background: "var(--card)",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  minWidth: 0,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--accent)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "var(--card)";
-                }}
-              >
-                <span style={{ color: "var(--foreground)", flexShrink: 0 }}>
-                  {a.icon}
-                </span>
-                <div style={{ minWidth: 0, width: "100%" }}>
-                  <p
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "var(--foreground)",
-                      marginBottom: 3,
-                    }}
-                  >
-                    {a.label}
-                  </p>
-                  <p
-                    style={{
-                      fontSize: 11,
-                      color: "var(--muted-foreground)",
-                      lineHeight: 1.4,
-                    }}
-                  >
-                    {a.sublabel}
-                  </p>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
