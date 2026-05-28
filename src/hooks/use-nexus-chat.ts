@@ -140,62 +140,64 @@ export function useNexusChat(): UseNexusChatResult {
     },
 
     onError: (error, _content, context) => {
-      // Rollback do snapshot.
-      if (context?.previous) {
-        queryClient.setQueryData(queryKey, context.previous);
-      } else {
-        queryClient.removeQueries({ queryKey });
-      }
-
-      // Toasts específicos por status — fallback amigável (chat-specific)
-      // em vez do "Erro inesperado" genérico do getApiErrorMessage.
       const axiosError = error as AxiosError;
       const status = axiosError?.response?.status;
       const code = axiosError?.code;
 
-      // 502/503/504: backend sinalizou falha temporária no provider (Gemini)
-      if (status === 502 || status === 503 || status === 504) {
-        toast.error(
-          "A IA está temporariamente indisponível. Tente novamente em alguns instantes.",
-        );
-        return;
-      }
-
-      // 429: rate limit no nosso backend
-      if (status === 429) {
-        toast.error("Muitas requisições. Aguarde alguns segundos.");
-        return;
-      }
-
-      // 400: validação (mensagem específica do backend, se houver)
+      // 400 (validacao do conteudo enviado): nao e falha "de conversa" — eh
+      // problema do input do usuario. Rollback da mensagem otimista + toast.
       if (status === 400) {
+        if (context?.previous) {
+          queryClient.setQueryData(queryKey, context.previous);
+        } else {
+          queryClient.removeQueries({ queryKey });
+        }
         toast.error(getApiErrorMessage(error));
         return;
       }
 
-      // Sem response (network down, CORS, timeout do axios, request cancelado)
-      if (!axiosError?.response || code === "ERR_NETWORK" || code === "ECONNABORTED") {
-        toast.error(
-          "Não foi possível conversar com a IA agora. Verifique sua conexão e tente novamente.",
-        );
-        return;
+      // Demais erros: mantemos a mensagem do user na conversa e injetamos
+      // uma resposta "fake" do assistant com a explicacao amigavel. UX fica
+      // como se a IA tivesse respondido pedindo para tentar de novo, em
+      // vez de um popup vermelho que parece bug do site.
+      let friendlyMsg: string;
+      if (
+        status === 502 ||
+        status === 503 ||
+        status === 504 ||
+        (status && status >= 500)
+      ) {
+        friendlyMsg =
+          "Opa, estou com instabilidade no momento — meu provedor de IA está sobrecarregado. Pode tentar de novo daqui a alguns segundos? 🙏";
+      } else if (status === 429) {
+        friendlyMsg =
+          "Estou recebendo muitas requisições agora. Aguarde um instante e tente novamente, por favor.";
+      } else if (
+        !axiosError?.response ||
+        code === "ERR_NETWORK" ||
+        code === "ECONNABORTED"
+      ) {
+        friendlyMsg =
+          "Não consegui me conectar agora. Verifique sua conexão e tente de novo, por favor.";
+      } else {
+        friendlyMsg =
+          "Hmm, algo deu errado por aqui. Pode tentar reformular sua pergunta ou enviar novamente?";
       }
 
-      // Demais 5xx — também trata como problema temporário (amigável).
-      if (status && status >= 500) {
-        toast.error(
-          "A IA está temporariamente indisponível. Tente novamente em alguns instantes.",
-        );
-        return;
-      }
-
-      // Fallback final — mensagem amigavel + tenta extrair detail do backend.
-      const backendMsg = getApiErrorMessage(error);
-      toast.error(
-        backendMsg !== "Erro inesperado"
-          ? backendMsg
-          : "Algo deu errado ao falar com a IA. Tente novamente.",
-      );
+      // Adiciona o assistant fake APOS a mensagem otimista do user. Nao
+      // invalidamos a query — assim a "resposta de erro" fica visivel ate
+      // o usuario enviar outra mensagem (que dispara refetch e zera o fake).
+      queryClient.setQueryData<NexusChatHistoryResponse>(queryKey, (old) => {
+        const errorMsg: NexusMessage = {
+          id: `temp-err-${Date.now()}`,
+          role: "assistant",
+          content: friendlyMsg,
+          createdAt: new Date().toISOString(),
+        };
+        return old
+          ? { ...old, items: [...old.items, errorMsg] }
+          : { items: [errorMsg], nextCursor: null };
+      });
     },
   });
 
