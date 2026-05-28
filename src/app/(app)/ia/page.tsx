@@ -404,7 +404,6 @@ function IAPageContent() {
           alignItems: "center",
           justifyContent: "center",
           height: 72,
-          borderBottom: "1px solid var(--border)",
           background: "var(--background)",
           position: "relative",
           zIndex: 10,
@@ -678,7 +677,6 @@ function IAPageContent() {
             flexShrink: 0,
             padding: "12px 24px 20px",
             background: "var(--background)",
-            borderTop: "1px solid var(--border)",
           }}
         >
           <div
