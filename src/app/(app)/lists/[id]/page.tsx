@@ -11,6 +11,8 @@ import {
   ChevronDown,
   Columns3,
   List as LucideList,
+  Calendar as LucideCalendar,
+  BarChart3,
 } from "lucide-react";
 import { AgentPopover } from "@/components/spaces/agent-popover";
 import {
@@ -46,6 +48,8 @@ import { STATUS_CONFIG, GROUP_PILL_STYLE } from "@/components/lists/config";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
 import { TaskSheet } from "@/components/tasks/task-sheet";
 import { CreateTaskModal } from "@/components/tasks/create-task-modal";
+import { CalendarView } from "@/components/lists/calendar-view";
+import { GanttView } from "@/components/lists/gantt-view";
 
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
@@ -113,7 +117,11 @@ const LIST_VIEWS = [
   { id: "list", label: "Lista", icon: LucideList },
   { id: "board", label: "Quadro", icon: Columns3 },
   { id: "blocks", label: "Blocos", icon: Layers },
+  { id: "calendar", label: "Calendário", icon: LucideCalendar },
+  { id: "gantt", label: "Gantt", icon: BarChart3 },
 ];
+
+type ListViewId = "list" | "board" | "blocks" | "calendar" | "gantt";
 
 // ─── Tipo de status visual (espelha StatusTarefa da main) ────────────────────
 type StatusVisual =
@@ -147,7 +155,7 @@ export default function ListPage({
   const members =
     projectMembers.length > 0 ? projectMembers : orgAsProjectMembers;
 
-  const [view, setView] = useState<"list" | "board" | "blocks">("list");
+  const [view, setView] = useState<ListViewId>("list");
   const [subtarefasMode, setSubtarefasMode] =
     useState<SubtarefasMode>("recolhidas");
   const [modalOpen, setModalOpen] = useState(false);
@@ -201,14 +209,16 @@ export default function ListPage({
         views={LIST_VIEWS}
         defaultValue="list"
         value={view}
-        onChange={(v) => setView(v as "list" | "board" | "blocks")}
+        onChange={(v) => setView(v as ListViewId)}
       />
-      <Toolbar
-        tarefasCount={loadingTasks ? null : tasksWithoutBlocks.length}
-        onAddTask={() => openModal()}
-        subtarefasMode={subtarefasMode}
-        onSubtarefasMode={setSubtarefasMode}
-      />
+      {view !== "calendar" && view !== "gantt" && (
+        <Toolbar
+          tarefasCount={loadingTasks ? null : tasksWithoutBlocks.length}
+          onAddTask={() => openModal()}
+          subtarefasMode={subtarefasMode}
+          onSubtarefasMode={setSubtarefasMode}
+        />
+      )}
       {view === "list" ? (
         <ListContent
           grupos={grupos}
@@ -223,6 +233,16 @@ export default function ListPage({
       ) : view === "board" ? (
         <BoardContent
           listId={id}
+          tasks={tasksWithoutBlocks}
+          onOpenTask={setSelectedTask}
+        />
+      ) : view === "calendar" ? (
+        <CalendarView
+          tasks={tasksWithoutBlocks}
+          onOpenTask={setSelectedTask}
+        />
+      ) : view === "gantt" ? (
+        <GanttView
           tasks={tasksWithoutBlocks}
           onOpenTask={setSelectedTask}
         />
