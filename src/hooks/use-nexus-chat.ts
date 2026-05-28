@@ -139,22 +139,55 @@ export function useNexusChat(): UseNexusChatResult {
         queryClient.removeQueries({ queryKey });
       }
 
-      // Toasts específicos por status — fallback para mensagem genérica.
+      // Toasts específicos por status — fallback amigável (chat-specific)
+      // em vez do "Erro inesperado" genérico do getApiErrorMessage.
       const axiosError = error as AxiosError;
       const status = axiosError?.response?.status;
-      if (status === 503) {
+      const code = axiosError?.code;
+
+      // 502/503/504: backend sinalizou falha temporária no provider (Gemini)
+      if (status === 502 || status === 503 || status === 504) {
         toast.error(
-          "IA temporariamente indisponível (rate limit). Tente em alguns segundos.",
+          "A IA está temporariamente indisponível. Tente novamente em alguns instantes.",
         );
-      } else if (status === 504) {
-        toast.error("IA demorou demais pra responder. Tente novamente.");
-      } else if (status === 502) {
-        toast.error(
-          "IA temporariamente indisponível. Tente novamente em alguns instantes.",
-        );
-      } else {
-        toast.error(getApiErrorMessage(error));
+        return;
       }
+
+      // 429: rate limit no nosso backend
+      if (status === 429) {
+        toast.error("Muitas requisições. Aguarde alguns segundos.");
+        return;
+      }
+
+      // 400: validação (mensagem específica do backend, se houver)
+      if (status === 400) {
+        toast.error(getApiErrorMessage(error));
+        return;
+      }
+
+      // Sem response (network down, CORS, timeout do axios, request cancelado)
+      if (!axiosError?.response || code === "ERR_NETWORK" || code === "ECONNABORTED") {
+        toast.error(
+          "Não foi possível conversar com a IA agora. Verifique sua conexão e tente novamente.",
+        );
+        return;
+      }
+
+      // Demais 5xx — também trata como problema temporário (amigável).
+      if (status && status >= 500) {
+        toast.error(
+          "A IA está temporariamente indisponível. Tente novamente em alguns instantes.",
+        );
+        return;
+      }
+
+      // Fallback final — mensagem amigavel + tenta extrair detail do backend.
+      const backendMsg = getApiErrorMessage(error);
+      toast.error(
+        backendMsg !== "Erro inesperado"
+          ? backendMsg
+          : "Algo deu errado ao falar com a IA. Tente novamente.",
+      );
     },
   });
 
