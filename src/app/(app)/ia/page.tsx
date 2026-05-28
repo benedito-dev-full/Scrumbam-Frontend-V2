@@ -365,6 +365,9 @@ const MENTIONS_INPUT_STYLE: MentionsInputStyle = {
     },
   },
   suggestions: {
+    // zIndex alto porque renderizamos via suggestionsPortalHost no body
+    // (acima de modais, drawers e qualquer overlay da aplicação).
+    zIndex: 9999,
     list: {
       background: "var(--card)",
       border: "1px solid var(--border)",
@@ -866,6 +869,13 @@ function IAPageContent() {
                   placeholder="Pesquise em seu espaço de trabalho e na web em segundos. Digite @ para mencionar um projeto."
                   allowSuggestionsAboveCursor
                   a11ySuggestionsListLabel="Projetos disponíveis"
+                  // Renderiza o dropdown via React Portal no document.body
+                  // para escapar do clipping/overflow do container pai
+                  // (sem isso o popover aparecia cortado E o suggestionsElement
+                  // ficava parcialmente fora do viewport, quebrando o Tab).
+                  suggestionsPortalHost={
+                    typeof document !== "undefined" ? document.body : undefined
+                  }
                   style={mentionsStyle}
                 >
                   <Mention
