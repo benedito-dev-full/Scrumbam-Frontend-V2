@@ -9,6 +9,7 @@ import {
   type KeyboardEvent,
   type ChangeEvent,
 } from "react";
+import { createPortal } from "react-dom";
 
 export interface MentionSuggestion {
   id: string;
@@ -161,8 +162,15 @@ export function MentionTextarea({
       const start = pos - m[1].length - 1;
       setMentionStart(start);
       setQuery(m[1]);
-      const coords = getCaretCoordinates(el, start);
-      setCaret(coords);
+      // converte coords relativas ao textarea -> viewport (fixed)
+      // para o popover renderizado via portal no body.
+      const rel = getCaretCoordinates(el, start);
+      const rect = el.getBoundingClientRect();
+      setCaret({
+        top: rect.top + rel.top - el.scrollTop,
+        left: rect.left + rel.left - el.scrollLeft,
+        height: rel.height,
+      });
       setOpen(true);
       setHighlight(0);
     } else {
@@ -262,25 +270,11 @@ export function MentionTextarea({
           overflowY: "auto",
         }}
       />
-      {open && filtered.length > 0 && (
-        <div
-          role="listbox"
-          aria-label="Projetos disponiveis"
-          style={{
-            position: "absolute",
-            top: caret.top + caret.height + 6,
-            left: caret.left,
-            zIndex: 1000,
-            minWidth: 240,
-            background: "var(--popover)",
-            color: "var(--popover-foreground)",
-            border: "1px solid var(--border)",
-            borderRadius: 10,
-            boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
-            overflow: "hidden",
-            padding: 4,
-          }}
-        >
+      {open &&
+        filtered.length > 0 &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <PopoverPositioned caret={caret}>
           {filtered.map((s, i) => (
             <button
               key={s.id}
@@ -334,8 +328,72 @@ export function MentionTextarea({
               <span style={{ flex: 1, minWidth: 0 }}>{s.display}</span>
             </button>
           ))}
-        </div>
-      )}
+          </PopoverPositioned>,
+          document.body
+        )}
+    </div>
+  );
+}
+
+/**
+ * Popover posicionado em `position: fixed` com flip vertical quando nao
+ * cabe abaixo do caret. Renderizado via portal no body para escapar de
+ * qualquer overflow/clipping de ancestrais.
+ */
+function PopoverPositioned({
+  caret,
+  children,
+}: {
+  caret: { top: number; left: number; height: number };
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number }>({
+    top: caret.top + caret.height + 6,
+    left: caret.left,
+  });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    let top = caret.top + caret.height + 6;
+    let left = caret.left;
+    // flip pra cima se nao cabe embaixo
+    if (top + rect.height > vh - 8) {
+      top = caret.top - rect.height - 6;
+    }
+    // clamp horizontal
+    if (left + rect.width > vw - 8) {
+      left = Math.max(8, vw - rect.width - 8);
+    }
+    setPos({ top, left });
+  }, [caret]);
+
+  return (
+    <div
+      ref={ref}
+      role="listbox"
+      aria-label="Projetos disponiveis"
+      style={{
+        position: "fixed",
+        top: pos.top,
+        left: pos.left,
+        zIndex: 9999,
+        minWidth: 240,
+        maxHeight: 280,
+        overflowY: "auto",
+        background: "var(--popover)",
+        color: "var(--popover-foreground)",
+        border: "1px solid var(--border)",
+        borderRadius: 10,
+        boxShadow: "0 12px 40px rgba(0,0,0,0.45)",
+        padding: 4,
+      }}
+    >
+      {children}
     </div>
   );
 }
