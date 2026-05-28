@@ -9,10 +9,21 @@ import {
   Globe,
   Check,
   Search,
+  Trash2,
 } from "lucide-react";
 import { NexusIcon, NexusMiniIcon } from "@/components/ia/icons";
 import { AgentsTab } from "@/components/ia/agents-tab";
 import { MentionTextarea } from "@/components/ia/mention-textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useNexusChat } from "@/hooks/use-nexus-chat";
 import { useSpaces } from "@/hooks/use-projects";
 
@@ -342,7 +353,9 @@ function ModelDropdown() {
 function IAPageContent() {
   const [tab, setTab] = useState<Tab>("pergunta");
   const [input, setInput] = useState("");
-  const { messages, isSending, sendMessage } = useNexusChat();
+  const { messages, isSending, sendMessage, clearChat, isClearing } =
+    useNexusChat();
+  const [clearOpen, setClearOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const searchParams = useSearchParams();
   const autoSentRef = useRef(false);
@@ -495,6 +508,90 @@ function IAPageContent() {
             </sup>
           </span>
         </div>
+
+        {/* botão de limpar conversa — canto direito do header */}
+        {tab === "pergunta" && messages.length > 0 && (
+          <div
+            style={{
+              position: "absolute",
+              right: 20,
+              top: "50%",
+              transform: "translateY(-50%)",
+              zIndex: 1,
+            }}
+          >
+            <button
+              type="button"
+              disabled={isClearing || isSending}
+              aria-label="Apagar conversa"
+              title="Apagar conversa"
+              onClick={() => setClearOpen(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "7px 12px",
+                borderRadius: 8,
+                background: "transparent",
+                border: "1px solid var(--border)",
+                color: "var(--muted-foreground)",
+                fontSize: 13,
+                cursor: isClearing || isSending ? "not-allowed" : "pointer",
+                opacity: isClearing || isSending ? 0.5 : 1,
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                if (isClearing || isSending) return;
+                e.currentTarget.style.color = "var(--foreground)";
+                e.currentTarget.style.borderColor =
+                  "var(--muted-foreground)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--muted-foreground)";
+                e.currentTarget.style.borderColor = "var(--border)";
+              }}
+            >
+              <Trash2 size={14} />
+              <span>Nova conversa</span>
+            </button>
+
+            <AlertDialog
+              open={clearOpen}
+              onOpenChange={(v) => !isClearing && setClearOpen(v)}
+            >
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Apagar conversa?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Toda a conversa atual com o Nexus será removida do
+                    histórico. Esta ação não pode ser desfeita.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel
+                    disabled={isClearing}
+                    onClick={() => setClearOpen(false)}
+                  >
+                    Cancelar
+                  </AlertDialogCancel>
+                  <AlertDialogAction
+                    disabled={isClearing}
+                    onClick={() => {
+                      clearChat();
+                      setClearOpen(false);
+                    }}
+                    style={{
+                      background: "#dc2626",
+                      color: "#fff",
+                    }}
+                  >
+                    {isClearing ? "Apagando..." : "Apagar"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
+        )}
       </div>
 
       {/* ══ ÁREA SCROLLÁVEL — mensagens ou conteúdo da aba ══ */}

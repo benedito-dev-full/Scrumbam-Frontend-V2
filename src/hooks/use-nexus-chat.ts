@@ -14,7 +14,11 @@ import { toast } from "sonner";
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { getApiErrorMessage } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
-import { fetchHistory, sendMessage } from "@/lib/services/nexus.service";
+import {
+  clearHistory,
+  fetchHistory,
+  sendMessage,
+} from "@/lib/services/nexus.service";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { NexusChatHistoryResponse, NexusMessage } from "@/lib/types/nexus";
 
@@ -51,6 +55,10 @@ export interface UseNexusChatResult {
   sendMessage: (content: string) => void;
   /** Refetch manual do histórico. */
   refetchHistory: UseQueryResult<NexusChatHistoryResponse, Error>["refetch"];
+  /** Apaga (soft-delete) toda a conversa atual do usuário. */
+  clearChat: () => void;
+  /** `true` enquanto a limpeza da conversa está em voo. */
+  isClearing: boolean;
   /** Acesso direto à mutation (caso o consumer precise de `mutateAsync`/`reset`). */
   sendMutation: UseMutationResult<
     NexusMessage,
@@ -191,6 +199,32 @@ export function useNexusChat(): UseNexusChatResult {
     },
   });
 
+  // ─── Mutation: limpar conversa ────────────────────────────────────────────
+  const clearMutation = useMutation<{ cleared: boolean; count: number }, Error>({
+    mutationFn: () => clearHistory(),
+    onSuccess: ({ count }) => {
+      // Esvazia cache local imediatamente (UI responde sem aguardar refetch).
+      queryClient.setQueryData<NexusChatHistoryResponse>(queryKey, {
+        items: [],
+        nextCursor: null,
+      });
+      void queryClient.invalidateQueries({ queryKey });
+      toast.success(
+        count > 0
+          ? `Conversa apagada (${count} ${count === 1 ? "mensagem" : "mensagens"}).`
+          : "Conversa já estava vazia.",
+      );
+    },
+    onError: (error) => {
+      const axiosError = error as AxiosError;
+      if (!axiosError?.response) {
+        toast.error("Não foi possível apagar a conversa. Verifique sua conexão.");
+        return;
+      }
+      toast.error("Não foi possível apagar a conversa. Tente novamente.");
+    },
+  });
+
   return {
     messages: historyQuery.data?.items ?? [],
     isLoadingHistory: historyQuery.isLoading,
@@ -199,6 +233,8 @@ export function useNexusChat(): UseNexusChatResult {
     sendError: sendMutation.error,
     sendMessage: sendMutation.mutate,
     refetchHistory: historyQuery.refetch,
+    clearChat: clearMutation.mutate,
+    isClearing: clearMutation.isPending,
     sendMutation,
   };
 }

@@ -63,7 +63,9 @@ export async function fetchHistory(
  * @returns `{ cleared: true }` quando OK.
  * @throws {AxiosError} 401 se não autenticado.
  */
-export async function clearHistory(): Promise<{ cleared: boolean }> {
-  const res = await api.delete<{ cleared: boolean }>("/ai/chat/history");
+export async function clearHistory(): Promise<{ cleared: boolean; count: number }> {
+  const res = await api.delete<{ cleared: boolean; count: number }>(
+    "/ai/chat/history",
+  );
   return res.data;
 }
