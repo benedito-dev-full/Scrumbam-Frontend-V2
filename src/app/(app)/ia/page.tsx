@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Plus,
   ChevronDown,
@@ -341,6 +342,18 @@ export default function IAPage() {
   const [input, setInput] = useState("");
   const { messages, isSending, sendMessage } = useNexusChat();
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const searchParams = useSearchParams();
+  const autoSentRef = useRef(false);
+
+  /* lê ?q= da URL e dispara o envio automaticamente uma única vez */
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q && !autoSentRef.current && messages.length === 0 && !isSending) {
+      autoSentRef.current = true;
+      sendMessage(q.trim());
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Há conversa em andamento? Layout muda de "centro vertical" para topo
   // quando o usuário começou a interagir — sem alterar nenhum estilo dos

@@ -25,6 +25,7 @@ import {
 } from "@/components/shell/entity-page";
 import Link from "next/link";
 import { AgentPopover } from "@/components/spaces/agent-popover";
+import { AskIAPopover } from "@/components/spaces/ask-ia-popover";
 import { SpaceSwitcher } from "@/components/spaces/space-switcher";
 import { CreateFolderDialog } from "@/components/spaces/create-folder-dialog";
 import { CreateListDialog } from "@/components/spaces/create-list-dialog";
@@ -377,11 +378,7 @@ export default function SpacePage({
           />
           <AgentPopover projectId={id} projectName={entidade.nome} />
           <TopBtn icon={<Sparkles size={14} />} />
-          <TopBtn
-            icon={<span style={{ fontSize: 13 }}>✦</span>}
-            label="Pergunte à IA"
-            href="https://scrumban.com.br/ia"
-          />
+          <AskIAPopover />
           <div
             style={{
               width: 1,
