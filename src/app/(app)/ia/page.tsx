@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Plus,
@@ -337,7 +337,7 @@ function ModelDropdown() {
   );
 }
 
-export default function IAPage() {
+function IAPageContent() {
   const [tab, setTab] = useState<Tab>("pergunta");
   const [input, setInput] = useState("");
   const { messages, isSending, sendMessage } = useNexusChat();
@@ -885,5 +885,13 @@ export default function IAPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function IAPage() {
+  return (
+    <Suspense>
+      <IAPageContent />
+    </Suspense>
   );
 }
