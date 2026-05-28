@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import { AgentPopover } from "@/components/spaces/agent-popover";
 import { AskIAPopover } from "@/components/spaces/ask-ia-popover";
+import { ShareSpaceModal } from "@/components/spaces/share-space-modal";
 import { SpaceSwitcher } from "@/components/spaces/space-switcher";
 import { CreateFolderDialog } from "@/components/spaces/create-folder-dialog";
 import { CreateListDialog } from "@/components/spaces/create-list-dialog";
@@ -215,6 +216,7 @@ export default function SpacePage({
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [listDialogOpen, setListDialogOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     nome: string;
@@ -389,6 +391,7 @@ export default function SpacePage({
           />
           <button
             type="button"
+            onClick={() => setShareModalOpen(true)}
             style={{
               display: "flex",
               alignItems: "center",
@@ -1136,6 +1139,17 @@ export default function SpacePage({
           </>
         )}
       </div>
+
+      <ShareSpaceModal
+        open={shareModalOpen}
+        spaceName={entidade.nome}
+        onClose={() => setShareModalOpen(false)}
+        onConfirm={(userIds) => {
+          // TODO: integrar com endpoint de permissões do espaço quando disponível
+          console.log("Compartilhar espaço com:", userIds);
+          setShareModalOpen(false);
+        }}
+      />
 
       <CreateFolderDialog
         spaceId={id}
