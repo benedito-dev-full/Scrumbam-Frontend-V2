@@ -10,12 +10,11 @@ import {
   Check,
   Search,
 } from "lucide-react";
-import { MentionsInput, Mention } from "react-mentions";
 import { NexusIcon, NexusMiniIcon } from "@/components/ia/icons";
 import { AgentsTab } from "@/components/ia/agents-tab";
+import { MentionTextarea } from "@/components/ia/mention-textarea";
 import { useNexusChat } from "@/hooks/use-nexus-chat";
 import { useSpaces } from "@/hooks/use-projects";
-import type { MentionsInputStyle } from "react-mentions";
 
 /* ─── Cards de ação rápida ────────────────────────────────────────────────── */
 const QUICK_ACTIONS = [
@@ -340,62 +339,6 @@ function ModelDropdown() {
   );
 }
 
-/** Estilo inline para o MentionsInput seguindo o dark theme do Nexus. */
-const MENTIONS_INPUT_STYLE: MentionsInputStyle = {
-  control: {
-    background: "transparent",
-    fontSize: 14,
-    lineHeight: 1.65,
-  },
-  "&multiLine": {
-    control: {
-      minHeight: 48,
-    },
-    highlighter: {
-      padding: 0,
-      border: "none",
-    },
-    input: {
-      background: "transparent",
-      border: "none",
-      outline: "none",
-      color: "var(--foreground)",
-      resize: "none",
-      padding: 0,
-    },
-  },
-  suggestions: {
-    // zIndex alto porque renderizamos via suggestionsPortalHost no body
-    // (acima de modais, drawers e qualquer overlay da aplicação).
-    zIndex: 9999,
-    list: {
-      background: "var(--card)",
-      border: "1px solid var(--border)",
-      borderRadius: 10,
-      boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
-      overflow: "hidden",
-      maxHeight: 220,
-      overflowY: "auto",
-    },
-    item: {
-      padding: "8px 14px",
-      fontSize: 13,
-      color: "var(--foreground)",
-      cursor: "pointer",
-      "&focused": {
-        background: "var(--accent)",
-      },
-    },
-  },
-};
-
-/** Estilo de highlight da mention dentro do input. */
-const MENTION_HIGHLIGHT_STYLE: React.CSSProperties = {
-  background: "rgba(37,99,235,0.2)",
-  borderRadius: 4,
-  color: "#60a5fa",
-};
-
 function IAPageContent() {
   const [tab, setTab] = useState<Tab>("pergunta");
   const [input, setInput] = useState("");
@@ -411,19 +354,12 @@ function IAPageContent() {
     [spaces]
   );
 
-  const mentionsStyle = useMemo(
-    (): MentionsInputStyle => ({
-      ...MENTIONS_INPUT_STYLE,
-      "&multiLine": {
-        ...MENTIONS_INPUT_STYLE["&multiLine"],
-        input: {
-          ...MENTIONS_INPUT_STYLE["&multiLine"]?.input,
-          opacity: isSending ? 0.6 : 1,
-        },
-      },
-    }),
-    [isSending]
-  );
+  /**
+   * Mapa acumulado de mentions inseridas no input atual (display -> id).
+   * Usado em serializeMentions para converter `@Display` -> `[Display](projectId:id)`.
+   * Resetado ao enviar a mensagem.
+   */
+  const mentionMapRef = useRef<Map<string, string>>(new Map());
 
   /* lê ?q= da URL e dispara o envio automaticamente uma única vez */
   useEffect(() => {
@@ -450,10 +386,25 @@ function IAPageContent() {
     });
   }, [messages.length, isSending]);
 
+  /**
+   * Substitui `@Display` (literal no textarea) por `[Display](projectId:id)`
+   * usando o mapa acumulado de mentions. Itera por display de tamanho
+   * decrescente para evitar prefix collision (ex: "Foo" matchar antes de
+   * "Foo Bar").
+   */
   function serializeMentions(raw: string): string {
-    // react-mentions armazena internamente como @[Nome](id)
-    // serializar para o backend como [Nome](projectId:id)
-    return raw.replace(/@\[([^\]]+)\]\(([^)]+)\)/g, "[$1](projectId:$2)");
+    const entries = Array.from(mentionMapRef.current.entries()).sort(
+      (a, b) => b[0].length - a[0].length
+    );
+    let out = raw;
+    for (const [display, id] of entries) {
+      const escaped = display.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      out = out.replace(
+        new RegExp(`@${escaped}(?=\\s|$|[.,;!?])`, "g"),
+        `[${display}](projectId:${id})`
+      );
+    }
+    return out;
   }
 
   function handleSend() {
@@ -461,6 +412,7 @@ function IAPageContent() {
     if (!content || isSending) return;
     sendMessage(serializeMentions(content));
     setInput("");
+    mentionMapRef.current.clear();
   }
 
   function handleKeyDown(
@@ -469,8 +421,8 @@ function IAPageContent() {
       | React.KeyboardEvent<HTMLInputElement>
   ) {
     // Enter envia; Shift+Enter quebra linha (padrão chat).
-    // Quando o popover de suggestions está aberto, react-mentions
-    // intercepta Enter internamente — não chegamos aqui nesse caso.
+    // Quando o popover de @mention está aberto, MentionTextarea intercepta
+    // Enter/Tab internamente e nem chama este onKeyDown.
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -861,57 +813,17 @@ function IAPageContent() {
                   opacity: isSending ? 0.6 : 1,
                 }}
               >
-                <MentionsInput
+                <MentionTextarea
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={setInput}
                   onKeyDown={handleKeyDown}
                   disabled={isSending}
+                  suggestions={spaceSuggestions}
+                  onMentionAdded={(display, id) => {
+                    mentionMapRef.current.set(display, id);
+                  }}
                   placeholder="Pesquise em seu espaço de trabalho e na web em segundos. Digite @ para mencionar um projeto."
-                  allowSuggestionsAboveCursor
-                  a11ySuggestionsListLabel="Projetos disponíveis"
-                  // Renderiza o dropdown via React Portal no document.body
-                  // para escapar do clipping/overflow do container pai
-                  // (sem isso o popover aparecia cortado E o suggestionsElement
-                  // ficava parcialmente fora do viewport, quebrando o Tab).
-                  suggestionsPortalHost={
-                    typeof document !== "undefined" ? document.body : undefined
-                  }
-                  style={mentionsStyle}
-                >
-                  <Mention
-                    trigger="@"
-                    data={spaceSuggestions}
-                    markup="@[__display__](__id__)"
-                    appendSpaceOnAdd
-                    style={MENTION_HIGHLIGHT_STYLE}
-                    renderSuggestion={(suggestion, _search, highlightedDisplay) => (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: 5,
-                            background: "#2563eb22",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 12,
-                            flexShrink: 0,
-                          }}
-                        >
-                          #
-                        </span>
-                        <span>{highlightedDisplay}</span>
-                      </div>
-                    )}
-                  />
-                </MentionsInput>
+                />
               </div>
 
               {/* rodapé do card */}
