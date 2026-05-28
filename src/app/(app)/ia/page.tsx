@@ -14,6 +14,7 @@ import {
 import { NexusIcon, NexusMiniIcon } from "@/components/ia/icons";
 import { AgentsTab } from "@/components/ia/agents-tab";
 import { MentionTextarea } from "@/components/ia/mention-textarea";
+import { MessageContent } from "@/components/ia/message-content";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -712,7 +713,10 @@ function IAPageContent() {
                           wordBreak: "break-word",
                         }}
                       >
-                        {msg.content}
+                        <MessageContent
+                          content={msg.content}
+                          variant={msg.role === "user" ? "user" : "assistant"}
+                        />
                       </div>
                     </div>
                   ))}
