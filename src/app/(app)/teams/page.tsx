@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -11,7 +11,15 @@ import {
   Search,
   LayoutGrid,
   List,
+  Check,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useCreateTeam, useTeams, useDeleteTeam } from "@/hooks/use-teams";
 import { useAuthStore } from "@/lib/stores/auth";
 
@@ -26,6 +34,8 @@ interface TeamLocal {
   color: string;
   icon?: string;
   criadoEm: string;
+  /** Papel do usuario logado no time (do TeamResponseDto.myCargo). */
+  myCargo?: "LEAD" | "MEMBER" | null;
 }
 
 const STORAGE_KEY = "scrumban_teams_proto";
@@ -1047,7 +1057,148 @@ function TeamCard({
    TEAMS LIST — tela com times existentes
 ══════════════════════════════════════════════════════════════════ */
 
-type FilterId = "membros" | "criado" | "criador" | "classificar";
+/**
+ * Botao de filtro generico estilo "topbar" (membros/criado/criador/classificar).
+ * Mantem visual igual ao botao antigo + dropdown shadcn/Base UI.
+ */
+function FilterDropdown<T extends string>({
+  label,
+  active,
+  options,
+  value,
+  onChange,
+  clearable = false,
+}: {
+  label: string;
+  active: boolean;
+  options: { id: T; label: string }[];
+  value: T | null;
+  onChange: (v: T | null) => void;
+  /** Se true, mostra item "Todas" no topo para limpar a selecao. */
+  clearable?: boolean;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <button
+            type="button"
+            style={{
+              height: 28,
+              padding: "0 10px",
+              borderRadius: 6,
+              border: "1px solid var(--border)",
+              background: active ? "var(--border)" : "none",
+              cursor: "pointer",
+              color: active ? "var(--foreground)" : "var(--muted-foreground)",
+              fontSize: 12,
+              fontWeight: 500,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              maxWidth: 200,
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+            onMouseEnter={(e) => {
+              if (!active) e.currentTarget.style.color = "var(--foreground)";
+            }}
+            onMouseLeave={(e) => {
+              if (!active)
+                e.currentTarget.style.color = "var(--muted-foreground)";
+            }}
+          >
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
+              {label}
+            </span>
+            <ChevronDown size={11} strokeWidth={2} />
+          </button>
+        }
+      />
+      <DropdownMenuContent align="start" sideOffset={6} className="min-w-44">
+        <DropdownMenuGroup>
+          {clearable && (
+            <DropdownMenuItem
+              className="text-[13px]"
+              onClick={() => onChange(null)}
+            >
+              <span style={{ flex: 1 }}>Todas</span>
+              {value === null && <Check size={13} strokeWidth={2} />}
+            </DropdownMenuItem>
+          )}
+          {options.map((opt) => (
+            <DropdownMenuItem
+              key={opt.id}
+              className="text-[13px]"
+              onClick={() => onChange(opt.id)}
+            >
+              <span style={{ flex: 1 }}>{opt.label}</span>
+              {value === opt.id && <Check size={13} strokeWidth={2} />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+type MembrosFilter = "1" | "2-5" | "6-20" | "20+";
+type CriadoFilter = "today" | "week" | "month" | "year";
+type PapelFilter = "LEAD" | "MEMBER";
+type SortBy =
+  | "nome-asc"
+  | "nome-desc"
+  | "criado-desc"
+  | "criado-asc"
+  | "members-desc"
+  | "members-asc";
+
+const MEMBROS_OPTIONS: { id: MembrosFilter; label: string }[] = [
+  { id: "1", label: "Apenas 1 membro" },
+  { id: "2-5", label: "2 a 5 membros" },
+  { id: "6-20", label: "6 a 20 membros" },
+  { id: "20+", label: "Mais de 20 membros" },
+];
+const CRIADO_OPTIONS: { id: CriadoFilter; label: string }[] = [
+  { id: "today", label: "Hoje" },
+  { id: "week", label: "Últimos 7 dias" },
+  { id: "month", label: "Últimos 30 dias" },
+  { id: "year", label: "Último ano" },
+];
+const PAPEL_OPTIONS: { id: PapelFilter; label: string }[] = [
+  { id: "LEAD", label: "Sou líder" },
+  { id: "MEMBER", label: "Sou apenas membro" },
+];
+const SORT_OPTIONS: { id: SortBy; label: string }[] = [
+  { id: "nome-asc", label: "Nome (A → Z)" },
+  { id: "nome-desc", label: "Nome (Z → A)" },
+  { id: "criado-desc", label: "Mais recente primeiro" },
+  { id: "criado-asc", label: "Mais antiga primeiro" },
+  { id: "members-desc", label: "Mais membros primeiro" },
+  { id: "members-asc", label: "Menos membros primeiro" },
+];
+
+function matchMembros(count: number, f: MembrosFilter): boolean {
+  if (f === "1") return count <= 1;
+  if (f === "2-5") return count >= 2 && count <= 5;
+  if (f === "6-20") return count >= 6 && count <= 20;
+  return count > 20;
+}
+
+function matchCriado(criadoEm: string, f: CriadoFilter): boolean {
+  const d = new Date(criadoEm).getTime();
+  if (isNaN(d)) return false;
+  const now = Date.now();
+  const days =
+    f === "today" ? 1 : f === "week" ? 7 : f === "month" ? 30 : 365;
+  return now - d <= days * 24 * 60 * 60 * 1000;
+}
 
 function TeamsListView({
   teams,
@@ -1062,21 +1213,59 @@ function TeamsListView({
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
-  const [activeFilter, setActiveFilter] = useState<FilterId | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [search, setSearch] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
 
-  const filtered = search.trim()
-    ? teams.filter((t) => t.nome.toLowerCase().includes(search.toLowerCase()))
-    : teams;
+  const [membrosFilter, setMembrosFilter] = useState<MembrosFilter | null>(
+    null,
+  );
+  const [criadoFilter, setCriadoFilter] = useState<CriadoFilter | null>(null);
+  const [papelFilter, setPapelFilter] = useState<PapelFilter | null>(null);
+  const [sortBy, setSortBy] = useState<SortBy>("nome-asc");
 
-  const filters: { id: FilterId; label: string }[] = [
-    { id: "membros", label: "Membros" },
-    { id: "criado", label: "Criado" },
-    { id: "criador", label: "Criador" },
-    { id: "classificar", label: "Classificar" },
-  ];
+  const filtered = useMemo(() => {
+    let out = teams;
+    const q = search.trim().toLowerCase();
+    if (q) out = out.filter((t) => t.nome.toLowerCase().includes(q));
+    if (membrosFilter)
+      out = out.filter((t) => matchMembros(t.memberCount, membrosFilter));
+    if (criadoFilter)
+      out = out.filter((t) => matchCriado(t.criadoEm, criadoFilter));
+    if (papelFilter) out = out.filter((t) => t.myCargo === papelFilter);
+
+    const sorted = [...out];
+    sorted.sort((a, b) => {
+      switch (sortBy) {
+        case "nome-asc":
+          return a.nome.localeCompare(b.nome, "pt-BR");
+        case "nome-desc":
+          return b.nome.localeCompare(a.nome, "pt-BR");
+        case "criado-desc":
+          return (
+            new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime()
+          );
+        case "criado-asc":
+          return (
+            new Date(a.criadoEm).getTime() - new Date(b.criadoEm).getTime()
+          );
+        case "members-desc":
+          return b.memberCount - a.memberCount;
+        case "members-asc":
+          return a.memberCount - b.memberCount;
+      }
+    });
+    return sorted;
+  }, [teams, search, membrosFilter, criadoFilter, papelFilter, sortBy]);
+
+  const membrosLabel =
+    MEMBROS_OPTIONS.find((o) => o.id === membrosFilter)?.label ?? "Membros";
+  const criadoLabel =
+    CRIADO_OPTIONS.find((o) => o.id === criadoFilter)?.label ?? "Criado";
+  const papelLabel =
+    PAPEL_OPTIONS.find((o) => o.id === papelFilter)?.label ?? "Criador";
+  const sortLabel =
+    SORT_OPTIONS.find((o) => o.id === sortBy)?.label ?? "Classificar";
 
   return (
     <div
@@ -1147,50 +1336,37 @@ function TeamsListView({
       >
         {/* filtros esquerda */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          {filters.map((f) => (
-            <button
-              key={f.id}
-              type="button"
-              onClick={() =>
-                setActiveFilter(activeFilter === f.id ? null : f.id)
-              }
-              style={{
-                height: 28,
-                padding: "0 10px",
-                borderRadius: 6,
-                border: "1px solid",
-                borderColor:
-                  activeFilter === f.id ? "var(--border)" : "var(--border)",
-                background: activeFilter === f.id ? "var(--border)" : "none",
-                cursor: "pointer",
-                color:
-                  activeFilter === f.id
-                    ? "var(--foreground)"
-                    : "var(--muted-foreground)",
-                fontSize: 12,
-                fontWeight: 500,
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                transition: "all .15s",
-              }}
-              onMouseEnter={(e) => {
-                if (activeFilter !== f.id) {
-                  e.currentTarget.style.borderColor = "var(--border)";
-                  e.currentTarget.style.color = "var(--foreground)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeFilter !== f.id) {
-                  e.currentTarget.style.borderColor = "var(--border)";
-                  e.currentTarget.style.color = "var(--muted-foreground)";
-                }
-              }}
-            >
-              {f.label}
-              <ChevronDown size={11} strokeWidth={2} />
-            </button>
-          ))}
+          <FilterDropdown
+            label={membrosLabel}
+            active={!!membrosFilter}
+            options={MEMBROS_OPTIONS}
+            value={membrosFilter}
+            onChange={setMembrosFilter}
+            clearable
+          />
+          <FilterDropdown
+            label={criadoLabel}
+            active={!!criadoFilter}
+            options={CRIADO_OPTIONS}
+            value={criadoFilter}
+            onChange={setCriadoFilter}
+            clearable
+          />
+          <FilterDropdown
+            label={papelLabel}
+            active={!!papelFilter}
+            options={PAPEL_OPTIONS}
+            value={papelFilter}
+            onChange={setPapelFilter}
+            clearable
+          />
+          <FilterDropdown
+            label={sortLabel}
+            active={sortBy !== "nome-asc"}
+            options={SORT_OPTIONS}
+            value={sortBy}
+            onChange={(v) => setSortBy(v ?? "nome-asc")}
+          />
         </div>
 
         {/* direita: pesquisa + toggle view */}
@@ -3068,6 +3244,7 @@ export default function TeamsPage() {
         color: t.color ?? existing?.color ?? randomColor(),
         icon: t.icon ?? existing?.icon,
         criadoEm: t.criadoEm,
+        myCargo: t.myCargo ?? null,
       };
     });
     // eslint-disable-next-line react-hooks/set-state-in-effect
