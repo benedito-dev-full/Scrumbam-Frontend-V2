@@ -161,15 +161,21 @@ export function useNexusChat(): UseNexusChatResult {
       // como se a IA tivesse respondido pedindo para tentar de novo, em
       // vez de um popup vermelho que parece bug do site.
       let friendlyMsg: string;
-      if (
+      // 503 = backend traduz 429 do Gemini (cota/rate limit do provedor).
+      // No free-tier do Gemini sao 20 req/dia, entao na pratica e quase
+      // sempre cota diaria estourada — orientamos o usuario a esperar horas.
+      if (status === 503) {
+        friendlyMsg =
+          "Você atingiu o limite de requisições da IA por agora. Provavelmente a cota diária foi excedida — tente novamente em algumas horas. 🙏";
+      } else if (
         status === 502 ||
-        status === 503 ||
         status === 504 ||
         (status && status >= 500)
       ) {
         friendlyMsg =
-          "Opa, estou com instabilidade no momento — meu provedor de IA está sobrecarregado. Pode tentar de novo daqui a alguns segundos? 🙏";
+          "Opa, estou com instabilidade no momento — meu provedor de IA está sobrecarregado. Pode tentar de novo daqui a alguns segundos?";
       } else if (status === 429) {
+        // 429 vindo do nosso proprio backend (rate limit interno, nao do Gemini)
         friendlyMsg =
           "Estou recebendo muitas requisições agora. Aguarde um instante e tente novamente, por favor.";
       } else if (
