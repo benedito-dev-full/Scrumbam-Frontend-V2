@@ -50,6 +50,7 @@ import { TaskSheet } from "@/components/tasks/task-sheet";
 import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 import { CalendarView } from "@/components/lists/calendar-view";
 import { GanttView } from "@/components/lists/gantt-view";
+import { GroupsView } from "@/components/lists/groups-view";
 
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
@@ -247,11 +248,10 @@ export default function ListPage({
           onOpenTask={setSelectedTask}
         />
       ) : (
-        <BlocksContent
-          projectId={id}
-          members={members}
-          onOpenTask={setSelectedTask}
-        />
+        // Aba "Blocos" — nova visualizacao de Grupos (estilo Monday).
+        // Substitui o antigo grid de cards (BlocksContent), que segue
+        // definido abaixo mas nao e mais renderizado.
+        <GroupsView />
       )}
       <TaskSheet task={selectedTask} onClose={() => setSelectedTask(null)} />
       <CreateTaskModal
