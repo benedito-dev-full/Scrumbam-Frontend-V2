@@ -125,7 +125,9 @@ function GroupBox({
       )
     : 0;
 
-  const minWidth =
+  // largura total = soma das colunas; garante scroll horizontal quando
+  // ultrapassa o container (tableLayout fixed respeita estas larguras).
+  const tableWidth =
     W_CHECK + columns.reduce((s, c) => s + colWidth(c), 0) + W_ADD;
 
   return (
@@ -194,27 +196,15 @@ function GroupBox({
       {open && (
         <div
           style={{
-            position: "relative",
             borderRadius: 8,
-            overflow: "hidden",
+            overflowX: "auto",
+            overflowY: "hidden",
             border: "1px solid var(--border)",
+            borderLeft: `4px solid ${group.cor}`,
             background: "var(--card)",
           }}
         >
-          <span
-            aria-hidden
-            style={{
-              position: "absolute",
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 4,
-              background: group.cor,
-              zIndex: 2,
-            }}
-          />
-
-          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth }}>
+          <table style={{ width: tableWidth, minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: W_CHECK }} />
               {columns.map((c) => (
