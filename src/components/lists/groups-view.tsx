@@ -1,153 +1,137 @@
 "use client";
 
-import React, { useState } from "react";
-import { ChevronDown, Plus, MessageSquarePlus, User, GitBranch } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import {
+  ChevronDown,
+  Plus,
+  MessageSquarePlus,
+  User,
+  GitBranch,
+  Check,
+  Trash2,
+  Type,
+  Hash,
+  Calendar as CalendarIcon,
+  CircleUser,
+  CircleDot,
+  CheckSquare,
+  List as ListIcon,
+  Link2,
+} from "lucide-react";
+import {
+  useGroupsBoard,
+  groupsActions,
+  COLUMN_TYPE_LABEL,
+  type ColumnDef,
+  type ColumnType,
+  type ColumnOption,
+  type FieldValue,
+  type GroupModel,
+  type TaskModel,
+} from "@/lib/prototype/groups-store";
 
 /**
  * GroupsView — visualizacao de tarefas em GRUPOS (estilo Monday.com).
  *
- * PROTOTIPO VISUAL ISOLADO. Nao depende do backend nem dos hooks do projeto:
- * usa mock data interno (MOCK_GROUPS) para validar a igualdade visual com a
- * referencia do Monday antes de integrar. Cada grupo e uma "caixa" com tabela
- * propria, cabecalho de colunas, linha "+ Adicionar tarefa" e rodape de totais.
+ * Versao DINAMICA de prototipo: le e escreve numa store persistida em
+ * localStorage (`groups-store`) que espelha o contrato de colunas
+ * customizaveis do backend (tableFields.columns[] + dados.fields{}).
  *
- * Substitui conceitualmente a antiga view "Blocos" (grid de cards) — esta NAO
- * deve ser confundida com ela. Quando aprovada, ligamos esta view ao
- * /lists/[id] e removemos a antiga.
+ * Suporta nesta fase, sem backend:
+ *  - editar nome do grupo (clique no titulo)
+ *  - editar titulo da tarefa (clique)
+ *  - mudar status/tipo e demais campos por tipo de coluna
+ *  - adicionar tarefa, grupo e novas colunas (8 tipos do contrato)
  *
- * Adaptado aos tokens do projeto (var(--card), var(--border), var(--foreground),
- * roxo primario #7c5cff) — funciona em light e dark.
+ * Quando integrarmos, a store sai e os dados vem dos hooks do backend.
  *
  * @example
  * <GroupsView />
  */
 export function GroupsView() {
+  const board = useGroupsBoard();
+  const cols = [...board.columns].sort((a, b) => a.order - b.order);
+
   return (
     <div
       className="flex-1 overflow-auto"
       style={{ background: "var(--background)", padding: "16px 20px 80px" }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-        {MOCK_GROUPS.map((g) => (
-          <GroupBox key={g.id} group={g} />
+        {board.groups.map((g) => (
+          <GroupBox key={g.id} group={g} columns={cols} />
         ))}
+
+        {/* adicionar grupo */}
+        <button
+          type="button"
+          onClick={() => groupsActions.addGroup()}
+          style={{
+            alignSelf: "flex-start",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            height: 34,
+            padding: "0 14px",
+            borderRadius: 8,
+            border: "1px dashed var(--border)",
+            background: "transparent",
+            color: "var(--muted-foreground)",
+            fontSize: 13,
+            cursor: "pointer",
+          }}
+        >
+          <Plus size={14} />
+          Adicionar grupo
+        </button>
       </div>
     </div>
   );
 }
 
-/* ─── Tipos do mock ──────────────────────────────────────────────────────── */
+/* ─── Larguras das colunas ───────────────────────────────────────────────── */
 
-type StatusKey = "em-andamento" | "pronto" | "concluido" | "backlog";
-type TipoKey = "qualidade" | "funcionalidade" | "bug";
+const W_CHECK = 36;
+const W_NOME = 360;
+const W_ADD = 44;
+const W_DEFAULT = 150;
 
-interface MockTask {
-  id: string;
-  nome: string;
-  status: StatusKey | null;
-  tipo: TipoKey | null;
-  codigo: string | null;
-  sp: number | null;
-  epico: string | null;
-  githubLink: string | null;
+function colWidth(c: ColumnDef): number {
+  if (c.builtin) return W_NOME;
+  if (c.type === "person") return 96;
+  if (c.type === "number") return 130;
+  if (c.type === "link") return 150;
+  if (c.type === "text") return 130;
+  return W_DEFAULT;
 }
 
-interface MockGroup {
-  id: string;
-  nome: string;
-  /** cor da barra/accent do grupo (espelha a cor da pill no Monday) */
-  cor: string;
-  periodo?: string;
-  tasks: MockTask[];
-}
+/* ─── GroupBox ───────────────────────────────────────────────────────────── */
 
-/* ─── Paletas de Status / Tipo (pills SOLIDAS, igual Monday) ──────────────── */
-
-const STATUS_STYLE: Record<StatusKey, { bg: string; label: string }> = {
-  "em-andamento": { bg: "#f5a623", label: "Em andamento" },
-  pronto: { bg: "#4a8df7", label: "Pronto para com..." },
-  concluido: { bg: "#22c55e", label: "Concluído" },
-  backlog: { bg: "#6b7280", label: "Backlog" },
-};
-
-const TIPO_STYLE: Record<TipoKey, { bg: string; label: string }> = {
-  qualidade: { bg: "#e879c4", label: "Qualidade" },
-  funcionalidade: { bg: "#22c55e", label: "Funcionalidade" },
-  bug: { bg: "#ef4444", label: "Bug" },
-};
-
-/* ─── Mock data — espelha o print de referencia ──────────────────────────── */
-
-const MOCK_GROUPS: MockGroup[] = [
-  {
-    id: "sprint-1",
-    nome: "Sprint 1",
-    cor: "#e0457b",
-    periodo: "mai 21 - jun 3",
-    tasks: [
-      {
-        id: "t1",
-        nome: "Tarefa 1",
-        status: "em-andamento",
-        tipo: "qualidade",
-        codigo: "TMYT-001",
-        sp: 3,
-        epico: "Infraestrutura",
-        githubLink: null,
-      },
-      {
-        id: "t2",
-        nome: "Tarefa 2",
-        status: "pronto",
-        tipo: "funcionalidade",
-        codigo: "TMYT-002",
-        sp: null,
-        epico: null,
-        githubLink: null,
-      },
-    ],
-  },
-  {
-    id: "backlog",
-    nome: "Backlog",
-    cor: "#7c5cff",
-    tasks: [],
-  },
-];
-
-/* ─── Larguras das colunas (px) ──────────────────────────────────────────── */
-
-const COLS = {
-  check: 36,
-  nome: 360,
-  resp: 96,
-  status: 150,
-  tipo: 150,
-  codigo: 130,
-  sp: 130,
-  epico: 200,
-  github: 150,
-  add: 44,
-};
-
-/* ─── GroupBox — uma caixa de grupo (header + tabela + footer) ────────────── */
-
-function GroupBox({ group }: { group: MockGroup }) {
+function GroupBox({
+  group,
+  columns,
+}: {
+  group: GroupModel;
+  columns: ColumnDef[];
+}) {
   const [open, setOpen] = useState(true);
 
-  const totalSp = group.tasks.reduce((acc, t) => acc + (t.sp ?? 0), 0);
+  const spCol = columns.find((c) => c.type === "number");
+  const totalSp = spCol
+    ? group.tasks.reduce(
+        (acc, t) => acc + (Number(t.fields[spCol.key]) || 0),
+        0,
+      )
+    : 0;
+
+  const minWidth =
+    W_CHECK + columns.reduce((s, c) => s + colWidth(c), 0) + W_ADD;
 
   return (
     <section>
       {/* cabecalho do grupo */}
-      <header
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginBottom: 8,
-        }}
-      >
+      <header style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -168,24 +152,40 @@ function GroupBox({ group }: { group: MockGroup }) {
         >
           <ChevronDown size={16} strokeWidth={2.5} />
         </button>
-        <span
-          style={{
-            fontSize: 16,
-            fontWeight: 700,
-            color: group.cor,
-            letterSpacing: ".2px",
-          }}
-        >
-          {group.nome}
+
+        <EditableText
+          value={group.nome}
+          onCommit={(v) => groupsActions.renameGroup(group.id, v)}
+          style={{ fontSize: 16, fontWeight: 700, color: group.cor, letterSpacing: ".2px" }}
+        />
+
+        <span style={{ fontSize: 12, color: "var(--muted-foreground)", marginLeft: 2 }}>
+          {group.tasks.length}
         </span>
+
+        <button
+          type="button"
+          onClick={() => {
+            if (confirm(`Remover o grupo "${group.nome}"?`)) groupsActions.removeGroup(group.id);
+          }}
+          aria-label="Remover grupo"
+          title="Remover grupo"
+          style={{
+            display: "inline-flex",
+            border: 0,
+            background: "none",
+            color: "var(--muted-foreground)",
+            cursor: "pointer",
+            opacity: 0.5,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.5")}
+        >
+          <Trash2 size={14} />
+        </button>
+
         {group.periodo && (
-          <span
-            style={{
-              marginLeft: "auto",
-              fontSize: 12,
-              color: "var(--muted-foreground)",
-            }}
-          >
+          <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--muted-foreground)" }}>
             {group.periodo}
           </span>
         )}
@@ -201,7 +201,6 @@ function GroupBox({ group }: { group: MockGroup }) {
             background: "var(--card)",
           }}
         >
-          {/* barra colorida do grupo (lado esquerdo) */}
           <span
             aria-hidden
             style={{
@@ -215,37 +214,25 @@ function GroupBox({ group }: { group: MockGroup }) {
             }}
           />
 
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              tableLayout: "fixed",
-              minWidth: 1080,
-            }}
-          >
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth }}>
             <colgroup>
-              <col style={{ width: COLS.check }} />
-              <col style={{ width: COLS.nome }} />
-              <col style={{ width: COLS.resp }} />
-              <col style={{ width: COLS.status }} />
-              <col style={{ width: COLS.tipo }} />
-              <col style={{ width: COLS.codigo }} />
-              <col style={{ width: COLS.sp }} />
-              <col style={{ width: COLS.epico }} />
-              <col style={{ width: COLS.github }} />
-              <col style={{ width: COLS.add }} />
+              <col style={{ width: W_CHECK }} />
+              {columns.map((c) => (
+                <col key={c.key} style={{ width: colWidth(c) }} />
+              ))}
+              <col style={{ width: W_ADD }} />
             </colgroup>
 
-            <HeadRow corGrupo={group.cor} />
+            <HeadRow columns={columns} />
 
             <tbody>
               {group.tasks.map((t) => (
-                <TaskRow key={t.id} task={t} />
+                <TaskRow key={t.id} groupId={group.id} task={t} columns={columns} />
               ))}
-              <AddTaskRow />
+              <AddTaskRow colSpan={columns.length + 2} onAdd={() => groupsActions.addTask(group.id)} />
             </tbody>
 
-            <FooterRow totalSp={totalSp} tasks={group.tasks} />
+            <FooterRow columns={columns} tasks={group.tasks} totalSp={totalSp} />
           </table>
         </div>
       )}
@@ -253,9 +240,22 @@ function GroupBox({ group }: { group: MockGroup }) {
   );
 }
 
+/* ─── Icone por tipo de coluna ───────────────────────────────────────────── */
+
+const TYPE_ICON: Record<ColumnType, React.ComponentType<{ size?: number }>> = {
+  text: Type,
+  number: Hash,
+  date: CalendarIcon,
+  person: CircleUser,
+  status: CircleDot,
+  checkbox: CheckSquare,
+  dropdown: ListIcon,
+  link: Link2,
+};
+
 /* ─── Cabecalho de colunas ───────────────────────────────────────────────── */
 
-function HeadRow({ corGrupo }: { corGrupo: string }) {
+function HeadRow({ columns }: { columns: ColumnDef[] }) {
   const th: React.CSSProperties = {
     fontSize: 12,
     fontWeight: 500,
@@ -271,35 +271,213 @@ function HeadRow({ corGrupo }: { corGrupo: string }) {
       <tr>
         <th style={{ ...th, padding: 0 }}>
           <span style={{ display: "inline-flex" }}>
-            <Checkbox />
+            <Checkbox checked={false} />
           </span>
         </th>
-        <th style={{ ...th, textAlign: "left", paddingLeft: 4 }}>Tarefa</th>
-        <th style={th}>Resp.</th>
-        <th style={th}>Status</th>
-        <th style={th}>Tipo</th>
-        <th style={th}>ID da tarefa</th>
-        <th style={th}>SP estimados</th>
-        <th style={th}>Épico</th>
-        <th style={th}>Link do GitHub</th>
+        {columns.map((c) =>
+          c.builtin ? (
+            <th key={c.key} style={{ ...th, textAlign: "left", paddingLeft: 4 }}>
+              {c.label}
+            </th>
+          ) : (
+            <ColumnHeader key={c.key} column={c} thStyle={th} />
+          ),
+        )}
         <th style={th}>
-          <span
-            style={{
-              display: "inline-flex",
-              color: "var(--muted-foreground)",
-            }}
-          >
-            <Plus size={14} />
-          </span>
+          <AddColumnButton />
         </th>
       </tr>
     </thead>
   );
 }
 
+/** Header de coluna custom — editavel (renomear) e removivel via menu. */
+function ColumnHeader({ column, thStyle }: { column: ColumnDef; thStyle: React.CSSProperties }) {
+  const [menu, setMenu] = useState(false);
+  const ref = useRef<HTMLButtonElement>(null);
+  return (
+    <th style={thStyle}>
+      <button
+        ref={ref}
+        type="button"
+        onClick={() => setMenu((v) => !v)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          border: 0,
+          background: "none",
+          color: "var(--muted-foreground)",
+          fontSize: 12,
+          fontWeight: 500,
+          cursor: "pointer",
+          maxWidth: "100%",
+        }}
+        title="Editar coluna"
+      >
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {column.label}
+        </span>
+      </button>
+      {menu && (
+        <Popover anchorRef={ref} onClose={() => setMenu(false)}>
+          <div style={{ padding: 8, minWidth: 200 }}>
+            <p style={{ margin: "0 0 6px", fontSize: 10, letterSpacing: ".5px", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+              {COLUMN_TYPE_LABEL[column.type]}
+            </p>
+            <input
+              autoFocus
+              defaultValue={column.label}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  groupsActions.renameColumn(column.key, (e.target as HTMLInputElement).value.trim() || column.label);
+                  setMenu(false);
+                }
+                if (e.key === "Escape") setMenu(false);
+              }}
+              onBlur={(e) => groupsActions.renameColumn(column.key, e.target.value.trim() || column.label)}
+              style={inputStyle}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                groupsActions.removeColumn(column.key);
+                setMenu(false);
+              }}
+              style={{
+                marginTop: 8,
+                width: "100%",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                height: 30,
+                borderRadius: 6,
+                border: "1px solid var(--border)",
+                background: "none",
+                color: "#ef4444",
+                fontSize: 12,
+                cursor: "pointer",
+              }}
+            >
+              <Trash2 size={13} /> Remover coluna
+            </button>
+          </div>
+        </Popover>
+      )}
+    </th>
+  );
+}
+
+/** Botao "+" no header — abre menu para criar nova coluna (8 tipos). */
+function AddColumnButton() {
+  const [menu, setMenu] = useState(false);
+  const [label, setLabel] = useState("");
+  const [type, setType] = useState<ColumnType>("text");
+  const ref = useRef<HTMLButtonElement>(null);
+
+  function create() {
+    const l = label.trim() || COLUMN_TYPE_LABEL[type];
+    groupsActions.addColumn(type, l);
+    setLabel("");
+    setType("text");
+    setMenu(false);
+  }
+
+  return (
+    <>
+      <button
+        ref={ref}
+        type="button"
+        onClick={() => setMenu((v) => !v)}
+        aria-label="Adicionar coluna"
+        title="Adicionar coluna"
+        style={{ display: "inline-flex", border: 0, background: "none", color: "var(--muted-foreground)", cursor: "pointer" }}
+      >
+        <Plus size={14} />
+      </button>
+      {menu && (
+        <Popover anchorRef={ref} onClose={() => setMenu(false)} align="right">
+          <div style={{ padding: 10, minWidth: 240 }}>
+            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "var(--foreground)" }}>
+              Nova coluna
+            </p>
+            <input
+              autoFocus
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") create();
+                if (e.key === "Escape") setMenu(false);
+              }}
+              placeholder="Nome da coluna…"
+              style={inputStyle}
+            />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, margin: "8px 0" }}>
+              {(Object.keys(COLUMN_TYPE_LABEL) as ColumnType[]).map((t) => {
+                const Icon = TYPE_ICON[t];
+                const active = type === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setType(t)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      height: 30,
+                      padding: "0 8px",
+                      borderRadius: 6,
+                      border: active ? "1px solid #7c5cff" : "1px solid var(--border)",
+                      background: active ? "rgba(124,92,255,0.12)" : "transparent",
+                      color: active ? "var(--foreground)" : "var(--muted-foreground)",
+                      fontSize: 12,
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <Icon size={13} />
+                    {COLUMN_TYPE_LABEL[t]}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={create}
+              style={{
+                width: "100%",
+                height: 32,
+                borderRadius: 6,
+                border: 0,
+                background: "#7c5cff",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Criar coluna
+            </button>
+          </div>
+        </Popover>
+      )}
+    </>
+  );
+}
+
 /* ─── Linha de tarefa ────────────────────────────────────────────────────── */
 
-function TaskRow({ task }: { task: MockTask }) {
+function TaskRow({
+  groupId,
+  task,
+  columns,
+}: {
+  groupId: string;
+  task: TaskModel;
+  columns: ColumnDef[];
+}) {
   const [hover, setHover] = useState(false);
   const td: React.CSSProperties = {
     padding: "0 8px",
@@ -312,47 +490,116 @@ function TaskRow({ task }: { task: MockTask }) {
     background: hover ? "var(--accent)" : "transparent",
     transition: "background .1s",
   };
+
   return (
     <tr onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      {/* checkbox */}
       <td style={{ ...td, padding: 0, textAlign: "center" }}>
-        <Checkbox />
+        <Checkbox checked={false} />
       </td>
 
-      {/* nome */}
-      <td style={{ ...td, fontWeight: 500 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span
-            style={{
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {task.nome}
-          </span>
-          <button
-            type="button"
-            aria-label="Comentar"
-            style={{
-              marginLeft: "auto",
-              display: "inline-flex",
-              alignItems: "center",
-              border: 0,
-              background: "none",
-              color: "var(--muted-foreground)",
-              cursor: "pointer",
-              opacity: hover ? 1 : 0,
-              transition: "opacity .1s",
-            }}
-          >
-            <MessageSquarePlus size={15} />
-          </button>
-        </div>
-      </td>
+      {columns.map((c, i) => {
+        const last = i === columns.length - 1;
+        if (c.builtin) {
+          return (
+            <td key={c.key} style={{ ...td, fontWeight: 500, borderRight: last ? "1px solid var(--border)" : td.borderRight }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <EditableText
+                  value={task.nome}
+                  onCommit={(v) => groupsActions.renameTask(groupId, task.id, v)}
+                  style={{ flex: 1, fontWeight: 500, color: "var(--foreground)" }}
+                />
+                <button
+                  type="button"
+                  aria-label="Remover tarefa"
+                  onClick={() => groupsActions.removeTask(groupId, task.id)}
+                  style={{
+                    display: "inline-flex",
+                    border: 0,
+                    background: "none",
+                    color: "var(--muted-foreground)",
+                    cursor: "pointer",
+                    opacity: hover ? 0.6 : 0,
+                    transition: "opacity .1s",
+                  }}
+                >
+                  <Trash2 size={14} />
+                </button>
+                <span style={{ display: "inline-flex", color: "var(--muted-foreground)", opacity: hover ? 1 : 0, transition: "opacity .1s" }}>
+                  <MessageSquarePlus size={15} />
+                </span>
+              </div>
+            </td>
+          );
+        }
+        return (
+          <FieldCell
+            key={c.key}
+            tdStyle={td}
+            column={c}
+            value={task.fields[c.key] ?? null}
+            onChange={(v) => groupsActions.setField(groupId, task.id, c.key, v)}
+          />
+        );
+      })}
 
-      {/* responsavel */}
-      <td style={{ ...td, textAlign: "center" }}>
+      <td style={{ ...td, borderRight: 0 }} />
+    </tr>
+  );
+}
+
+/* ─── Celula de campo — renderiza/edita conforme o tipo da coluna ────────── */
+
+function FieldCell({
+  column,
+  value,
+  onChange,
+  tdStyle,
+}: {
+  column: ColumnDef;
+  value: FieldValue;
+  onChange: (v: FieldValue) => void;
+  tdStyle: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLTableCellElement>(null);
+  const [open, setOpen] = useState(false);
+
+  const options = column.config?.options ?? [];
+  const selected = options.find((o) => o.id === value);
+
+  // ── status / dropdown: pill colorida + popover de opcoes ──
+  if (column.type === "status" || column.type === "dropdown") {
+    const isStatus = column.type === "status";
+    return (
+      <td ref={ref} style={{ ...tdStyle, padding: 2, cursor: "pointer" }} onClick={() => setOpen(true)}>
+        {selected ? (
+          isStatus ? (
+            <Pill bg={selected.color ?? "#6b7280"}>{selected.label}</Pill>
+          ) : (
+            <ChipDropdown option={selected} />
+          )
+        ) : (
+          <EmptyCell />
+        )}
+        {open && (
+          <Popover anchorRef={ref} onClose={() => setOpen(false)}>
+            <OptionList
+              options={options}
+              currentId={typeof value === "string" ? value : null}
+              onPick={(id) => {
+                onChange(id);
+                setOpen(false);
+              }}
+            />
+          </Popover>
+        )}
+      </td>
+    );
+  }
+
+  // ── person ──
+  if (column.type === "person") {
+    return (
+      <td style={{ ...tdStyle, textAlign: "center" }}>
         <span
           style={{
             display: "inline-flex",
@@ -364,99 +611,163 @@ function TaskRow({ task }: { task: MockTask }) {
             border: "1.5px dashed var(--border)",
             color: "var(--muted-foreground)",
           }}
+          title="Pessoa (mock)"
         >
           <User size={13} />
         </span>
       </td>
+    );
+  }
 
-      {/* status — pill solida full-cell */}
-      <td style={{ ...td, padding: 2 }}>
-        {task.status ? (
-          <Pill bg={STATUS_STYLE[task.status].bg}>
-            {STATUS_STYLE[task.status].label}
-          </Pill>
-        ) : (
-          <EmptyCell />
-        )}
+  // ── checkbox ──
+  if (column.type === "checkbox") {
+    return (
+      <td style={{ ...tdStyle, textAlign: "center", cursor: "pointer" }} onClick={() => onChange(!value)}>
+        <Checkbox checked={value === true} />
       </td>
+    );
+  }
 
-      {/* tipo — pill solida full-cell */}
-      <td style={{ ...td, padding: 2 }}>
-        {task.tipo ? (
-          <Pill bg={TIPO_STYLE[task.tipo].bg}>
-            {TIPO_STYLE[task.tipo].label}
-          </Pill>
-        ) : (
-          <EmptyCell />
-        )}
-      </td>
-
-      {/* id da tarefa */}
-      <td style={{ ...td, textAlign: "center", color: "var(--muted-foreground)" }}>
-        {task.codigo ?? ""}
-      </td>
-
-      {/* sp estimados */}
-      <td style={{ ...td, textAlign: "center" }}>
-        {task.sp != null ? `${task.sp} SP` : ""}
-      </td>
-
-      {/* epico */}
-      <td style={td}>
-        {task.epico ? (
-          <span
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "3px 8px",
-              borderRadius: 5,
-              fontSize: 12,
-              background: "var(--accent)",
-              color: "var(--foreground)",
-              border: "1px solid var(--border)",
-            }}
+  // ── link ──
+  if (column.type === "link") {
+    return (
+      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: "pointer" }} onClick={() => setOpen(true)}>
+        {typeof value === "string" && value ? (
+          <a
+            href={value}
+            target="_blank"
+            rel="noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            style={{ display: "inline-flex", color: "#7c5cff" }}
           >
-            {task.epico}
-            <span style={{ color: "var(--muted-foreground)" }}>×</span>
+            <GitBranch size={14} />
+          </a>
+        ) : (
+          <span style={{ color: "var(--muted-foreground)", opacity: 0.5 }}>
+            <Link2 size={14} />
           </span>
-        ) : (
-          ""
+        )}
+        {open && (
+          <Popover anchorRef={ref} onClose={() => setOpen(false)}>
+            <div style={{ padding: 8, minWidth: 240 }}>
+              <input
+                autoFocus
+                defaultValue={typeof value === "string" ? value : ""}
+                placeholder="https://…"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    onChange((e.target as HTMLInputElement).value.trim() || null);
+                    setOpen(false);
+                  }
+                  if (e.key === "Escape") setOpen(false);
+                }}
+                onBlur={(e) => onChange(e.target.value.trim() || null)}
+                style={inputStyle}
+              />
+            </div>
+          </Popover>
         )}
       </td>
+    );
+  }
 
-      {/* github */}
-      <td style={{ ...td, textAlign: "center", color: "var(--muted-foreground)" }}>
-        {task.githubLink ? (
-          <GitBranch size={14} />
-        ) : (
-          ""
+  // ── date ──
+  if (column.type === "date") {
+    const dateText =
+      typeof value === "string" && value
+        ? new Date(value + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+        : "";
+    return (
+      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: "pointer", color: dateText ? "var(--foreground)" : "var(--muted-foreground)" }} onClick={() => setOpen(true)}>
+        {dateText || "—"}
+        {open && (
+          <Popover anchorRef={ref} onClose={() => setOpen(false)}>
+            <div style={{ padding: 8 }}>
+              <input
+                autoFocus
+                type="date"
+                defaultValue={typeof value === "string" ? value : ""}
+                onChange={(e) => onChange(e.target.value || null)}
+                onBlur={() => setOpen(false)}
+                style={{ ...inputStyle, colorScheme: "dark" }}
+              />
+            </div>
+          </Popover>
         )}
       </td>
+    );
+  }
 
-      {/* coluna do "+" — vazia na linha */}
-      <td style={{ ...td, borderRight: 0 }} />
-    </tr>
+  // ── number ──
+  if (column.type === "number") {
+    const display =
+      value != null && value !== ""
+        ? column.config?.currency
+          ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: column.config.currency }).format(Number(value))
+          : column.key === "sp"
+            ? `${value} SP`
+            : String(value)
+        : "";
+    return (
+      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: "pointer" }} onClick={() => setOpen(true)}>
+        {display || <span style={{ color: "var(--muted-foreground)", opacity: 0.5 }}>—</span>}
+        {open && (
+          <Popover anchorRef={ref} onClose={() => setOpen(false)}>
+            <div style={{ padding: 8 }}>
+              <input
+                autoFocus
+                type="number"
+                defaultValue={value != null ? String(value) : ""}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const v = (e.target as HTMLInputElement).value;
+                    onChange(v === "" ? null : Number(v));
+                    setOpen(false);
+                  }
+                  if (e.key === "Escape") setOpen(false);
+                }}
+                onBlur={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+                style={inputStyle}
+              />
+            </div>
+          </Popover>
+        )}
+      </td>
+    );
+  }
+
+  // ── text (default) ──
+  return (
+    <td style={{ ...tdStyle, color: "var(--muted-foreground)" }}>
+      <EditableText
+        value={typeof value === "string" ? value : ""}
+        placeholder="—"
+        onCommit={(v) => onChange(v || null)}
+        style={{ color: "var(--foreground)", width: "100%" }}
+      />
+    </td>
   );
 }
 
 /* ─── Linha "+ Adicionar tarefa" ─────────────────────────────────────────── */
 
-function AddTaskRow() {
+function AddTaskRow({ colSpan, onAdd }: { colSpan: number; onAdd: () => void }) {
   const [hover, setHover] = useState(false);
   return (
     <tr onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <td
-        colSpan={10}
+        colSpan={colSpan}
         style={{
           height: 38,
           borderBottom: "1px solid var(--border)",
           background: hover ? "var(--accent)" : "transparent",
           transition: "background .1s",
+          padding: 0,
         }}
       >
         <button
           type="button"
+          onClick={onAdd}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -483,11 +794,13 @@ function AddTaskRow() {
 /* ─── Rodape de totais ───────────────────────────────────────────────────── */
 
 function FooterRow({
-  totalSp,
+  columns,
   tasks,
+  totalSp,
 }: {
+  columns: ColumnDef[];
+  tasks: TaskModel[];
   totalSp: number;
-  tasks: MockTask[];
 }) {
   const td: React.CSSProperties = {
     height: 42,
@@ -495,61 +808,135 @@ function FooterRow({
     background: "color-mix(in srgb, var(--foreground) 2%, transparent)",
     verticalAlign: "middle",
   };
-  // distribuicao de cores (barra segmentada) para Status e Tipo
-  const statusColors = tasks
-    .filter((t) => t.status)
-    .map((t) => STATUS_STYLE[t.status as StatusKey].bg);
-  const tipoColors = tasks
-    .filter((t) => t.tipo)
-    .map((t) => TIPO_STYLE[t.tipo as TipoKey].bg);
 
   return (
     <tfoot>
       <tr>
         <td style={{ ...td, borderRight: 0 }} />
-        <td style={{ ...td, borderRight: 0 }} />
-        <td style={{ ...td, borderRight: 0 }} />
-        <td style={{ ...td, padding: 8 }}>
-          <SegmentBar colors={statusColors} />
-        </td>
-        <td style={{ ...td, padding: 8 }}>
-          <SegmentBar colors={tipoColors} />
-        </td>
-        <td style={{ ...td, borderRight: 0 }} />
-        <td style={{ ...td, textAlign: "center" }}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              lineHeight: 1.2,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: "var(--foreground)",
-              }}
-            >
-              {totalSp} SP
-            </span>
-            <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>
-              Total
-            </span>
-          </div>
-        </td>
-        <td style={td} />
-        <td style={td} />
+        {columns.map((c) => {
+          // barra segmentada para status/dropdown
+          if (c.type === "status" || c.type === "dropdown") {
+            const opts = c.config?.options ?? [];
+            const colors = tasks
+              .map((t) => opts.find((o) => o.id === t.fields[c.key])?.color)
+              .filter((x): x is string => Boolean(x));
+            return (
+              <td key={c.key} style={{ ...td, padding: 8 }}>
+                <SegmentBar colors={colors} />
+              </td>
+            );
+          }
+          // total para a coluna numerica
+          if (c.type === "number") {
+            return (
+              <td key={c.key} style={{ ...td, textAlign: "center" }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.2 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+                    {totalSp} SP
+                  </span>
+                  <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Total</span>
+                </div>
+              </td>
+            );
+          }
+          return <td key={c.key} style={td} />;
+        })}
         <td style={{ ...td, borderRight: 0 }} />
       </tr>
     </tfoot>
   );
 }
 
-/* ─── Primitivos visuais ─────────────────────────────────────────────────── */
+/* ─── Primitivos ─────────────────────────────────────────────────────────── */
 
-/** Pill solida que preenche a celula (Status / Tipo), igual Monday. */
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  boxSizing: "border-box",
+  background: "var(--background)",
+  border: "1px solid var(--border)",
+  borderRadius: 6,
+  color: "var(--foreground)",
+  fontSize: 13,
+  padding: "7px 10px",
+  outline: "none",
+};
+
+/** Texto editavel inline — clique entra em edicao; Enter/blur commitam. */
+function EditableText({
+  value,
+  onCommit,
+  placeholder,
+  style,
+}: {
+  value: string;
+  onCommit: (v: string) => void;
+  placeholder?: string;
+  style?: React.CSSProperties;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  useEffect(() => setDraft(value), [value]);
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          setEditing(false);
+          if (draft.trim() !== value) onCommit(draft.trim());
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            setEditing(false);
+            if (draft.trim() !== value) onCommit(draft.trim());
+          }
+          if (e.key === "Escape") {
+            setDraft(value);
+            setEditing(false);
+          }
+        }}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          ...style,
+          background: "var(--background)",
+          border: "1px solid #7c5cff",
+          borderRadius: 4,
+          padding: "2px 6px",
+          outline: "none",
+          font: "inherit",
+        }}
+      />
+    );
+  }
+
+  return (
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={() => setEditing(true)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") setEditing(true);
+      }}
+      style={{
+        ...style,
+        cursor: "text",
+        display: "inline-block",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+        maxWidth: "100%",
+      }}
+      title="Clique para editar"
+    >
+      {value || <span style={{ color: "var(--muted-foreground)", opacity: 0.6 }}>{placeholder ?? "—"}</span>}
+    </span>
+  );
+}
+
+/** Pill solida que preenche a celula (Status). */
 function Pill({ bg, children }: { bg: string; children: React.ReactNode }) {
   return (
     <div
@@ -574,7 +961,31 @@ function Pill({ bg, children }: { bg: string; children: React.ReactNode }) {
   );
 }
 
-/** Celula de status/tipo vazia — tracejada, convidando ao preenchimento. */
+/** Chip menor para dropdown (Tipo/Epico) — borda + dot colorido. */
+function ChipDropdown({ option }: { option: ColumnOption }) {
+  return (
+    <div
+      style={{
+        height: 34,
+        borderRadius: 4,
+        background: option.color ?? "#6b7280",
+        color: "#fff",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 12,
+        fontWeight: 500,
+        padding: "0 8px",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {option.label}
+    </div>
+  );
+}
+
 function EmptyCell() {
   return (
     <div
@@ -587,18 +998,10 @@ function EmptyCell() {
   );
 }
 
-/** Barra segmentada de cores no rodape (distribuicao de status/tipo). */
 function SegmentBar({ colors }: { colors: string[] }) {
   if (colors.length === 0) return null;
   return (
-    <div
-      style={{
-        display: "flex",
-        height: 22,
-        borderRadius: 4,
-        overflow: "hidden",
-      }}
-    >
+    <div style={{ display: "flex", height: 22, borderRadius: 4, overflow: "hidden" }}>
       {colors.map((c, i) => (
         <span key={i} style={{ flex: 1, background: c }} />
       ))}
@@ -606,17 +1009,122 @@ function SegmentBar({ colors }: { colors: string[] }) {
   );
 }
 
-function Checkbox() {
+function Checkbox({ checked }: { checked: boolean }) {
   return (
     <span
       style={{
-        display: "inline-block",
+        display: "inline-grid",
+        placeItems: "center",
         width: 15,
         height: 15,
         borderRadius: 3,
-        border: "1.5px solid var(--border)",
-        background: "transparent",
+        border: checked ? "none" : "1.5px solid var(--border)",
+        background: checked ? "#7c5cff" : "transparent",
       }}
-    />
+    >
+      {checked && <Check size={11} color="#fff" strokeWidth={3} />}
+    </span>
+  );
+}
+
+/** Lista de opcoes (status/dropdown) dentro de um popover. */
+function OptionList({
+  options,
+  currentId,
+  onPick,
+}: {
+  options: ColumnOption[];
+  currentId: string | null;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <div style={{ padding: 4, minWidth: 180 }}>
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          onClick={() => onPick(o.id)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            width: "100%",
+            padding: "7px 10px",
+            borderRadius: 5,
+            border: 0,
+            background: o.id === currentId ? "rgba(124,92,255,0.12)" : "none",
+            color: "var(--foreground)",
+            fontSize: 13,
+            cursor: "pointer",
+            textAlign: "left",
+          }}
+          onMouseEnter={(e) => {
+            if (o.id !== currentId) e.currentTarget.style.background = "var(--accent)";
+          }}
+          onMouseLeave={(e) => {
+            if (o.id !== currentId) e.currentTarget.style.background = "none";
+          }}
+        >
+          <span style={{ width: 10, height: 10, borderRadius: "50%", background: o.color ?? "#6b7280", flexShrink: 0 }} />
+          {o.label}
+          {o.id === currentId && <Check size={14} color="#7c5cff" style={{ marginLeft: "auto" }} />}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Popover ancorado (via portal, escapa do overflow da tabela) ────────── */
+
+function Popover({
+  anchorRef,
+  onClose,
+  align = "left",
+  children,
+}: {
+  anchorRef: React.RefObject<HTMLElement | null>;
+  onClose: () => void;
+  align?: "left" | "right";
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+
+  useEffect(() => {
+    if (!anchorRef.current) return;
+    const r = anchorRef.current.getBoundingClientRect();
+    setPos({ top: r.bottom + 4, left: align === "right" ? r.right : r.left });
+  }, [anchorRef, align]);
+
+  useEffect(() => {
+    function onDown(e: MouseEvent) {
+      if (ref.current?.contains(e.target as Node)) return;
+      if (anchorRef.current?.contains(e.target as Node)) return;
+      onClose();
+    }
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [anchorRef, onClose]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      ref={ref}
+      style={{
+        position: "fixed",
+        top: pos.top,
+        left: align === "right" ? undefined : pos.left,
+        right: align === "right" ? `calc(100vw - ${pos.left}px)` : undefined,
+        zIndex: 99999,
+        background: "var(--card)",
+        border: "1px solid var(--border)",
+        borderRadius: 8,
+        boxShadow: "0 8px 24px rgba(0,0,0,.4)",
+      }}
+    >
+      {children}
+    </div>,
+    document.body,
   );
 }
