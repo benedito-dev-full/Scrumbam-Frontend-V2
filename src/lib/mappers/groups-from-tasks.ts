@@ -55,15 +55,22 @@ export const SEM_BLOCO_ID = "__sem_bloco";
  * Opcoes de status para a pill colorida — espelham as 5 colunas Kanban
  * canonicas (task-status.mapper). O `id` da opcao e o id da coluna Kanban
  * (ex: "em-progresso"), e e isso que cada task guarda em `fields.status`.
+ *
+ * Exportada para reutilizacao na sub-tabela de subtarefas (`SubtaskTable`).
  */
-const STATUS_OPTIONS: ColumnOption[] = (
+export const STATUS_OPTIONS: ColumnOption[] = (
   ["backlog", "ready", "em-progresso", "concluido", "falhou"] as const
 ).map((id) => {
   const cfg = getColumnConfig(id);
   return { id, label: cfg?.label ?? id, color: cfg?.color ?? SEM_BLOCO_COR };
 });
 
-const PRIORITY_OPTIONS: ColumnOption[] = (
+/**
+ * Opcoes de prioridade para a pill colorida.
+ *
+ * Exportada para reutilizacao na sub-tabela de subtarefas (`SubtaskTable`).
+ */
+export const PRIORITY_OPTIONS: ColumnOption[] = (
   ["LOW", "MEDIUM", "HIGH", "URGENT"] as const
 ).map((p) => ({
   id: p,
@@ -118,15 +125,24 @@ export const BACKEND_COLUMNS: ColumnDef[] = [
 
 /**
  * Converte um `TaskResponseDto` numa linha (`TaskModel`) com os valores das
- * colunas fixas preenchidos. IDs de pessoa sao resolvidos para o nome do
- * membro quando disponivel (senao caem no proprio id).
+ * colunas fixas preenchidos. Inclui `childCount` para pai com subtarefas.
+ *
+ * IDs de pessoa são resolvidos para userId (a resolução userId → nome para
+ * exibição acontece depois na célula `FieldCell`).
+ *
+ * @param task - DTO da task do backend.
+ * @param childCountMap - Mapa de contagem de filhas por ID de pai (calculado
+ *   antes do filtro de raízes; contém **todas** as tasks, incluindo filhas).
+ * @returns TaskModel com campos mapeados e `childCount` preenchido se o pai tiver filhas.
  */
-function taskToRow(task: TaskResponseDto): TaskModel {
+function taskToRow(task: TaskResponseDto, childCountMap: Map<string, number>): TaskModel {
   const statusColId = intentionToColumn(task.status as V3Intention);
 
   return {
     id: task.id,
     nome: task.nome,
+    idPai: task.idPai ?? null,
+    childCount: childCountMap.get(task.id) ?? 0,
     fields: {
       status: statusColId,
       // Estado V3 cru — usado pela celula de status para detectar VALIDATED
@@ -148,23 +164,50 @@ function taskToRow(task: TaskResponseDto): TaskModel {
 /**
  * Monta o `GroupsBoard` a partir dos dados reais do backend.
  *
- * Os valores ficam canonicos (ex: `responsavel` = userId; `prioridade` =
- * LOW/MEDIUM/...). A resolucao userId → nome para exibicao acontece na
- * celula (`FieldCell`), que recebe a lista de membros.
+ * **Filtragem de subtarefas:** Tarefas com `idPai` (subtarefas) são removidas
+ * das linhas raiz do board — elas aparecem em sub-tabelas expansíveis inline
+ * ao lado do pai, seguindo o padrão Monday.com. Esta função calcula
+ * `childCount` para cada pai (número de filhas diretas) e usa isso para
+ * montar o contador visível quando o pai está recolhido.
+ *
+ * Os valores dos campos ficam canônicos (ex: `responsavel` = userId;
+ * `prioridade` = LOW/MEDIUM/...). A resolução userId → nome para exibição
+ * acontece na célula (`FieldCell`), que recebe a lista de membros.
  *
  * @param blocks - Blocos do projeto (DTask idClasse=-200).
- * @param tasks - Todas as tasks do projeto (sem os proprios blocos).
- * @returns Board pronto para a `GroupsView` renderizar.
+ * @param tasks - Todas as tasks do projeto (sem os próprios blocos).
+ *   Inclui raízes E subtarefas; a função filtra as subtarefas internamente.
+ * @returns Board pronto para a `GroupsView` renderizar com subtarefas
+ *   expandíveis no modo backend.
+ *
+ * @example
+ * const { blocks, tasks } = await fetchProjectData(projectId);
+ * const board = buildGroupsBoard(blocks, tasks);
+ * // Resultado: tasks com idPai ausentes das linhas raiz; childCount preenchido
  */
 export function buildGroupsBoard(
   blocks: BlockDto[],
   tasks: TaskResponseDto[],
 ): GroupsBoard {
-  // Indexa tasks por idBloco; o restante vai para "sem bloco".
+  // 1. Calcular contagem de filhas por pai ANTES de qualquer filtro —
+  //    o mapa precisa contar todas as tasks, incluindo as filhas.
+  const childCountMap = new Map<string, number>();
+  for (const task of tasks) {
+    if (task.idPai) {
+      childCountMap.set(task.idPai, (childCountMap.get(task.idPai) ?? 0) + 1);
+    }
+  }
+
+  // 2. Filtrar apenas tasks raiz (sem pai) para as linhas do board.
+  //    Filhas nao devem aparecer como linhas independentes nos grupos —
+  //    elas sao exibidas na sub-tabela embutida ao expandir o pai.
+  const rootTasks = tasks.filter((t) => !t.idPai);
+
+  // 3. Indexa tasks raiz por idBloco; o restante vai para "sem bloco".
   const byBlock = new Map<string, TaskResponseDto[]>();
   const semBloco: TaskResponseDto[] = [];
 
-  for (const task of tasks) {
+  for (const task of rootTasks) {
     const idBloco =
       typeof task.dados?.idBloco === "string" ? task.dados.idBloco : null;
     if (idBloco) {
@@ -181,7 +224,7 @@ export function buildGroupsBoard(
     nome: block.nome,
     cor: block.dados?.cor ?? BLOCO_COR_FALLBACK,
     periodo: formatPeriodo(block.dados?.startDate, block.dados?.endDate),
-    tasks: (byBlock.get(block.id) ?? []).map(taskToRow),
+    tasks: (byBlock.get(block.id) ?? []).map((t) => taskToRow(t, childCountMap)),
   }));
 
   // Grupo "Sem bloco" no fim — so aparece se houver tasks orfas.
@@ -190,7 +233,7 @@ export function buildGroupsBoard(
       id: SEM_BLOCO_ID,
       nome: "Sem bloco",
       cor: SEM_BLOCO_COR,
-      tasks: semBloco.map(taskToRow),
+      tasks: semBloco.map((t) => taskToRow(t, childCountMap)),
     });
   }
 

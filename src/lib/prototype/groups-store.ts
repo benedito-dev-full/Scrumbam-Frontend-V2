@@ -71,12 +71,26 @@ export interface ColumnDef {
 /** Valor de campo custom — espelha o que trafega em dados.fields. */
 export type FieldValue = string | number | boolean | null;
 
-/** Task do prototipo — `fields` = dados.fields do contrato. */
+/**
+ * Task do prototipo — `fields` = dados.fields do contrato.
+ *
+ * Na aba Blocos (modo backend com integração), as subtarefas (tasks com `idPai`)
+ * são renderizadas numa sub-tabela embutida expansível ao lado de cada pai,
+ * seguindo o padrão Monday.com. Os campos `idPai` e `childCount` são opcionais
+ * para manter compatibilidade com o modo prototipo (localStorage).
+ *
+ * @see buildGroupsBoard para entender como `childCount` é calculado
+ * @see SubtaskTable para a visualização das subtarefas
+ */
 export interface TaskModel {
   id: string;
   nome: string;
   /** valores das colunas custom, chaveados por column.key */
   fields: Record<string, FieldValue>;
+  /** Presenca de idPai indica que esta task e filha (usado na aba Blocos). */
+  idPai?: string | null;
+  /** Numero de filhas diretas conhecidas no momento do fetch (para o contador). */
+  childCount?: number;
 }
 
 /** Grupo (bloco/sprint) — agrupador alto da visualizacao. */
