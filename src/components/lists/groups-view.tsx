@@ -1234,6 +1234,20 @@ function SubtaskTableRow({
           boxShadow: `inset 4px 0 0 ${groupColor}`,
         }}
       >
+        {/* Braco horizontal de ligacao (cor do grupo) — sai da calha vertical
+            (x=4) e vai ate o card (x=28), conectando a barra lateral a
+            sub-tabela, como no Monday. Centralizado verticalmente no recuo. */}
+        <span
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 4,
+            top: "calc(50% + 5px)",
+            width: 24,
+            height: 2,
+            background: groupColor,
+          }}
+        />
         <SubtaskTable
           parentId={parentId}
           projectId={projectId}
@@ -1306,7 +1320,10 @@ function SubtaskTable({
         border: "1px solid var(--border)",
         borderRadius: 6,
         overflow: "hidden",
-        background: "var(--card)",
+        // Fundo nitidamente mais claro que o "poco" (4%) e que o cabecalho —
+        // a sub-tabela tem que se destacar como um card elevado, como no Monday.
+        // var(--card) ficava quase identico ao fundo; subimos o contraste.
+        background: "color-mix(in srgb, var(--foreground) 9%, var(--card))",
       }}
     >
       <table
@@ -1386,9 +1403,11 @@ function SubtaskHeadRow() {
     padding: "7px 8px",
     borderBottom: "1px solid var(--border)",
     borderRight: "1px solid var(--border)",
-    // Fundo destacado (mais forte que antes) — o cabeçalho da sub-tabela vira
-    // uma faixa visivel com grid de celulas, como no Monday.
-    background: "color-mix(in srgb, var(--foreground) 7%, transparent)",
+    // Cabecalho um pouco mais forte que o corpo do card (que ja e 9%) — faixa
+    // de grid visivel, como no Monday. Base no proprio fundo do card para
+    // contraste previsivel. TODAS as colunas (inclusive "+") usam este mesmo
+    // background — nenhuma fica mais escura que as outras.
+    background: "color-mix(in srgb, var(--foreground) 13%, var(--card))",
     whiteSpace: "nowrap",
     textAlign: "center",
   };
@@ -1402,9 +1421,11 @@ function SubtaskHeadRow() {
         <th style={th}>Data</th>
         {/* Coluna "+" decorativa — espelha o "adicionar coluna" do Monday.
             Largura `auto`: estende o grid ate o fim. O "+" fica alinhado a
-            esquerda (logo apos Data), nao centralizado no vazio. */}
-        <th style={{ ...th, borderRight: 0, textAlign: "left", color: "var(--muted-foreground)", opacity: 0.4 }}>
-          <Plus size={13} />
+            esquerda (logo apos Data), nao centralizado no vazio.
+            IMPORTANTE: opacity SO no icone — antes estava na <th> inteira, o
+            que escurecia o FUNDO da coluna (deixava-a mais escura que as ativas). */}
+        <th style={{ ...th, borderRight: 0, textAlign: "left", color: "var(--muted-foreground)" }}>
+          <Plus size={13} style={{ opacity: 0.4 }} />
         </th>
       </tr>
     </thead>
