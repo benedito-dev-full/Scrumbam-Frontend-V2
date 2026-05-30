@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   ChevronDown,
@@ -53,14 +53,56 @@ export function GroupsView() {
   const board = useGroupsBoard();
   const cols = [...board.columns].sort((a, b) => a.order - b.order);
 
+  // Conjunto de containers scrollaveis dos grupos — para sincronizar o
+  // scroll horizontal entre todos (rolar um rola todos, igual Monday).
+  const scrollers = useRef<Set<HTMLDivElement>>(new Set());
+  const syncing = useRef(false);
+
+  /** Propaga o scrollLeft de um grupo para todos os outros. */
+  const syncScroll = useCallback((source: HTMLDivElement) => {
+    if (syncing.current) return;
+    syncing.current = true;
+    const left = source.scrollLeft;
+    scrollers.current.forEach((el) => {
+      if (el !== source && el.scrollLeft !== left) el.scrollLeft = left;
+    });
+    // libera no proximo frame para nao entrar em loop de eventos
+    requestAnimationFrame(() => {
+      syncing.current = false;
+    });
+  }, []);
+
+  const register = useCallback(
+    (el: HTMLDivElement | null, prev?: HTMLDivElement | null) => {
+      if (prev) scrollers.current.delete(prev);
+      if (el) {
+        scrollers.current.add(el);
+        // alinha o novo container ao offset atual dos demais
+        const any = scrollers.current.values().next().value;
+        if (any && any !== el) el.scrollLeft = any.scrollLeft;
+      }
+    },
+    [],
+  );
+
   return (
     <div
       className="flex-1 overflow-auto"
       style={{ background: "var(--background)", padding: "16px 20px 80px" }}
     >
+      {/* esconde a scrollbar nativa dos grupos por completo — o scroll
+          horizontal fica sincronizado e e ativado por Shift + roda sobre o
+          bloco (padrao de planilha) */}
+      <style>{`.groups-scroller{scrollbar-width:none;-ms-overflow-style:none}.groups-scroller::-webkit-scrollbar{height:0;width:0;display:none}`}</style>
       <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
         {board.groups.map((g) => (
-          <GroupBox key={g.id} group={g} columns={cols} />
+          <GroupBox
+            key={g.id}
+            group={g}
+            columns={cols}
+            register={register}
+            onSyncScroll={syncScroll}
+          />
         ))}
 
         {/* adicionar grupo */}
@@ -111,11 +153,54 @@ function colWidth(c: ColumnDef): number {
 function GroupBox({
   group,
   columns,
+  register,
+  onSyncScroll,
 }: {
   group: GroupModel;
   columns: ColumnDef[];
+  register: (el: HTMLDivElement | null, prev?: HTMLDivElement | null) => void;
+  onSyncScroll: (source: HTMLDivElement) => void;
 }) {
   const [open, setOpen] = useState(true);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+
+  // Registra/desregistra este container no pool de scroll sincronizado.
+  useEffect(() => {
+    const el = scrollerRef.current;
+    register(el);
+    return () => register(null, el);
+    // re-registra quando abre/fecha (o no muda de existencia)
+  }, [register, open]);
+
+  /**
+   * Rola o bloco na horizontal QUANDO o usuario segura SHIFT e usa a roda
+   * sobre o bloco (padrao de planilha — Excel/Sheets). Sem Shift, o evento
+   * segue para a pagina e a rolagem vertical acontece normalmente, mesmo
+   * com o cursor sobre o bloco — nunca "prendemos" a pagina.
+   *
+   * Registrado manualmente como listener NAO-passivo: o onWheel do React e
+   * passive por padrao e ignora preventDefault. Como so prevenimos no caso
+   * Shift+overflow, o scroll vertical normal continua intacto.
+   */
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.shiftKey) return; // sem Shift → pagina rola vertical normalmente
+      const overflow = el.scrollWidth - el.clientWidth;
+      if (overflow <= 0) return; // nada para rolar na horizontal
+      // Com Shift, o navegador costuma mapear deltaY → deltaX; cobrimos ambos.
+      const delta =
+        Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      const clamped = Math.max(0, Math.min(overflow, el.scrollLeft + delta));
+      if (clamped !== el.scrollLeft) {
+        e.preventDefault();
+        el.scrollLeft = clamped; // dispara onScroll → sincroniza os demais
+      }
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [open]);
 
   const spCol = columns.find((c) => c.type === "number");
   const totalSp = spCol
@@ -195,6 +280,9 @@ function GroupBox({
 
       {open && (
         <div
+          ref={scrollerRef}
+          className="groups-scroller"
+          onScroll={(e) => onSyncScroll(e.currentTarget)}
           style={{
             borderRadius: 8,
             overflowX: "auto",
@@ -202,6 +290,8 @@ function GroupBox({
             border: "1px solid var(--border)",
             borderLeft: `4px solid ${group.cor}`,
             background: "var(--card)",
+            // Firefox: esconde a scrollbar (webkit via .groups-scroller)
+            scrollbarWidth: "none",
           }}
         >
           <table style={{ width: tableWidth, minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
