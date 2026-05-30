@@ -142,7 +142,11 @@ function SelectionActionBar({
         position: "fixed",
         bottom: 24,
         left: "50%",
-        transform: "translateX(-50%)",
+        // Estado final do transform — o keyframe `groups-action-bar-in` anima
+        // de translate(-50%,16px)+opacity:0 ate este estado (slide de baixo pra
+        // cima + fade-in). `both` mantem o frame inicial antes de comecar.
+        transform: "translate(-50%, 0)",
+        animation: "groups-action-bar-in .22s cubic-bezier(.16,1,.3,1) both",
         zIndex: 9999,
         display: "flex",
         alignItems: "center",
@@ -633,7 +637,7 @@ function GroupsBoardView({
           horizontal fica sincronizado e e ativado por Shift + roda sobre o
           bloco (padrao de planilha). Inclui keyframe para o spinner de saving
           nas subtarefas. */}
-      <style>{`.groups-scroller{scrollbar-width:none;-ms-overflow-style:none}.groups-scroller::-webkit-scrollbar{height:0;width:0;display:none}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
+      <style>{`.groups-scroller{scrollbar-width:none;-ms-overflow-style:none}.groups-scroller::-webkit-scrollbar{height:0;width:0;display:none}@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}@keyframes groups-action-bar-in{from{opacity:0;transform:translate(-50%,16px)}to{opacity:1;transform:translate(-50%,0)}}`}</style>
       <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
         {board.groups.length === 0 ? (
           <div
