@@ -30,11 +30,9 @@ import {
   Loader2,
   Copy,
   Upload,
-  Archive,
   CornerDownRight,
   ArrowRight,
   Sparkles,
-  LayoutGrid,
   X,
 } from "lucide-react";
 import {
@@ -190,17 +188,16 @@ function SelectionActionBar({
 
       <ActionBtn icon={<Copy size={16} />} label="Duplicar" />
       <ActionBtn icon={<Upload size={16} />} label="Exportar" disabled />
-      <ActionBtn icon={<Archive size={16} />} label="Arquivar" />
       <ActionBtn
         icon={<Trash2 size={16} />}
         label="Excluir"
         onClick={onDelete}
         disabled={deleting}
+        danger
       />
       <ActionBtn icon={<CornerDownRight size={16} />} label="Converter" />
       <ActionBtn icon={<ArrowRight size={16} />} label="Mover" />
       <ActionBtn icon={<Sparkles size={16} />} label="Sidekick" />
-      <ActionBtn icon={<LayoutGrid size={16} />} label="Apps" />
 
       {/* Divisor + fechar */}
       <span style={{ width: 1, height: 28, background: "var(--border)", margin: "0 4px" }} />
@@ -230,21 +227,31 @@ function SelectionActionBar({
   );
 }
 
+/** Vermelho da acao destrutiva (Excluir). */
+const DANGER_COLOR = "#ef4444";
+
 /**
  * Botao de acao da barra de selecao. Empilha icone + rotulo (estilo Monday).
- * `disabled` atenua e bloqueia (acoes decorativas ou em andamento).
+ *
+ * @param disabled - Atenua e bloqueia (acoes decorativas ou em andamento).
+ * @param danger - Acao destrutiva (Excluir): no hover, icone+texto ficam
+ *   vermelhos e o fundo ganha um tom rosado. Em repouso fica neutro como as
+ *   demais.
  */
 function ActionBtn({
   icon,
   label,
   onClick,
   disabled,
+  danger,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick?: () => void;
   disabled?: boolean;
+  danger?: boolean;
 }) {
+  const baseColor = disabled ? "var(--muted-foreground)" : "var(--foreground)";
   return (
     <button
       type="button"
@@ -261,16 +268,26 @@ function ActionBtn({
         borderRadius: 8,
         border: 0,
         background: "none",
-        color: disabled ? "var(--muted-foreground)" : "var(--foreground)",
+        color: baseColor,
         fontSize: 11,
         cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.45 : 1,
+        transition: "background .1s, color .1s",
       }}
       onMouseEnter={(e) => {
-        if (!disabled) e.currentTarget.style.background = "var(--accent)";
+        if (disabled) return;
+        if (danger) {
+          // Acao destrutiva: vermelho no hover (icone+texto via color, herdado
+          // pelo currentColor do lucide) + fundo rosado.
+          e.currentTarget.style.color = DANGER_COLOR;
+          e.currentTarget.style.background = "rgba(239,68,68,0.12)";
+        } else {
+          e.currentTarget.style.background = "var(--accent)";
+        }
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = "none";
+        e.currentTarget.style.color = baseColor;
       }}
     >
       {icon}
