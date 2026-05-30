@@ -37,6 +37,7 @@ import {
   useCreateBlock,
   useCreateTask,
   useUpdateTask,
+  useUpdateBlock,
 } from "@/hooks/use-tasks";
 import { useProjectMembers } from "@/hooks/use-members";
 import {
@@ -96,9 +97,11 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   const createBlock = useCreateBlock();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
+  const updateBlock = useUpdateBlock();
 
-  // Qual task esta salvando agora — alimenta o spinner da celula.
+  // Qual task / bloco esta salvando agora — alimenta o spinner.
   const [savingTaskId, setSavingTaskId] = useState<string | null>(null);
+  const [savingGroupId, setSavingGroupId] = useState<string | null>(null);
 
   // Blocos (idClasse=-200) nao sao tarefas — fora da listagem de tasks.
   const realTasks = tasks.filter((t) => t.idClasse !== "-200");
@@ -130,11 +133,16 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
    */
   function handleEditField(taskId: string, columnKey: string, value: FieldValue) {
     const dto: {
+      titulo?: string;
       assigneeId?: string | null;
       priority?: string;
       dueDate?: string | null;
     } = {};
-    if (columnKey === "responsavel") {
+    if (columnKey === "__nome") {
+      // Titulo da tarefa — nao salva vazio (ignora).
+      if (typeof value !== "string" || !value.trim()) return;
+      dto.titulo = value.trim();
+    } else if (columnKey === "responsavel") {
       dto.assigneeId = typeof value === "string" && value ? value : null;
     } else if (columnKey === "prioridade") {
       // priority nao aceita null no DTO atual — sem valor, nao envia nada.
@@ -150,6 +158,21 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     updateTask.mutate(
       { id: taskId, projectId, dto },
       { onSettled: () => setSavingTaskId(null) },
+    );
+  }
+
+  /**
+   * Renomeia um Bloco (DTask idClasse=-200) via `useUpdateBlock`. O grupo
+   * sintetico "Sem bloco" nao e um bloco real — ignora. Nao salva vazio.
+   */
+  function handleRenameGroup(groupId: string, nome: string) {
+    if (groupId === SEM_BLOCO_ID) return;
+    const novo = nome.trim();
+    if (!novo) return;
+    setSavingGroupId(groupId);
+    updateBlock.mutate(
+      { id: groupId, projectId, dto: { nome: novo } },
+      { onSettled: () => setSavingGroupId(null) },
     );
   }
 
@@ -170,7 +193,9 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
       readOnly
       members={members}
       savingTaskId={savingTaskId}
+      savingGroupId={savingGroupId}
       onEditField={handleEditField}
+      onRenameGroup={handleRenameGroup}
       onAddGroup={handleAddGroup}
       onAddTask={handleAddTask}
     />
@@ -192,6 +217,9 @@ function PrototypeGroupsView() {
   );
 }
 
+/** Coluna sintetica do titulo da tarefa (builtin). Editavel no backend. */
+const NOME_KEY = "__nome";
+
 /* ─── Renderizacao do board (compartilhada entre os dois modos) ──────────── */
 
 /** Colunas editaveis no modo backend (passo 1). As demais ficam read-only. */
@@ -199,12 +227,16 @@ const BACKEND_EDITABLE_KEYS = new Set(["responsavel", "prioridade", "dueDate"]);
 
 /**
  * @param readOnly - Desliga a edicao via store (rename/remove/setField do
- *   prototipo). No modo backend e `true`, mas `onEditField` reabre a edicao
- *   das colunas em `BACKEND_EDITABLE_KEYS`.
+ *   prototipo). No modo backend e `true`, mas `onEditField`/`onRenameGroup`
+ *   reabrem a edicao do titulo da tarefa, do titulo do bloco e das colunas
+ *   em `BACKEND_EDITABLE_KEYS`.
  * @param members - Membros para resolver userId → nome na coluna `person`.
  * @param savingTaskId - Task que esta salvando agora (spinner na celula).
- * @param onEditField - Salva uma celula no backend (resp/prioridade/data).
+ * @param savingGroupId - Bloco cujo titulo esta salvando (spinner no header).
+ * @param onEditField - Salva uma celula no backend (titulo/resp/prioridade/data).
  *   Quando presente, essas colunas ficam editaveis mesmo com `readOnly`.
+ * @param onRenameGroup - Renomeia o bloco. Quando presente, o titulo do grupo
+ *   fica editavel (exceto o grupo sintetico "Sem bloco").
  * @param onAddGroup - Cria um grupo/bloco. Se ausente, o botao nao aparece.
  * @param onAddTask - Cria uma tarefa no grupo. Se ausente, a linha nao aparece.
  */
@@ -213,7 +245,9 @@ function GroupsBoardView({
   readOnly,
   members,
   savingTaskId,
+  savingGroupId,
   onEditField,
+  onRenameGroup,
   onAddGroup,
   onAddTask,
 }: {
@@ -221,7 +255,9 @@ function GroupsBoardView({
   readOnly: boolean;
   members?: MemberLike[];
   savingTaskId?: string | null;
+  savingGroupId?: string | null;
   onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
+  onRenameGroup?: (groupId: string, nome: string) => void;
   onAddGroup?: () => void;
   onAddTask?: (groupId: string) => void;
 }) {
@@ -291,7 +327,9 @@ function GroupsBoardView({
               readOnly={readOnly}
               members={members}
               savingTaskId={savingTaskId}
+              savingGroup={savingGroupId === g.id}
               onEditField={onEditField}
+              onRenameGroup={onRenameGroup}
               onAddTask={onAddTask}
             />
           ))
@@ -353,7 +391,9 @@ function GroupBox({
   readOnly,
   members,
   savingTaskId,
+  savingGroup,
   onEditField,
+  onRenameGroup,
   onAddTask,
 }: {
   group: GroupModel;
@@ -363,7 +403,9 @@ function GroupBox({
   readOnly: boolean;
   members?: MemberLike[];
   savingTaskId?: string | null;
+  savingGroup?: boolean;
   onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
+  onRenameGroup?: (groupId: string, nome: string) => void;
   onAddTask?: (groupId: string) => void;
 }) {
   const [open, setOpen] = useState(true);
@@ -445,17 +487,38 @@ function GroupBox({
           <ChevronDown size={16} strokeWidth={2.5} />
         </button>
 
-        {readOnly ? (
-          <span style={{ fontSize: 16, fontWeight: 700, color: group.cor, letterSpacing: ".2px" }}>
-            {group.nome}
-          </span>
-        ) : (
-          <EditableText
-            value={group.nome}
-            onCommit={(v) => groupsActions.renameGroup(group.id, v)}
-            style={{ fontSize: 16, fontWeight: 700, color: group.cor, letterSpacing: ".2px" }}
-          />
-        )}
+        {(() => {
+          const titleStyle: React.CSSProperties = {
+            fontSize: 16,
+            fontWeight: 700,
+            color: group.cor,
+            letterSpacing: ".2px",
+            ...(savingGroup ? { opacity: 0.5, pointerEvents: "none" } : {}),
+          };
+          // Backend: bloco real renomeavel via onRenameGroup ("Sem bloco" fica fixo).
+          const backendRenamable = !!onRenameGroup && group.id !== SEM_BLOCO_ID;
+          if (backendRenamable) {
+            return (
+              <EditableText
+                value={group.nome}
+                onCommit={(v) => onRenameGroup!(group.id, v)}
+                style={titleStyle}
+              />
+            );
+          }
+          // Prototipo: edita via store.
+          if (!readOnly) {
+            return (
+              <EditableText
+                value={group.nome}
+                onCommit={(v) => groupsActions.renameGroup(group.id, v)}
+                style={titleStyle}
+              />
+            );
+          }
+          // Read-only puro (ou grupo sintetico "Sem bloco").
+          return <span style={titleStyle}>{group.nome}</span>;
+        })()}
 
         <span style={{ fontSize: 12, color: "var(--muted-foreground)", marginLeft: 2 }}>
           {group.tasks.length}
@@ -812,54 +875,69 @@ function TaskRow({
       {columns.map((c, i) => {
         const last = i === columns.length - 1;
         if (c.builtin) {
+          // Titulo da tarefa: editavel no backend (via onEditField → __nome)
+          // e no prototipo (via store). Read-only puro mostra span.
+          const nomeStyle: React.CSSProperties = {
+            flex: 1,
+            fontWeight: 500,
+            color: "var(--foreground)",
+            ...(saving ? { opacity: 0.5, pointerEvents: "none" } : {}),
+          };
           return (
-            <td key={c.key} style={{ ...td, fontWeight: 500, borderRight: last ? "1px solid var(--border)" : td.borderRight }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {readOnly ? (
-                  <span
-                    style={{
-                      flex: 1,
-                      fontWeight: 500,
-                      color: "var(--foreground)",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                    title={task.nome}
-                  >
-                    {task.nome}
-                  </span>
-                ) : (
-                  <>
+              <td key={c.key} style={{ ...td, fontWeight: 500, borderRight: last ? "1px solid var(--border)" : td.borderRight }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {onEditField ? (
+                    // Backend: edita o titulo via onEditField (feedback conservador).
                     <EditableText
                       value={task.nome}
-                      onCommit={(v) => groupsActions.renameTask(groupId, task.id, v)}
-                      style={{ flex: 1, fontWeight: 500, color: "var(--foreground)" }}
+                      onCommit={(v) => onEditField(task.id, NOME_KEY, v)}
+                      style={nomeStyle}
                     />
-                    <button
-                      type="button"
-                      aria-label="Remover tarefa"
-                      onClick={() => groupsActions.removeTask(groupId, task.id)}
+                  ) : readOnly ? (
+                    <span
                       style={{
-                        display: "inline-flex",
-                        border: 0,
-                        background: "none",
-                        color: "var(--muted-foreground)",
-                        cursor: "pointer",
-                        opacity: hover ? 0.6 : 0,
-                        transition: "opacity .1s",
+                        flex: 1,
+                        fontWeight: 500,
+                        color: "var(--foreground)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
                       }}
+                      title={task.nome}
                     >
-                      <Trash2 size={14} />
-                    </button>
-                    <span style={{ display: "inline-flex", color: "var(--muted-foreground)", opacity: hover ? 1 : 0, transition: "opacity .1s" }}>
-                      <MessageSquarePlus size={15} />
+                      {task.nome}
                     </span>
-                  </>
-                )}
-              </div>
-            </td>
-          );
+                  ) : (
+                    <>
+                      <EditableText
+                        value={task.nome}
+                        onCommit={(v) => groupsActions.renameTask(groupId, task.id, v)}
+                        style={{ flex: 1, fontWeight: 500, color: "var(--foreground)" }}
+                      />
+                      <button
+                        type="button"
+                        aria-label="Remover tarefa"
+                        onClick={() => groupsActions.removeTask(groupId, task.id)}
+                        style={{
+                          display: "inline-flex",
+                          border: 0,
+                          background: "none",
+                          color: "var(--muted-foreground)",
+                          cursor: "pointer",
+                          opacity: hover ? 0.6 : 0,
+                          transition: "opacity .1s",
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                      <span style={{ display: "inline-flex", color: "var(--muted-foreground)", opacity: hover ? 1 : 0, transition: "opacity .1s" }}>
+                        <MessageSquarePlus size={15} />
+                      </span>
+                    </>
+                  )}
+                </div>
+              </td>
+            );
         }
         // No modo backend, as colunas-alvo viram editaveis via onEditField
         // (mesmo com readOnly geral). As demais respeitam readOnly.
