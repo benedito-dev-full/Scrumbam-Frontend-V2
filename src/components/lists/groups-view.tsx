@@ -96,20 +96,32 @@ function useSelection(): SelectionContextValue | null {
   return useContext(SelectionContext);
 }
 
+/** Alvo de movimentacao (bloco ou mae) — id + nome para o popover do Mover. */
+interface MoveTarget {
+  id: string;
+  nome: string;
+}
+
 /**
  * Barra de acoes flutuante (estilo Monday) que surge no rodape quando ha
  * tarefas selecionadas via checkbox. Mostra o contador + acoes. Nesta versao
- * **Duplicar** e **Excluir** sao funcionais; as demais (Exportar, Converter,
- * Mover, Sidekick) sao decorativas. O botao X (e o ESC) limpam a selecao.
+ * **Duplicar**, **Excluir** e **Mover** sao funcionais; as demais (Exportar,
+ * Converter, Sidekick) sao decorativas. O botao X (e o ESC) limpam a selecao.
  *
  * Quando `count === 0` nao renderiza nada.
  *
- * @param count       - Numero de tarefas selecionadas (mostrado no badge).
- * @param onClose     - Limpa a selecao (X / ESC).
- * @param onDelete    - Exclui as tarefas selecionadas (acao funcional).
- * @param deleting    - Enquanto true, desabilita o Excluir (evita duplo disparo).
- * @param onDuplicate - Duplica as tarefas selecionadas (acao funcional).
- * @param duplicating - Enquanto true, desabilita o Duplicar (evita duplo disparo).
+ * @param count         - Numero de tarefas selecionadas (mostrado no badge).
+ * @param onClose       - Limpa a selecao (X / ESC).
+ * @param onDelete      - Exclui as tarefas selecionadas (acao funcional).
+ * @param deleting      - Enquanto true, desabilita o Excluir.
+ * @param onDuplicate   - Duplica as tarefas selecionadas (acao funcional).
+ * @param duplicating   - Enquanto true, desabilita o Duplicar.
+ * @param moveKind      - Tipo da selecao p/ o Mover: "maes" (→ blocos),
+ *   "filhas" (→ maes), "mista"/"vazia" (Mover desabilitado).
+ * @param blockTargets  - Blocos destino (quando moveKind="maes").
+ * @param parentTargets - Maes destino (quando moveKind="filhas").
+ * @param onMoveToBlock - Move maes para um bloco (null = "Sem bloco").
+ * @param onMoveToParent- Move filhas para outra mae.
  */
 function SelectionActionBar({
   count,
@@ -118,6 +130,11 @@ function SelectionActionBar({
   deleting,
   onDuplicate,
   duplicating,
+  moveKind,
+  blockTargets,
+  parentTargets,
+  onMoveToBlock,
+  onMoveToParent,
 }: {
   count: number;
   onClose: () => void;
@@ -125,7 +142,17 @@ function SelectionActionBar({
   deleting: boolean;
   onDuplicate: () => void;
   duplicating: boolean;
+  moveKind: "maes" | "filhas" | "mista" | "vazia";
+  blockTargets: MoveTarget[];
+  parentTargets: MoveTarget[];
+  onMoveToBlock: (blockId: string | null) => void;
+  onMoveToParent: (parentId: string) => void;
 }) {
+  // Ref do botao Mover + estado do popover de destinos.
+  const moveBtnRef = useRef<HTMLButtonElement>(null);
+  const [moveOpen, setMoveOpen] = useState(false);
+  // Mover so e permitido com selecao homogenea (so maes OU so filhas).
+  const canMove = moveKind === "maes" || moveKind === "filhas";
   // ESC limpa a selecao (atalho padrao). Registrado so quando a barra existe.
   useEffect(() => {
     if (count === 0) return;
@@ -207,7 +234,30 @@ function SelectionActionBar({
         danger
       />
       <ActionBtn icon={<CornerDownRight size={16} />} label="Converter" />
-      <ActionBtn icon={<ArrowRight size={16} />} label="Mover" />
+      <ActionBtn
+        btnRef={moveBtnRef}
+        icon={<ArrowRight size={16} />}
+        label="Mover"
+        disabled={!canMove}
+        onClick={() => setMoveOpen((v) => !v)}
+      />
+      {moveOpen && canMove && (
+        <Popover anchorRef={moveBtnRef} onClose={() => setMoveOpen(false)}>
+          <MoveTargetList
+            kind={moveKind}
+            blockTargets={blockTargets}
+            parentTargets={parentTargets}
+            onPickBlock={(blockId) => {
+              onMoveToBlock(blockId);
+              setMoveOpen(false);
+            }}
+            onPickParent={(parentId) => {
+              onMoveToParent(parentId);
+              setMoveOpen(false);
+            }}
+          />
+        </Popover>
+      )}
       <ActionBtn icon={<Sparkles size={16} />} label="Sidekick" />
 
       {/* Divisor + fechar */}
@@ -248,6 +298,7 @@ const DANGER_COLOR = "#ef4444";
  * @param danger - Acao destrutiva (Excluir): no hover, icone+texto ficam
  *   vermelhos e o fundo ganha um tom rosado. Em repouso fica neutro como as
  *   demais.
+ * @param btnRef - Ref do botao (usado para ancorar o popover do "Mover").
  */
 function ActionBtn({
   icon,
@@ -255,16 +306,19 @@ function ActionBtn({
   onClick,
   disabled,
   danger,
+  btnRef,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick?: () => void;
   disabled?: boolean;
   danger?: boolean;
+  btnRef?: React.RefObject<HTMLButtonElement | null>;
 }) {
   const baseColor = disabled ? "var(--muted-foreground)" : "var(--foreground)";
   return (
     <button
+      ref={btnRef}
       type="button"
       onClick={onClick}
       disabled={disabled}
@@ -304,6 +358,105 @@ function ActionBtn({
       {icon}
       {label}
     </button>
+  );
+}
+
+/**
+ * Lista de destinos do "Mover" dentro do popover.
+ * - `kind="maes"`: lista os blocos (+ "Sem bloco") → onPickBlock.
+ * - `kind="filhas"`: lista as maes possiveis → onPickParent.
+ *
+ * Quando a lista de destinos esta vazia, mostra um aviso (ex: nao ha outra
+ * mae para receber as filhas).
+ */
+function MoveTargetList({
+  kind,
+  blockTargets,
+  parentTargets,
+  onPickBlock,
+  onPickParent,
+}: {
+  kind: "maes" | "filhas";
+  blockTargets: MoveTarget[];
+  parentTargets: MoveTarget[];
+  onPickBlock: (blockId: string | null) => void;
+  onPickParent: (parentId: string) => void;
+}) {
+  const itemStyle: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+    padding: "8px 10px",
+    borderRadius: 5,
+    border: 0,
+    background: "none",
+    color: "var(--foreground)",
+    fontSize: 13,
+    cursor: "pointer",
+    textAlign: "left",
+  };
+  const header: React.CSSProperties = {
+    margin: "0 0 4px",
+    padding: "0 4px",
+    fontSize: 10,
+    letterSpacing: ".5px",
+    textTransform: "uppercase",
+    color: "var(--muted-foreground)",
+  };
+
+  return (
+    <div style={{ padding: 6, minWidth: 220, maxHeight: 320, overflowY: "auto" }}>
+      {kind === "maes" ? (
+        <>
+          <p style={header}>Mover para bloco</p>
+          {blockTargets.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => onPickBlock(b.id)}
+              style={itemStyle}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+            >
+              {b.nome}
+            </button>
+          ))}
+          {/* Desvincular → "Sem bloco" */}
+          <button
+            type="button"
+            onClick={() => onPickBlock(null)}
+            style={{ ...itemStyle, color: "var(--muted-foreground)" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+          >
+            Sem bloco
+          </button>
+        </>
+      ) : (
+        <>
+          <p style={header}>Mover para tarefa-mãe</p>
+          {parentTargets.length === 0 ? (
+            <div style={{ padding: "8px 10px", fontSize: 12, color: "var(--muted-foreground)" }}>
+              Nenhuma outra tarefa-mãe disponível.
+            </div>
+          ) : (
+            parentTargets.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => onPickParent(p.id)}
+                style={itemStyle}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+              >
+                {p.nome}
+              </button>
+            ))
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
@@ -477,6 +630,63 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     clearSelection();
   }
 
+  /**
+   * Classifica a selecao atual para decidir o comportamento do "Mover":
+   * - "maes": todas as selecionadas sao tarefas raiz (sem idPai) → mover entre
+   *   blocos (PUT dados.idBloco).
+   * - "filhas": todas sao subtarefas (com idPai) → mover para outra mae
+   *   (PUT idPai).
+   * - "mista": mistura raiz + subtarefa → Mover desabilitado (destinos sao
+   *   incompativeis: blocos vs maes).
+   * - "vazia": nada selecionado.
+   */
+  const selectionKind: "maes" | "filhas" | "mista" | "vazia" = (() => {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return "vazia";
+    const byId = new Map(realTasks.map((t) => [t.id, t]));
+    let temMae = false;
+    let temFilha = false;
+    for (const id of ids) {
+      const t = byId.get(id);
+      if (!t) continue;
+      if (t.idPai) temFilha = true;
+      else temMae = true;
+    }
+    if (temMae && temFilha) return "mista";
+    if (temFilha) return "filhas";
+    return "maes";
+  })();
+
+  /**
+   * Move as MAES selecionadas para um bloco (PUT dados.idBloco). `blockId` nulo
+   * desvincula (move para "Sem bloco"). So faz sentido quando `selectionKind`
+   * e "maes".
+   */
+  function handleMoveToBlock(blockId: string | null) {
+    const ids = [...selectedIds];
+    for (const id of ids) {
+      updateTask.mutate({
+        id,
+        projectId,
+        dto: { dados: { idBloco: blockId } },
+      });
+    }
+    clearSelection();
+  }
+
+  /**
+   * Move as FILHAS selecionadas para outra mae (PUT idPai). A nova mae pode
+   * estar em qualquer bloco. So faz sentido quando `selectionKind` e "filhas".
+   */
+  function handleMoveToParent(parentId: string) {
+    const ids = [...selectedIds];
+    for (const id of ids) {
+      if (id === parentId) continue; // nao deixar virar pai de si mesma
+      updateTask.mutate({ id, projectId, dto: { idPai: parentId } });
+    }
+    clearSelection();
+  }
+
   /** Cria um novo Bloco (DTask idClasse=-200) no projeto. */
   function handleAddGroup() {
     createBlock.mutate({ nome: "Novo bloco", projectId });
@@ -591,6 +801,13 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
         deleting={deleteTask.isPending}
         onDuplicate={handleDuplicateSelected}
         duplicating={createTask.isPending}
+        moveKind={selectionKind}
+        blockTargets={blocks.map((b) => ({ id: b.id, nome: b.nome }))}
+        parentTargets={realTasks
+          .filter((t) => !t.idPai && !selectedIds.has(t.id))
+          .map((t) => ({ id: t.id, nome: t.nome }))}
+        onMoveToBlock={handleMoveToBlock}
+        onMoveToParent={handleMoveToParent}
       />
     </SelectionContext.Provider>
   );

@@ -278,6 +278,10 @@ export function useUpdateTask() {
         dueDate?: string | null;
         assigneeId?: string | null;
         assigneeTeamId?: string | null;
+        /** Move a task na hierarquia: string=novo pai; null=raiz; ausente=nao toca. */
+        idPai?: string | null;
+        /** Merge superficial em dados (ex: { idBloco }) para mover entre blocos. */
+        dados?: Record<string, unknown>;
       };
     }
   >({
@@ -298,6 +302,13 @@ export function useUpdateTask() {
       void queryClient.invalidateQueries({
         queryKey: qk.tasks.byId(variables.id),
       });
+      // Mover na hierarquia (idPai) afeta a lista de filhas do pai ANTIGO e do
+      // NOVO. byProject ja cobre o board, mas as sub-tabelas leem de `children`;
+      // invalidamos a raiz de tasks para reavaliar qualquer lista de filhas
+      // afetada sem precisar saber o pai antigo.
+      if (variables.dto.idPai !== undefined) {
+        void queryClient.invalidateQueries({ queryKey: qk.tasks.all });
+      }
     },
   });
 }
