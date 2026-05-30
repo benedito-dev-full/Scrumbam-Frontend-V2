@@ -1,6 +1,13 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { createPortal } from "react-dom";
 import {
   ChevronDown,
@@ -21,6 +28,14 @@ import {
   Link2,
   Lock,
   Loader2,
+  Copy,
+  Upload,
+  Archive,
+  CornerDownRight,
+  ArrowRight,
+  Sparkles,
+  LayoutGrid,
+  X,
 } from "lucide-react";
 import {
   useGroupsBoard,
@@ -43,6 +58,7 @@ import {
   useUpdateBlock,
   useUpdateTaskStatus,
   useSubtasks,
+  useDeleteTask,
 } from "@/hooks/use-tasks";
 import { useProjectMembers } from "@/hooks/use-members";
 import { useQueryClient } from "@tanstack/react-query";
@@ -58,6 +74,206 @@ import {
   type MemberLike,
 } from "@/lib/mappers/groups-from-tasks";
 import { intentionToColumn } from "@/lib/mappers/task-status.mapper";
+
+/* ─── Contexto de selecao (checkbox → barra de acoes flutuante) ───────────── */
+
+/**
+ * Estado de selecao de tarefas via checkbox, consumido pelos checkboxes das
+ * linhas (pai e subtarefa) e pelo header de grupo ("selecionar tudo"). Quando
+ * `null` (modo prototipo / sem projectId), os checkboxes ficam decorativos.
+ */
+interface SelectionContextValue {
+  /** IDs atualmente selecionados. */
+  selectedIds: Set<string>;
+  /** Marca/desmarca uma task individual. */
+  toggle: (id: string, next: boolean) => void;
+  /** Marca/desmarca um conjunto de tasks de uma vez (header do grupo). */
+  toggleMany: (ids: string[], next: boolean) => void;
+}
+
+const SelectionContext = createContext<SelectionContextValue | null>(null);
+
+/** Hook interno — retorna o contexto de selecao ou null (modo decorativo). */
+function useSelection(): SelectionContextValue | null {
+  return useContext(SelectionContext);
+}
+
+/**
+ * Barra de acoes flutuante (estilo Monday) que surge no rodape quando ha
+ * tarefas selecionadas via checkbox. Mostra o contador + acoes. Nesta versao
+ * apenas **Excluir** e funcional; as demais sao decorativas (placeholder
+ * visual). O botao X (e o ESC) limpam a selecao.
+ *
+ * Quando `count === 0` nao renderiza nada.
+ *
+ * @param count    - Numero de tarefas selecionadas (mostrado no badge).
+ * @param onClose  - Limpa a selecao (X / ESC).
+ * @param onDelete - Exclui as tarefas selecionadas (acao funcional).
+ * @param deleting - Enquanto true, desabilita o Excluir (evita duplo disparo).
+ */
+function SelectionActionBar({
+  count,
+  onClose,
+  onDelete,
+  deleting,
+}: {
+  count: number;
+  onClose: () => void;
+  onDelete: () => void;
+  deleting: boolean;
+}) {
+  // ESC limpa a selecao (atalho padrao). Registrado so quando a barra existe.
+  useEffect(() => {
+    if (count === 0) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [count, onClose]);
+
+  if (count === 0 || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      role="toolbar"
+      aria-label="Acoes da selecao"
+      style={{
+        position: "fixed",
+        bottom: 24,
+        left: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        gap: 4,
+        padding: "10px 12px",
+        borderRadius: 12,
+        background: "var(--card)",
+        border: "1px solid var(--border)",
+        boxShadow: "0 12px 40px rgba(0,0,0,.5)",
+      }}
+    >
+      {/* Badge contador + rotulo */}
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          minWidth: 26,
+          height: 26,
+          padding: "0 6px",
+          borderRadius: "50%",
+          background: "#7c5cff",
+          color: "#fff",
+          fontSize: 13,
+          fontWeight: 700,
+        }}
+      >
+        {count}
+      </span>
+      <span
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: "var(--foreground)",
+          padding: "0 10px 0 4px",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {count === 1 ? "Tarefa Selecionada" : "Tarefas Selecionadas"}
+      </span>
+
+      <ActionBtn icon={<Copy size={16} />} label="Duplicar" />
+      <ActionBtn icon={<Upload size={16} />} label="Exportar" disabled />
+      <ActionBtn icon={<Archive size={16} />} label="Arquivar" />
+      <ActionBtn
+        icon={<Trash2 size={16} />}
+        label="Excluir"
+        onClick={onDelete}
+        disabled={deleting}
+      />
+      <ActionBtn icon={<CornerDownRight size={16} />} label="Converter" />
+      <ActionBtn icon={<ArrowRight size={16} />} label="Mover" />
+      <ActionBtn icon={<Sparkles size={16} />} label="Sidekick" />
+      <ActionBtn icon={<LayoutGrid size={16} />} label="Apps" />
+
+      {/* Divisor + fechar */}
+      <span style={{ width: 1, height: 28, background: "var(--border)", margin: "0 4px" }} />
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Limpar selecao"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 30,
+          height: 30,
+          borderRadius: 8,
+          border: 0,
+          background: "none",
+          color: "var(--muted-foreground)",
+          cursor: "pointer",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
+        onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+      >
+        <X size={18} />
+      </button>
+    </div>,
+    document.body,
+  );
+}
+
+/**
+ * Botao de acao da barra de selecao. Empilha icone + rotulo (estilo Monday).
+ * `disabled` atenua e bloqueia (acoes decorativas ou em andamento).
+ */
+function ActionBtn({
+  icon,
+  label,
+  onClick,
+  disabled,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      style={{
+        display: "inline-flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 3,
+        minWidth: 58,
+        padding: "4px 8px",
+        borderRadius: 8,
+        border: 0,
+        background: "none",
+        color: disabled ? "var(--muted-foreground)" : "var(--foreground)",
+        fontSize: 11,
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.45 : 1,
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) e.currentTarget.style.background = "var(--accent)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "none";
+      }}
+    >
+      {icon}
+      {label}
+    </button>
+  );
+}
 
 /**
  * GroupsView — visualizacao de tarefas em GRUPOS (estilo Monday.com).
@@ -124,6 +340,50 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   ).map((m) => ({ userId: m.userId, nome: m.nome }));
 
   const board = buildGroupsBoard(blocks, realTasks);
+
+  // ── Selecao de tarefas (checkbox) → barra de acoes flutuante ──
+  const deleteTask = useDeleteTask();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  /** Marca/desmarca uma task (pai ou subtarefa) na selecao. */
+  function toggleSelect(id: string, next: boolean) {
+    setSelectedIds((prev) => {
+      const copy = new Set(prev);
+      if (next) copy.add(id);
+      else copy.delete(id);
+      return copy;
+    });
+  }
+
+  /** Marca/desmarca todas as tasks raiz de um grupo de uma vez (header). */
+  function toggleSelectGroup(taskIds: string[], next: boolean) {
+    setSelectedIds((prev) => {
+      const copy = new Set(prev);
+      for (const id of taskIds) {
+        if (next) copy.add(id);
+        else copy.delete(id);
+      }
+      return copy;
+    });
+  }
+
+  /** Limpa a selecao (X da barra). */
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  /**
+   * Exclui as tasks selecionadas (unica acao funcional da barra). As demais
+   * acoes sao decorativas nesta versao. Limpa a selecao ao final.
+   */
+  function handleDeleteSelected() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    for (const id of ids) {
+      deleteTask.mutate({ id, projectId });
+    }
+    clearSelection();
+  }
 
   /** Cria um novo Bloco (DTask idClasse=-200) no projeto. */
   function handleAddGroup() {
@@ -217,18 +477,28 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   }
 
   return (
-    <GroupsBoardView
-      board={board}
-      readOnly
-      members={members}
-      savingTaskId={savingTaskId}
-      savingGroupId={savingGroupId}
-      projectId={projectId}
-      onEditField={handleEditField}
-      onRenameGroup={handleRenameGroup}
-      onAddGroup={handleAddGroup}
-      onAddTask={handleAddTask}
-    />
+    <SelectionContext.Provider
+      value={{ selectedIds, toggle: toggleSelect, toggleMany: toggleSelectGroup }}
+    >
+      <GroupsBoardView
+        board={board}
+        readOnly
+        members={members}
+        savingTaskId={savingTaskId}
+        savingGroupId={savingGroupId}
+        projectId={projectId}
+        onEditField={handleEditField}
+        onRenameGroup={handleRenameGroup}
+        onAddGroup={handleAddGroup}
+        onAddTask={handleAddTask}
+      />
+      <SelectionActionBar
+        count={selectedIds.size}
+        onClose={clearSelection}
+        onDelete={handleDeleteSelected}
+        deleting={deleteTask.isPending}
+      />
+    </SelectionContext.Provider>
   );
 }
 
@@ -668,7 +938,11 @@ function GroupBox({
               <col style={{ width: W_ADD }} />
             </colgroup>
 
-            <HeadRow columns={columns} readOnly={readOnly} />
+            <HeadRow
+              columns={columns}
+              readOnly={readOnly}
+              groupTaskIds={group.tasks.map((t) => t.id)}
+            />
 
             <tbody>
               {group.tasks.map((t) => (
@@ -714,7 +988,17 @@ const TYPE_ICON: Record<ColumnType, React.ComponentType<{ size?: number }>> = {
 
 /* ─── Cabecalho de colunas ───────────────────────────────────────────────── */
 
-function HeadRow({ columns, readOnly }: { columns: ColumnDef[]; readOnly: boolean }) {
+function HeadRow({
+  columns,
+  readOnly,
+  groupTaskIds,
+}: {
+  columns: ColumnDef[];
+  readOnly: boolean;
+  /** IDs das tasks raiz do grupo — alimenta o "selecionar tudo" do header. */
+  groupTaskIds?: string[];
+}) {
+  const selection = useSelection();
   const th: React.CSSProperties = {
     fontSize: 12,
     fontWeight: 500,
@@ -725,12 +1009,25 @@ function HeadRow({ columns, readOnly }: { columns: ColumnDef[]; readOnly: boolea
     background: "color-mix(in srgb, var(--foreground) 3%, transparent)",
     whiteSpace: "nowrap",
   };
+  // Todas as tasks raiz do grupo estao selecionadas? (estado do "selecionar tudo")
+  const allChecked =
+    !!selection &&
+    !!groupTaskIds &&
+    groupTaskIds.length > 0 &&
+    groupTaskIds.every((id) => selection.selectedIds.has(id));
   return (
     <thead>
       <tr>
         <th style={{ ...th, padding: 0 }}>
           <span style={{ display: "inline-flex" }}>
-            <Checkbox checked={false} />
+            {selection && groupTaskIds ? (
+              <Checkbox
+                checked={allChecked}
+                onChange={(next) => selection.toggleMany(groupTaskIds, next)}
+              />
+            ) : (
+              <Checkbox checked={false} />
+            )}
           </span>
         </th>
         {columns.map((c) =>
@@ -957,6 +1254,8 @@ function TaskRow({
   const [hover, setHover] = useState(false);
   // Estado de expansao da sub-tabela — gerenciado localmente no TaskRow.
   const [expanded, setExpanded] = useState(false);
+  // Selecao via checkbox (null no modo prototipo → checkbox decorativo).
+  const selection = useSelection();
 
   const hasChildren = (task.childCount ?? 0) > 0;
   // No modo backend com projectId, qualquer task pode receber filhas —
@@ -979,7 +1278,14 @@ function TaskRow({
     <React.Fragment>
       <tr onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
         <td style={{ ...td, padding: 0, textAlign: "center" }}>
-          <Checkbox checked={false} />
+          {selection ? (
+            <Checkbox
+              checked={selection.selectedIds.has(task.id)}
+              onChange={(next) => selection.toggle(task.id, next)}
+            />
+          ) : (
+            <Checkbox checked={false} />
+          )}
         </td>
 
         {columns.map((c, i) => {
@@ -1475,6 +1781,8 @@ function SubtaskTaskRow({
 }) {
   const [hover, setHover] = useState(false);
   const queryClient = useQueryClient();
+  // Selecao via checkbox (null no modo prototipo → checkbox decorativo).
+  const selection = useSelection();
 
   const updateTask = useUpdateTask();
   const updateStatus = useUpdateTaskStatus();
@@ -1555,7 +1863,14 @@ function SubtaskTaskRow({
   return (
     <tr onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <td style={{ ...td, padding: 0, textAlign: "center", borderRight: "1px solid var(--border)" }}>
-        <Checkbox checked={false} />
+        {selection ? (
+          <Checkbox
+            checked={selection.selectedIds.has(subtask.id)}
+            onChange={(next) => selection.toggle(subtask.id, next)}
+          />
+        ) : (
+          <Checkbox checked={false} />
+        )}
       </td>
 
       {/* Nome / titulo da subtarefa */}
@@ -2353,8 +2668,19 @@ function SegmentBar({ colors }: { colors: string[] }) {
   );
 }
 
-function Checkbox({ checked }: { checked: boolean }) {
-  return (
+/**
+ * Checkbox visual. Quando `onChange` é fornecido, vira um botão clicável de
+ * seleção (alimenta a barra de ações flutuante); sem `onChange` é apenas
+ * decorativo (compatível com os usos antigos que passavam só `checked`).
+ */
+function Checkbox({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange?: (next: boolean) => void;
+}) {
+  const box = (
     <span
       style={{
         display: "inline-grid",
@@ -2368,6 +2694,31 @@ function Checkbox({ checked }: { checked: boolean }) {
     >
       {checked && <Check size={11} color="#fff" strokeWidth={3} />}
     </span>
+  );
+
+  if (!onChange) return box;
+
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={checked ? "Desmarcar" : "Selecionar"}
+      onClick={(e) => {
+        e.stopPropagation();
+        onChange(!checked);
+      }}
+      style={{
+        display: "inline-grid",
+        placeItems: "center",
+        border: 0,
+        background: "none",
+        padding: 0,
+        cursor: "pointer",
+      }}
+    >
+      {box}
+    </button>
   );
 }
 
