@@ -772,6 +772,19 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     );
   }
 
+  /**
+   * Altera a cor de um Bloco (DTask idClasse=-200) via `useUpdateBlock`
+   * (`dados.cor`). O grupo sintetico "Sem bloco" nao e um bloco real — ignora.
+   */
+  function handleRecolorGroup(groupId: string, cor: string) {
+    if (groupId === SEM_BLOCO_ID) return;
+    setSavingGroupId(groupId);
+    updateBlock.mutate(
+      { id: groupId, projectId, dto: { dados: { cor } } },
+      { onSettled: () => setSavingGroupId(null) },
+    );
+  }
+
   if (loadingBlocks || loadingTasks) {
     return (
       <div
@@ -796,6 +809,7 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
         projectId={projectId}
         onEditField={handleEditField}
         onRenameGroup={handleRenameGroup}
+        onRecolorGroup={handleRecolorGroup}
         onAddGroup={handleAddGroup}
         onAddTask={handleAddTask}
       />
@@ -891,6 +905,7 @@ function GroupsBoardView({
   projectId,
   onEditField,
   onRenameGroup,
+  onRecolorGroup,
   onAddGroup,
   onAddTask,
 }: {
@@ -903,6 +918,8 @@ function GroupsBoardView({
   projectId?: string;
   onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
   onRenameGroup?: (groupId: string, nome: string) => void;
+  /** Altera a cor do bloco. Quando presente, o header mostra o seletor de cor. */
+  onRecolorGroup?: (groupId: string, cor: string) => void;
   onAddGroup?: () => void;
   onAddTask?: (groupId: string) => void;
 }) {
@@ -977,6 +994,7 @@ function GroupsBoardView({
               projectId={projectId}
               onEditField={onEditField}
               onRenameGroup={onRenameGroup}
+              onRecolorGroup={onRecolorGroup}
               onAddTask={onAddTask}
             />
           ))
@@ -1054,6 +1072,7 @@ function GroupBox({
   projectId,
   onEditField,
   onRenameGroup,
+  onRecolorGroup,
   onAddTask,
 }: {
   group: GroupModel;
@@ -1068,6 +1087,7 @@ function GroupBox({
   projectId?: string;
   onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
   onRenameGroup?: (groupId: string, nome: string) => void;
+  onRecolorGroup?: (groupId: string, cor: string) => void;
   onAddTask?: (groupId: string) => void;
 }) {
   const [open, setOpen] = useState(true);
@@ -1148,6 +1168,15 @@ function GroupBox({
         >
           <ChevronDown size={16} strokeWidth={2.5} />
         </button>
+
+        {/* Seletor de cor do bloco — so no modo backend (bloco real). */}
+        {onRecolorGroup && group.id !== SEM_BLOCO_ID && (
+          <GroupColorPicker
+            color={group.cor}
+            disabled={savingGroup}
+            onPick={(cor) => onRecolorGroup(group.id, cor)}
+          />
+        )}
 
         {(() => {
           const titleStyle: React.CSSProperties = {
@@ -1286,6 +1315,108 @@ function GroupBox({
         </div>
       )}
     </section>
+  );
+}
+
+/* ─── Seletor de cor do bloco ────────────────────────────────────────────── */
+
+/** Paleta de cores disponiveis para os blocos (estilo Monday/ClickUp). */
+const BLOCK_COLORS: string[] = [
+  "#7c5cff", // roxo (default)
+  "#e0457b", // rosa/magenta
+  "#3b82f6", // azul
+  "#10b981", // verde
+  "#f59e0b", // ambar
+  "#ef4444", // vermelho
+  "#06b6d4", // ciano
+  "#8b5cf6", // violeta claro
+  "#ec4899", // pink
+  "#22c55e", // verde claro
+  "#f97316", // laranja
+  "#6b7280", // cinza
+];
+
+/**
+ * Gatilho + popover de selecao de cor de um bloco. O gatilho e um quadrado da
+ * cor atual; ao clicar, abre uma paleta. Escolher dispara `onPick(cor)`.
+ *
+ * @param color    - Cor atual do bloco (destaca a opcao selecionada).
+ * @param onPick   - Callback com a cor hex escolhida.
+ * @param disabled - Enquanto salva, desativa o gatilho.
+ */
+function GroupColorPicker({
+  color,
+  onPick,
+  disabled,
+}: {
+  color: string;
+  onPick: (cor: string) => void;
+  disabled?: boolean;
+}) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        ref={ref}
+        type="button"
+        aria-label="Alterar cor do bloco"
+        title="Alterar cor do bloco"
+        disabled={disabled}
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          width: 14,
+          height: 14,
+          borderRadius: 4,
+          border: "1px solid color-mix(in srgb, var(--foreground) 20%, transparent)",
+          background: color,
+          cursor: disabled ? "default" : "pointer",
+          flexShrink: 0,
+          padding: 0,
+          opacity: disabled ? 0.5 : 1,
+        }}
+      />
+      {open && (
+        <Popover anchorRef={ref} onClose={() => setOpen(false)}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(6, 1fr)",
+              gap: 6,
+              padding: 10,
+            }}
+          >
+            {BLOCK_COLORS.map((c) => {
+              const selected = c.toLowerCase() === color.toLowerCase();
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  aria-label={`Cor ${c}`}
+                  onClick={() => {
+                    if (c.toLowerCase() !== color.toLowerCase()) onPick(c);
+                    setOpen(false);
+                  }}
+                  style={{
+                    width: 22,
+                    height: 22,
+                    borderRadius: 6,
+                    background: c,
+                    border: selected ? "2px solid var(--foreground)" : "1px solid transparent",
+                    cursor: "pointer",
+                    padding: 0,
+                    display: "inline-grid",
+                    placeItems: "center",
+                  }}
+                >
+                  {selected && <Check size={12} color="#fff" strokeWidth={3} />}
+                </button>
+              );
+            })}
+          </div>
+        </Popover>
+      )}
+    </>
   );
 }
 
