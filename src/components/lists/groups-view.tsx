@@ -1623,8 +1623,9 @@ function SubtaskTaskRow({
  * **Estados:**
  * - Repouso: botão clicável "Adicionar subelemento"
  * - Ativo: input inline para digitar o nome (auto-focus)
- * - Carregando (`isPending`): spinner "Criando subelemento..." entre o submit
- *   e o aparecimento da subtarefa no refetch (feedback imediato)
+ * - Carregando (`creating`): spinner "Criando subelemento..." que cobre o
+ *   ciclo inteiro — submit (POST) E refetch das children — ate a subtarefa
+ *   aparecer de fato na lista (o `await invalidateQueries` segura o estado).
  *
  * **Confirmação:**
  * - Enter → cria a subtarefa (input perde foco)
@@ -1658,25 +1659,40 @@ function AddSubtaskRow({
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const [hover, setHover] = useState(false);
+  // `creating` cobre TODO o ciclo: submit (POST) + refetch das children, ate a
+  // subtarefa realmente aparecer. So o `isPending` do mutation desligava cedo
+  // demais (acabava no fim do POST, mas a lista so atualizava no refetch
+  // seguinte — gap em que o spinner sumia e a task ainda nao tinha aparecido).
+  const [creating, setCreating] = useState(false);
   const createTask = useCreateTask();
+  const queryClient = useQueryClient();
 
-  function commit() {
-    if (createTask.isPending) return;
+  async function commit() {
+    if (creating) return;
     const nome = draft.trim();
     if (!nome) {
       setAdding(false);
       setDraft("");
       return;
     }
-    createTask.mutate(
-      { titulo: nome, idProject: projectId, idPai: parentId },
-      {
-        onSettled: () => {
-          setAdding(false);
-          setDraft("");
-        },
-      },
-    );
+    setCreating(true);
+    setAdding(false);
+    setDraft("");
+    try {
+      await createTask.mutateAsync({
+        titulo: nome,
+        idProject: projectId,
+        idPai: parentId,
+      });
+      // Espera o refetch das subtarefas COMPLETAR — invalidateQueries resolve
+      // so quando a query ativa termina de rebuscar. Mantem o spinner ate a
+      // nova subtarefa estar de fato na lista.
+      await queryClient.invalidateQueries({
+        queryKey: qk.tasks.children(parentId),
+      });
+    } finally {
+      setCreating(false);
+    }
   }
 
   return (
@@ -1691,10 +1707,10 @@ function AddSubtaskRow({
           transition: "background .1s",
         }}
       >
-        {createTask.isPending ? (
-          /* Estado de carregamento — entre o Enter e a subtarefa aparecer no
-             refetch ha um intervalo perceptivel; o spinner da feedback imediato
-             de que "foi", evitando a sensacao de que o clique nao funcionou. */
+        {creating ? (
+          /* Estado de carregamento — cobre submit + refetch, ate a subtarefa
+             aparecer de fato na lista. Da feedback imediato e continuo,
+             evitando a sensacao de que o clique nao funcionou. */
           <div
             style={{
               display: "flex",
@@ -1736,7 +1752,6 @@ function AddSubtaskRow({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            disabled={createTask.isPending}
             style={{
               display: "inline-flex",
               alignItems: "center",
@@ -1747,10 +1762,9 @@ function AddSubtaskRow({
               background: "none",
               color: "var(--muted-foreground)",
               fontSize: 12,
-              cursor: createTask.isPending ? "not-allowed" : "pointer",
+              cursor: "pointer",
               width: "100%",
               textAlign: "left",
-              opacity: createTask.isPending ? 0.5 : 1,
             }}
           >
             <Plus size={13} />
