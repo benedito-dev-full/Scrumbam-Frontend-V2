@@ -181,6 +181,8 @@ export function useCreateTask() {
       priority?: string;
       dueDate?: string;
       assigneeId?: string;
+      assigneeTeamId?: string;
+      taskType?: string;
       idPai?: string;
       tipo?: string;
       dados?: Record<string, unknown>;

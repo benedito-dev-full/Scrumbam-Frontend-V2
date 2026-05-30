@@ -99,26 +99,32 @@ function useSelection(): SelectionContextValue | null {
 /**
  * Barra de acoes flutuante (estilo Monday) que surge no rodape quando ha
  * tarefas selecionadas via checkbox. Mostra o contador + acoes. Nesta versao
- * apenas **Excluir** e funcional; as demais sao decorativas (placeholder
- * visual). O botao X (e o ESC) limpam a selecao.
+ * **Duplicar** e **Excluir** sao funcionais; as demais (Exportar, Converter,
+ * Mover, Sidekick) sao decorativas. O botao X (e o ESC) limpam a selecao.
  *
  * Quando `count === 0` nao renderiza nada.
  *
- * @param count    - Numero de tarefas selecionadas (mostrado no badge).
- * @param onClose  - Limpa a selecao (X / ESC).
- * @param onDelete - Exclui as tarefas selecionadas (acao funcional).
- * @param deleting - Enquanto true, desabilita o Excluir (evita duplo disparo).
+ * @param count       - Numero de tarefas selecionadas (mostrado no badge).
+ * @param onClose     - Limpa a selecao (X / ESC).
+ * @param onDelete    - Exclui as tarefas selecionadas (acao funcional).
+ * @param deleting    - Enquanto true, desabilita o Excluir (evita duplo disparo).
+ * @param onDuplicate - Duplica as tarefas selecionadas (acao funcional).
+ * @param duplicating - Enquanto true, desabilita o Duplicar (evita duplo disparo).
  */
 function SelectionActionBar({
   count,
   onClose,
   onDelete,
   deleting,
+  onDuplicate,
+  duplicating,
 }: {
   count: number;
   onClose: () => void;
   onDelete: () => void;
   deleting: boolean;
+  onDuplicate: () => void;
+  duplicating: boolean;
 }) {
   // ESC limpa a selecao (atalho padrao). Registrado so quando a barra existe.
   useEffect(() => {
@@ -186,7 +192,12 @@ function SelectionActionBar({
         {count === 1 ? "Tarefa Selecionada" : "Tarefas Selecionadas"}
       </span>
 
-      <ActionBtn icon={<Copy size={16} />} label="Duplicar" />
+      <ActionBtn
+        icon={<Copy size={16} />}
+        label="Duplicar"
+        onClick={onDuplicate}
+        disabled={duplicating}
+      />
       <ActionBtn icon={<Upload size={16} />} label="Exportar" disabled />
       <ActionBtn
         icon={<Trash2 size={16} />}
@@ -412,6 +423,39 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     clearSelection();
   }
 
+  /**
+   * Duplica as tasks selecionadas recriando-as via `useCreateTask` (o backend
+   * nao tem endpoint de clone). Copia os campos copiaveis: nome (+ " (copia)"),
+   * prioridade, responsavel, time, data, tipo, pai e vinculo de bloco.
+   *
+   * Limitacoes do backend (documentadas):
+   * - O status sempre inicia em INBOX (Backlog) — nao e copiavel no POST.
+   * - Subtarefas NAO sao copiadas (decisao de produto): duplica so a propria
+   *   task. Se for uma subtarefa, a copia mantem o mesmo `idPai`.
+   */
+  function handleDuplicateSelected() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+    const byId = new Map(realTasks.map((t) => [t.id, t]));
+    for (const id of ids) {
+      const t = byId.get(id);
+      if (!t) continue;
+      const idBloco =
+        typeof t.dados?.idBloco === "string" ? t.dados.idBloco : undefined;
+      createTask.mutate({
+        titulo: `${t.nome} (cópia)`,
+        idProject: projectId,
+        priority: t.priority ?? undefined,
+        assigneeId: t.assigneeId ?? undefined,
+        assigneeTeamId: t.assigneeTeamId ?? undefined,
+        dueDate: t.dueDate ?? undefined,
+        idPai: t.idPai ?? undefined,
+        ...(idBloco ? { dados: { idBloco } } : {}),
+      });
+    }
+    clearSelection();
+  }
+
   /** Cria um novo Bloco (DTask idClasse=-200) no projeto. */
   function handleAddGroup() {
     createBlock.mutate({ nome: "Novo bloco", projectId });
@@ -524,6 +568,8 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
         onClose={clearSelection}
         onDelete={handleDeleteSelected}
         deleting={deleteTask.isPending}
+        onDuplicate={handleDuplicateSelected}
+        duplicating={createTask.isPending}
       />
     </SelectionContext.Provider>
   );
