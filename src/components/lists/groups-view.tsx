@@ -412,12 +412,33 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
    * filhas) para que `useDeleteTask` invalide `qk.tasks.children(parentId)` e a
    * sub-tabela na tela atualize. Sem isso, a filha sumia no backend mas
    * continuava visivel ate um refresh.
+   *
+   * **Dedup de cascade:** o backend deleta com cascade por padrao (raiz +
+   * descendentes — ADR-V2-047 Q6). Se um pai E uma filha dele estao
+   * selecionados, deletar o pai ja remove a filha; o DELETE explicito da filha
+   * bateria num 404 (a busca exige `excluido: false`). Por isso pulamos
+   * qualquer task selecionada que tenha um ANCESTRAL tambem selecionado — o
+   * cascade do ancestral cuida dela.
    */
   function handleDeleteSelected() {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
     const parentById = new Map(realTasks.map((t) => [t.id, t.idPai ?? undefined]));
-    for (const id of ids) {
+
+    /** True se algum ancestral de `id` tambem esta selecionado. */
+    function hasSelectedAncestor(id: string): boolean {
+      let parent = parentById.get(id);
+      while (parent) {
+        if (selectedIds.has(parent)) return true;
+        parent = parentById.get(parent);
+      }
+      return false;
+    }
+
+    // So dispara o delete das tasks "de topo" da selecao; descendentes
+    // selecionados sao removidos pelo cascade do ancestral.
+    const toDelete = ids.filter((id) => !hasSelectedAncestor(id));
+    for (const id of toDelete) {
       deleteTask.mutate({ id, projectId, parentId: parentById.get(id) });
     }
     clearSelection();
