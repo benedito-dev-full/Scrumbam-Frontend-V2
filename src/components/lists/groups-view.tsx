@@ -36,9 +36,14 @@ import {
   useTasksByProject,
   useCreateBlock,
   useCreateTask,
+  useUpdateTask,
 } from "@/hooks/use-tasks";
 import { useProjectMembers } from "@/hooks/use-members";
-import { buildGroupsBoard, SEM_BLOCO_ID } from "@/lib/mappers/groups-from-tasks";
+import {
+  buildGroupsBoard,
+  SEM_BLOCO_ID,
+  type MemberLike,
+} from "@/lib/mappers/groups-from-tasks";
 
 /**
  * GroupsView — visualizacao de tarefas em GRUPOS (estilo Monday.com).
@@ -74,11 +79,13 @@ export function GroupsView({ projectId }: { projectId?: string }) {
 /**
  * Busca Blocos + Tasks + Membros reais do projeto e renderiza o board.
  *
- * As CELULAS sao read-only nesta fase (clicar nao edita status/resp/data),
- * mas a ESCRITA estrutural esta ligada: "Adicionar grupo" cria um Bloco
- * (`useCreateBlock`) e "Adicionar tarefa" cria uma task ja vinculada ao
- * bloco via `dados.idBloco` (`useCreateTask`). Tasks sem bloco caem no
- * grupo sintetico "Sem bloco"; adicionar tarefa ali cria task solta.
+ * Edicao inline (passo 1): Responsavel, Prioridade e Data sao editaveis via
+ * `useUpdateTask` (feedback conservador — a celula so muda apos o backend
+ * confirmar; spinner enquanto salva). Status, ID e Nome seguem read-only.
+ *
+ * Escrita estrutural: "Adicionar grupo" cria um Bloco (`useCreateBlock`);
+ * "Adicionar tarefa" cria uma task vinculada via `dados.idBloco`
+ * (`useCreateTask`). Tasks sem bloco caem no grupo "Sem bloco".
  */
 function BackendGroupsView({ projectId }: { projectId: string }) {
   const { data: blocks = [], isLoading: loadingBlocks } = useBlocks(projectId);
@@ -88,15 +95,18 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
 
   const createBlock = useCreateBlock();
   const createTask = useCreateTask();
+  const updateTask = useUpdateTask();
+
+  // Qual task esta salvando agora — alimenta o spinner da celula.
+  const [savingTaskId, setSavingTaskId] = useState<string | null>(null);
 
   // Blocos (idClasse=-200) nao sao tarefas — fora da listagem de tasks.
   const realTasks = tasks.filter((t) => t.idClasse !== "-200");
-  const members = (Array.isArray(membersRaw) ? membersRaw : []).map((m) => ({
-    userId: m.userId,
-    nome: m.nome,
-  }));
+  const members: MemberLike[] = (
+    Array.isArray(membersRaw) ? membersRaw : []
+  ).map((m) => ({ userId: m.userId, nome: m.nome }));
 
-  const board = buildGroupsBoard(blocks, realTasks, members);
+  const board = buildGroupsBoard(blocks, realTasks);
 
   /** Cria um novo Bloco (DTask idClasse=-200) no projeto. */
   function handleAddGroup() {
@@ -111,6 +121,36 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     const dados =
       groupId === SEM_BLOCO_ID ? undefined : { idBloco: groupId };
     createTask.mutate({ titulo: "Nova tarefa", idProject: projectId, dados });
+  }
+
+  /**
+   * Edita um campo de uma task no backend. Mapeia a coluna para o campo do
+   * DTO de update e dispara a mutation; o `savingTaskId` segura o spinner ate
+   * a invalidacao trazer o valor confirmado (feedback conservador).
+   */
+  function handleEditField(taskId: string, columnKey: string, value: FieldValue) {
+    const dto: {
+      assigneeId?: string | null;
+      priority?: string;
+      dueDate?: string | null;
+    } = {};
+    if (columnKey === "responsavel") {
+      dto.assigneeId = typeof value === "string" && value ? value : null;
+    } else if (columnKey === "prioridade") {
+      // priority nao aceita null no DTO atual — sem valor, nao envia nada.
+      if (typeof value !== "string" || !value) return;
+      dto.priority = value;
+    } else if (columnKey === "dueDate") {
+      dto.dueDate = typeof value === "string" && value ? value : null;
+    } else {
+      return; // coluna nao-editavel neste passo
+    }
+
+    setSavingTaskId(taskId);
+    updateTask.mutate(
+      { id: taskId, projectId, dto },
+      { onSettled: () => setSavingTaskId(null) },
+    );
   }
 
   if (loadingBlocks || loadingTasks) {
@@ -128,6 +168,9 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     <GroupsBoardView
       board={board}
       readOnly
+      members={members}
+      savingTaskId={savingTaskId}
+      onEditField={handleEditField}
       onAddGroup={handleAddGroup}
       onAddTask={handleAddTask}
     />
@@ -151,21 +194,34 @@ function PrototypeGroupsView() {
 
 /* ─── Renderizacao do board (compartilhada entre os dois modos) ──────────── */
 
+/** Colunas editaveis no modo backend (passo 1). As demais ficam read-only. */
+const BACKEND_EDITABLE_KEYS = new Set(["responsavel", "prioridade", "dueDate"]);
+
 /**
- * @param readOnly - Desliga a edicao INLINE de celulas (status/resp/data) e
- *   o rename/remove. Nao afeta os botoes de criar — esses sao controlados
- *   pela presenca de `onAddGroup`/`onAddTask`.
+ * @param readOnly - Desliga a edicao via store (rename/remove/setField do
+ *   prototipo). No modo backend e `true`, mas `onEditField` reabre a edicao
+ *   das colunas em `BACKEND_EDITABLE_KEYS`.
+ * @param members - Membros para resolver userId → nome na coluna `person`.
+ * @param savingTaskId - Task que esta salvando agora (spinner na celula).
+ * @param onEditField - Salva uma celula no backend (resp/prioridade/data).
+ *   Quando presente, essas colunas ficam editaveis mesmo com `readOnly`.
  * @param onAddGroup - Cria um grupo/bloco. Se ausente, o botao nao aparece.
  * @param onAddTask - Cria uma tarefa no grupo. Se ausente, a linha nao aparece.
  */
 function GroupsBoardView({
   board,
   readOnly,
+  members,
+  savingTaskId,
+  onEditField,
   onAddGroup,
   onAddTask,
 }: {
   board: GroupsBoard;
   readOnly: boolean;
+  members?: MemberLike[];
+  savingTaskId?: string | null;
+  onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
   onAddGroup?: () => void;
   onAddTask?: (groupId: string) => void;
 }) {
@@ -233,6 +289,9 @@ function GroupsBoardView({
               register={register}
               onSyncScroll={syncScroll}
               readOnly={readOnly}
+              members={members}
+              savingTaskId={savingTaskId}
+              onEditField={onEditField}
               onAddTask={onAddTask}
             />
           ))
@@ -277,7 +336,7 @@ const W_DEFAULT = 150;
 
 function colWidth(c: ColumnDef): number {
   if (c.builtin) return W_NOME;
-  if (c.type === "person") return 96;
+  if (c.type === "person") return 150;
   if (c.type === "number") return 130;
   if (c.type === "link") return 150;
   if (c.type === "text") return 130;
@@ -292,6 +351,9 @@ function GroupBox({
   register,
   onSyncScroll,
   readOnly,
+  members,
+  savingTaskId,
+  onEditField,
   onAddTask,
 }: {
   group: GroupModel;
@@ -299,6 +361,9 @@ function GroupBox({
   register: (el: HTMLDivElement | null, prev?: HTMLDivElement | null) => void;
   onSyncScroll: (source: HTMLDivElement) => void;
   readOnly: boolean;
+  members?: MemberLike[];
+  savingTaskId?: string | null;
+  onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
   onAddTask?: (groupId: string) => void;
 }) {
   const [open, setOpen] = useState(true);
@@ -455,7 +520,16 @@ function GroupBox({
 
             <tbody>
               {group.tasks.map((t) => (
-                <TaskRow key={t.id} groupId={group.id} task={t} columns={columns} readOnly={readOnly} />
+                <TaskRow
+                  key={t.id}
+                  groupId={group.id}
+                  task={t}
+                  columns={columns}
+                  readOnly={readOnly}
+                  members={members}
+                  saving={savingTaskId === t.id}
+                  onEditField={onEditField}
+                />
               ))}
               {onAddTask && (
                 <AddTaskRow colSpan={columns.length + 2} onAdd={() => onAddTask(group.id)} />
@@ -704,11 +778,17 @@ function TaskRow({
   task,
   columns,
   readOnly,
+  members,
+  saving,
+  onEditField,
 }: {
   groupId: string;
   task: TaskModel;
   columns: ColumnDef[];
   readOnly: boolean;
+  members?: MemberLike[];
+  saving?: boolean;
+  onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
 }) {
   const [hover, setHover] = useState(false);
   const td: React.CSSProperties = {
@@ -781,14 +861,25 @@ function TaskRow({
             </td>
           );
         }
+        // No modo backend, as colunas-alvo viram editaveis via onEditField
+        // (mesmo com readOnly geral). As demais respeitam readOnly.
+        const backendEditable =
+          !!onEditField && BACKEND_EDITABLE_KEYS.has(c.key);
+        const cellReadOnly = backendEditable ? false : readOnly;
+        const cellOnChange = backendEditable
+          ? (v: FieldValue) => onEditField!(task.id, c.key, v)
+          : (v: FieldValue) => groupsActions.setField(groupId, task.id, c.key, v);
+
         return (
           <FieldCell
             key={c.key}
             tdStyle={td}
             column={c}
             value={task.fields[c.key] ?? null}
-            onChange={(v) => groupsActions.setField(groupId, task.id, c.key, v)}
-            readOnly={readOnly}
+            onChange={cellOnChange}
+            readOnly={cellReadOnly}
+            members={members}
+            saving={saving}
           />
         );
       })}
@@ -806,19 +897,29 @@ function FieldCell({
   onChange,
   tdStyle,
   readOnly,
+  members,
+  saving,
 }: {
   column: ColumnDef;
   value: FieldValue;
   onChange: (v: FieldValue) => void;
   tdStyle: React.CSSProperties;
   readOnly: boolean;
+  members?: MemberLike[];
+  saving?: boolean;
 }) {
   const ref = useRef<HTMLTableCellElement>(null);
   const [open, setOpen] = useState(false);
 
-  // No modo read-only a celula nao abre editor nem responde a clique.
-  const openCell = readOnly ? undefined : () => setOpen(true);
-  const editCursor = readOnly ? "default" : "pointer";
+  // No modo read-only (ou enquanto salva) a celula nao abre editor nem
+  // responde a clique. `saving` segura a interacao ate o backend confirmar.
+  const locked = readOnly || !!saving;
+  const openCell = locked ? undefined : () => setOpen(true);
+  const editCursor = locked ? "default" : "pointer";
+  // Estilo aplicado quando esta salvando — atenua a celula para feedback.
+  const savingStyle: React.CSSProperties = saving
+    ? { opacity: 0.5, pointerEvents: "none" }
+    : {};
 
   const options = column.config?.options ?? [];
   const selected = options.find((o) => o.id === value);
@@ -827,7 +928,7 @@ function FieldCell({
   if (column.type === "status" || column.type === "dropdown") {
     const isStatus = column.type === "status";
     return (
-      <td ref={ref} style={{ ...tdStyle, padding: 2, cursor: editCursor }} onClick={openCell}>
+      <td ref={ref} style={{ ...tdStyle, ...savingStyle, padding: 2, cursor: editCursor }} onClick={openCell}>
         {selected ? (
           isStatus ? (
             <Pill bg={selected.color ?? "#6b7280"}>{selected.label}</Pill>
@@ -855,11 +956,17 @@ function FieldCell({
 
   // ── person ──
   if (column.type === "person") {
-    // No backend guardamos o NOME resolvido como string. Quando ha nome,
-    // exibimos avatar com inicial + nome; senao, o circulo pontilhado vazio.
-    const nome = typeof value === "string" && value ? value : null;
+    // O valor guardado e o userId (string). Resolve para nome via members.
+    const userId = typeof value === "string" && value ? value : null;
+    const nome = userId
+      ? (members?.find((m) => m.userId === userId)?.nome ?? userId)
+      : null;
     return (
-      <td style={{ ...tdStyle, textAlign: nome ? "left" : "center" }}>
+      <td
+        ref={ref}
+        style={{ ...tdStyle, ...savingStyle, textAlign: nome ? "left" : "center", cursor: editCursor }}
+        onClick={openCell}
+      >
         {nome ? (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "100%" }}>
             <span
@@ -900,6 +1007,18 @@ function FieldCell({
             <User size={13} />
           </span>
         )}
+        {open && (
+          <Popover anchorRef={ref} onClose={() => setOpen(false)}>
+            <PersonList
+              members={members ?? []}
+              currentId={userId}
+              onPick={(id) => {
+                onChange(id);
+                setOpen(false);
+              }}
+            />
+          </Popover>
+        )}
       </td>
     );
   }
@@ -907,7 +1026,7 @@ function FieldCell({
   // ── checkbox ──
   if (column.type === "checkbox") {
     return (
-      <td style={{ ...tdStyle, textAlign: "center", cursor: editCursor }} onClick={readOnly ? undefined : () => onChange(!value)}>
+      <td style={{ ...tdStyle, ...savingStyle, textAlign: "center", cursor: editCursor }} onClick={locked ? undefined : () => onChange(!value)}>
         <Checkbox checked={value === true} />
       </td>
     );
@@ -963,7 +1082,7 @@ function FieldCell({
         ? new Date(value + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
         : "";
     return (
-      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: editCursor, color: dateText ? "var(--foreground)" : "var(--muted-foreground)" }} onClick={openCell}>
+      <td ref={ref} style={{ ...tdStyle, ...savingStyle, textAlign: "center", cursor: editCursor, color: dateText ? "var(--foreground)" : "var(--muted-foreground)" }} onClick={openCell}>
         {dateText || "—"}
         {open && (
           <Popover anchorRef={ref} onClose={() => setOpen(false)}>
@@ -1378,6 +1497,112 @@ function OptionList({
           {o.id === currentId && <Check size={14} color="#7c5cff" style={{ marginLeft: "auto" }} />}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Lista de membros do projeto dentro de um popover (editor da coluna
+ * `person`). Inclui a opcao "Sem responsavel" (envia "" → o handler trata
+ * como null/limpar). `onPick` recebe o userId escolhido.
+ */
+function PersonList({
+  members,
+  currentId,
+  onPick,
+}: {
+  members: MemberLike[];
+  currentId: string | null;
+  onPick: (id: string) => void;
+}) {
+  const row: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+    padding: "7px 10px",
+    borderRadius: 5,
+    border: 0,
+    color: "var(--foreground)",
+    fontSize: 13,
+    cursor: "pointer",
+    textAlign: "left",
+  };
+  return (
+    <div style={{ padding: 4, minWidth: 200, maxHeight: 320, overflowY: "auto" }}>
+      {/* Sem responsavel */}
+      <button
+        type="button"
+        onClick={() => onPick("")}
+        style={{ ...row, background: !currentId ? "rgba(124,92,255,0.12)" : "none" }}
+        onMouseEnter={(e) => {
+          if (currentId) e.currentTarget.style.background = "var(--accent)";
+        }}
+        onMouseLeave={(e) => {
+          if (currentId) e.currentTarget.style.background = "none";
+        }}
+      >
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 22,
+            height: 22,
+            borderRadius: "50%",
+            border: "1.5px dashed var(--border)",
+            color: "var(--muted-foreground)",
+            flexShrink: 0,
+          }}
+        >
+          <User size={12} />
+        </span>
+        <span style={{ color: "var(--muted-foreground)" }}>Sem responsável</span>
+        {!currentId && <Check size={14} color="#7c5cff" style={{ marginLeft: "auto" }} />}
+      </button>
+
+      {members.length === 0 ? (
+        <div style={{ padding: "8px 10px", fontSize: 12, color: "var(--muted-foreground)" }}>
+          Nenhum membro no projeto.
+        </div>
+      ) : (
+        members.map((m) => (
+          <button
+            key={m.userId}
+            type="button"
+            onClick={() => onPick(m.userId)}
+            style={{ ...row, background: m.userId === currentId ? "rgba(124,92,255,0.12)" : "none" }}
+            onMouseEnter={(e) => {
+              if (m.userId !== currentId) e.currentTarget.style.background = "var(--accent)";
+            }}
+            onMouseLeave={(e) => {
+              if (m.userId !== currentId) e.currentTarget.style.background = "none";
+            }}
+          >
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 22,
+                height: 22,
+                borderRadius: "50%",
+                background: "#7c5cff",
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
+            >
+              {m.nome.charAt(0).toUpperCase()}
+            </span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {m.nome}
+            </span>
+            {m.userId === currentId && <Check size={14} color="#7c5cff" style={{ marginLeft: "auto" }} />}
+          </button>
+        ))
+      )}
     </div>
   );
 }

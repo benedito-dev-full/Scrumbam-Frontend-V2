@@ -100,11 +100,8 @@ export const BACKEND_COLUMNS: ColumnDef[] = [
  * colunas fixas preenchidos. IDs de pessoa sao resolvidos para o nome do
  * membro quando disponivel (senao caem no proprio id).
  */
-function taskToRow(task: TaskResponseDto, members: MemberLike[]): TaskModel {
+function taskToRow(task: TaskResponseDto): TaskModel {
   const statusColId = intentionToColumn(task.status as V3Intention);
-  const assignee = task.assigneeId
-    ? members.find((m) => m.userId === task.assigneeId)
-    : undefined;
 
   return {
     id: task.id,
@@ -112,8 +109,10 @@ function taskToRow(task: TaskResponseDto, members: MemberLike[]): TaskModel {
     fields: {
       status: statusColId,
       identifier: task.identifier ?? null,
-      // `person` espera string; usamos o nome resolvido para exibicao read-only.
-      responsavel: assignee?.nome ?? task.assigneeId ?? null,
+      // `person` guarda o userId canonico (string). A celula resolve
+      // userId → nome via lista de membros para exibir, e a edicao manda
+      // o userId direto — espelha o contrato real de coluna `person`.
+      responsavel: task.assigneeId ?? null,
       prioridade: task.priority ?? null,
       dueDate: task.dueDate ?? null,
     },
@@ -125,15 +124,17 @@ function taskToRow(task: TaskResponseDto, members: MemberLike[]): TaskModel {
 /**
  * Monta o `GroupsBoard` a partir dos dados reais do backend.
  *
+ * Os valores ficam canonicos (ex: `responsavel` = userId; `prioridade` =
+ * LOW/MEDIUM/...). A resolucao userId → nome para exibicao acontece na
+ * celula (`FieldCell`), que recebe a lista de membros.
+ *
  * @param blocks - Blocos do projeto (DTask idClasse=-200).
  * @param tasks - Todas as tasks do projeto (sem os proprios blocos).
- * @param members - Membros para resolver o nome do responsavel.
- * @returns Board pronto para a `GroupsView` renderizar (read-only).
+ * @returns Board pronto para a `GroupsView` renderizar.
  */
 export function buildGroupsBoard(
   blocks: BlockDto[],
   tasks: TaskResponseDto[],
-  members: MemberLike[],
 ): GroupsBoard {
   // Indexa tasks por idBloco; o restante vai para "sem bloco".
   const byBlock = new Map<string, TaskResponseDto[]>();
@@ -156,7 +157,7 @@ export function buildGroupsBoard(
     nome: block.nome,
     cor: block.dados?.cor ?? BLOCO_COR_FALLBACK,
     periodo: formatPeriodo(block.dados?.startDate, block.dados?.endDate),
-    tasks: (byBlock.get(block.id) ?? []).map((t) => taskToRow(t, members)),
+    tasks: (byBlock.get(block.id) ?? []).map(taskToRow),
   }));
 
   // Grupo "Sem bloco" no fim — so aparece se houver tasks orfas.
@@ -165,7 +166,7 @@ export function buildGroupsBoard(
       id: SEM_BLOCO_ID,
       nome: "Sem bloco",
       cor: SEM_BLOCO_COR,
-      tasks: semBloco.map((t) => taskToRow(t, members)),
+      tasks: semBloco.map(taskToRow),
     });
   }
 
