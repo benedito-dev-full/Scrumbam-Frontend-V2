@@ -28,8 +28,17 @@ import {
   type ColumnOption,
   type FieldValue,
   type GroupModel,
+  type GroupsBoard,
   type TaskModel,
 } from "@/lib/prototype/groups-store";
+import {
+  useBlocks,
+  useTasksByProject,
+  useCreateBlock,
+  useCreateTask,
+} from "@/hooks/use-tasks";
+import { useProjectMembers } from "@/hooks/use-members";
+import { buildGroupsBoard, SEM_BLOCO_ID } from "@/lib/mappers/groups-from-tasks";
 
 /**
  * GroupsView — visualizacao de tarefas em GRUPOS (estilo Monday.com).
@@ -44,13 +53,122 @@ import {
  *  - mudar status/tipo e demais campos por tipo de coluna
  *  - adicionar tarefa, grupo e novas colunas (8 tipos do contrato)
  *
- * Quando integrarmos, a store sai e os dados vem dos hooks do backend.
+ * Tem dois modos:
+ *  - **backend** (com `projectId`): le Blocos + Tasks + Membros reais e monta
+ *    o board via `buildGroupsBoard`. SOMENTE LEITURA nesta v1 — edicao inline,
+ *    add tarefa/grupo/coluna ficam desabilitados. E o novo conceito de Blocos.
+ *  - **prototipo** (sem `projectId`): le/escreve a store em localStorage.
+ *    Mantido para o showcase em `/design-system/groups-preview`.
  *
  * @example
- * <GroupsView />
+ * <GroupsView projectId={listId} />   // dados reais (read-only)
+ * <GroupsView />                       // prototipo localStorage (editavel)
  */
-export function GroupsView() {
+export function GroupsView({ projectId }: { projectId?: string }) {
+  if (projectId) return <BackendGroupsView projectId={projectId} />;
+  return <PrototypeGroupsView />;
+}
+
+/* ─── Modo backend ───────────────────────────────────────────────────────── */
+
+/**
+ * Busca Blocos + Tasks + Membros reais do projeto e renderiza o board.
+ *
+ * As CELULAS sao read-only nesta fase (clicar nao edita status/resp/data),
+ * mas a ESCRITA estrutural esta ligada: "Adicionar grupo" cria um Bloco
+ * (`useCreateBlock`) e "Adicionar tarefa" cria uma task ja vinculada ao
+ * bloco via `dados.idBloco` (`useCreateTask`). Tasks sem bloco caem no
+ * grupo sintetico "Sem bloco"; adicionar tarefa ali cria task solta.
+ */
+function BackendGroupsView({ projectId }: { projectId: string }) {
+  const { data: blocks = [], isLoading: loadingBlocks } = useBlocks(projectId);
+  const { data: tasks = [], isLoading: loadingTasks } =
+    useTasksByProject(projectId);
+  const { data: membersRaw = [] } = useProjectMembers(projectId);
+
+  const createBlock = useCreateBlock();
+  const createTask = useCreateTask();
+
+  // Blocos (idClasse=-200) nao sao tarefas — fora da listagem de tasks.
+  const realTasks = tasks.filter((t) => t.idClasse !== "-200");
+  const members = (Array.isArray(membersRaw) ? membersRaw : []).map((m) => ({
+    userId: m.userId,
+    nome: m.nome,
+  }));
+
+  const board = buildGroupsBoard(blocks, realTasks, members);
+
+  /** Cria um novo Bloco (DTask idClasse=-200) no projeto. */
+  function handleAddGroup() {
+    createBlock.mutate({ nome: "Novo bloco", projectId });
+  }
+
+  /**
+   * Cria uma tarefa no grupo. Para um bloco real, vincula via
+   * `dados.idBloco`; para o grupo sintetico "Sem bloco", cria solta.
+   */
+  function handleAddTask(groupId: string) {
+    const dados =
+      groupId === SEM_BLOCO_ID ? undefined : { idBloco: groupId };
+    createTask.mutate({ titulo: "Nova tarefa", idProject: projectId, dados });
+  }
+
+  if (loadingBlocks || loadingTasks) {
+    return (
+      <div
+        className="grid flex-1 place-items-center p-8 text-sm"
+        style={{ background: "var(--background)", color: "var(--muted-foreground)" }}
+      >
+        Carregando blocos...
+      </div>
+    );
+  }
+
+  return (
+    <GroupsBoardView
+      board={board}
+      readOnly
+      onAddGroup={handleAddGroup}
+      onAddTask={handleAddTask}
+    />
+  );
+}
+
+/* ─── Modo prototipo (editavel, localStorage) ────────────────────────────── */
+
+/** Le e escreve a store em localStorage. Usado no design-system. */
+function PrototypeGroupsView() {
   const board = useGroupsBoard();
+  return (
+    <GroupsBoardView
+      board={board}
+      readOnly={false}
+      onAddGroup={() => groupsActions.addGroup()}
+      onAddTask={(groupId) => groupsActions.addTask(groupId)}
+    />
+  );
+}
+
+/* ─── Renderizacao do board (compartilhada entre os dois modos) ──────────── */
+
+/**
+ * @param readOnly - Desliga a edicao INLINE de celulas (status/resp/data) e
+ *   o rename/remove. Nao afeta os botoes de criar — esses sao controlados
+ *   pela presenca de `onAddGroup`/`onAddTask`.
+ * @param onAddGroup - Cria um grupo/bloco. Se ausente, o botao nao aparece.
+ * @param onAddTask - Cria uma tarefa no grupo. Se ausente, a linha nao aparece.
+ */
+function GroupsBoardView({
+  board,
+  readOnly,
+  onAddGroup,
+  onAddTask,
+}: {
+  board: GroupsBoard;
+  readOnly: boolean;
+  onAddGroup?: () => void;
+  onAddTask?: (groupId: string) => void;
+}) {
   const cols = [...board.columns].sort((a, b) => a.order - b.order);
 
   // Conjunto de containers scrollaveis dos grupos — para sincronizar o
@@ -95,38 +213,56 @@ export function GroupsView() {
           bloco (padrao de planilha) */}
       <style>{`.groups-scroller{scrollbar-width:none;-ms-overflow-style:none}.groups-scroller::-webkit-scrollbar{height:0;width:0;display:none}`}</style>
       <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-        {board.groups.map((g) => (
-          <GroupBox
-            key={g.id}
-            group={g}
-            columns={cols}
-            register={register}
-            onSyncScroll={syncScroll}
-          />
-        ))}
+        {board.groups.length === 0 ? (
+          <div
+            style={{
+              padding: "60px 0",
+              textAlign: "center",
+              color: "var(--muted-foreground)",
+              fontSize: 13,
+            }}
+          >
+            Nenhuma tarefa nesta lista ainda.
+          </div>
+        ) : (
+          board.groups.map((g) => (
+            <GroupBox
+              key={g.id}
+              group={g}
+              columns={cols}
+              register={register}
+              onSyncScroll={syncScroll}
+              readOnly={readOnly}
+              onAddTask={onAddTask}
+            />
+          ))
+        )}
 
-        {/* adicionar grupo */}
-        <button
-          type="button"
-          onClick={() => groupsActions.addGroup()}
-          style={{
-            alignSelf: "flex-start",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 8,
-            height: 34,
-            padding: "0 14px",
-            borderRadius: 8,
-            border: "1px dashed var(--border)",
-            background: "transparent",
-            color: "var(--muted-foreground)",
-            fontSize: 13,
-            cursor: "pointer",
-          }}
-        >
-          <Plus size={14} />
-          Adicionar grupo
-        </button>
+        {/* adicionar grupo — aparece quando ha handler (cria Bloco no backend
+            ou grupo no prototipo). Independe de readOnly. */}
+        {onAddGroup && (
+          <button
+            type="button"
+            onClick={onAddGroup}
+            style={{
+              alignSelf: "flex-start",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              height: 34,
+              padding: "0 14px",
+              borderRadius: 8,
+              border: "1px dashed var(--border)",
+              background: "transparent",
+              color: "var(--muted-foreground)",
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            <Plus size={14} />
+            Adicionar grupo
+          </button>
+        )}
       </div>
     </div>
   );
@@ -155,11 +291,15 @@ function GroupBox({
   columns,
   register,
   onSyncScroll,
+  readOnly,
+  onAddTask,
 }: {
   group: GroupModel;
   columns: ColumnDef[];
   register: (el: HTMLDivElement | null, prev?: HTMLDivElement | null) => void;
   onSyncScroll: (source: HTMLDivElement) => void;
+  readOnly: boolean;
+  onAddTask?: (groupId: string) => void;
 }) {
   const [open, setOpen] = useState(true);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -240,36 +380,44 @@ function GroupBox({
           <ChevronDown size={16} strokeWidth={2.5} />
         </button>
 
-        <EditableText
-          value={group.nome}
-          onCommit={(v) => groupsActions.renameGroup(group.id, v)}
-          style={{ fontSize: 16, fontWeight: 700, color: group.cor, letterSpacing: ".2px" }}
-        />
+        {readOnly ? (
+          <span style={{ fontSize: 16, fontWeight: 700, color: group.cor, letterSpacing: ".2px" }}>
+            {group.nome}
+          </span>
+        ) : (
+          <EditableText
+            value={group.nome}
+            onCommit={(v) => groupsActions.renameGroup(group.id, v)}
+            style={{ fontSize: 16, fontWeight: 700, color: group.cor, letterSpacing: ".2px" }}
+          />
+        )}
 
         <span style={{ fontSize: 12, color: "var(--muted-foreground)", marginLeft: 2 }}>
           {group.tasks.length}
         </span>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (confirm(`Remover o grupo "${group.nome}"?`)) groupsActions.removeGroup(group.id);
-          }}
-          aria-label="Remover grupo"
-          title="Remover grupo"
-          style={{
-            display: "inline-flex",
-            border: 0,
-            background: "none",
-            color: "var(--muted-foreground)",
-            cursor: "pointer",
-            opacity: 0.5,
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.5")}
-        >
-          <Trash2 size={14} />
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm(`Remover o grupo "${group.nome}"?`)) groupsActions.removeGroup(group.id);
+            }}
+            aria-label="Remover grupo"
+            title="Remover grupo"
+            style={{
+              display: "inline-flex",
+              border: 0,
+              background: "none",
+              color: "var(--muted-foreground)",
+              cursor: "pointer",
+              opacity: 0.5,
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.5")}
+          >
+            <Trash2 size={14} />
+          </button>
+        )}
 
         {group.periodo && (
           <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--muted-foreground)" }}>
@@ -303,13 +451,15 @@ function GroupBox({
               <col style={{ width: W_ADD }} />
             </colgroup>
 
-            <HeadRow columns={columns} />
+            <HeadRow columns={columns} readOnly={readOnly} />
 
             <tbody>
               {group.tasks.map((t) => (
-                <TaskRow key={t.id} groupId={group.id} task={t} columns={columns} />
+                <TaskRow key={t.id} groupId={group.id} task={t} columns={columns} readOnly={readOnly} />
               ))}
-              <AddTaskRow colSpan={columns.length + 2} onAdd={() => groupsActions.addTask(group.id)} />
+              {onAddTask && (
+                <AddTaskRow colSpan={columns.length + 2} onAdd={() => onAddTask(group.id)} />
+              )}
             </tbody>
 
             <FooterRow columns={columns} tasks={group.tasks} totalSp={totalSp} />
@@ -335,7 +485,7 @@ const TYPE_ICON: Record<ColumnType, React.ComponentType<{ size?: number }>> = {
 
 /* ─── Cabecalho de colunas ───────────────────────────────────────────────── */
 
-function HeadRow({ columns }: { columns: ColumnDef[] }) {
+function HeadRow({ columns, readOnly }: { columns: ColumnDef[]; readOnly: boolean }) {
   const th: React.CSSProperties = {
     fontSize: 12,
     fontWeight: 500,
@@ -355,8 +505,8 @@ function HeadRow({ columns }: { columns: ColumnDef[] }) {
           </span>
         </th>
         {columns.map((c) =>
-          c.builtin ? (
-            <th key={c.key} style={{ ...th, textAlign: "left", paddingLeft: 4 }}>
+          c.builtin || readOnly ? (
+            <th key={c.key} style={{ ...th, textAlign: c.builtin ? "left" : "center", paddingLeft: c.builtin ? 4 : 8 }}>
               {c.label}
             </th>
           ) : (
@@ -364,7 +514,7 @@ function HeadRow({ columns }: { columns: ColumnDef[] }) {
           ),
         )}
         <th style={th}>
-          <AddColumnButton />
+          {!readOnly && <AddColumnButton />}
         </th>
       </tr>
     </thead>
@@ -553,10 +703,12 @@ function TaskRow({
   groupId,
   task,
   columns,
+  readOnly,
 }: {
   groupId: string;
   task: TaskModel;
   columns: ColumnDef[];
+  readOnly: boolean;
 }) {
   const [hover, setHover] = useState(false);
   const td: React.CSSProperties = {
@@ -583,30 +735,48 @@ function TaskRow({
           return (
             <td key={c.key} style={{ ...td, fontWeight: 500, borderRight: last ? "1px solid var(--border)" : td.borderRight }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <EditableText
-                  value={task.nome}
-                  onCommit={(v) => groupsActions.renameTask(groupId, task.id, v)}
-                  style={{ flex: 1, fontWeight: 500, color: "var(--foreground)" }}
-                />
-                <button
-                  type="button"
-                  aria-label="Remover tarefa"
-                  onClick={() => groupsActions.removeTask(groupId, task.id)}
-                  style={{
-                    display: "inline-flex",
-                    border: 0,
-                    background: "none",
-                    color: "var(--muted-foreground)",
-                    cursor: "pointer",
-                    opacity: hover ? 0.6 : 0,
-                    transition: "opacity .1s",
-                  }}
-                >
-                  <Trash2 size={14} />
-                </button>
-                <span style={{ display: "inline-flex", color: "var(--muted-foreground)", opacity: hover ? 1 : 0, transition: "opacity .1s" }}>
-                  <MessageSquarePlus size={15} />
-                </span>
+                {readOnly ? (
+                  <span
+                    style={{
+                      flex: 1,
+                      fontWeight: 500,
+                      color: "var(--foreground)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                    title={task.nome}
+                  >
+                    {task.nome}
+                  </span>
+                ) : (
+                  <>
+                    <EditableText
+                      value={task.nome}
+                      onCommit={(v) => groupsActions.renameTask(groupId, task.id, v)}
+                      style={{ flex: 1, fontWeight: 500, color: "var(--foreground)" }}
+                    />
+                    <button
+                      type="button"
+                      aria-label="Remover tarefa"
+                      onClick={() => groupsActions.removeTask(groupId, task.id)}
+                      style={{
+                        display: "inline-flex",
+                        border: 0,
+                        background: "none",
+                        color: "var(--muted-foreground)",
+                        cursor: "pointer",
+                        opacity: hover ? 0.6 : 0,
+                        transition: "opacity .1s",
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                    <span style={{ display: "inline-flex", color: "var(--muted-foreground)", opacity: hover ? 1 : 0, transition: "opacity .1s" }}>
+                      <MessageSquarePlus size={15} />
+                    </span>
+                  </>
+                )}
               </div>
             </td>
           );
@@ -618,6 +788,7 @@ function TaskRow({
             column={c}
             value={task.fields[c.key] ?? null}
             onChange={(v) => groupsActions.setField(groupId, task.id, c.key, v)}
+            readOnly={readOnly}
           />
         );
       })}
@@ -634,14 +805,20 @@ function FieldCell({
   value,
   onChange,
   tdStyle,
+  readOnly,
 }: {
   column: ColumnDef;
   value: FieldValue;
   onChange: (v: FieldValue) => void;
   tdStyle: React.CSSProperties;
+  readOnly: boolean;
 }) {
   const ref = useRef<HTMLTableCellElement>(null);
   const [open, setOpen] = useState(false);
+
+  // No modo read-only a celula nao abre editor nem responde a clique.
+  const openCell = readOnly ? undefined : () => setOpen(true);
+  const editCursor = readOnly ? "default" : "pointer";
 
   const options = column.config?.options ?? [];
   const selected = options.find((o) => o.id === value);
@@ -650,7 +827,7 @@ function FieldCell({
   if (column.type === "status" || column.type === "dropdown") {
     const isStatus = column.type === "status";
     return (
-      <td ref={ref} style={{ ...tdStyle, padding: 2, cursor: "pointer" }} onClick={() => setOpen(true)}>
+      <td ref={ref} style={{ ...tdStyle, padding: 2, cursor: editCursor }} onClick={openCell}>
         {selected ? (
           isStatus ? (
             <Pill bg={selected.color ?? "#6b7280"}>{selected.label}</Pill>
@@ -678,23 +855,51 @@ function FieldCell({
 
   // ── person ──
   if (column.type === "person") {
+    // No backend guardamos o NOME resolvido como string. Quando ha nome,
+    // exibimos avatar com inicial + nome; senao, o circulo pontilhado vazio.
+    const nome = typeof value === "string" && value ? value : null;
     return (
-      <td style={{ ...tdStyle, textAlign: "center" }}>
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 26,
-            height: 26,
-            borderRadius: "50%",
-            border: "1.5px dashed var(--border)",
-            color: "var(--muted-foreground)",
-          }}
-          title="Pessoa (mock)"
-        >
-          <User size={13} />
-        </span>
+      <td style={{ ...tdStyle, textAlign: nome ? "left" : "center" }}>
+        {nome ? (
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "100%" }}>
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 22,
+                height: 22,
+                borderRadius: "50%",
+                background: "#7c5cff",
+                color: "#fff",
+                fontSize: 11,
+                fontWeight: 600,
+                flexShrink: 0,
+              }}
+            >
+              {nome.charAt(0).toUpperCase()}
+            </span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nome}>
+              {nome}
+            </span>
+          </span>
+        ) : (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 26,
+              height: 26,
+              borderRadius: "50%",
+              border: "1.5px dashed var(--border)",
+              color: "var(--muted-foreground)",
+            }}
+            title="Sem responsável"
+          >
+            <User size={13} />
+          </span>
+        )}
       </td>
     );
   }
@@ -702,7 +907,7 @@ function FieldCell({
   // ── checkbox ──
   if (column.type === "checkbox") {
     return (
-      <td style={{ ...tdStyle, textAlign: "center", cursor: "pointer" }} onClick={() => onChange(!value)}>
+      <td style={{ ...tdStyle, textAlign: "center", cursor: editCursor }} onClick={readOnly ? undefined : () => onChange(!value)}>
         <Checkbox checked={value === true} />
       </td>
     );
@@ -711,7 +916,7 @@ function FieldCell({
   // ── link ──
   if (column.type === "link") {
     return (
-      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: "pointer" }} onClick={() => setOpen(true)}>
+      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: editCursor }} onClick={openCell}>
         {typeof value === "string" && value ? (
           <a
             href={value}
@@ -758,7 +963,7 @@ function FieldCell({
         ? new Date(value + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
         : "";
     return (
-      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: "pointer", color: dateText ? "var(--foreground)" : "var(--muted-foreground)" }} onClick={() => setOpen(true)}>
+      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: editCursor, color: dateText ? "var(--foreground)" : "var(--muted-foreground)" }} onClick={openCell}>
         {dateText || "—"}
         {open && (
           <Popover anchorRef={ref} onClose={() => setOpen(false)}>
@@ -789,7 +994,7 @@ function FieldCell({
             : String(value)
         : "";
     return (
-      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: "pointer" }} onClick={() => setOpen(true)}>
+      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: editCursor }} onClick={openCell}>
         {display || <span style={{ color: "var(--muted-foreground)", opacity: 0.5 }}>—</span>}
         {open && (
           <Popover anchorRef={ref} onClose={() => setOpen(false)}>
@@ -817,14 +1022,31 @@ function FieldCell({
   }
 
   // ── text (default) ──
+  const textValue = typeof value === "string" ? value : "";
   return (
     <td style={{ ...tdStyle, color: "var(--muted-foreground)" }}>
-      <EditableText
-        value={typeof value === "string" ? value : ""}
-        placeholder="—"
-        onCommit={(v) => onChange(v || null)}
-        style={{ color: "var(--foreground)", width: "100%" }}
-      />
+      {readOnly ? (
+        <span
+          style={{
+            display: "inline-block",
+            maxWidth: "100%",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            color: textValue ? "var(--foreground)" : "var(--muted-foreground)",
+          }}
+          title={textValue}
+        >
+          {textValue || "—"}
+        </span>
+      ) : (
+        <EditableText
+          value={textValue}
+          placeholder="—"
+          onCommit={(v) => onChange(v || null)}
+          style={{ color: "var(--foreground)", width: "100%" }}
+        />
+      )}
     </td>
   );
 }
@@ -955,8 +1177,14 @@ function EditableText({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value);
-
-  useEffect(() => setDraft(value), [value]);
+  // Ressincroniza o draft quando o `value` externo muda, sem useEffect
+  // (padrao oficial React: ajustar state durante a render comparando o
+  // valor anterior). Evita o cascading render do set-state-in-effect.
+  const [prevValue, setPrevValue] = useState(value);
+  if (value !== prevValue) {
+    setPrevValue(value);
+    setDraft(value);
+  }
 
   if (editing) {
     return (
