@@ -441,11 +441,9 @@ const W_SUBTASK_RESP = 130;
 const W_SUBTASK_STATUS = 140;
 /** Largura da coluna de data da subtarefa. */
 const W_SUBTASK_DATE = 110;
-/** Largura da coluna "+" decorativa (adicionar coluna — só visual, estilo Monday). */
-const W_SUBTASK_ADD = 44;
-/** Largura total da sub-tabela (W_CHECK + 4 colunas de conteudo + coluna "+"). */
-const W_SUBTASK_TOTAL =
-  W_CHECK + W_SUBTASK_NOME + W_SUBTASK_RESP + W_SUBTASK_STATUS + W_SUBTASK_DATE + W_SUBTASK_ADD;
+// Nota: a coluna "+" da sub-tabela usa largura `auto` (absorve o espaco
+// restante para o grid ir ate o fim), por isso nao ha constante de largura
+// fixa para ela nem largura total — a tabela ocupa 100% do container.
 
 function colWidth(c: ColumnDef): number {
   if (c.builtin) return W_NOME;
@@ -1221,16 +1219,23 @@ function SubtaskTableRow({
       <td
         colSpan={colSpan}
         style={{
-          padding: "0 0 6px 28px",
+          // Recuo a esquerda (28px) deixa a calha de conexao visivel.
+          // Respiro EM CIMA (10px) descola a sub-tabela da tarefa-pai dela —
+          // e o espaco que evidencia a hierarquia (pai -> filha). NAO ha respiro
+          // embaixo: pai e pai ficam colados (Task 01 -> Task 00), como no Monday.
+          padding: "10px 0 0 28px",
           borderBottom: "1px solid var(--border)",
           // Fundo recuado mais escuro que a linha do pai — cria o "poco" onde a
           // sub-tabela (card embutido) se assenta, como no Monday.
           background: "color-mix(in srgb, var(--foreground) 4%, transparent)",
+          // Faixa de conexao vertical (cor do grupo) que sobe ate a linha do pai,
+          // ligando visualmente a subtarefa a tarefa-pai (estilo arvore Monday).
+          position: "relative",
+          boxShadow: `inset 4px 0 0 ${groupColor}`,
         }}
       >
         <SubtaskTable
           parentId={parentId}
-          groupColor={groupColor}
           projectId={projectId}
           members={members}
           expanded={expanded}
@@ -1257,7 +1262,6 @@ function SubtaskTableRow({
  * do GroupBox sem necessidade de scroll horizontal.
  *
  * @param parentId   - ID da task pai.
- * @param groupColor - Cor do grupo (borda esquerda visual de 2px).
  * @param projectId  - ID do projeto (necessário para mutations).
  * @param members    - Membros do projeto para resolver userId → nome na coluna de responsável.
  * @param expanded   - Controla se o fetch está habilitado e a tabela é visível.
@@ -1265,7 +1269,6 @@ function SubtaskTableRow({
  * @example
  * <SubtaskTable
  *   parentId="task-123"
- *   groupColor="#e0457b"
  *   projectId="proj-456"
  *   members={[...]}
  *   expanded={isExpanded}
@@ -1276,13 +1279,11 @@ function SubtaskTableRow({
  */
 function SubtaskTable({
   parentId,
-  groupColor,
   projectId,
   members,
   expanded,
 }: {
   parentId: string;
-  groupColor: string;
   projectId: string;
   members?: MemberLike[];
   expanded: boolean;
@@ -1296,13 +1297,14 @@ function SubtaskTable({
       style={{
         // Card embutido com calha lateral grossa e contínua na cor do grupo
         // (conecta visualmente ao pai, estilo Monday). Fundo de card real para
-        // destacar do fundo escuro — antes "sumia" por baixo contraste.
-        width: W_SUBTASK_TOTAL,
-        borderLeft: `4px solid ${groupColor}`,
-        borderTop: "1px solid var(--border)",
-        borderRight: "1px solid var(--border)",
-        borderBottom: "1px solid var(--border)",
-        borderRadius: "0 6px 6px 0",
+        // destacar do fundo escuro. Ocupa toda a largura disponivel (100%) —
+        // como no Monday, o bloco da subtarefa se estende ate o fim mesmo com
+        // poucas colunas; a coluna "+" absorve o espaco restante.
+        width: "100%",
+        // A calha de conexao (cor do grupo) fica no <td> pai (boxShadow inset);
+        // aqui o card so tem borda neutra e encosta nela.
+        border: "1px solid var(--border)",
+        borderRadius: 6,
         overflow: "hidden",
         background: "var(--card)",
       }}
@@ -1320,7 +1322,9 @@ function SubtaskTable({
           <col style={{ width: W_SUBTASK_RESP }} />
           <col style={{ width: W_SUBTASK_STATUS }} />
           <col style={{ width: W_SUBTASK_DATE }} />
-          <col style={{ width: W_SUBTASK_ADD }} />
+          {/* Coluna "+" com largura `auto` — absorve todo o espaco restante,
+              fazendo o grid se estender ate o fim da tabela pai (estilo Monday). */}
+          <col />
         </colgroup>
 
         <SubtaskHeadRow />
@@ -1397,8 +1401,9 @@ function SubtaskHeadRow() {
         <th style={th}>Status</th>
         <th style={th}>Data</th>
         {/* Coluna "+" decorativa — espelha o "adicionar coluna" do Monday.
-            Sem função nesta versão (colunas da sub-tabela são fixas). */}
-        <th style={{ ...th, borderRight: 0, color: "var(--muted-foreground)", opacity: 0.4 }}>
+            Largura `auto`: estende o grid ate o fim. O "+" fica alinhado a
+            esquerda (logo apos Data), nao centralizado no vazio. */}
+        <th style={{ ...th, borderRight: 0, textAlign: "left", color: "var(--muted-foreground)", opacity: 0.4 }}>
           <Plus size={13} />
         </th>
       </tr>
