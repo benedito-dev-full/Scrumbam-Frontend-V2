@@ -5,6 +5,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -242,7 +243,11 @@ function SelectionActionBar({
         onClick={() => setMoveOpen((v) => !v)}
       />
       {moveOpen && canMove && (
-        <Popover anchorRef={moveBtnRef} onClose={() => setMoveOpen(false)}>
+        <Popover
+          anchorRef={moveBtnRef}
+          onClose={() => setMoveOpen(false)}
+          placement="top"
+        >
           <MoveTargetList
             kind={moveKind}
             blockTargets={blockTargets}
@@ -3192,21 +3197,34 @@ function Popover({
   anchorRef,
   onClose,
   align = "left",
+  placement = "bottom",
   children,
 }: {
   anchorRef: React.RefObject<HTMLElement | null>;
   onClose: () => void;
   align?: "left" | "right";
+  /** Abre abaixo (default) ou acima do anchor. "top" e usado pela barra de
+   *  selecao, que fica no rodape — abrir pra baixo cortaria o menu. */
+  placement?: "bottom" | "top";
   children: React.ReactNode;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
-  useEffect(() => {
+  // useLayoutEffect: mede a altura real do popover e posiciona ANTES do paint —
+  // para `placement="top"` isso evita o flash de aparecer na posicao errada
+  // (precisa do height ja renderizado). Para "bottom" o comportamento e igual.
+  useLayoutEffect(() => {
     if (!anchorRef.current) return;
     const r = anchorRef.current.getBoundingClientRect();
-    setPos({ top: r.bottom + 4, left: align === "right" ? r.right : r.left });
-  }, [anchorRef, align]);
+    const left = align === "right" ? r.right : r.left;
+    if (placement === "top") {
+      const h = ref.current?.getBoundingClientRect().height ?? 0;
+      setPos({ top: r.top - h - 4, left });
+    } else {
+      setPos({ top: r.bottom + 4, left });
+    }
+  }, [anchorRef, align, placement, children]);
 
   useEffect(() => {
     function onDown(e: MouseEvent) {
