@@ -1623,6 +1623,8 @@ function SubtaskTaskRow({
  * **Estados:**
  * - Repouso: botão clicável "Adicionar subelemento"
  * - Ativo: input inline para digitar o nome (auto-focus)
+ * - Carregando (`isPending`): spinner "Criando subelemento..." entre o submit
+ *   e o aparecimento da subtarefa no refetch (feedback imediato)
  *
  * **Confirmação:**
  * - Enter → cria a subtarefa (input perde foco)
@@ -1689,7 +1691,25 @@ function AddSubtaskRow({
           transition: "background .1s",
         }}
       >
-        {adding ? (
+        {createTask.isPending ? (
+          /* Estado de carregamento — entre o Enter e a subtarefa aparecer no
+             refetch ha um intervalo perceptivel; o spinner da feedback imediato
+             de que "foi", evitando a sensacao de que o clique nao funcionou. */
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 7,
+              padding: "0 8px 0 44px",
+              height: 32,
+              color: "var(--muted-foreground)",
+              fontSize: 12,
+            }}
+          >
+            <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
+            Criando subelemento...
+          </div>
+        ) : adding ? (
           <div style={{ display: "flex", alignItems: "center", padding: "0 8px 0 44px", height: 32 }}>
             <input
               autoFocus
