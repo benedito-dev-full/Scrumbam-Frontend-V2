@@ -18,6 +18,7 @@ import {
   CheckSquare,
   List as ListIcon,
   Link2,
+  Lock,
 } from "lucide-react";
 import {
   useGroupsBoard,
@@ -38,11 +39,15 @@ import {
   useCreateTask,
   useUpdateTask,
   useUpdateBlock,
+  useUpdateTaskStatus,
 } from "@/hooks/use-tasks";
 import { useProjectMembers } from "@/hooks/use-members";
 import {
   buildGroupsBoard,
   SEM_BLOCO_ID,
+  PILL_TO_V3,
+  V3_TERMINAL_VALIDATED,
+  STATUS_V3_KEY,
   type MemberLike,
 } from "@/lib/mappers/groups-from-tasks";
 
@@ -98,6 +103,7 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const updateBlock = useUpdateBlock();
+  const updateStatus = useUpdateTaskStatus();
 
   // Qual task / bloco esta salvando agora — alimenta o spinner.
   const [savingTaskId, setSavingTaskId] = useState<string | null>(null);
@@ -132,6 +138,21 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
    * a invalidacao trazer o valor confirmado (feedback conservador).
    */
   function handleEditField(taskId: string, columnKey: string, value: FieldValue) {
+    // Status vai por outro endpoint (PUT /tasks/:id/status) e por isso e
+    // tratado a parte. A celula ja garante: nao chama se VALIDATED (terminal)
+    // nem se a pilula escolhida e a mesma (preserva estado V3 fino). Aqui so
+    // traduzimos a pilula visual → estado V3 canonico e disparamos.
+    if (columnKey === "status") {
+      const v3 = typeof value === "string" ? PILL_TO_V3[value] : undefined;
+      if (!v3) return;
+      setSavingTaskId(taskId);
+      updateStatus.mutate(
+        { id: taskId, status: v3, projectId },
+        { onSettled: () => setSavingTaskId(null) },
+      );
+      return;
+    }
+
     const dto: {
       titulo?: string;
       assigneeId?: string | null;
@@ -222,8 +243,13 @@ const NOME_KEY = "__nome";
 
 /* ─── Renderizacao do board (compartilhada entre os dois modos) ──────────── */
 
-/** Colunas editaveis no modo backend (passo 1). As demais ficam read-only. */
-const BACKEND_EDITABLE_KEYS = new Set(["responsavel", "prioridade", "dueDate"]);
+/** Colunas editaveis no modo backend. As demais ficam read-only. */
+const BACKEND_EDITABLE_KEYS = new Set([
+  "status",
+  "responsavel",
+  "prioridade",
+  "dueDate",
+]);
 
 /**
  * @param readOnly - Desliga a edicao via store (rename/remove/setField do
@@ -948,6 +974,11 @@ function TaskRow({
           ? (v: FieldValue) => onEditField!(task.id, c.key, v)
           : (v: FieldValue) => groupsActions.setField(groupId, task.id, c.key, v);
 
+        const statusV3 =
+          typeof task.fields[STATUS_V3_KEY] === "string"
+            ? (task.fields[STATUS_V3_KEY] as string)
+            : null;
+
         return (
           <FieldCell
             key={c.key}
@@ -958,6 +989,7 @@ function TaskRow({
             readOnly={cellReadOnly}
             members={members}
             saving={saving}
+            statusV3={statusV3}
           />
         );
       })}
@@ -977,6 +1009,7 @@ function FieldCell({
   readOnly,
   members,
   saving,
+  statusV3,
 }: {
   column: ColumnDef;
   value: FieldValue;
@@ -985,13 +1018,19 @@ function FieldCell({
   readOnly: boolean;
   members?: MemberLike[];
   saving?: boolean;
+  /** Estado V3 cru da task (so usado pela coluna `status`). */
+  statusV3?: string | null;
 }) {
   const ref = useRef<HTMLTableCellElement>(null);
   const [open, setOpen] = useState(false);
 
-  // No modo read-only (ou enquanto salva) a celula nao abre editor nem
-  // responde a clique. `saving` segura a interacao ate o backend confirmar.
-  const locked = readOnly || !!saving;
+  // Status em VALIDATED e terminal: backend recusa mudar → travamos a pilula.
+  const statusLocked =
+    column.type === "status" && statusV3 === V3_TERMINAL_VALIDATED;
+
+  // No modo read-only (ou enquanto salva, ou status terminal) a celula nao
+  // abre editor nem responde a clique. `saving` segura ate o backend confirmar.
+  const locked = readOnly || !!saving || statusLocked;
   const openCell = locked ? undefined : () => setOpen(true);
   const editCursor = locked ? "default" : "pointer";
   // Estilo aplicado quando esta salvando — atenua a celula para feedback.
@@ -1006,10 +1045,17 @@ function FieldCell({
   if (column.type === "status" || column.type === "dropdown") {
     const isStatus = column.type === "status";
     return (
-      <td ref={ref} style={{ ...tdStyle, ...savingStyle, padding: 2, cursor: editCursor }} onClick={openCell}>
+      <td
+        ref={ref}
+        style={{ ...tdStyle, ...savingStyle, padding: 2, cursor: editCursor }}
+        onClick={openCell}
+        title={statusLocked ? "Validado — estado final" : undefined}
+      >
         {selected ? (
           isStatus ? (
-            <Pill bg={selected.color ?? "#6b7280"}>{selected.label}</Pill>
+            <Pill bg={selected.color ?? "#6b7280"} locked={statusLocked}>
+              {selected.label}
+            </Pill>
           ) : (
             <ChipDropdown option={selected} />
           )
@@ -1022,7 +1068,10 @@ function FieldCell({
               options={options}
               currentId={typeof value === "string" ? value : null}
               onPick={(id) => {
-                onChange(id);
+                // Regra "nao mexer se mesma pilula": so dispara quando o
+                // usuario TROCA de pilula. Escolher a mesma preserva o estado
+                // V3 fino (ex: VALIDATING/CANCELLED nao viram EXECUTING/DONE).
+                if (id !== value) onChange(id);
                 setOpen(false);
               }}
             />
@@ -1441,8 +1490,19 @@ function EditableText({
   );
 }
 
-/** Pill solida que preenche a celula (Status). */
-function Pill({ bg, children }: { bg: string; children: React.ReactNode }) {
+/**
+ * Pill solida que preenche a celula (Status). Quando `locked`, exibe um
+ * cadeado indicando estado terminal (VALIDATED) — nao editavel.
+ */
+function Pill({
+  bg,
+  children,
+  locked,
+}: {
+  bg: string;
+  children: React.ReactNode;
+  locked?: boolean;
+}) {
   return (
     <div
       style={{
@@ -1453,6 +1513,7 @@ function Pill({ bg, children }: { bg: string; children: React.ReactNode }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        gap: 5,
         fontSize: 12,
         fontWeight: 500,
         padding: "0 8px",
@@ -1461,6 +1522,7 @@ function Pill({ bg, children }: { bg: string; children: React.ReactNode }) {
         whiteSpace: "nowrap",
       }}
     >
+      {locked && <Lock size={11} style={{ flexShrink: 0, opacity: 0.85 }} />}
       {children}
     </div>
   );

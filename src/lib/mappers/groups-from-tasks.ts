@@ -71,6 +71,27 @@ const PRIORITY_OPTIONS: ColumnOption[] = (
   color: priorityToColor(p),
 }));
 
+/**
+ * Estado V3 canonico enviado ao backend ao escolher cada pilula visual.
+ * Decisao de produto (passo 2): as 5 pilulas mapeiam 1:1 para um estado
+ * canonico. "Concluido" achata DONE/VALIDATED/CANCELLED/DISCARDED em DONE,
+ * por isso a edicao so dispara quando o usuario TROCA de pilula (ver
+ * `groups-view`), preservando a distincao fina quando ele nao mexe.
+ */
+export const PILL_TO_V3: Record<string, V3Intention> = {
+  backlog: "INBOX",
+  ready: "READY",
+  "em-progresso": "EXECUTING",
+  concluido: "DONE",
+  falhou: "FAILED",
+};
+
+/** Estado V3 terminal — nao pode mudar (backend recusa). UI trava a pilula. */
+export const V3_TERMINAL_VALIDATED: V3Intention = "VALIDATED";
+
+/** Chave interna que carrega o estado V3 cru da task (para regras de status). */
+export const STATUS_V3_KEY = "__statusV3";
+
 /** Definicao das colunas fixas exibidas na v1 read-only. */
 export const BACKEND_COLUMNS: ColumnDef[] = [
   { key: "__nome", type: "text", label: "Tarefa", order: 0, builtin: true },
@@ -108,6 +129,9 @@ function taskToRow(task: TaskResponseDto): TaskModel {
     nome: task.nome,
     fields: {
       status: statusColId,
+      // Estado V3 cru — usado pela celula de status para detectar VALIDATED
+      // (terminal) e aplicar a regra "nao mexer se mesma pilula".
+      [STATUS_V3_KEY]: task.status ?? null,
       identifier: task.identifier ?? null,
       // `person` guarda o userId canonico (string). A celula resolve
       // userId → nome via lista de membros para exibir, e a edicao manda
