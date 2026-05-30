@@ -146,7 +146,7 @@ function SelectionActionBar({
         // de translate(-50%,16px)+opacity:0 ate este estado (slide de baixo pra
         // cima + fade-in). `both` mantem o frame inicial antes de comecar.
         transform: "translate(-50%, 0)",
-        animation: "groups-action-bar-in .22s cubic-bezier(.16,1,.3,1) both",
+        animation: "groups-action-bar-in .4s cubic-bezier(.16,1,.3,1) both",
         zIndex: 9999,
         display: "flex",
         alignItems: "center",
@@ -379,12 +379,18 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   /**
    * Exclui as tasks selecionadas (unica acao funcional da barra). As demais
    * acoes sao decorativas nesta versao. Limpa a selecao ao final.
+   *
+   * Para subtarefas, passamos `parentId` (resolvido via `realTasks`, que inclui
+   * filhas) para que `useDeleteTask` invalide `qk.tasks.children(parentId)` e a
+   * sub-tabela na tela atualize. Sem isso, a filha sumia no backend mas
+   * continuava visivel ate um refresh.
    */
   function handleDeleteSelected() {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
+    const parentById = new Map(realTasks.map((t) => [t.id, t.idPai ?? undefined]));
     for (const id of ids) {
-      deleteTask.mutate({ id, projectId });
+      deleteTask.mutate({ id, projectId, parentId: parentById.get(id) });
     }
     clearSelection();
   }
