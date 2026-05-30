@@ -1219,31 +1219,32 @@ function SubtaskTableRow({
       <td
         colSpan={colSpan}
         style={{
-          // Recuo a esquerda (28px) deixa a calha de conexao visivel.
-          // Respiro EM CIMA (10px) descola a sub-tabela da tarefa-pai dela —
-          // e o espaco que evidencia a hierarquia (pai -> filha). NAO ha respiro
-          // embaixo: pai e pai ficam colados (Task 01 -> Task 00), como no Monday.
-          padding: "10px 0 0 28px",
+          // Recuo a esquerda (28px) deixa o braco de ligacao visivel.
+          // Respiro generoso EM CIMA e EMBAIXO (14px) descola a sub-tabela tanto
+          // da tarefa-pai dela quanto da proxima tarefa, evidenciando a hierarquia
+          // (estilo Monday — o bloco da subtarefa "flutua" entre as duas).
+          padding: "14px 0 14px 28px",
           borderBottom: "1px solid var(--border)",
-          // Fundo recuado mais escuro que a linha do pai — cria o "poco" onde a
-          // sub-tabela (card embutido) se assenta, como no Monday.
-          background: "color-mix(in srgb, var(--foreground) 4%, transparent)",
-          // Faixa de conexao vertical (cor do grupo) que sobe ate a linha do pai,
-          // ligando visualmente a subtarefa a tarefa-pai (estilo arvore Monday).
+          // Fundo transparente: o respiro de 14px em cima/embaixo mostra o fundo
+          // normal da linha, fazendo a sub-tabela (card destacado) "flutuar"
+          // entre o pai e a proxima tarefa, como no Monday.
+          background: "transparent",
           position: "relative",
-          boxShadow: `inset 4px 0 0 ${groupColor}`,
+          // NOTA: a calha lateral (cor do grupo) ja vem do GroupBox (borderLeft
+          // de 4px no container scrollavel). NAO duplicar aqui — antes havia um
+          // boxShadow inset que criava uma segunda barra lateral.
         }}
       >
-        {/* Braco horizontal de ligacao (cor do grupo) — sai da calha vertical
-            (x=4) e vai ate o card (x=28), conectando a barra lateral a
-            sub-tabela, como no Monday. Centralizado verticalmente no recuo. */}
+        {/* Braco horizontal de ligacao (cor do grupo) — sai da calha lateral do
+            grupo (x=0) e vai ate o card (x=28), conectando a barra lateral a
+            sub-tabela, como no Monday. Centralizado verticalmente. */}
         <span
           aria-hidden
           style={{
             position: "absolute",
-            left: 4,
-            top: "calc(50% + 5px)",
-            width: 24,
+            left: 0,
+            top: "50%",
+            width: 28,
             height: 2,
             background: groupColor,
           }}
