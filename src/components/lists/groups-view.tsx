@@ -441,8 +441,11 @@ const W_SUBTASK_RESP = 130;
 const W_SUBTASK_STATUS = 140;
 /** Largura da coluna de data da subtarefa. */
 const W_SUBTASK_DATE = 110;
-/** Largura total da sub-tabela (W_CHECK + 4 colunas de conteudo). */
-const W_SUBTASK_TOTAL = W_CHECK + W_SUBTASK_NOME + W_SUBTASK_RESP + W_SUBTASK_STATUS + W_SUBTASK_DATE;
+/** Largura da coluna "+" decorativa (adicionar coluna — só visual, estilo Monday). */
+const W_SUBTASK_ADD = 44;
+/** Largura total da sub-tabela (W_CHECK + 4 colunas de conteudo + coluna "+"). */
+const W_SUBTASK_TOTAL =
+  W_CHECK + W_SUBTASK_NOME + W_SUBTASK_RESP + W_SUBTASK_STATUS + W_SUBTASK_DATE + W_SUBTASK_ADD;
 
 function colWidth(c: ColumnDef): number {
   if (c.builtin) return W_NOME;
@@ -596,7 +599,20 @@ function GroupBox({
         })()}
 
         <span style={{ fontSize: 12, color: "var(--muted-foreground)", marginLeft: 2 }}>
-          {group.tasks.length}
+          {(() => {
+            // Contador descritivo estilo Monday: "N Tarefas / M subelementos".
+            // `childCount` vem de buildGroupsBoard (soma das filhas diretas de
+            // cada task raiz do grupo). So mostra a parte de subelementos se > 0.
+            const nTasks = group.tasks.length;
+            const nSubs = group.tasks.reduce(
+              (acc, t) => acc + (t.childCount ?? 0),
+              0,
+            );
+            const tarefasTxt = `${nTasks} ${nTasks === 1 ? "Tarefa" : "Tarefas"}`;
+            if (nSubs === 0) return tarefasTxt;
+            const subsTxt = `${nSubs} ${nSubs === 1 ? "subelemento" : "subelementos"}`;
+            return `${tarefasTxt} / ${subsTxt}`;
+          })()}
         </span>
 
         {!readOnly && (
@@ -1075,6 +1091,43 @@ function TaskRow({
                       </>
                     )}
                   </div>
+                  {/* Botão "+" de adicionar subtarefa — estilo Monday: círculo
+                      destacado ao lado do nome. Expande a sub-tabela do pai.
+                      Só no modo backend (showCaret). */}
+                  {showCaret && (
+                    <button
+                      type="button"
+                      aria-label="Adicionar subtarefa"
+                      title="Adicionar subtarefa"
+                      onClick={() => setExpanded(true)}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 22,
+                        height: 22,
+                        flexShrink: 0,
+                        borderRadius: "50%",
+                        border: "1px solid var(--border)",
+                        background: "var(--card)",
+                        color: "var(--muted-foreground)",
+                        cursor: "pointer",
+                        opacity: hover ? 1 : 0,
+                        transition: "opacity .1s, color .1s, border-color .1s",
+                        padding: 0,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "#7c5cff";
+                        e.currentTarget.style.borderColor = "#7c5cff";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "var(--muted-foreground)";
+                        e.currentTarget.style.borderColor = "var(--border)";
+                      }}
+                    >
+                      <Plus size={13} />
+                    </button>
+                  )}
                 </div>
               </td>
             );
@@ -1168,9 +1221,11 @@ function SubtaskTableRow({
       <td
         colSpan={colSpan}
         style={{
-          padding: 0,
+          padding: "0 0 6px 28px",
           borderBottom: "1px solid var(--border)",
-          background: "color-mix(in srgb, var(--foreground) 2%, transparent)",
+          // Fundo recuado mais escuro que a linha do pai — cria o "poco" onde a
+          // sub-tabela (card embutido) se assenta, como no Monday.
+          background: "color-mix(in srgb, var(--foreground) 4%, transparent)",
         }}
       >
         <SubtaskTable
@@ -1239,14 +1294,22 @@ function SubtaskTable({
   return (
     <div
       style={{
-        marginLeft: 36,
-        borderLeft: `2px solid ${groupColor}`,
-        background: "color-mix(in srgb, var(--foreground) 1%, transparent)",
+        // Card embutido com calha lateral grossa e contínua na cor do grupo
+        // (conecta visualmente ao pai, estilo Monday). Fundo de card real para
+        // destacar do fundo escuro — antes "sumia" por baixo contraste.
+        width: W_SUBTASK_TOTAL,
+        borderLeft: `4px solid ${groupColor}`,
+        borderTop: "1px solid var(--border)",
+        borderRight: "1px solid var(--border)",
+        borderBottom: "1px solid var(--border)",
+        borderRadius: "0 6px 6px 0",
+        overflow: "hidden",
+        background: "var(--card)",
       }}
     >
       <table
         style={{
-          width: W_SUBTASK_TOTAL,
+          width: "100%",
           borderCollapse: "collapse",
           tableLayout: "fixed",
         }}
@@ -1257,6 +1320,7 @@ function SubtaskTable({
           <col style={{ width: W_SUBTASK_RESP }} />
           <col style={{ width: W_SUBTASK_STATUS }} />
           <col style={{ width: W_SUBTASK_DATE }} />
+          <col style={{ width: W_SUBTASK_ADD }} />
         </colgroup>
 
         <SubtaskHeadRow />
@@ -1266,7 +1330,7 @@ function SubtaskTable({
             /* Skeleton de carregamento — 3 linhas cinza enquanto fetch */
             Array.from({ length: 3 }).map((_, i) => (
               <tr key={`sk-${i}`}>
-                <td colSpan={5} style={{ height: 34, padding: "4px 8px" }}>
+                <td colSpan={6} style={{ height: 34, padding: "4px 8px" }}>
                   <div
                     style={{
                       height: 18,
@@ -1313,11 +1377,14 @@ function SubtaskTable({
 function SubtaskHeadRow() {
   const th: React.CSSProperties = {
     fontSize: 11,
-    fontWeight: 500,
+    fontWeight: 600,
     color: "var(--muted-foreground)",
-    padding: "6px 8px",
+    padding: "7px 8px",
     borderBottom: "1px solid var(--border)",
-    background: "color-mix(in srgb, var(--foreground) 3%, transparent)",
+    borderRight: "1px solid var(--border)",
+    // Fundo destacado (mais forte que antes) — o cabeçalho da sub-tabela vira
+    // uma faixa visivel com grid de celulas, como no Monday.
+    background: "color-mix(in srgb, var(--foreground) 7%, transparent)",
     whiteSpace: "nowrap",
     textAlign: "center",
   };
@@ -1329,6 +1396,11 @@ function SubtaskHeadRow() {
         <th style={th}>Resp.</th>
         <th style={th}>Status</th>
         <th style={th}>Data</th>
+        {/* Coluna "+" decorativa — espelha o "adicionar coluna" do Monday.
+            Sem função nesta versão (colunas da sub-tabela são fixas). */}
+        <th style={{ ...th, borderRight: 0, color: "var(--muted-foreground)", opacity: 0.4 }}>
+          <Plus size={13} />
+        </th>
       </tr>
     </thead>
   );
@@ -1438,7 +1510,7 @@ function SubtaskTaskRow({
 
   const td: React.CSSProperties = {
     padding: "0 8px",
-    height: 34,
+    height: 38,
     borderBottom: "1px solid var(--border)",
     borderRight: "1px solid var(--border)",
     verticalAlign: "middle",
@@ -1503,7 +1575,7 @@ function SubtaskTaskRow({
 
       {/* Data */}
       <FieldCell
-        tdStyle={{ ...td, borderRight: 0 }}
+        tdStyle={td}
         column={dateCol}
         value={subtask.dueDate ?? null}
         onChange={(v) => handleEdit("dueDate", v)}
@@ -1511,6 +1583,9 @@ function SubtaskTaskRow({
         members={members}
         saving={saving}
       />
+
+      {/* Celula vazia sob a coluna "+" decorativa do cabecalho */}
+      <td style={{ ...td, borderRight: 0 }} />
     </tr>
   );
 }
@@ -1578,7 +1653,7 @@ function AddSubtaskRow({
   return (
     <tr onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <td
-        colSpan={5}
+        colSpan={6}
         style={{
           height: 32,
           padding: 0,
