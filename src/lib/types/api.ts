@@ -261,6 +261,7 @@ export interface UpdateProjectDto {
   nome?: string;
   description?: string;
   repoUrl?: string;
+  tableFields?: TableFieldsDto;
   /** ID do projeto pai | null para mover à raiz | omitir para manter. */
   idPai?: string | null;
   /** Tornar projeto privado (true) ou público (false) | omitir para manter. */

@@ -49,6 +49,11 @@ import {
   type TaskModel,
 } from "@/lib/prototype/groups-store";
 import {
+  applyAddColumn,
+  applyRemoveColumn,
+  applyRenameColumn,
+} from "@/lib/table-fields/schema-ops";
+import {
   useBlocks,
   useTasksByProject,
   useCreateBlock,
@@ -60,8 +65,10 @@ import {
   useDeleteTask,
 } from "@/hooks/use-tasks";
 import { useProjectMembers } from "@/hooks/use-members";
-import { useProject } from "@/hooks/use-projects";
+import { useProject, useUpdateProjectTableFields } from "@/hooks/use-projects";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { getApiErrorMessage } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
 import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
 import {
@@ -516,13 +523,14 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   // Schema de colunas customizaveis da Lista (DProject.tableFields — ADR-V2-055).
   // Read-only nesta fase: so alimenta as colunas do board (fallback aos 6
   // builtin quando null/ausente).
-  const { data: project } = useProject(projectId);
+  const { data: project, isLoading: loadingProject } = useProject(projectId);
 
   const createBlock = useCreateBlock();
   const createTask = useCreateTask();
   const updateTask = useUpdateTask();
   const updateBlock = useUpdateBlock();
   const updateStatus = useUpdateTaskStatus();
+  const updateTableFields = useUpdateProjectTableFields(projectId);
 
   // Qual task / bloco esta salvando agora — alimenta o spinner.
   const [savingTaskId, setSavingTaskId] = useState<string | null>(null);
@@ -712,6 +720,27 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     createTask.mutate({ titulo: "Nova tarefa", idProject: projectId, dados });
   }
 
+  function handleTableFieldsError(error: unknown) {
+    toast.error("Não foi possível atualizar as colunas.", {
+      description: getApiErrorMessage(error),
+    });
+  }
+
+  function handleAddColumn(type: ColumnType, label: string) {
+    const tableFields = applyAddColumn(project?.tableFields ?? null, type, label);
+    updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
+  }
+
+  function handleRenameColumn(key: string, label: string) {
+    const tableFields = applyRenameColumn(project?.tableFields ?? null, key, label);
+    updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
+  }
+
+  function handleRemoveColumn(key: string) {
+    const tableFields = applyRemoveColumn(project?.tableFields ?? null, key);
+    updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
+  }
+
   /**
    * Edita um campo de uma task no backend. Mapeia a coluna para o campo do
    * DTO de update e dispara a mutation; o `savingTaskId` segura o spinner ate
@@ -752,7 +781,27 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     } else if (columnKey === "dueDate") {
       dto.dueDate = typeof value === "string" && value ? value : null;
     } else {
-      return; // coluna nao-editavel neste passo
+      // Coluna customizavel (key `f_*`, sem editor builtin). Grava o valor em
+      // `dados.fields` por chave; o backend faz MERGE por chave (nao apaga as
+      // demais celulas) e valida pelo tipo da coluna. `null` limpa a celula.
+      setSavingTaskId(taskId);
+      updateTask.mutate(
+        {
+          id: taskId,
+          projectId,
+          dto: { dados: { fields: { [columnKey]: value } } },
+        },
+        {
+          onError: () => {
+            // Valor invalido para o tipo (HTTP 400) ou falha de rede. O
+            // onSettled invalida as queries e o refetch restaura o valor
+            // anterior na celula (rollback do feedback conservador).
+            toast.error("Nao foi possivel salvar o valor desta coluna.");
+          },
+          onSettled: () => setSavingTaskId(null),
+        },
+      );
+      return;
     }
 
     setSavingTaskId(taskId);
@@ -790,7 +839,7 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     );
   }
 
-  if (loadingBlocks || loadingTasks) {
+  if (loadingBlocks || loadingTasks || loadingProject) {
     return (
       <div
         className="grid flex-1 place-items-center p-8 text-sm"
@@ -817,6 +866,9 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
         onRecolorGroup={handleRecolorGroup}
         onAddGroup={handleAddGroup}
         onAddTask={handleAddTask}
+        onAddColumn={handleAddColumn}
+        onRenameColumn={handleRenameColumn}
+        onRemoveColumn={handleRemoveColumn}
       />
       <SelectionActionBar
         count={selectedIds.size}
@@ -854,6 +906,10 @@ function PrototypeGroupsView() {
 
 /** Coluna sintetica do titulo da tarefa (builtin). Editavel no backend. */
 const NOME_KEY = "__nome";
+
+type AddColumnHandler = (type: ColumnType, label: string) => void;
+type RenameColumnHandler = (key: string, label: string) => void;
+type RemoveColumnHandler = (key: string) => void;
 
 /* ─── Renderizacao do board (compartilhada entre os dois modos) ──────────── */
 
@@ -900,6 +956,9 @@ const SUBTASK_COLUMNS: ColumnDef[] = [
  *   fica editavel (exceto o grupo sintetico "Sem bloco").
  * @param onAddGroup - Cria um grupo/bloco. Se ausente, o botao nao aparece.
  * @param onAddTask - Cria uma tarefa no grupo. Se ausente, a linha nao aparece.
+ * @param onAddColumn - Cria uma coluna custom no schema da lista.
+ * @param onRenameColumn - Renomeia uma coluna custom no schema da lista.
+ * @param onRemoveColumn - Remove uma coluna custom do schema da lista.
  */
 function GroupsBoardView({
   board,
@@ -913,6 +972,9 @@ function GroupsBoardView({
   onRecolorGroup,
   onAddGroup,
   onAddTask,
+  onAddColumn,
+  onRenameColumn,
+  onRemoveColumn,
 }: {
   board: GroupsBoard;
   readOnly: boolean;
@@ -927,6 +989,9 @@ function GroupsBoardView({
   onRecolorGroup?: (groupId: string, cor: string) => void;
   onAddGroup?: () => void;
   onAddTask?: (groupId: string) => void;
+  onAddColumn?: AddColumnHandler;
+  onRenameColumn?: RenameColumnHandler;
+  onRemoveColumn?: RemoveColumnHandler;
 }) {
   const cols = [...board.columns].sort((a, b) => a.order - b.order);
 
@@ -1001,6 +1066,9 @@ function GroupsBoardView({
               onRenameGroup={onRenameGroup}
               onRecolorGroup={onRecolorGroup}
               onAddTask={onAddTask}
+              onAddColumn={onAddColumn}
+              onRenameColumn={onRenameColumn}
+              onRemoveColumn={onRemoveColumn}
             />
           ))
         )}
@@ -1079,6 +1147,9 @@ function GroupBox({
   onRenameGroup,
   onRecolorGroup,
   onAddTask,
+  onAddColumn,
+  onRenameColumn,
+  onRemoveColumn,
 }: {
   group: GroupModel;
   columns: ColumnDef[];
@@ -1094,6 +1165,9 @@ function GroupBox({
   onRenameGroup?: (groupId: string, nome: string) => void;
   onRecolorGroup?: (groupId: string, cor: string) => void;
   onAddTask?: (groupId: string) => void;
+  onAddColumn?: AddColumnHandler;
+  onRenameColumn?: RenameColumnHandler;
+  onRemoveColumn?: RemoveColumnHandler;
 }) {
   const [open, setOpen] = useState(true);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -1292,6 +1366,9 @@ function GroupBox({
               columns={columns}
               readOnly={readOnly}
               groupTaskIds={group.tasks.map((t) => t.id)}
+              onAddColumn={onAddColumn}
+              onRenameColumn={onRenameColumn}
+              onRemoveColumn={onRemoveColumn}
             />
 
             <tbody>
@@ -1444,11 +1521,17 @@ function HeadRow({
   columns,
   readOnly,
   groupTaskIds,
+  onAddColumn,
+  onRenameColumn,
+  onRemoveColumn,
 }: {
   columns: ColumnDef[];
   readOnly: boolean;
   /** IDs das tasks raiz do grupo — alimenta o "selecionar tudo" do header. */
   groupTaskIds?: string[];
+  onAddColumn?: AddColumnHandler;
+  onRenameColumn?: RenameColumnHandler;
+  onRemoveColumn?: RemoveColumnHandler;
 }) {
   const selection = useSelection();
   const th: React.CSSProperties = {
@@ -1482,17 +1565,28 @@ function HeadRow({
             )}
           </span>
         </th>
-        {columns.map((c) =>
-          c.builtin || readOnly ? (
+        {columns.map((c) => {
+          const canManageColumn =
+            !c.builtin &&
+            (!readOnly ||
+              (c.builtin === false && !!onRenameColumn && !!onRemoveColumn));
+
+          return canManageColumn ? (
+            <ColumnHeader
+              key={c.key}
+              column={c}
+              thStyle={th}
+              onRenameColumn={onRenameColumn}
+              onRemoveColumn={onRemoveColumn}
+            />
+          ) : (
             <th key={c.key} style={{ ...th, textAlign: c.builtin ? "left" : "center", paddingLeft: c.builtin ? 4 : 8 }}>
               {c.label}
             </th>
-          ) : (
-            <ColumnHeader key={c.key} column={c} thStyle={th} />
-          ),
-        )}
+          );
+        })}
         <th style={th}>
-          {!readOnly && <AddColumnButton />}
+          {(!readOnly || !!onAddColumn) && <AddColumnButton onAddColumn={onAddColumn} />}
         </th>
       </tr>
     </thead>
@@ -1500,9 +1594,38 @@ function HeadRow({
 }
 
 /** Header de coluna custom — editavel (renomear) e removivel via menu. */
-function ColumnHeader({ column, thStyle }: { column: ColumnDef; thStyle: React.CSSProperties }) {
+function ColumnHeader({
+  column,
+  thStyle,
+  onRenameColumn,
+  onRemoveColumn,
+}: {
+  column: ColumnDef;
+  thStyle: React.CSSProperties;
+  onRenameColumn?: RenameColumnHandler;
+  onRemoveColumn?: RemoveColumnHandler;
+}) {
   const [menu, setMenu] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
+  const handledRenameRef = useRef(false);
+
+  useEffect(() => {
+    if (menu) handledRenameRef.current = false;
+  }, [menu]);
+
+  function commitRename(value: string) {
+    handledRenameRef.current = true;
+    const nextLabel = value.trim() || column.label;
+    if (nextLabel === column.label) return;
+    const renameColumn = onRenameColumn ?? groupsActions.renameColumn;
+    renameColumn(column.key, nextLabel);
+  }
+
+  function removeColumn() {
+    const remove = onRemoveColumn ?? groupsActions.removeColumn;
+    remove(column.key);
+  }
+
   return (
     <th style={thStyle}>
       <button
@@ -1538,18 +1661,23 @@ function ColumnHeader({ column, thStyle }: { column: ColumnDef; thStyle: React.C
               defaultValue={column.label}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  groupsActions.renameColumn(column.key, (e.target as HTMLInputElement).value.trim() || column.label);
+                  commitRename((e.target as HTMLInputElement).value);
                   setMenu(false);
                 }
-                if (e.key === "Escape") setMenu(false);
+                if (e.key === "Escape") {
+                  handledRenameRef.current = true;
+                  setMenu(false);
+                }
               }}
-              onBlur={(e) => groupsActions.renameColumn(column.key, e.target.value.trim() || column.label)}
+              onBlur={(e) => {
+                if (!handledRenameRef.current) commitRename(e.target.value);
+              }}
               style={inputStyle}
             />
             <button
               type="button"
               onClick={() => {
-                groupsActions.removeColumn(column.key);
+                removeColumn();
                 setMenu(false);
               }}
               style={{
@@ -1578,7 +1706,7 @@ function ColumnHeader({ column, thStyle }: { column: ColumnDef; thStyle: React.C
 }
 
 /** Botao "+" no header — abre menu para criar nova coluna (8 tipos). */
-function AddColumnButton() {
+function AddColumnButton({ onAddColumn }: { onAddColumn?: AddColumnHandler }) {
   const [menu, setMenu] = useState(false);
   const [label, setLabel] = useState("");
   const [type, setType] = useState<ColumnType>("text");
@@ -1586,7 +1714,8 @@ function AddColumnButton() {
 
   function create() {
     const l = label.trim() || COLUMN_TYPE_LABEL[type];
-    groupsActions.addColumn(type, l);
+    const addColumn = onAddColumn ?? groupsActions.addColumn;
+    addColumn(type, l);
     setLabel("");
     setType("text");
     setMenu(false);
@@ -1890,8 +2019,13 @@ function TaskRow({
           }
           // No modo backend, as colunas-alvo viram editaveis via onEditField
           // (mesmo com readOnly geral). As demais respeitam readOnly.
+          // Colunas custom vem do mapper com `builtin === false` e key `f_*`;
+          // `identifier` (read-only, sem editor) tem `builtin` indefinido e por
+          // isso nao entra aqui — so habilitamos edicao backend para os 4
+          // builtin conhecidos OU colunas explicitamente custom.
           const backendEditable =
-            !!onEditField && BACKEND_EDITABLE_KEYS.has(c.key);
+            !!onEditField &&
+            (BACKEND_EDITABLE_KEYS.has(c.key) || c.builtin === false);
           const cellReadOnly = backendEditable ? false : readOnly;
           const cellOnChange = backendEditable
             ? (v: FieldValue) => onEditField!(task.id, c.key, v)

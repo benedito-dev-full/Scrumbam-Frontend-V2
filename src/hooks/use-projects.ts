@@ -10,7 +10,12 @@ import { qk } from '@/lib/query-keys';
 import { useAuthStore } from '@/lib/stores/auth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-import type { CreateProjectDto, DProjectDto, UpdateProjectDto } from '@/lib/types/api';
+import type {
+  CreateProjectDto,
+  DProjectDto,
+  TableFieldsDto,
+  UpdateProjectDto,
+} from '@/lib/types/api';
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -357,6 +362,33 @@ export function useRenameProject() {
         // Fallback: invalida tudo relacionado a projects
         void queryClient.invalidateQueries({ queryKey: qk.projects.all });
       }
+    },
+  });
+}
+
+/**
+ * Atualiza o schema de colunas customizáveis de uma LIST.
+ *
+ * Mapeia para `PATCH /projects/:id { tableFields }` e invalida o projeto
+ * individual e as listas de projetos, pois algumas telas podem exibir esse
+ * contrato junto do DProject.
+ */
+export function useUpdateProjectTableFields(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation<DProjectDto, Error, TableFieldsDto>({
+    mutationFn: async (tableFields) => {
+      const res = await api.patch<DProjectDto>(`/projects/${projectId}`, {
+        tableFields,
+      } satisfies UpdateProjectDto);
+      return res.data;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.projects.byId(projectId) });
+      void queryClient.invalidateQueries({ queryKey: qk.projects.all });
+    },
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.projects.byId(projectId) });
     },
   });
 }

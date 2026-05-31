@@ -194,6 +194,7 @@ function tableColumnToColumnDef(col: TableColumnDto): ColumnDef {
     order: col.order,
     required: col.required,
     config: col.config,
+    builtin: false,
   };
 }
 
