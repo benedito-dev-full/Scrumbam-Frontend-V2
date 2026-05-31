@@ -183,3 +183,14 @@
 
 A feature segue o padrão Monday.com com expansão inline, mas usa `<table>` aninhada em vez de drawer. Subtarefas nunca aparecem como linhas raiz — são filhas obrigatórias do pai. Status VALIDATED trava edição (estado terminal do backend).
 
+
+---
+
+<!-- dedup:strategist:4 -->
+### Agent Concluido: strategist
+
+**Task:** #4
+**Timestamp:** 30/05/2026 12:59:03
+**Agent:** strategist
+**Status:** Concluido
+

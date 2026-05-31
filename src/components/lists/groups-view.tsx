@@ -60,6 +60,7 @@ import {
   useDeleteTask,
 } from "@/hooks/use-tasks";
 import { useProjectMembers } from "@/hooks/use-members";
+import { useProject } from "@/hooks/use-projects";
 import { useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/query-keys";
 import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
@@ -512,6 +513,10 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   const { data: tasks = [], isLoading: loadingTasks } =
     useTasksByProject(projectId);
   const { data: membersRaw = [] } = useProjectMembers(projectId);
+  // Schema de colunas customizaveis da Lista (DProject.tableFields — ADR-V2-055).
+  // Read-only nesta fase: so alimenta as colunas do board (fallback aos 6
+  // builtin quando null/ausente).
+  const { data: project } = useProject(projectId);
 
   const createBlock = useCreateBlock();
   const createTask = useCreateTask();
@@ -529,7 +534,7 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     Array.isArray(membersRaw) ? membersRaw : []
   ).map((m) => ({ userId: m.userId, nome: m.nome }));
 
-  const board = buildGroupsBoard(blocks, realTasks);
+  const board = buildGroupsBoard(blocks, realTasks, project?.tableFields);
 
   // ── Selecao de tarefas (checkbox) → barra de acoes flutuante ──
   const deleteTask = useDeleteTask();

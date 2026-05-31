@@ -23,11 +23,18 @@ import {
 import type {
   ColumnDef,
   ColumnOption,
+  FieldValue,
   GroupsBoard,
   GroupModel,
   TaskModel,
 } from "@/lib/prototype/groups-store";
-import type { BlockDto, TaskResponseDto, V3Intention } from "@/lib/types/api";
+import type {
+  BlockDto,
+  TableColumnDto,
+  TableFieldsDto,
+  TaskResponseDto,
+  V3Intention,
+} from "@/lib/types/api";
 
 /* ─── Membros (para resolver o nome do responsavel) ──────────────────────── */
 
@@ -138,12 +145,21 @@ export const BACKEND_COLUMNS: ColumnDef[] = [
 function taskToRow(task: TaskResponseDto, childCountMap: Map<string, number>): TaskModel {
   const statusColId = intentionToColumn(task.status as V3Intention);
 
+  // Valores das colunas customizaveis vivem em `task.dados.fields` chaveados
+  // por `column.key`. Espalhados PRIMEIRO para que os 6 builtin abaixo sempre
+  // prevalecam em caso de colisao de chave.
+  const customFields =
+    task.dados && typeof task.dados === "object" && "fields" in task.dados
+      ? ((task.dados as { fields?: Record<string, FieldValue> }).fields ?? {})
+      : {};
+
   return {
     id: task.id,
     nome: task.nome,
     idPai: task.idPai ?? null,
     childCount: childCountMap.get(task.id) ?? 0,
     fields: {
+      ...customFields,
       status: statusColId,
       // Estado V3 cru — usado pela celula de status para detectar VALIDATED
       // (terminal) e aplicar a regra "nao mexer se mesma pilula".
@@ -156,6 +172,28 @@ function taskToRow(task: TaskResponseDto, childCountMap: Map<string, number>): T
       prioridade: task.priority ?? null,
       dueDate: task.dueDate ?? null,
     },
+  };
+}
+
+/* ─── Colunas customizaveis (tableFields) ────────────────────────────────── */
+
+/**
+ * Converte uma coluna do contrato `tableFields` (`TableColumnDto`) na
+ * `ColumnDef` que a `GroupsView` desenha. As colunas custom NUNCA sao builtin
+ * (sao persistidas em `DProject.tableFields`); preservamos `config`/`required`
+ * tal como o backend devolve.
+ *
+ * @param col - Coluna do schema `tableFields.columns[]`.
+ * @returns `ColumnDef` equivalente (sem flag builtin).
+ */
+function tableColumnToColumnDef(col: TableColumnDto): ColumnDef {
+  return {
+    key: col.key,
+    type: col.type,
+    label: col.label,
+    order: col.order,
+    required: col.required,
+    config: col.config,
   };
 }
 
@@ -177,17 +215,22 @@ function taskToRow(task: TaskResponseDto, childCountMap: Map<string, number>): T
  * @param blocks - Blocos do projeto (DTask idClasse=-200).
  * @param tasks - Todas as tasks do projeto (sem os próprios blocos).
  *   Inclui raízes E subtarefas; a função filtra as subtarefas internamente.
+ * @param tableFields - Schema de colunas customizáveis da Lista
+ *   (`DProject.tableFields` — ADR-V2-055). Quando `null`/ausente, o board usa
+ *   apenas as 6 colunas builtin (comportamento idêntico ao anterior).
  * @returns Board pronto para a `GroupsView` renderizar com subtarefas
  *   expandíveis no modo backend.
  *
  * @example
  * const { blocks, tasks } = await fetchProjectData(projectId);
- * const board = buildGroupsBoard(blocks, tasks);
- * // Resultado: tasks com idPai ausentes das linhas raiz; childCount preenchido
+ * const board = buildGroupsBoard(blocks, tasks, project.tableFields);
+ * // Resultado: tasks com idPai ausentes das linhas raiz; childCount preenchido;
+ * // colunas custom mescladas apos as builtin (ordenadas por `order`).
  */
 export function buildGroupsBoard(
   blocks: BlockDto[],
   tasks: TaskResponseDto[],
+  tableFields?: TableFieldsDto | null,
 ): GroupsBoard {
   // 1. Calcular contagem de filhas por pai ANTES de qualquer filtro —
   //    o mapa precisa contar todas as tasks, incluindo as filhas.
@@ -237,7 +280,14 @@ export function buildGroupsBoard(
     });
   }
 
-  return { columns: BACKEND_COLUMNS, groups };
+  // Colunas custom (tableFields) entram apos as 6 builtin. Ordenadas por
+  // `order` para respeitar a sequencia definida no backend. Quando nao ha
+  // tableFields, o board fica identico ao comportamento anterior (so builtin).
+  const customColumns = (tableFields?.columns ?? [])
+    .map(tableColumnToColumnDef)
+    .sort((a, b) => a.order - b.order);
+
+  return { columns: [...BACKEND_COLUMNS, ...customColumns], groups };
 }
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */

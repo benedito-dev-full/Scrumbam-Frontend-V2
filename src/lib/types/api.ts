@@ -71,6 +71,66 @@ export interface AuthResponseDto {
   user: UserDto;
 }
 
+// ─── Table Fields (colunas customizáveis por Lista — ADR-V2-055) ─────────────
+
+/**
+ * Tipos de coluna customizável suportados pelo backend (8 tipos do contrato
+ * `tableFields` — ADR-V2-055). Espelha `ColumnType` do contrato.
+ */
+export type TableColumnType =
+  | "text"
+  | "number"
+  | "date"
+  | "person"
+  | "status"
+  | "checkbox"
+  | "dropdown"
+  | "link";
+
+/** Opção de uma coluna `status`/`dropdown` (config.options do contrato). */
+export interface TableColumnOptionDto {
+  id: string;
+  label: string;
+  color?: string;
+}
+
+/** Configuração opcional de uma coluna customizável. */
+export interface TableColumnConfigDto {
+  /** number: moeda. */
+  currency?: "BRL" | "USD";
+  /** number: casas decimais. */
+  decimals?: number;
+  /** text: tamanho máximo. */
+  maxLength?: number;
+  /** status/dropdown: opções disponíveis. */
+  options?: TableColumnOptionDto[];
+}
+
+/**
+ * Definição de uma coluna customizável — espelha `tableFields.columns[]`
+ * (ADR-V2-055). A `key` segue o regex `^f_[a-z0-9]{2,}$` no backend para
+ * colunas custom; colunas builtin/virtuais não são persistidas aqui.
+ */
+export interface TableColumnDto {
+  key: string;
+  type: TableColumnType;
+  label: string;
+  order: number;
+  required?: boolean;
+  config?: TableColumnConfigDto;
+  /** Coluna interna fixa — não persistida via tableFields. */
+  builtin?: boolean;
+}
+
+/**
+ * Schema de colunas customizáveis de uma Lista (DProject.tableFields —
+ * ADR-V2-055). Retornado por `GET /projects/:id` (`null` em Space/Folder).
+ */
+export interface TableFieldsDto {
+  version: number;
+  columns: TableColumnDto[];
+}
+
 // ─── Projects (= Spaces/Folders/Lists no frontend) ───────────────────────────
 
 /**
@@ -138,6 +198,11 @@ export interface DProjectDto {
   remoteBranch?: string | null;
   /** Caminho no servidor do agente vinculado. */
   remotePath?: string | null;
+  /**
+   * Schema de colunas customizáveis da Lista (ADR-V2-055). Só Listas (-352)
+   * costumam ter; Space/Folder retornam `null`/ausente.
+   */
+  tableFields?: TableFieldsDto | null;
   criadoEm: string;
   atualizadoEm: string;
 }

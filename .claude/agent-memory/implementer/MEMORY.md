@@ -55,3 +55,5 @@
 - Next.js 16 params em rotas dinamicas sao `Promise<{ id: string }>` — sempre `await params` antes de usar. Excecao: page.tsx de spaces/[id] usa `use(params)` (hook React, nao await).
 - `crypto.randomUUID()` disponivel no browser moderno — usado no mock de agentes para gerar IDs.
 - react-hooks/set-state-in-effect: chamar setState diretamente no body de useEffect e erro de lint (React Compiler). Solucao para reset-ao-abrir-modal: envolver em `setTimeout(fn, 0)` + return clearTimeout.
+- TypeScript `const` hoisting: constantes block-scoped usadas antes de sua declaracao causam erro "Block-scoped variable used before declaration" mesmo com `const`. Ao adicionar novas constantes que dependem de outras (ex: `W_SUBTASK_TOTAL = W_CHECK + ...`), garantir que a declaracao de `W_CHECK` vem antes no arquivo.
+- `groups-from-tasks.ts`: `STATUS_OPTIONS` e `PRIORITY_OPTIONS` agora sao exportadas — reutilizar em componentes que precisam das opcoes de status/prioridade sem recriar.

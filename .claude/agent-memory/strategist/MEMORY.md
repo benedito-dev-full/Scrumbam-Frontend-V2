@@ -20,6 +20,10 @@ Hierarquia: Workspace → Space (-350) → Folder (-351) → List (-352) → Tas
 
 (Nenhum ainda — sera preenchido conforme tasks forem implementadas)
 
+## Frontend
+
+- [Aba Blocos / GroupsView](frontend-blocks-view.md) — modos Backend vs Prototype, tipos do contrato em groups-store (migrar p/ table-fields.ts), lacunas de colunas custom. Plano: plan-blocks-colunas-customizaveis-task5.md
+
 ## Bounded Contexts
 
 - `projects/` — CRUD de DProject (Space/Folder/List), seed de statuses/sprint, validacao hierarquica
