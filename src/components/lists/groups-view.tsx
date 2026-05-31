@@ -14,7 +14,6 @@ import {
   ChevronDown,
   ChevronRight,
   Plus,
-  MessageSquarePlus,
   User,
   GitBranch,
   Check,
@@ -37,8 +36,6 @@ import {
   X,
 } from "lucide-react";
 import {
-  useGroupsBoard,
-  groupsActions,
   COLUMN_TYPE_LABEL,
   type ColumnDef,
   type ColumnType,
@@ -47,7 +44,7 @@ import {
   type GroupModel,
   type GroupsBoard,
   type TaskModel,
-} from "@/lib/prototype/groups-store";
+} from "@/lib/types/table-fields";
 import {
   applyAddColumn,
   applyRemoveColumn,
@@ -82,12 +79,94 @@ import {
 } from "@/lib/mappers/groups-from-tasks";
 import { intentionToColumn } from "@/lib/mappers/task-status.mapper";
 
+const ID_CLASSE_LIST = "-352";
+
+function getErrorStatus(error: unknown): number | undefined {
+  if (typeof error !== "object" || error === null || !("response" in error)) {
+    return undefined;
+  }
+
+  const response = (error as { response?: { status?: number; data?: { statusCode?: number } } }).response;
+  return response?.status ?? response?.data?.statusCode;
+}
+
+function normalizeErrorText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+
+function tableFieldsErrorDescription(error: unknown): string {
+  const status = getErrorStatus(error);
+  const message = getApiErrorMessage(error);
+  const normalized = normalizeErrorText(message);
+
+  if (status === 409) {
+    return "As colunas foram alteradas em outra sessão. Recarreguei os dados; tente novamente.";
+  }
+  if (normalized.includes("option") && normalized.includes("id")) {
+    return "As opções de Status/Lista suspensa precisam ter IDs únicos.";
+  }
+  if (normalized.includes("options") || normalized.includes("opcoes")) {
+    return "Colunas de Status e Lista suspensa precisam ter pelo menos uma opção.";
+  }
+  if (normalized.includes("order") || normalized.includes("ordem")) {
+    return "A ordem das colunas ficou inválida. Recarreguei o schema; tente novamente.";
+  }
+  if (normalized.includes("key") || normalized.includes("chave")) {
+    return "Já existe uma coluna com essa chave. Tente outro nome.";
+  }
+  if (status === 400) {
+    return message !== "Erro inesperado"
+      ? message
+      : "O backend recusou o schema das colunas. Recarreguei os dados; tente novamente.";
+  }
+
+  return message !== "Erro inesperado"
+    ? message
+    : "Não foi possível atualizar o schema das colunas. Tente novamente.";
+}
+
+function fieldErrorDescription(error: unknown): string {
+  const status = getErrorStatus(error);
+  const message = getApiErrorMessage(error);
+  const normalized = normalizeErrorText(message);
+
+  if (status === 409) {
+    return "A tarefa foi alterada em outra sessão. Recarreguei os dados; tente novamente.";
+  }
+  if (
+    normalized.includes("invalid") ||
+    normalized.includes("inval") ||
+    normalized.includes("tipo") ||
+    normalized.includes("type") ||
+    normalized.includes("valor") ||
+    normalized.includes("value")
+  ) {
+    return "Valor inválido para o tipo desta coluna.";
+  }
+  if (status === 400) {
+    return message !== "Erro inesperado"
+      ? message
+      : "O backend recusou o valor enviado para esta célula.";
+  }
+
+  return message !== "Erro inesperado"
+    ? message
+    : "Não foi possível salvar esta célula. Tente novamente.";
+}
+
+function normalizeCellValue(value: FieldValue): FieldValue {
+  return typeof value === "string" && value.trim() === "" ? null : value;
+}
+
 /* ─── Contexto de selecao (checkbox → barra de acoes flutuante) ───────────── */
 
 /**
  * Estado de selecao de tarefas via checkbox, consumido pelos checkboxes das
  * linhas (pai e subtarefa) e pelo header de grupo ("selecionar tudo"). Quando
- * `null` (modo prototipo / sem projectId), os checkboxes ficam decorativos.
+ * `null`, os checkboxes ficam decorativos.
  */
 interface SelectionContextValue {
   /** IDs atualmente selecionados. */
@@ -476,30 +555,15 @@ function MoveTargetList({
 /**
  * GroupsView — visualizacao de tarefas em GRUPOS (estilo Monday.com).
  *
- * Versao DINAMICA de prototipo: le e escreve numa store persistida em
- * localStorage (`groups-store`) que espelha o contrato de colunas
- * customizaveis do backend (tableFields.columns[] + dados.fields{}).
- *
- * Suporta nesta fase, sem backend:
- *  - editar nome do grupo (clique no titulo)
- *  - editar titulo da tarefa (clique)
- *  - mudar status/tipo e demais campos por tipo de coluna
- *  - adicionar tarefa, grupo e novas colunas (8 tipos do contrato)
- *
- * Tem dois modos:
- *  - **backend** (com `projectId`): le Blocos + Tasks + Membros reais e monta
- *    o board via `buildGroupsBoard`. SOMENTE LEITURA nesta v1 — edicao inline,
- *    add tarefa/grupo/coluna ficam desabilitados. E o novo conceito de Blocos.
- *  - **prototipo** (sem `projectId`): le/escreve a store em localStorage.
- *    Mantido para o showcase em `/design-system/groups-preview`.
+ * Modo backend: le Blocos + Tasks + Membros reais e monta o board via
+ * `buildGroupsBoard`. As colunas customizaveis vêm de `DProject.tableFields`
+ * e os valores de celula custom ficam em `DTask.dados.fields`.
  *
  * @example
- * <GroupsView projectId={listId} />   // dados reais (read-only)
- * <GroupsView />                       // prototipo localStorage (editavel)
+ * <GroupsView projectId={listId} />
  */
-export function GroupsView({ projectId }: { projectId?: string }) {
-  if (projectId) return <BackendGroupsView projectId={projectId} />;
-  return <PrototypeGroupsView />;
+export function GroupsView({ projectId }: { projectId: string }) {
+  return <BackendGroupsView projectId={projectId} />;
 }
 
 /* ─── Modo backend ───────────────────────────────────────────────────────── */
@@ -523,7 +587,12 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   // Schema de colunas customizaveis da Lista (DProject.tableFields — ADR-V2-055).
   // Read-only nesta fase: so alimenta as colunas do board (fallback aos 6
   // builtin quando null/ausente).
-  const { data: project, isLoading: loadingProject } = useProject(projectId);
+  const {
+    data: project,
+    isLoading: loadingProject,
+    refetch: refetchProject,
+  } = useProject(projectId);
+  const queryClient = useQueryClient();
 
   const createBlock = useCreateBlock();
   const createTask = useCreateTask();
@@ -720,24 +789,68 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     createTask.mutate({ titulo: "Nova tarefa", idProject: projectId, dados });
   }
 
+  function invalidateProjectTasks(taskId?: string) {
+    void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
+    if (taskId) {
+      void queryClient.invalidateQueries({ queryKey: qk.tasks.byId(taskId) });
+    }
+  }
+
+  async function getFreshListProject() {
+    const result = await refetchProject();
+    if (result.error) {
+      toast.error("Não foi possível carregar o schema mais recente.", {
+        description: tableFieldsErrorDescription(result.error),
+      });
+      return null;
+    }
+
+    const latestProject = result.data ?? project;
+
+    if (!latestProject) {
+      toast.error("Não foi possível carregar o schema mais recente.");
+      return null;
+    }
+    if (latestProject.idClasse !== ID_CLASSE_LIST) {
+      toast.error("Colunas customizáveis só podem ser alteradas em Listas.");
+      return null;
+    }
+
+    return latestProject;
+  }
+
   function handleTableFieldsError(error: unknown) {
     toast.error("Não foi possível atualizar as colunas.", {
-      description: getApiErrorMessage(error),
+      description: tableFieldsErrorDescription(error),
     });
+    void refetchProject();
   }
 
-  function handleAddColumn(type: ColumnType, label: string) {
-    const tableFields = applyAddColumn(project?.tableFields ?? null, type, label);
+  function handleFieldError(error: unknown, taskId: string) {
+    toast.error("Não foi possível salvar esta célula.", {
+      description: fieldErrorDescription(error),
+    });
+    invalidateProjectTasks(taskId);
+  }
+
+  async function handleAddColumn(type: ColumnType, label: string) {
+    const latestProject = await getFreshListProject();
+    if (!latestProject) return;
+    const tableFields = applyAddColumn(latestProject.tableFields ?? null, type, label);
     updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
   }
 
-  function handleRenameColumn(key: string, label: string) {
-    const tableFields = applyRenameColumn(project?.tableFields ?? null, key, label);
+  async function handleRenameColumn(key: string, label: string) {
+    const latestProject = await getFreshListProject();
+    if (!latestProject) return;
+    const tableFields = applyRenameColumn(latestProject.tableFields ?? null, key, label);
     updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
   }
 
-  function handleRemoveColumn(key: string) {
-    const tableFields = applyRemoveColumn(project?.tableFields ?? null, key);
+  async function handleRemoveColumn(key: string) {
+    const latestProject = await getFreshListProject();
+    if (!latestProject) return;
+    const tableFields = applyRemoveColumn(latestProject.tableFields ?? null, key);
     updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
   }
 
@@ -757,7 +870,10 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
       setSavingTaskId(taskId);
       updateStatus.mutate(
         { id: taskId, status: v3, projectId },
-        { onSettled: () => setSavingTaskId(null) },
+        {
+          onError: (error) => handleFieldError(error, taskId),
+          onSettled: () => setSavingTaskId(null),
+        },
       );
       return;
     }
@@ -784,20 +900,16 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
       // Coluna customizavel (key `f_*`, sem editor builtin). Grava o valor em
       // `dados.fields` por chave; o backend faz MERGE por chave (nao apaga as
       // demais celulas) e valida pelo tipo da coluna. `null` limpa a celula.
+      const nextValue = normalizeCellValue(value);
       setSavingTaskId(taskId);
       updateTask.mutate(
         {
           id: taskId,
           projectId,
-          dto: { dados: { fields: { [columnKey]: value } } },
+          dto: { dados: { fields: { [columnKey]: nextValue } } },
         },
         {
-          onError: () => {
-            // Valor invalido para o tipo (HTTP 400) ou falha de rede. O
-            // onSettled invalida as queries e o refetch restaura o valor
-            // anterior na celula (rollback do feedback conservador).
-            toast.error("Nao foi possivel salvar o valor desta coluna.");
-          },
+          onError: (error) => handleFieldError(error, taskId),
           onSettled: () => setSavingTaskId(null),
         },
       );
@@ -807,7 +919,10 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     setSavingTaskId(taskId);
     updateTask.mutate(
       { id: taskId, projectId, dto },
-      { onSettled: () => setSavingTaskId(null) },
+      {
+        onError: (error) => handleFieldError(error, taskId),
+        onSettled: () => setSavingTaskId(null),
+      },
     );
   }
 
@@ -889,21 +1004,6 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   );
 }
 
-/* ─── Modo prototipo (editavel, localStorage) ────────────────────────────── */
-
-/** Le e escreve a store em localStorage. Usado no design-system. */
-function PrototypeGroupsView() {
-  const board = useGroupsBoard();
-  return (
-    <GroupsBoardView
-      board={board}
-      readOnly={false}
-      onAddGroup={() => groupsActions.addGroup()}
-      onAddTask={(groupId) => groupsActions.addTask(groupId)}
-    />
-  );
-}
-
 /** Coluna sintetica do titulo da tarefa (builtin). Editavel no backend. */
 const NOME_KEY = "__nome";
 
@@ -920,6 +1020,8 @@ const BACKEND_EDITABLE_KEYS = new Set([
   "prioridade",
   "dueDate",
 ]);
+
+const noopFieldChange = () => {};
 
 /**
  * Colunas fixas da sub-tabela de subtarefas (estilo Monday).
@@ -943,8 +1045,8 @@ const SUBTASK_COLUMNS: ColumnDef[] = [
 
 
 /**
- * @param readOnly - Desliga a edicao via store (rename/remove/setField do
- *   prototipo). No modo backend e `true`, mas `onEditField`/`onRenameGroup`
+ * @param readOnly - Mantem a tabela em leitura por padrao. No modo backend e
+ *   `true`, mas `onEditField`/`onRenameGroup`
  *   reabrem a edicao do titulo da tarefa, do titulo do bloco e das colunas
  *   em `BACKEND_EDITABLE_KEYS`.
  * @param members - Membros para resolver userId → nome na coluna `person`.
@@ -1074,7 +1176,7 @@ function GroupsBoardView({
         )}
 
         {/* adicionar grupo — aparece quando ha handler (cria Bloco no backend
-            ou grupo no prototipo). Independe de readOnly. */}
+            no backend). Independe de readOnly. */}
         {onAddGroup && (
           <button
             type="button"
@@ -1276,16 +1378,6 @@ function GroupBox({
               />
             );
           }
-          // Prototipo: edita via store.
-          if (!readOnly) {
-            return (
-              <EditableText
-                value={group.nome}
-                onCommit={(v) => groupsActions.renameGroup(group.id, v)}
-                style={titleStyle}
-              />
-            );
-          }
           // Read-only puro (ou grupo sintetico "Sem bloco").
           return <span style={titleStyle}>{group.nome}</span>;
         })()}
@@ -1306,29 +1398,6 @@ function GroupBox({
             return `${tarefasTxt} / ${subsTxt}`;
           })()}
         </span>
-
-        {!readOnly && (
-          <button
-            type="button"
-            onClick={() => {
-              if (confirm(`Remover o grupo "${group.nome}"?`)) groupsActions.removeGroup(group.id);
-            }}
-            aria-label="Remover grupo"
-            title="Remover grupo"
-            style={{
-              display: "inline-flex",
-              border: 0,
-              background: "none",
-              color: "var(--muted-foreground)",
-              cursor: "pointer",
-              opacity: 0.5,
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.5")}
-          >
-            <Trash2 size={14} />
-          </button>
-        )}
 
         {group.periodo && (
           <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--muted-foreground)" }}>
@@ -1364,7 +1433,6 @@ function GroupBox({
 
             <HeadRow
               columns={columns}
-              readOnly={readOnly}
               groupTaskIds={group.tasks.map((t) => t.id)}
               onAddColumn={onAddColumn}
               onRenameColumn={onRenameColumn}
@@ -1375,7 +1443,6 @@ function GroupBox({
               {group.tasks.map((t) => (
                 <TaskRow
                   key={t.id}
-                  groupId={group.id}
                   task={t}
                   columns={columns}
                   readOnly={readOnly}
@@ -1519,14 +1586,12 @@ const TYPE_ICON: Record<ColumnType, React.ComponentType<{ size?: number }>> = {
 
 function HeadRow({
   columns,
-  readOnly,
   groupTaskIds,
   onAddColumn,
   onRenameColumn,
   onRemoveColumn,
 }: {
   columns: ColumnDef[];
-  readOnly: boolean;
   /** IDs das tasks raiz do grupo — alimenta o "selecionar tudo" do header. */
   groupTaskIds?: string[];
   onAddColumn?: AddColumnHandler;
@@ -1566,27 +1631,26 @@ function HeadRow({
           </span>
         </th>
         {columns.map((c) => {
-          const canManageColumn =
-            !c.builtin &&
-            (!readOnly ||
-              (c.builtin === false && !!onRenameColumn && !!onRemoveColumn));
+          if (c.builtin === false && onRenameColumn && onRemoveColumn) {
+            return (
+              <ColumnHeader
+                key={c.key}
+                column={c}
+                thStyle={th}
+                onRenameColumn={onRenameColumn}
+                onRemoveColumn={onRemoveColumn}
+              />
+            );
+          }
 
-          return canManageColumn ? (
-            <ColumnHeader
-              key={c.key}
-              column={c}
-              thStyle={th}
-              onRenameColumn={onRenameColumn}
-              onRemoveColumn={onRemoveColumn}
-            />
-          ) : (
+          return (
             <th key={c.key} style={{ ...th, textAlign: c.builtin ? "left" : "center", paddingLeft: c.builtin ? 4 : 8 }}>
               {c.label}
             </th>
           );
         })}
         <th style={th}>
-          {(!readOnly || !!onAddColumn) && <AddColumnButton onAddColumn={onAddColumn} />}
+          {onAddColumn && <AddColumnButton onAddColumn={onAddColumn} />}
         </th>
       </tr>
     </thead>
@@ -1602,8 +1666,8 @@ function ColumnHeader({
 }: {
   column: ColumnDef;
   thStyle: React.CSSProperties;
-  onRenameColumn?: RenameColumnHandler;
-  onRemoveColumn?: RemoveColumnHandler;
+  onRenameColumn: RenameColumnHandler;
+  onRemoveColumn: RemoveColumnHandler;
 }) {
   const [menu, setMenu] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
@@ -1617,13 +1681,11 @@ function ColumnHeader({
     handledRenameRef.current = true;
     const nextLabel = value.trim() || column.label;
     if (nextLabel === column.label) return;
-    const renameColumn = onRenameColumn ?? groupsActions.renameColumn;
-    renameColumn(column.key, nextLabel);
+    onRenameColumn(column.key, nextLabel);
   }
 
   function removeColumn() {
-    const remove = onRemoveColumn ?? groupsActions.removeColumn;
-    remove(column.key);
+    onRemoveColumn(column.key);
   }
 
   return (
@@ -1706,7 +1768,7 @@ function ColumnHeader({
 }
 
 /** Botao "+" no header — abre menu para criar nova coluna (8 tipos). */
-function AddColumnButton({ onAddColumn }: { onAddColumn?: AddColumnHandler }) {
+function AddColumnButton({ onAddColumn }: { onAddColumn: AddColumnHandler }) {
   const [menu, setMenu] = useState(false);
   const [label, setLabel] = useState("");
   const [type, setType] = useState<ColumnType>("text");
@@ -1714,8 +1776,7 @@ function AddColumnButton({ onAddColumn }: { onAddColumn?: AddColumnHandler }) {
 
   function create() {
     const l = label.trim() || COLUMN_TYPE_LABEL[type];
-    const addColumn = onAddColumn ?? groupsActions.addColumn;
-    addColumn(type, l);
+    onAddColumn(type, l);
     setLabel("");
     setType("text");
     setMenu(false);
@@ -1807,7 +1868,6 @@ function AddColumnButton({ onAddColumn }: { onAddColumn?: AddColumnHandler }) {
 /* ─── Linha de tarefa ────────────────────────────────────────────────────── */
 
 function TaskRow({
-  groupId,
   task,
   columns,
   readOnly,
@@ -1818,7 +1878,6 @@ function TaskRow({
   subtaskColSpan,
   onEditField,
 }: {
-  groupId: string;
   task: TaskModel;
   columns: ColumnDef[];
   readOnly: boolean;
@@ -1835,7 +1894,7 @@ function TaskRow({
   const [hover, setHover] = useState(false);
   // Estado de expansao da sub-tabela — gerenciado localmente no TaskRow.
   const [expanded, setExpanded] = useState(false);
-  // Selecao via checkbox (null no modo prototipo → checkbox decorativo).
+  // Selecao via checkbox (null deixa o checkbox decorativo).
   const selection = useSelection();
 
   const hasChildren = (task.childCount ?? 0) > 0;
@@ -1873,7 +1932,7 @@ function TaskRow({
           const last = i === columns.length - 1;
           if (c.builtin) {
             // Titulo da tarefa: editavel no backend (via onEditField → __nome)
-            // e no prototipo (via store). Read-only puro mostra span.
+            // Read-only puro mostra span.
             const nomeStyle: React.CSSProperties = {
               flex: 1,
               fontWeight: 500,
@@ -1947,34 +2006,7 @@ function TaskRow({
                       >
                         {task.nome}
                       </span>
-                    ) : (
-                      <>
-                        <EditableText
-                          value={task.nome}
-                          onCommit={(v) => groupsActions.renameTask(groupId, task.id, v)}
-                          style={{ flex: 1, fontWeight: 500, color: "var(--foreground)" }}
-                        />
-                        <button
-                          type="button"
-                          aria-label="Remover tarefa"
-                          onClick={() => groupsActions.removeTask(groupId, task.id)}
-                          style={{
-                            display: "inline-flex",
-                            border: 0,
-                            background: "none",
-                            color: "var(--muted-foreground)",
-                            cursor: "pointer",
-                            opacity: hover ? 0.6 : 0,
-                            transition: "opacity .1s",
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                        <span style={{ display: "inline-flex", color: "var(--muted-foreground)", opacity: hover ? 1 : 0, transition: "opacity .1s" }}>
-                          <MessageSquarePlus size={15} />
-                        </span>
-                      </>
-                    )}
+                    ) : null}
                   </div>
                   {/* Botão "+" de adicionar subtarefa — estilo Monday: círculo
                       destacado ao lado do nome. Expande a sub-tabela do pai.
@@ -2029,7 +2061,7 @@ function TaskRow({
           const cellReadOnly = backendEditable ? false : readOnly;
           const cellOnChange = backendEditable
             ? (v: FieldValue) => onEditField!(task.id, c.key, v)
-            : (v: FieldValue) => groupsActions.setField(groupId, task.id, c.key, v);
+            : noopFieldChange;
 
           const statusV3 =
             typeof task.fields[STATUS_V3_KEY] === "string"
@@ -2367,7 +2399,7 @@ function SubtaskTaskRow({
 }) {
   const [hover, setHover] = useState(false);
   const queryClient = useQueryClient();
-  // Selecao via checkbox (null no modo prototipo → checkbox decorativo).
+  // Selecao via checkbox (null deixa o checkbox decorativo).
   const selection = useSelection();
 
   const updateTask = useUpdateTask();
@@ -2382,6 +2414,15 @@ function SubtaskTaskRow({
     ? intentionToColumn(subtask.status as V3Intention)
     : null;
 
+  function handleSubtaskFieldError(error: unknown) {
+    toast.error("Não foi possível salvar esta célula.", {
+      description: fieldErrorDescription(error),
+    });
+    void queryClient.invalidateQueries({ queryKey: qk.tasks.children(parentId) });
+    void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
+    void queryClient.invalidateQueries({ queryKey: qk.tasks.byId(subtask.id) });
+  }
+
   /** Salva um campo da subtarefa. */
   function handleEdit(columnKey: string, value: FieldValue) {
     if (columnKey === "status") {
@@ -2394,6 +2435,7 @@ function SubtaskTaskRow({
           onSuccess: () => {
             void queryClient.invalidateQueries({ queryKey: qk.tasks.children(parentId) });
           },
+          onError: handleSubtaskFieldError,
           onSettled: () => onSavingChange(null),
         },
       );
@@ -2424,6 +2466,7 @@ function SubtaskTaskRow({
         onSuccess: () => {
           void queryClient.invalidateQueries({ queryKey: qk.tasks.children(parentId) });
         },
+        onError: handleSubtaskFieldError,
         onSettled: () => onSavingChange(null),
       },
     );

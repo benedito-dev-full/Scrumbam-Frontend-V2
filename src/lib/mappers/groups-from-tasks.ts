@@ -2,7 +2,7 @@
  * Adaptador backend → visualizacao de Grupos (novo conceito de Blocos).
  *
  * Converte os dados reais do backend (Blocos + Tasks + Membros) no shape
- * que a `GroupsView` ja sabe desenhar (`GroupsBoard` da groups-store). Cada
+ * que a `GroupsView` ja sabe desenhar (`GroupsBoard`). Cada
  * Bloco (DTask idClasse=-200) vira um grupo; as tasks sao distribuidas pelo
  * `dados.idBloco`; tasks sem bloco caem num grupo "Sem bloco" no fim.
  *
@@ -27,7 +27,7 @@ import type {
   GroupsBoard,
   GroupModel,
   TaskModel,
-} from "@/lib/prototype/groups-store";
+} from "@/lib/types/table-fields";
 import type {
   BlockDto,
   TableColumnDto,
