@@ -110,9 +110,9 @@ function ClaudeAvatar({ size = 22 }: { size?: number }) {
 
 // ─── Views disponíveis na página de Lista ────────────────────────────────────
 const LIST_VIEWS = [
+  { id: "blocks", label: "Blocos", icon: Layers },
   { id: "list", label: "Lista", icon: LucideList },
   { id: "board", label: "Quadro", icon: Columns3 },
-  { id: "blocks", label: "Blocos", icon: Layers },
   { id: "calendar", label: "Calendário", icon: LucideCalendar },
   { id: "gantt", label: "Gantt", icon: BarChart3 },
 ];
@@ -152,7 +152,7 @@ export default function ListPage({
     projectMembers.length > 0 ? projectMembers : orgAsProjectMembers;
   const { data: teams = [] } = useTeams();
 
-  const [view, setView] = useState<ListViewId>("list");
+  const [view, setView] = useState<ListViewId>("blocks");
   const [subtarefasMode, setSubtarefasMode] =
     useState<SubtarefasMode>("recolhidas");
   const [modalOpen, setModalOpen] = useState(false);
@@ -208,7 +208,7 @@ export default function ListPage({
       <PageHeader id={id} nome={projeto.nome} />
       <ViewSwitcher
         views={LIST_VIEWS}
-        defaultValue="list"
+        defaultValue="blocks"
         value={view}
         onChange={(v) => setView(v as ListViewId)}
       />
