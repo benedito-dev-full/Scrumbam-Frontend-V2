@@ -20,6 +20,7 @@ import {
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { useTask, useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
+import { TaskTimerPanel } from "@/components/tasks/task-timer-panel";
 import {
   KANBAN_COLUMNS,
   priorityToLabel,
@@ -238,6 +239,15 @@ export function TaskDetailDrawer({
                 dto: { assigneeTeamId: teamId },
               })
             }
+          />
+        </Field>
+
+        {/* Tempo de trabalho — timer manual por usuário (ADR-V2-057). */}
+        <Field label="Tempo de trabalho">
+          <TaskTimerPanel
+            taskId={taskId}
+            projectId={projectId}
+            timer={task.timer}
           />
         </Field>
 

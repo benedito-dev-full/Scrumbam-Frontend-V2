@@ -329,6 +329,40 @@ export interface ActiveExecutionDto {
 }
 
 /**
+ * Total de tempo manual acumulado por um usuário em uma task (ADR-V2-057).
+ *
+ * Espelha `TaskTimerUserTotalDto` do backend. `totalMs` é a soma server-side
+ * (anti-fraude) das sessões fechadas daquele usuário; o frontend nunca soma.
+ */
+export interface TaskTimerUserTotal {
+  /** DEntidade.chave (string) do humano dono das sessões. */
+  userId: string;
+  /** Nome do usuário (DEntidade.nome), ou null se a entidade não foi achada. */
+  userName: string | null;
+  /** Soma server-side (ms) das sessões fechadas deste usuário. */
+  totalMs: number;
+}
+
+/**
+ * Estado agregado do timer manual de uma task (ADR-V2-057).
+ *
+ * Espelha `TaskTimerStateDto` do backend. Toda a aritmética é server-side;
+ * o cronômetro do frontend é puramente VISUAL e usa `runningStartedAt` como
+ * offset sobre o `totalMs` do usuário logado. `null` em
+ * `TaskResponseDto.timer` quando a task nunca teve timer.
+ */
+export interface TaskTimerState {
+  /** true se há uma sessão aberta (sem endedAt) na task. */
+  running: boolean;
+  /** DEntidade.chave (string) do usuário com a sessão aberta, ou null. */
+  runningUserId: string | null;
+  /** ISO 8601 do início da sessão aberta (offset do cronômetro), ou null. */
+  runningStartedAt: string | null;
+  /** Total de tempo manual por usuário (sessões fechadas). */
+  totalsByUser: TaskTimerUserTotal[];
+}
+
+/**
  * Representação canônica de uma DTask V2.
  *
  * Campo `status` contém a V3 Intention (ex: 'INBOX', 'EXECUTING').
@@ -368,6 +402,12 @@ export interface TaskResponseDto {
    * em andamento. Quando presente, a UI deve travar a task (read-only).
    */
   activeExecution?: ActiveExecutionDto | null;
+  /**
+   * Estado agregado do timer manual de tempo de trabalho (ADR-V2-057).
+   * `null` quando a task nunca teve timer; caso contrário traz o estado
+   * de execução (sessão aberta) e os totais por usuário (server-side).
+   */
+  timer?: TaskTimerState | null;
   /**
    * Dados livres armazenados em DTask.dados (JSON).
    * Usado por Blocks para `startDate`, `endDate` e `cor`.
