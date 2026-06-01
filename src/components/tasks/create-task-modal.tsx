@@ -783,7 +783,7 @@ export function CreateTaskModal({
                   )}
                 </div>
 
-                {/* Data de vencimento */}
+                {/* Data limite */}
                 <div>
                   <button
                     ref={dataBtnRef}
@@ -801,7 +801,7 @@ export function CreateTaskModal({
                           day: "2-digit",
                           month: "short",
                         })
-                      : "Data de vencimento"}
+                      : "Data limite"}
                   </button>
                   {openDropdown === "data" && (
                     <DropdownPortal

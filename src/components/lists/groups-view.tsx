@@ -1207,7 +1207,7 @@ const SUBTASK_COLUMNS: ColumnDef[] = [
     order: 2,
     config: { options: STATUS_OPTIONS },
   },
-  { key: "dueDate", type: "date", label: "Data", order: 3 },
+  { key: "dueDate", type: "date", label: "Data limite", order: 3 },
 ];
 
 /**
@@ -3058,7 +3058,7 @@ function SubtaskHeadRow() {
         </th>
         <th style={th}>Resp.</th>
         <th style={th}>Status</th>
-        <th style={th}>Data</th>
+        <th style={th}>Data limite</th>
         {/* Coluna "+" decorativa — espelha o "adicionar coluna" do Monday.
             Largura `auto`: estende o grid ate o fim. O "+" fica alinhado a
             esquerda (logo apos Data), nao centralizado no vazio.
@@ -3720,10 +3720,13 @@ function FieldCell({
   if (column.type === "date") {
     const dateText =
       typeof value === "string" && value
-        ? new Date(value + "T12:00:00").toLocaleDateString("pt-BR", {
-            day: "2-digit",
-            month: "short",
-          })
+        ? new Date(value.slice(0, 10) + "T12:00:00").toLocaleDateString(
+            "pt-BR",
+            {
+              day: "2-digit",
+              month: "short",
+            },
+          )
         : "";
     return (
       <td

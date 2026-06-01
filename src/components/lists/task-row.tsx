@@ -4,7 +4,14 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
-  IcCaretR, IcGitFork, IcUserPlus, IcCalPlus, IcFlag, IcChat, IcPending, IcCheck,
+  IcCaretR,
+  IcGitFork,
+  IcUserPlus,
+  IcCalPlus,
+  IcFlag,
+  IcChat,
+  IcPending,
+  IcCheck,
 } from "./icons";
 import { STATUS_CONFIG, PRIO_CONFIG, INLINE_PILL_STYLE } from "./config";
 import { diasUntil } from "@/lib/mocks/tarefas";
@@ -47,9 +54,15 @@ function CellDropdown({
     <div
       ref={dropRef}
       style={{
-        position: "fixed", top: pos.top, left: pos.left, zIndex: 99999,
-        background: "var(--card)", border: "1px solid #2e2e38", borderRadius: 8,
-        padding: "4px", minWidth: 180,
+        position: "fixed",
+        top: pos.top,
+        left: pos.left,
+        zIndex: 99999,
+        background: "var(--card)",
+        border: "1px solid #2e2e38",
+        borderRadius: 8,
+        padding: "4px",
+        minWidth: 180,
         boxShadow: "0 8px 24px rgba(0,0,0,.5)",
       }}
     >
@@ -73,17 +86,32 @@ function DropItem({
       type="button"
       onClick={onClick}
       style={{
-        display: "flex", alignItems: "center", gap: 8,
-        width: "100%", padding: "7px 10px", borderRadius: 5,
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        width: "100%",
+        padding: "7px 10px",
+        borderRadius: 5,
         background: active ? "rgba(124,92,255,0.12)" : "none",
-        border: 0, color: "var(--foreground)", fontSize: 12,
-        cursor: "pointer", textAlign: "left",
+        border: 0,
+        color: "var(--foreground)",
+        fontSize: 12,
+        cursor: "pointer",
+        textAlign: "left",
       }}
-      onMouseEnter={(e) => { if (!active) e.currentTarget.style.background = "var(--accent)"; }}
-      onMouseLeave={(e) => { if (!active) e.currentTarget.style.background = "none"; }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.background = "var(--accent)";
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = "none";
+      }}
     >
       {children}
-      {active && <span style={{ marginLeft: "auto", color: "#7c5cff" }}><IcCheck size={11} /></span>}
+      {active && (
+        <span style={{ marginLeft: "auto", color: "#7c5cff" }}>
+          <IcCheck size={11} />
+        </span>
+      )}
     </button>
   );
 }
@@ -124,31 +152,48 @@ export function TaskRow({
   }
 
   /* refs nas próprias <td> — toda a célula serve de âncora */
-  const respTd   = useRef<HTMLTableCellElement>(null);
-  const dataTd   = useRef<HTMLTableCellElement>(null);
-  const prioTd   = useRef<HTMLTableCellElement>(null);
+  const respTd = useRef<HTMLTableCellElement>(null);
+  const dataTd = useRef<HTMLTableCellElement>(null);
+  const prioTd = useRef<HTMLTableCellElement>(null);
   const statusTd = useRef<HTMLTableCellElement>(null);
 
   const cfg = STATUS_CONFIG[status];
   const StatusIcon = cfg.Icon;
   const isAiAssignee = tarefa.responsavelId === AI_ASSIGNEE_ID;
-  const membro = !isAiAssignee && tarefa.responsavelId
-    ? orgMembers.find((m) => m.userId === tarefa.responsavelId)
-    : null;
+  const membro =
+    !isAiAssignee && tarefa.responsavelId
+      ? orgMembers.find((m) => m.userId === tarefa.responsavelId)
+      : null;
   const prio = tarefa.prioridade ? PRIO_CONFIG[tarefa.prioridade] : null;
   const dias = diasUntil(tarefa.dataVencimento);
 
-  let dateText = "", dateColor = "var(--muted-foreground)", dateSub = "";
+  let dateText = "",
+    dateColor = "var(--muted-foreground)",
+    dateSub = "";
   if (tarefa.dataVencimento) {
     const d = new Date(tarefa.dataVencimento + "T00:00:00.000Z");
-    dateText = d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+    dateText = d.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+    });
     if (dias != null) {
-      if (dias < 0) { dateColor = "#fbbf24"; dateSub = `ATRASADO ${Math.abs(dias)}D`; }
-      else if (dias === 0) { dateColor = "#7c5cff"; dateSub = "HOJE"; }
+      if (dias < 0) {
+        dateColor = "#fbbf24";
+        dateSub = `ATRASADO ${Math.abs(dias)}D`;
+      } else if (dias === 0) {
+        dateColor = "#7c5cff";
+        dateSub = "HOJE";
+      }
     }
   }
 
-  const allStatuses: StatusTarefa[] = ["backlog", "pronto", "em-progresso", "concluido", "falhou"];
+  const allStatuses: StatusTarefa[] = [
+    "backlog",
+    "pronto",
+    "em-progresso",
+    "concluido",
+    "falhou",
+  ];
   const allPrios: Prioridade[] = ["urgente", "alta", "media", "baixa"];
 
   function toggle(dd: string) {
@@ -158,22 +203,35 @@ export function TaskRow({
   /* estilo base da <td> — hover por célula editável é adicionado inline */
   function tdBase(hov?: boolean): React.CSSProperties {
     return {
-      padding: 0, borderBottom: "1px solid #1f1f25", height: 38, verticalAlign: "middle",
+      padding: 0,
+      borderBottom: "1px solid #1f1f25",
+      height: 38,
+      verticalAlign: "middle",
       color: "var(--muted-foreground)",
-      background: hov ? "var(--accent)" : rowHovered ? "var(--accent)" : "transparent",
+      background: hov
+        ? "var(--accent)"
+        : rowHovered
+          ? "var(--accent)"
+          : "transparent",
       cursor: hov !== undefined ? "pointer" : "default",
       transition: "background .1s",
     };
   }
 
   const cellInner: React.CSSProperties = {
-    padding: "0 10px", height: 38, display: "flex", alignItems: "center", gap: 8,
+    padding: "0 10px",
+    height: 38,
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
   };
 
   return (
     <>
-      <tr onMouseEnter={() => setRowHovered(true)} onMouseLeave={() => setRowHovered(false)}>
-
+      <tr
+        onMouseEnter={() => setRowHovered(true)}
+        onMouseLeave={() => setRowHovered(false)}
+      >
         {/* Nome — não editável inline */}
         <td style={tdBase()}>
           <div style={{ ...cellInner, paddingLeft: 14, gap: 10 }}>
@@ -182,16 +240,29 @@ export function TaskRow({
                 type="button"
                 onClick={onToggle}
                 style={{
-                  width: 14, color: "var(--muted-foreground)", display: "inline-flex",
-                  alignItems: "center", justifyContent: "center",
-                  cursor: "pointer", opacity: 0.7, background: "none", border: 0,
-                  transform: expanded ? "rotate(90deg)" : "none", transition: "transform .15s",
+                  width: 14,
+                  color: "var(--muted-foreground)",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                  opacity: 0.7,
+                  background: "none",
+                  border: 0,
+                  transform: expanded ? "rotate(90deg)" : "none",
+                  transition: "transform .15s",
                 }}
               >
                 <IcCaretR size={12} />
               </button>
             ) : (
-              <span style={{ width: 14, visibility: "hidden", display: "inline-flex" }}>
+              <span
+                style={{
+                  width: 14,
+                  visibility: "hidden",
+                  display: "inline-flex",
+                }}
+              >
                 <IcCaretR size={12} />
               </span>
             )}
@@ -202,19 +273,52 @@ export function TaskRow({
               role={onOpen ? "button" : undefined}
               tabIndex={onOpen ? 0 : undefined}
               onClick={onOpen}
-              onKeyDown={onOpen ? (e) => { if (e.key === "Enter" || e.key === " ") onOpen(); } : undefined}
+              onKeyDown={
+                onOpen
+                  ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") onOpen();
+                    }
+                  : undefined
+              }
               style={{
-                color: "var(--foreground)", fontWeight: 600, fontSize: 13,
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                color: "var(--foreground)",
+                fontWeight: 600,
+                fontSize: 13,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
                 cursor: onOpen ? "pointer" : "default",
               }}
-              onMouseEnter={onOpen ? (e) => { e.currentTarget.style.color = "#cfc1ff"; e.currentTarget.style.textDecoration = "underline"; } : undefined}
-              onMouseLeave={onOpen ? (e) => { e.currentTarget.style.color = "var(--foreground)"; e.currentTarget.style.textDecoration = "none"; } : undefined}
+              onMouseEnter={
+                onOpen
+                  ? (e) => {
+                      e.currentTarget.style.color = "#cfc1ff";
+                      e.currentTarget.style.textDecoration = "underline";
+                    }
+                  : undefined
+              }
+              onMouseLeave={
+                onOpen
+                  ? (e) => {
+                      e.currentTarget.style.color = "var(--foreground)";
+                      e.currentTarget.style.textDecoration = "none";
+                    }
+                  : undefined
+              }
             >
               {tarefa.nome}
             </span>
             {tarefa.subtarefas > 0 && (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "var(--muted-foreground)", fontSize: 11, marginLeft: 2 }}>
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 3,
+                  color: "var(--muted-foreground)",
+                  fontSize: 11,
+                  marginLeft: 2,
+                }}
+              >
                 <IcGitFork size={11} /> {tarefa.subtarefas}
               </span>
             )}
@@ -231,57 +335,120 @@ export function TaskRow({
         >
           {isAiAssignee ? (
             <>
-              <div style={{
-                width: 22, height: 22, borderRadius: "50%",
-                background: "var(--accent)", color: "#818cf8",
-                fontSize: 13, flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
+              <div
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  background: "var(--accent)",
+                  color: "#818cf8",
+                  fontSize: 13,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 🤖
               </div>
               <span style={{ fontSize: 12, color: "#818cf8" }}>IA</span>
             </>
           ) : membro ? (
             <>
-              <div style={{
-                width: 22, height: 22, borderRadius: "50%",
-                background: "var(--accent)", color: "#d8ccff",
-                fontSize: 10, fontWeight: 600, flexShrink: 0,
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
+              <div
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  background: "var(--accent)",
+                  color: "#d8ccff",
+                  fontSize: 10,
+                  fontWeight: 600,
+                  flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
                 {membro.nome.slice(0, 2).toUpperCase()}
               </div>
-              <span style={{ fontSize: 12, color: "var(--foreground)" }}>{membro.nome}</span>
+              <span style={{ fontSize: 12, color: "var(--foreground)" }}>
+                {membro.nome}
+              </span>
             </>
           ) : (
-            <span style={{ color: "var(--muted-foreground)" }}><IcUserPlus size={14} /></span>
+            <span style={{ color: "var(--muted-foreground)" }}>
+              <IcUserPlus size={14} />
+            </span>
           )}
           {openDD === "responsavel" && (
             <CellDropdown anchorRef={respTd} onClose={() => setOpenDD(null)}>
-              <DropItem active={!tarefa.responsavelId} onClick={() => { saveAndFlash("responsavel", { responsavelId: null }); setOpenDD(null); }}>
-                <span style={{ color: "var(--muted-foreground)" }}>Sem responsável</span>
+              <DropItem
+                active={!tarefa.responsavelId}
+                onClick={() => {
+                  saveAndFlash("responsavel", { responsavelId: null });
+                  setOpenDD(null);
+                }}
+              >
+                <span style={{ color: "var(--muted-foreground)" }}>
+                  Sem responsável
+                </span>
               </DropItem>
               {orgMembers.map((m) => (
-                <DropItem key={m.userId} active={tarefa.responsavelId === m.userId} onClick={() => { saveAndFlash("responsavel", { responsavelId: m.userId }); setOpenDD(null); }}>
-                  <div style={{
-                    width: 20, height: 20, borderRadius: "50%",
-                    background: "var(--accent)", color: "#d8ccff",
-                    fontSize: 9, fontWeight: 700, flexShrink: 0,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>
+                <DropItem
+                  key={m.userId}
+                  active={tarefa.responsavelId === m.userId}
+                  onClick={() => {
+                    saveAndFlash("responsavel", { responsavelId: m.userId });
+                    setOpenDD(null);
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      background: "var(--accent)",
+                      color: "#d8ccff",
+                      fontSize: 9,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
                     {m.nome.slice(0, 2).toUpperCase()}
                   </div>
                   {m.nome}
                 </DropItem>
               ))}
-              <div style={{ borderTop: "1px solid #2e2e38", margin: "4px 0" }} />
-              <DropItem active={isAiAssignee} onClick={() => { saveAndFlash("responsavel", { responsavelId: AI_ASSIGNEE_ID }); setOpenDD(null); }}>
-                <div style={{
-                  width: 20, height: 20, borderRadius: "50%",
-                  background: "var(--accent)", color: "#818cf8",
-                  fontSize: 12, flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                }}>
+              <div
+                style={{ borderTop: "1px solid #2e2e38", margin: "4px 0" }}
+              />
+              <DropItem
+                active={isAiAssignee}
+                onClick={() => {
+                  saveAndFlash("responsavel", {
+                    responsavelId: AI_ASSIGNEE_ID,
+                  });
+                  setOpenDD(null);
+                }}
+              >
+                <div
+                  style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    background: "var(--accent)",
+                    color: "#818cf8",
+                    fontSize: 12,
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   🤖
                 </div>
                 <span style={{ color: "#818cf8" }}>IA</span>
@@ -290,7 +457,7 @@ export function TaskRow({
           )}
         </EditableTd>
 
-        {/* Data de vencimento */}
+        {/* Data limite */}
         <EditableTd
           tdRef={dataTd}
           active={openDD === "data"}
@@ -301,41 +468,86 @@ export function TaskRow({
           {dateText ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
               <span style={{ fontSize: 13, color: dateColor }}>{dateText}</span>
-              {dateSub && <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase", color: "var(--muted-foreground)" }}>{dateSub}</span>}
+              {dateSub && (
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    letterSpacing: ".5px",
+                    textTransform: "uppercase",
+                    color: "var(--muted-foreground)",
+                  }}
+                >
+                  {dateSub}
+                </span>
+              )}
             </div>
           ) : (
-            <span style={{ color: "var(--muted-foreground)" }}><IcCalPlus size={14} /></span>
+            <span style={{ color: "var(--muted-foreground)" }}>
+              <IcCalPlus size={14} />
+            </span>
           )}
           {openDD === "data" && (
             <CellDropdown anchorRef={dataTd} onClose={() => setOpenDD(null)}>
               <div style={{ padding: "4px 6px 6px" }}>
-                <p style={{ fontSize: 11, color: "var(--muted-foreground)", margin: "0 0 6px", fontWeight: 600, letterSpacing: ".5px", textTransform: "uppercase" }}>
-                  Data de vencimento
+                <p
+                  style={{
+                    fontSize: 11,
+                    color: "var(--muted-foreground)",
+                    margin: "0 0 6px",
+                    fontWeight: 600,
+                    letterSpacing: ".5px",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Data limite
                 </p>
                 <input
                   type="date"
                   autoFocus
                   defaultValue={tarefa.dataVencimento ?? ""}
-                  onChange={(e) => saveAndFlash("data", { dataVencimento: e.target.value || null })}
+                  onChange={(e) =>
+                    saveAndFlash("data", {
+                      dataVencimento: e.target.value || null,
+                    })
+                  }
                   onBlur={() => setOpenDD(null)}
                   style={{
-                    background: "var(--accent)", border: "1px solid #3a3a46",
-                    borderRadius: 6, color: "var(--foreground)", fontSize: 12,
-                    padding: "5px 8px", outline: "none", width: "100%",
+                    background: "var(--accent)",
+                    border: "1px solid #3a3a46",
+                    borderRadius: 6,
+                    color: "var(--foreground)",
+                    fontSize: 12,
+                    padding: "5px 8px",
+                    outline: "none",
+                    width: "100%",
                     colorScheme: "dark",
                   }}
                 />
                 {tarefa.dataVencimento && (
                   <button
                     type="button"
-                    onClick={() => { saveAndFlash("data", { dataVencimento: null }); setOpenDD(null); }}
-                    style={{
-                      marginTop: 6, width: "100%", padding: "5px 0",
-                      background: "none", border: "1px solid #2e2e38",
-                      borderRadius: 5, color: "#ef4444", fontSize: 12, cursor: "pointer",
+                    onClick={() => {
+                      saveAndFlash("data", { dataVencimento: null });
+                      setOpenDD(null);
                     }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}
+                    style={{
+                      marginTop: 6,
+                      width: "100%",
+                      padding: "5px 0",
+                      background: "none",
+                      border: "1px solid #2e2e38",
+                      borderRadius: 5,
+                      color: "#ef4444",
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(239,68,68,0.08)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "none";
+                    }}
                   >
                     Remover data
                   </button>
@@ -354,22 +566,48 @@ export function TaskRow({
           onClick={() => toggle("prioridade")}
         >
           {prio ? (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: prio.color }}>
-              <IcFlag size={13} />{prio.label}
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                fontSize: 13,
+                color: prio.color,
+              }}
+            >
+              <IcFlag size={13} />
+              {prio.label}
             </span>
           ) : (
-            <span style={{ color: "var(--muted-foreground)" }}><IcFlag size={14} /></span>
+            <span style={{ color: "var(--muted-foreground)" }}>
+              <IcFlag size={14} />
+            </span>
           )}
           {openDD === "prioridade" && (
             <CellDropdown anchorRef={prioTd} onClose={() => setOpenDD(null)}>
-              <DropItem active={!tarefa.prioridade} onClick={() => { saveAndFlash("prioridade", { prioridade: null }); setOpenDD(null); }}>
+              <DropItem
+                active={!tarefa.prioridade}
+                onClick={() => {
+                  saveAndFlash("prioridade", { prioridade: null });
+                  setOpenDD(null);
+                }}
+              >
                 <IcFlag size={12} />
-                <span style={{ color: "var(--muted-foreground)" }}>Sem prioridade</span>
+                <span style={{ color: "var(--muted-foreground)" }}>
+                  Sem prioridade
+                </span>
               </DropItem>
               {allPrios.map((p) => {
                 const c = PRIO_CONFIG[p];
                 return (
-                  <DropItem key={p} active={tarefa.prioridade === p} onClick={() => { saveAndFlash("prioridade", { prioridade: p }); setOpenDD(null); }}>
+                  <DropItem
+                    key={p}
+                    active={tarefa.prioridade === p}
+                    onClick={() => {
+                      saveAndFlash("prioridade", { prioridade: p });
+                      setOpenDD(null);
+                    }}
+                  >
                     <IcFlag size={12} />
                     <span style={{ color: c.color }}>{c.label}</span>
                   </DropItem>
@@ -387,15 +625,24 @@ export function TaskRow({
           rowHovered={rowHovered}
           onClick={() => toggle("status")}
         >
-          <span style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            padding: "3px 9px", borderRadius: 5,
-            fontSize: 11, fontWeight: 700, letterSpacing: ".7px", textTransform: "uppercase",
-            background: INLINE_PILL_STYLE[tarefa.status].bg,
-            color: INLINE_PILL_STYLE[tarefa.status].color,
-            whiteSpace: "nowrap",
-          }}>
-            <StatusIcon size={11} />{cfg.label}
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "3px 9px",
+              borderRadius: 5,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: ".7px",
+              textTransform: "uppercase",
+              background: INLINE_PILL_STYLE[tarefa.status].bg,
+              color: INLINE_PILL_STYLE[tarefa.status].color,
+              whiteSpace: "nowrap",
+            }}
+          >
+            <StatusIcon size={11} />
+            {cfg.label}
           </span>
           {openDD === "status" && (
             <CellDropdown anchorRef={statusTd} onClose={() => setOpenDD(null)}>
@@ -403,7 +650,14 @@ export function TaskRow({
                 const c = STATUS_CONFIG[s];
                 const Icon = c.Icon;
                 return (
-                  <DropItem key={s} active={tarefa.status === s} onClick={() => { saveAndFlash("status", { status: s }); setOpenDD(null); }}>
+                  <DropItem
+                    key={s}
+                    active={tarefa.status === s}
+                    onClick={() => {
+                      saveAndFlash("status", { status: s });
+                      setOpenDD(null);
+                    }}
+                  >
                     <Icon size={12} />
                     <span style={{ color: c.iconColor }}>{c.label}</span>
                   </DropItem>
@@ -414,28 +668,86 @@ export function TaskRow({
         </EditableTd>
 
         {/* Comentários — apenas visual */}
-        <td style={{
-          padding: 0, borderBottom: "1px solid #1f1f25", height: 38, verticalAlign: "middle",
-          background: rowHovered ? "var(--accent)" : "transparent",
-        }}>
-          <div style={{ display: "flex", justifyContent: "center", padding: "0 6px", height: 38, alignItems: "center" }}>
-            <span style={{ color: "var(--muted-foreground)" }}><IcChat size={14} /></span>
+        <td
+          style={{
+            padding: 0,
+            borderBottom: "1px solid #1f1f25",
+            height: 38,
+            verticalAlign: "middle",
+            background: rowHovered ? "var(--accent)" : "transparent",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              padding: "0 6px",
+              height: 38,
+              alignItems: "center",
+            }}
+          >
+            <span style={{ color: "var(--muted-foreground)" }}>
+              <IcChat size={14} />
+            </span>
           </div>
         </td>
 
-        <td style={{
-          padding: 0, borderBottom: "1px solid #1f1f25", height: 38,
-          background: rowHovered ? "var(--accent)" : "transparent",
-        }} />
+        <td
+          style={{
+            padding: 0,
+            borderBottom: "1px solid #1f1f25",
+            height: 38,
+            background: rowHovered ? "var(--accent)" : "transparent",
+          }}
+        />
       </tr>
 
       {expanded && tarefa.subtarefas > 0 && (
         <tr>
-          <td colSpan={7} style={{ padding: 0, borderBottom: "1px solid #1f1f25", height: 34, background: "var(--card)" }}>
-            <div style={{ paddingLeft: 54, height: 34, display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ width: 14, visibility: "hidden", display: "inline-flex" }}><IcCaretR size={12} /></span>
-              <span style={{ display: "inline-flex", color: "var(--muted-foreground)" }}><IcPending size={13} /></span>
-              <span style={{ color: "var(--muted-foreground)", fontWeight: 500, fontSize: 13 }}>Subtarefa</span>
+          <td
+            colSpan={7}
+            style={{
+              padding: 0,
+              borderBottom: "1px solid #1f1f25",
+              height: 34,
+              background: "var(--card)",
+            }}
+          >
+            <div
+              style={{
+                paddingLeft: 54,
+                height: 34,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <span
+                style={{
+                  width: 14,
+                  visibility: "hidden",
+                  display: "inline-flex",
+                }}
+              >
+                <IcCaretR size={12} />
+              </span>
+              <span
+                style={{
+                  display: "inline-flex",
+                  color: "var(--muted-foreground)",
+                }}
+              >
+                <IcPending size={13} />
+              </span>
+              <span
+                style={{
+                  color: "var(--muted-foreground)",
+                  fontWeight: 500,
+                  fontSize: 13,
+                }}
+              >
+                Subtarefa
+              </span>
             </div>
           </td>
         </tr>
@@ -470,7 +782,10 @@ function EditableTd({
     setPhase("in");
     const t1 = setTimeout(() => setPhase("out"), 200);
     const t2 = setTimeout(() => setPhase("idle"), 650);
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
   }, [flash]);
 
   return (
@@ -480,8 +795,12 @@ function EditableTd({
       onMouseEnter={() => setHov(true)}
       onMouseLeave={() => setHov(false)}
       style={{
-        padding: "0 10px", borderBottom: "1px solid #1f1f25", height: 38,
-        verticalAlign: "middle", cursor: "pointer", position: "relative",
+        padding: "0 10px",
+        borderBottom: "1px solid #1f1f25",
+        height: 38,
+        verticalAlign: "middle",
+        cursor: "pointer",
+        position: "relative",
         background: rowHovered ? "var(--accent)" : "transparent",
         boxShadow: hov || active ? "inset 0 0 0 1px #3a3a46" : "none",
         borderRadius: 4,
@@ -490,14 +809,28 @@ function EditableTd({
     >
       {/* overlay verde com fade-in / fade-out */}
       {phase !== "idle" && (
-        <div style={{
-          position: "absolute", inset: 0, borderRadius: 4, pointerEvents: "none",
-          background: "rgba(34,197,94,0.28)",
-          opacity: phase === "in" ? 1 : 0,
-          transition: phase === "in" ? "opacity .15s ease-in" : "opacity .45s ease-out",
-        }} />
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: 4,
+            pointerEvents: "none",
+            background: "rgba(34,197,94,0.28)",
+            opacity: phase === "in" ? 1 : 0,
+            transition:
+              phase === "in" ? "opacity .15s ease-in" : "opacity .45s ease-out",
+          }}
+        />
       )}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, height: "100%", position: "relative" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          height: "100%",
+          position: "relative",
+        }}
+      >
         {children}
       </div>
     </td>

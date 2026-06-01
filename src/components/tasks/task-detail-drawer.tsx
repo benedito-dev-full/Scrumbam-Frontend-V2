@@ -180,8 +180,8 @@ export function TaskDetailDrawer({
           />
         </Field>
 
-        {/* Data de entrega */}
-        <Field label="Data de entrega">
+        {/* Data limite */}
+        <Field label="Data limite">
           <div className="flex items-center gap-2" title={lockTitle}>
             <Calendar className="size-3.5 text-muted-foreground" />
             <input
