@@ -36,6 +36,21 @@ import {
   X,
 } from "lucide-react";
 import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   COLUMN_TYPE_LABEL,
   type ColumnDef,
   type ColumnType,
@@ -49,6 +64,7 @@ import {
   applyAddColumn,
   applyRemoveColumn,
   applyRenameColumn,
+  applyReorderColumns,
 } from "@/lib/table-fields/schema-ops";
 import {
   useBlocks,
@@ -855,6 +871,19 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   }
 
   /**
+   * Reordena as colunas custom no schema da lista. `orderedKeys` traz apenas
+   * as keys custom (`f_*`) na nova ordem desejada; `applyReorderColumns`
+   * mantem as builtin ancoradas e renumera `order` de forma contigua. Usa o
+   * mesmo refetch-antes-de-gravar das demais ops (last-write-wins seguro).
+   */
+  async function handleReorderColumn(orderedKeys: string[]) {
+    const latestProject = await getFreshListProject();
+    if (!latestProject) return;
+    const tableFields = applyReorderColumns(latestProject.tableFields ?? null, orderedKeys);
+    updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
+  }
+
+  /**
    * Edita um campo de uma task no backend. Mapeia a coluna para o campo do
    * DTO de update e dispara a mutation; o `savingTaskId` segura o spinner ate
    * a invalidacao trazer o valor confirmado (feedback conservador).
@@ -984,6 +1013,7 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
         onAddColumn={handleAddColumn}
         onRenameColumn={handleRenameColumn}
         onRemoveColumn={handleRemoveColumn}
+        onReorderColumn={handleReorderColumn}
       />
       <SelectionActionBar
         count={selectedIds.size}
@@ -1010,6 +1040,8 @@ const NOME_KEY = "__nome";
 type AddColumnHandler = (type: ColumnType, label: string) => void;
 type RenameColumnHandler = (key: string, label: string) => void;
 type RemoveColumnHandler = (key: string) => void;
+/** Recebe as keys custom (`f_*`) na nova ordem desejada. */
+type ReorderColumnHandler = (orderedKeys: string[]) => void;
 
 /* ─── Renderizacao do board (compartilhada entre os dois modos) ──────────── */
 
@@ -1077,6 +1109,7 @@ function GroupsBoardView({
   onAddColumn,
   onRenameColumn,
   onRemoveColumn,
+  onReorderColumn,
 }: {
   board: GroupsBoard;
   readOnly: boolean;
@@ -1094,6 +1127,7 @@ function GroupsBoardView({
   onAddColumn?: AddColumnHandler;
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
+  onReorderColumn?: ReorderColumnHandler;
 }) {
   const cols = [...board.columns].sort((a, b) => a.order - b.order);
 
@@ -1171,6 +1205,7 @@ function GroupsBoardView({
               onAddColumn={onAddColumn}
               onRenameColumn={onRenameColumn}
               onRemoveColumn={onRemoveColumn}
+              onReorderColumn={onReorderColumn}
             />
           ))
         )}
@@ -1252,6 +1287,7 @@ function GroupBox({
   onAddColumn,
   onRenameColumn,
   onRemoveColumn,
+  onReorderColumn,
 }: {
   group: GroupModel;
   columns: ColumnDef[];
@@ -1270,6 +1306,7 @@ function GroupBox({
   onAddColumn?: AddColumnHandler;
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
+  onReorderColumn?: ReorderColumnHandler;
 }) {
   const [open, setOpen] = useState(true);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -1437,6 +1474,7 @@ function GroupBox({
               onAddColumn={onAddColumn}
               onRenameColumn={onRenameColumn}
               onRemoveColumn={onRemoveColumn}
+              onReorderColumn={onReorderColumn}
             />
 
             <tbody>
@@ -1590,6 +1628,7 @@ function HeadRow({
   onAddColumn,
   onRenameColumn,
   onRemoveColumn,
+  onReorderColumn,
 }: {
   columns: ColumnDef[];
   /** IDs das tasks raiz do grupo — alimenta o "selecionar tudo" do header. */
@@ -1597,6 +1636,7 @@ function HeadRow({
   onAddColumn?: AddColumnHandler;
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
+  onReorderColumn?: ReorderColumnHandler;
 }) {
   const selection = useSelection();
   const th: React.CSSProperties = {
@@ -1615,6 +1655,53 @@ function HeadRow({
     !!groupTaskIds &&
     groupTaskIds.length > 0 &&
     groupTaskIds.every((id) => selection.selectedIds.has(id));
+
+  // Sensor: so dispara o arraste apos mover 6px — preserva o clique no header
+  // (abrir menu de renomear/remover) que e a interacao primaria. Mesmo padrao
+  // do kanban-board.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+
+  // Apenas colunas custom (`builtin === false`) sao arrastaveis; builtin ficam
+  // ancoradas. As custom vem como um bloco contiguo no fim do schema.
+  const customKeys = columns.filter((c) => c.builtin === false).map((c) => c.key);
+  const reorderable = !!onReorderColumn && customKeys.length > 1;
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = customKeys.indexOf(active.id as string);
+    const to = customKeys.indexOf(over.id as string);
+    if (from === -1 || to === -1) return;
+    onReorderColumn?.(arrayMove(customKeys, from, to));
+  }
+
+  const headerCells = (
+    <>
+      {columns.map((c) => {
+        if (c.builtin === false && onRenameColumn && onRemoveColumn) {
+          return (
+            <ColumnHeader
+              key={c.key}
+              column={c}
+              thStyle={th}
+              onRenameColumn={onRenameColumn}
+              onRemoveColumn={onRemoveColumn}
+              sortable={reorderable}
+            />
+          );
+        }
+
+        return (
+          <th key={c.key} style={{ ...th, textAlign: c.builtin ? "left" : "center", paddingLeft: c.builtin ? 4 : 8 }}>
+            {c.label}
+          </th>
+        );
+      })}
+    </>
+  );
+
   return (
     <thead>
       <tr>
@@ -1630,25 +1717,19 @@ function HeadRow({
             )}
           </span>
         </th>
-        {columns.map((c) => {
-          if (c.builtin === false && onRenameColumn && onRemoveColumn) {
-            return (
-              <ColumnHeader
-                key={c.key}
-                column={c}
-                thStyle={th}
-                onRenameColumn={onRenameColumn}
-                onRemoveColumn={onRemoveColumn}
-              />
-            );
-          }
-
-          return (
-            <th key={c.key} style={{ ...th, textAlign: c.builtin ? "left" : "center", paddingLeft: c.builtin ? 4 : 8 }}>
-              {c.label}
-            </th>
-          );
-        })}
+        {reorderable ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={customKeys} strategy={horizontalListSortingStrategy}>
+              {headerCells}
+            </SortableContext>
+          </DndContext>
+        ) : (
+          headerCells
+        )}
         <th style={th}>
           {onAddColumn && <AddColumnButton onAddColumn={onAddColumn} />}
         </th>
@@ -1657,21 +1738,36 @@ function HeadRow({
   );
 }
 
-/** Header de coluna custom — editavel (renomear) e removivel via menu. */
+/** Header de coluna custom — editavel (renomear), removivel e arrastavel. */
 function ColumnHeader({
   column,
   thStyle,
   onRenameColumn,
   onRemoveColumn,
+  sortable,
 }: {
   column: ColumnDef;
   thStyle: React.CSSProperties;
   onRenameColumn: RenameColumnHandler;
   onRemoveColumn: RemoveColumnHandler;
+  /** Quando true, o header pode ser arrastado para reordenar a coluna. */
+  sortable?: boolean;
 }) {
   const [menu, setMenu] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
   const handledRenameRef = useRef(false);
+
+  // Sortable: o sensor (distance 6px) garante que o clique para abrir o menu
+  // ainda funciona; so vira arraste apos o gesto. `attributes`/`listeners`
+  // vao no proprio botao do titulo (o titulo e o punho de arraste).
+  const {
+    setNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: column.key, disabled: !sortable });
 
   useEffect(() => {
     if (menu) handledRenameRef.current = false;
@@ -1688,12 +1784,26 @@ function ColumnHeader({
     onRemoveColumn(column.key);
   }
 
+  // Em repouso, identico ao original. Durante o arraste: segue o ponteiro
+  // (transform) com leve realce/fantasma — pista visual aparece so no drag.
+  const dragStyle: React.CSSProperties = sortable
+    ? {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        zIndex: isDragging ? 5 : undefined,
+        position: "relative",
+      }
+    : {};
+
   return (
-    <th style={thStyle}>
+    <th ref={sortable ? setNodeRef : undefined} style={{ ...thStyle, ...dragStyle }}>
       <button
         ref={ref}
         type="button"
         onClick={() => setMenu((v) => !v)}
+        {...(sortable ? attributes : {})}
+        {...(sortable ? listeners : {})}
         style={{
           display: "inline-flex",
           alignItems: "center",
@@ -1703,8 +1813,9 @@ function ColumnHeader({
           color: "var(--muted-foreground)",
           fontSize: 12,
           fontWeight: 500,
-          cursor: "pointer",
+          cursor: sortable ? (isDragging ? "grabbing" : "grab") : "pointer",
           maxWidth: "100%",
+          touchAction: sortable ? "none" : undefined,
         }}
         title="Editar coluna"
       >
