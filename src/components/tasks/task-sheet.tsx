@@ -6,6 +6,7 @@ import { Trash2 } from "lucide-react";
 import { CommentsPanel } from "@/components/comments/CommentsPanel";
 import { STATUS_CONFIG, PRIO_CONFIG } from "@/components/lists/config";
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
+import { TaskTimerPanel } from "@/components/tasks/task-timer-panel";
 import { useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
 import { useTeams } from "@/hooks/use-teams";
 import { CommentTargetType } from "@/lib/types/comment";
@@ -1203,6 +1204,25 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                 </button>
               )}
             </PropRow>
+          </section>
+
+          {/* Seção Tempo de trabalho — timer manual por usuário (ADR-V2-057). */}
+          <section style={{ marginBottom: "calc(var(--section-gap) + 12px)" }}>
+            <p
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--muted-foreground)",
+                margin: "0 0 8px",
+              }}
+            >
+              Tempo de trabalho
+            </p>
+            <TaskTimerPanel
+              taskId={task.id}
+              projectId={task.projectId}
+              timer={task.timer}
+            />
           </section>
 
           {/* Seção Descrição */}
