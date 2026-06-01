@@ -106,6 +106,16 @@ export const V3_TERMINAL_VALIDATED: V3Intention = "VALIDATED";
 /** Chave interna que carrega o estado V3 cru da task (para regras de status). */
 export const STATUS_V3_KEY = "__statusV3";
 
+const TIME_SPENT_COLUMN_KEY = "timeSpent";
+
+const TIME_SPENT_COLUMN: ColumnDef = {
+  key: TIME_SPENT_COLUMN_KEY,
+  type: "text",
+  label: "Tempo",
+  order: 6,
+  readOnly: true,
+};
+
 /** Definicao das colunas fixas exibidas na v1 read-only. */
 export const BACKEND_COLUMNS: ColumnDef[] = [
   { key: "__nome", type: "text", label: "Tarefa", order: 0, builtin: true },
@@ -126,6 +136,7 @@ export const BACKEND_COLUMNS: ColumnDef[] = [
     config: { options: PRIORITY_OPTIONS },
   },
   { key: "dueDate", type: "date", label: "Data", order: 5 },
+  TIME_SPENT_COLUMN,
 ];
 
 /* ─── Mapeamento de uma task ─────────────────────────────────────────────── */
@@ -171,6 +182,10 @@ function taskToRow(task: TaskResponseDto, childCountMap: Map<string, number>): T
       responsavel: task.assigneeId ?? null,
       prioridade: task.priority ?? null,
       dueDate: task.dueDate ?? null,
+      // Coluna builtin read-only "Tempo gasto" (Fase 3 / ADR-V2-057): o valor
+      // vem PRONTO do backend (timeSpentLabel, agregado server-side de TODOS os
+      // usuarios). O front NUNCA soma: apenas exibe. Fallback "—" para legados.
+      timeSpent: task.timeSpentLabel ?? "—",
     },
   };
 }
@@ -195,7 +210,9 @@ function builtinConfigFallback(key: string): ColumnDef["config"] | undefined {
  */
 function tableColumnToColumnDef(col: TableColumnDto): ColumnDef {
   const builtinFlag =
-    col.builtin === true ? (col.key === "__nome" ? { builtin: true } : {}) : { builtin: false };
+    col.builtin === true || col.key === TIME_SPENT_COLUMN_KEY
+      ? (col.key === "__nome" ? { builtin: true } : {})
+      : { builtin: false };
 
   return {
     key: col.key,
@@ -205,7 +222,17 @@ function tableColumnToColumnDef(col: TableColumnDto): ColumnDef {
     required: col.required,
     config: col.config ?? builtinConfigFallback(col.key),
     ...builtinFlag,
+    // Propaga o flag read-only (ex.: timeSpent — Fase 3 / ADR-V2-057) para a
+    // GroupsView travar o editor inline da celula.
+    ...(col.readOnly === true || col.key === TIME_SPENT_COLUMN_KEY ? { readOnly: true } : {}),
   };
+}
+
+function ensureTimeSpentColumn(columns: ColumnDef[]): ColumnDef[] {
+  if (columns.some((col) => col.key === TIME_SPENT_COLUMN_KEY)) return columns;
+
+  const lastOrder = columns.reduce((max, col) => Math.max(max, col.order), -1);
+  return [...columns, { ...TIME_SPENT_COLUMN, order: lastOrder + 1 }];
 }
 
 /* ─── Montagem do board ──────────────────────────────────────────────────── */
@@ -295,10 +322,11 @@ export function buildGroupsBoard(
   // O fallback preserva o comportamento anterior quando o backend ainda nao
   // devolve schema algum.
   const tableFieldColumns = tableFields?.columns ?? [];
-  const columns =
+  const columns = ensureTimeSpentColumn(
     tableFieldColumns.length > 0
       ? tableFieldColumns.map(tableColumnToColumnDef).sort((a, b) => a.order - b.order)
-      : BACKEND_COLUMNS;
+      : BACKEND_COLUMNS,
+  );
 
   return { columns, groups };
 }

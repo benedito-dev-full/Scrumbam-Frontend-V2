@@ -55,6 +55,12 @@ export interface ColumnDef {
   config?: ColumnConfig;
   /** Coluna interna fixa (Tarefa), nao editavel/removivel. */
   builtin?: boolean;
+  /**
+   * Coluna builtin READ-ONLY computada server-side (ex.: "Tempo gasto").
+   * A celula apenas EXIBE o valor; clicar NAO abre editor inline nem grava.
+   * Fase 3 / ADR-V2-057.
+   */
+  readOnly?: boolean;
 }
 
 /** Valor de campo custom, espelha o que trafega em dados.fields. */

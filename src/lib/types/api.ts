@@ -120,6 +120,13 @@ export interface TableColumnDto {
   config?: TableColumnConfigDto;
   /** Coluna interna fixa — não persistida via tableFields. */
   builtin?: boolean;
+  /**
+   * Coluna builtin READ-ONLY computada server-side (ex.: `timeSpent` —
+   * "Tempo gasto", Fase 3 / ADR-V2-057). O valor é derivado pelo backend
+   * (não editável); a célula apenas EXIBE o texto e não abre editor inline
+   * ao clicar, nem grava em `dados.fields[key]`.
+   */
+  readOnly?: boolean;
 }
 
 /**
@@ -408,6 +415,13 @@ export interface TaskResponseDto {
    * de execução (sessão aberta) e os totais por usuário (server-side).
    */
   timer?: TaskTimerState | null;
+  /**
+   * Total de tempo manual gasto na task, agregado server-side e JÁ FORMATADO
+   * como rótulo humano ("2h 45min", "45min", "—" quando zero). Fonte da coluna
+   * builtin read-only "Tempo gasto" (`timeSpent`) da grade Blocos — Fase 3 /
+   * ADR-V2-057. O frontend NUNCA recalcula: apenas exibe esta string.
+   */
+  timeSpentLabel?: string;
   /**
    * Dados livres armazenados em DTask.dados (JSON).
    * Usado por Blocks para `startDate`, `endDate` e `cor`.

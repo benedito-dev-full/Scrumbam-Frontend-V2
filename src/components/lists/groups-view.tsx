@@ -2258,8 +2258,12 @@ function TaskRow({
           // `identifier` (read-only, sem editor) tem `builtin` indefinido e por
           // isso nao entra aqui — so habilitamos edicao backend para os 4
           // builtin conhecidos OU colunas explicitamente custom.
+          // Colunas builtin read-only (ex.: timeSpent — Fase 3 / ADR-V2-057)
+          // NUNCA sao editaveis: o flag `readOnly` da ColumnDef e respeitado
+          // mesmo que a key entre por algum dos ramos acima (defense-in-depth).
           const backendEditable =
             !!onEditField &&
+            c.readOnly !== true &&
             (BACKEND_EDITABLE_KEYS.has(c.key) || c.builtin === false);
           const cellReadOnly = backendEditable ? false : readOnly;
           const cellOnChange = backendEditable
