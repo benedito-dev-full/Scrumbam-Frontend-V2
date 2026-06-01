@@ -1748,8 +1748,10 @@ function HeadRow({
         )}
         {/* Coluna do "+" — alinhada a ESQUERDA (igual a sub-tabela) para o
             botao colar logo apos a ultima coluna; a coluna estica ate a borda
-            absorvendo o espaco livre, sem deixar vao destacado no meio. */}
-        <th style={{ ...th, textAlign: "left" }}>
+            absorvendo o espaco livre, sem deixar vao destacado no meio.
+            padding 0: o botao interno assume o padding e ocupa o <th> inteiro,
+            tornando todo o cabecalho clicavel para abrir "Nova coluna". */}
+        <th style={{ ...th, textAlign: "left", padding: 0 }}>
           {onAddColumn && <AddColumnButton onAddColumn={onAddColumn} />}
         </th>
       </tr>
@@ -1914,13 +1916,28 @@ function AddColumnButton({ onAddColumn }: { onAddColumn: AddColumnHandler }) {
 
   return (
     <>
+      {/* O botao ocupa toda a area do <th> do "+" (largura/altura total) para
+          que QUALQUER clique no cabecalho da ultima coluna abra o modal — nao
+          so no icone. O "+" segue ancorado a esquerda (visual inalterado). */}
       <button
         ref={ref}
         type="button"
         onClick={() => setMenu((v) => !v)}
         aria-label="Adicionar coluna"
         title="Adicionar coluna"
-        style={{ display: "inline-flex", border: 0, background: "none", color: "var(--muted-foreground)", cursor: "pointer" }}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          width: "100%",
+          height: "100%",
+          border: 0,
+          background: "none",
+          color: "var(--muted-foreground)",
+          cursor: "pointer",
+          // Mesmo padding do <th> original (9px 8px) — preserva a posicao do
+          // "+"; agora aplicado no botao para a area clicavel cobrir o <th>.
+          padding: "9px 8px",
+        }}
       >
         <Plus size={14} />
       </button>
