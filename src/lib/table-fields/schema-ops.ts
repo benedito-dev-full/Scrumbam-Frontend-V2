@@ -148,7 +148,10 @@ export function applyReorderColumns(
       if (bRank !== undefined) return 1;
       return a.column.order - b.column.order || a.index - b.index;
     })
-    .map(({ column }) => column);
+    // Renumera `order` pela posicao JA reordenada — NAO passar por
+    // normalizeSchema aqui: ele re-sorta por `column.order` (ainda o antigo),
+    // o que desfaria a reordenacao recem-feita. A ordem final e a do array.
+    .map(({ column }, order) => ensureSelectableConfig({ ...column, order }));
 
-  return normalizeSchema({ version: schema.version, columns });
+  return { version: schema.version || 1, columns };
 }

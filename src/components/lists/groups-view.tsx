@@ -881,20 +881,8 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
    * atualizacao otimista da mutation (rollback automatico em caso de erro).
    */
   function handleReorderColumn(orderedKeys: string[]) {
-    // eslint-disable-next-line no-console
-    console.log("[reorder] handleReorderColumn", {
-      orderedKeys,
-      idClasse: project?.idClasse,
-      tableFieldsAtual: project?.tableFields,
-    });
-    if (project?.idClasse !== ID_CLASSE_LIST) {
-      // eslint-disable-next-line no-console
-      console.log("[reorder] abortado: idClasse != LIST", project?.idClasse);
-      return;
-    }
+    if (project?.idClasse !== ID_CLASSE_LIST) return;
     const tableFields = applyReorderColumns(project?.tableFields ?? null, orderedKeys);
-    // eslint-disable-next-line no-console
-    console.log("[reorder] enviando PATCH tableFields ->", tableFields);
     updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
   }
 
@@ -1691,30 +1679,11 @@ function HeadRow({
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
-    // eslint-disable-next-line no-console
-    console.log("[reorder] dragEnd", {
-      active: active?.id,
-      over: over?.id,
-      customKeys,
-    });
-    if (!over || active.id === over.id) {
-      // eslint-disable-next-line no-console
-      console.log("[reorder] abortado: sem over ou mesma coluna");
-      return;
-    }
+    if (!over || active.id === over.id) return;
     const from = customKeys.indexOf(active.id as string);
     const to = customKeys.indexOf(over.id as string);
-    // eslint-disable-next-line no-console
-    console.log("[reorder] from/to", { from, to });
-    if (from === -1 || to === -1) {
-      // eslint-disable-next-line no-console
-      console.log("[reorder] abortado: from/to fora do array");
-      return;
-    }
-    const next = arrayMove(customKeys, from, to);
-    // eslint-disable-next-line no-console
-    console.log("[reorder] nova ordem ->", next);
-    onReorderColumn?.(next);
+    if (from === -1 || to === -1) return;
+    onReorderColumn?.(arrayMove(customKeys, from, to));
   }
 
   const headerCells = (
