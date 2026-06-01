@@ -376,19 +376,40 @@ export function useRenameProject() {
 export function useUpdateProjectTableFields(projectId: string) {
   const queryClient = useQueryClient();
 
-  return useMutation<DProjectDto, Error, TableFieldsDto>({
+  return useMutation<
+    DProjectDto,
+    Error,
+    TableFieldsDto,
+    { previous: DProjectDto | undefined }
+  >({
     mutationFn: async (tableFields) => {
       const res = await api.patch<DProjectDto>(`/projects/${projectId}`, {
         tableFields,
       } satisfies UpdateProjectDto);
       return res.data;
     },
-    onSuccess: () => {
+    // Atualizacao otimista: aplica o novo schema no cache do projeto antes da
+    // resposta do servidor. Sem isso, a reordenacao por drag "volta" para a
+    // posicao original ate o PATCH responder (o dnd-kit solta a coluna no
+    // estado em cache). Guarda o snapshot para rollback no onError.
+    onMutate: async (tableFields) => {
+      const key = qk.projects.byId(projectId);
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData<DProjectDto>(key);
+      if (previous) {
+        queryClient.setQueryData<DProjectDto>(key, { ...previous, tableFields });
+      }
+      return { previous };
+    },
+    onError: (_error, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(qk.projects.byId(projectId), context.previous);
+      }
+      void queryClient.invalidateQueries({ queryKey: qk.projects.byId(projectId) });
+    },
+    onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: qk.projects.byId(projectId) });
       void queryClient.invalidateQueries({ queryKey: qk.projects.all });
-    },
-    onError: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.projects.byId(projectId) });
     },
   });
 }

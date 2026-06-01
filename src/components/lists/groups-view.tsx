@@ -873,13 +873,16 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   /**
    * Reordena as colunas custom no schema da lista. `orderedKeys` traz apenas
    * as keys custom (`f_*`) na nova ordem desejada; `applyReorderColumns`
-   * mantem as builtin ancoradas e renumera `order` de forma contigua. Usa o
-   * mesmo refetch-antes-de-gravar das demais ops (last-write-wins seguro).
+   * mantem as builtin ancoradas e renumera `order` de forma contigua.
+   *
+   * Diferente de criar/renomear/remover, o reorder NAO faz refetch bloqueante
+   * antes de gravar: o drag precisa de feedback imediato e ja traz a ordem
+   * desejada explicita. Calcula a partir do schema em cache e confia na
+   * atualizacao otimista da mutation (rollback automatico em caso de erro).
    */
-  async function handleReorderColumn(orderedKeys: string[]) {
-    const latestProject = await getFreshListProject();
-    if (!latestProject) return;
-    const tableFields = applyReorderColumns(latestProject.tableFields ?? null, orderedKeys);
+  function handleReorderColumn(orderedKeys: string[]) {
+    if (project?.idClasse !== ID_CLASSE_LIST) return;
+    const tableFields = applyReorderColumns(project?.tableFields ?? null, orderedKeys);
     updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
   }
 
@@ -1357,9 +1360,12 @@ function GroupBox({
       )
     : 0;
 
-  // largura total = soma das colunas; garante scroll horizontal quando
-  // ultrapassa o container (tableLayout fixed respeita estas larguras).
-  const tableWidth =
+  // largura minima da tabela = soma das colunas reais + a faixa minima do "+".
+  // Quando isso ultrapassa o container, surge scroll horizontal (tableLayout
+  // fixed respeita as larguras das <col>). Quando ha poucas colunas, a tabela
+  // estica ate 100% e a coluna do "+" (width auto) absorve o sobrando, em vez
+  // de deixar um bloco "solto" apos a ultima coluna.
+  const tableMinWidth =
     W_CHECK + columns.reduce((s, c) => s + colWidth(c), 0) + W_ADD;
 
   return (
@@ -1459,13 +1465,16 @@ function GroupBox({
             scrollbarWidth: "none",
           }}
         >
-          <table style={{ width: tableWidth, minWidth: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+          <table style={{ width: "100%", minWidth: tableMinWidth, borderCollapse: "collapse", tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: W_CHECK }} />
               {columns.map((c) => (
                 <col key={c.key} style={{ width: colWidth(c) }} />
               ))}
-              <col style={{ width: W_ADD }} />
+              {/* coluna do "+" com largura auto: absorve o espaco restante
+                  quando ha poucas colunas (mesmo padrao da sub-tabela), em vez
+                  de ficar um bloco fixo "solto" apos a ultima coluna. */}
+              <col style={{ width: "auto", minWidth: W_ADD }} />
             </colgroup>
 
             <HeadRow
