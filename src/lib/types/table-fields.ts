@@ -61,6 +61,12 @@ export interface ColumnDef {
    * Fase 3 / ADR-V2-057.
    */
   readOnly?: boolean;
+  /**
+   * Coluna arquivada (oculta na grade de forma reversivel). Quando true, a
+   * coluna nao aparece no board mas permanece no schema e pode ser restaurada.
+   * Aplica-se a builtin (somente ocultar, nunca remover) e custom.
+   */
+  hidden?: boolean;
 }
 
 /** Valor de campo custom, espelha o que trafega em dados.fields. */

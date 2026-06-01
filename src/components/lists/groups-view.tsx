@@ -18,6 +18,8 @@ import {
   GitBranch,
   Check,
   Trash2,
+  EyeOff,
+  Eye,
   Type,
   Hash,
   Calendar as CalendarIcon,
@@ -66,6 +68,7 @@ import {
   applyRemoveColumn,
   applyRenameColumn,
   applyReorderColumns,
+  applySetColumnHidden,
 } from "@/lib/table-fields/schema-ops";
 import {
   useBlocks,
@@ -689,6 +692,14 @@ function BackendGroupsView({
     : realTasks;
   const board = buildGroupsBoard(blocks, visibleTasks, project?.tableFields);
 
+  // Colunas arquivadas (hidden:true) — derivadas do schema COMPLETO (não do
+  // board, que já as filtra). Alimentam o menu "Arquivadas" para restaurar.
+  const archivedColumns: ArchivedColumn[] = (
+    project?.tableFields?.columns ?? []
+  )
+    .filter((c) => c.hidden)
+    .map((c) => ({ key: c.key, label: c.label }));
+
   // ── Selecao de tarefas (checkbox) → barra de acoes flutuante ──
   const deleteTask = useDeleteTask();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -944,6 +955,25 @@ function BackendGroupsView({
     updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
   }
 
+  // Arquivar (hidden=true) / restaurar (hidden=false) — funciona para builtin
+  // E custom. As builtins ja vem materializadas no tableFields do backend.
+  async function handleSetColumnHidden(key: string, hidden: boolean) {
+    // Guard: nunca arquivar a ULTIMA coluna visivel — grade sem colunas fica
+    // inutilizavel. `board.columns` ja exclui as hidden, entao <=1 = so esta.
+    if (hidden && board.columns.length <= 1) {
+      toast.error("Mantenha ao menos uma coluna visível na grade.");
+      return;
+    }
+    const latestProject = await getFreshListProject();
+    if (!latestProject) return;
+    const tableFields = applySetColumnHidden(
+      latestProject.tableFields ?? null,
+      key,
+      hidden,
+    );
+    updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
+  }
+
   /**
    * Reordena todas as colunas no schema da lista. `orderedKeys` traz o
    * conjunto inteiro (builtin + custom) na nova ordem desejada;
@@ -1106,6 +1136,9 @@ function BackendGroupsView({
         onRenameColumn={handleRenameColumn}
         onRemoveColumn={handleRemoveColumn}
         onReorderColumn={handleReorderColumn}
+        onArchiveColumn={(key) => handleSetColumnHidden(key, true)}
+        onRestoreColumn={(key) => handleSetColumnHidden(key, false)}
+        archivedColumns={archivedColumns}
       />
       <SelectionActionBar
         count={selectedIds.size}
@@ -1132,8 +1165,12 @@ const NOME_KEY = "__nome";
 type AddColumnHandler = (type: ColumnType, label: string) => void;
 type RenameColumnHandler = (key: string, label: string) => void;
 type RemoveColumnHandler = (key: string) => void;
+/** Arquiva ou restaura uma coluna pelo seu key. */
+type ArchiveColumnHandler = (key: string) => void;
 /** Recebe as keys custom (`f_*`) na nova ordem desejada. */
 type ReorderColumnHandler = (orderedKeys: string[]) => void;
+/** Coluna arquivada exibida no menu de restauração. */
+type ArchivedColumn = { key: string; label: string };
 
 /* ─── Renderizacao do board (compartilhada entre os dois modos) ──────────── */
 
@@ -1208,6 +1245,9 @@ function GroupsBoardView({
   onRenameColumn,
   onRemoveColumn,
   onReorderColumn,
+  onArchiveColumn,
+  onRestoreColumn,
+  archivedColumns,
 }: {
   board: GroupsBoard;
   readOnly: boolean;
@@ -1228,6 +1268,9 @@ function GroupsBoardView({
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
   onReorderColumn?: ReorderColumnHandler;
+  onArchiveColumn?: ArchiveColumnHandler;
+  onRestoreColumn?: ArchiveColumnHandler;
+  archivedColumns?: ArchivedColumn[];
 }) {
   const cols = [...board.columns].sort((a, b) => a.order - b.order);
 
@@ -1307,6 +1350,9 @@ function GroupsBoardView({
               onRenameColumn={onRenameColumn}
               onRemoveColumn={onRemoveColumn}
               onReorderColumn={onReorderColumn}
+              onArchiveColumn={onArchiveColumn}
+              onRestoreColumn={onRestoreColumn}
+              archivedColumns={archivedColumns}
             />
           ))
         )}
@@ -1389,6 +1435,9 @@ function GroupBox({
   onRenameColumn,
   onRemoveColumn,
   onReorderColumn,
+  onArchiveColumn,
+  onRestoreColumn,
+  archivedColumns,
 }: {
   group: GroupModel;
   columns: ColumnDef[];
@@ -1410,6 +1459,9 @@ function GroupBox({
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
   onReorderColumn?: ReorderColumnHandler;
+  onArchiveColumn?: ArchiveColumnHandler;
+  onRestoreColumn?: ArchiveColumnHandler;
+  archivedColumns?: ArchivedColumn[];
 }) {
   const [open, setOpen] = useState(true);
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -1635,6 +1687,9 @@ function GroupBox({
                 onAddColumn={onAddColumn}
                 onRenameColumn={onRenameColumn}
                 onRemoveColumn={onRemoveColumn}
+                onArchiveColumn={onArchiveColumn}
+                onRestoreColumn={onRestoreColumn}
+                archivedColumns={archivedColumns}
               />
 
               <tbody>
@@ -1801,6 +1856,9 @@ function HeadRow({
   onAddColumn,
   onRenameColumn,
   onRemoveColumn,
+  onArchiveColumn,
+  onRestoreColumn,
+  archivedColumns,
 }: {
   columns: ColumnDef[];
   /** IDs das tasks raiz do grupo — alimenta o "selecionar tudo" do header. */
@@ -1815,6 +1873,10 @@ function HeadRow({
   onAddColumn?: AddColumnHandler;
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
+  onArchiveColumn?: ArchiveColumnHandler;
+  onRestoreColumn?: ArchiveColumnHandler;
+  /** Colunas arquivadas (hidden) — alimentam o menu de restauração. */
+  archivedColumns?: ArchivedColumn[];
 }) {
   const selection = useSelection();
   const th: React.CSSProperties = {
@@ -1839,19 +1901,27 @@ function HeadRow({
   const headerCells = (
     <>
       {columns.map((c) => {
-        if (c.builtin === false && onRenameColumn && onRemoveColumn) {
+        // Com handler de rename: TODA coluna ganha o header editável.
+        // - Custom (builtin === false): renomear + arquivar + remover.
+        // - Builtin: renomear + arquivar (NUNCA remover — campo de sistema).
+        if (onRenameColumn) {
+          const isCustom = c.builtin === false;
           return (
             <ColumnHeader
               key={c.key}
               column={c}
               thStyle={th}
               onRenameColumn={onRenameColumn}
-              onRemoveColumn={onRemoveColumn}
+              removable={isCustom}
+              onRemoveColumn={isCustom ? onRemoveColumn : undefined}
+              archivable={!!onArchiveColumn}
+              onArchiveColumn={onArchiveColumn}
               sortable={reorderable}
             />
           );
         }
 
+        // Sem handler (modo read-only puro): header estático.
         return (
           <PlainColumnHeader
             key={c.key}
@@ -1895,7 +1965,13 @@ function HeadRow({
             padding 0: o botao interno assume o padding e ocupa o <th> inteiro,
             tornando todo o cabecalho clicavel para abrir "Nova coluna". */}
         <th style={{ ...th, textAlign: "left", padding: 0 }}>
-          {onAddColumn && <AddColumnButton onAddColumn={onAddColumn} />}
+          {onAddColumn && (
+            <AddColumnButton
+              onAddColumn={onAddColumn}
+              archivedColumns={archivedColumns}
+              onRestoreColumn={onRestoreColumn}
+            />
+          )}
         </th>
       </tr>
     </thead>
@@ -1961,12 +2037,22 @@ function ColumnHeader({
   thStyle,
   onRenameColumn,
   onRemoveColumn,
+  onArchiveColumn,
+  removable = true,
+  archivable = false,
   sortable,
 }: {
   column: ColumnDef;
   thStyle: React.CSSProperties;
   onRenameColumn: RenameColumnHandler;
-  onRemoveColumn: RemoveColumnHandler;
+  /** Remove a coluna do schema (só custom). Opcional quando `removable=false`. */
+  onRemoveColumn?: RemoveColumnHandler;
+  /** Arquiva (oculta) a coluna — disponível para builtin e custom. */
+  onArchiveColumn?: ArchiveColumnHandler;
+  /** Mostra "Remover coluna" (só custom). Default true. */
+  removable?: boolean;
+  /** Mostra "Arquivar coluna". Default false. */
+  archivable?: boolean;
   /** Quando true, o header pode ser arrastado para reordenar a coluna. */
   sortable?: boolean;
 }) {
@@ -1998,7 +2084,11 @@ function ColumnHeader({
   }
 
   function removeColumn() {
-    onRemoveColumn(column.key);
+    onRemoveColumn?.(column.key);
+  }
+
+  function archiveColumn() {
+    onArchiveColumn?.(column.key);
   }
 
   // Em repouso, identico ao original. Durante o arraste: segue o ponteiro
@@ -2016,7 +2106,14 @@ function ColumnHeader({
   return (
     <th
       ref={sortable ? setNodeRef : undefined}
-      style={{ ...thStyle, ...dragStyle }}
+      style={{
+        ...thStyle,
+        ...dragStyle,
+        // Preserva o alinhamento à esquerda do título (__nome), como no
+        // PlainColumnHeader anterior; demais colunas permanecem centradas.
+        textAlign: column.builtin ? "left" : thStyle.textAlign,
+        paddingLeft: column.builtin ? 4 : thStyle.paddingLeft,
+      }}
     >
       <button
         ref={ref}
@@ -2081,30 +2178,58 @@ function ColumnHeader({
               }}
               style={inputStyle}
             />
-            <button
-              type="button"
-              onClick={() => {
-                removeColumn();
-                setMenu(false);
-              }}
-              style={{
-                marginTop: 8,
-                width: "100%",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 6,
-                height: 30,
-                borderRadius: 6,
-                border: "1px solid var(--border)",
-                background: "none",
-                color: "#ef4444",
-                fontSize: 12,
-                cursor: "pointer",
-              }}
-            >
-              <Trash2 size={13} /> Remover coluna
-            </button>
+            {archivable && (
+              <button
+                type="button"
+                onClick={() => {
+                  archiveColumn();
+                  setMenu(false);
+                }}
+                style={{
+                  marginTop: 8,
+                  width: "100%",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  height: 30,
+                  borderRadius: 6,
+                  border: "1px solid var(--border)",
+                  background: "none",
+                  color: "var(--muted-foreground)",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                <EyeOff size={13} /> Arquivar coluna
+              </button>
+            )}
+            {removable && onRemoveColumn && (
+              <button
+                type="button"
+                onClick={() => {
+                  removeColumn();
+                  setMenu(false);
+                }}
+                style={{
+                  marginTop: 8,
+                  width: "100%",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 6,
+                  height: 30,
+                  borderRadius: 6,
+                  border: "1px solid var(--border)",
+                  background: "none",
+                  color: "#ef4444",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                <Trash2 size={13} /> Remover coluna
+              </button>
+            )}
           </div>
         </Popover>
       )}
@@ -2113,7 +2238,15 @@ function ColumnHeader({
 }
 
 /** Botao "+" no header — abre menu para criar nova coluna (8 tipos). */
-function AddColumnButton({ onAddColumn }: { onAddColumn: AddColumnHandler }) {
+function AddColumnButton({
+  onAddColumn,
+  archivedColumns,
+  onRestoreColumn,
+}: {
+  onAddColumn: AddColumnHandler;
+  archivedColumns?: ArchivedColumn[];
+  onRestoreColumn?: ArchiveColumnHandler;
+}) {
   const [menu, setMenu] = useState(false);
   const [label, setLabel] = useState("");
   const [type, setType] = useState<ColumnType>("text");
@@ -2238,6 +2371,74 @@ function AddColumnButton({ onAddColumn }: { onAddColumn: AddColumnHandler }) {
             >
               Criar coluna
             </button>
+
+            {/* Colunas arquivadas — restaurar (traz de volta ao grid). */}
+            {archivedColumns &&
+              archivedColumns.length > 0 &&
+              onRestoreColumn && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    borderTop: "1px solid var(--border)",
+                    paddingTop: 8,
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: "0 0 6px",
+                      fontSize: 10,
+                      fontWeight: 700,
+                      letterSpacing: ".5px",
+                      textTransform: "uppercase",
+                      color: "var(--muted-foreground)",
+                    }}
+                  >
+                    Arquivadas
+                  </p>
+                  {archivedColumns.map((col) => (
+                    <button
+                      key={col.key}
+                      type="button"
+                      onClick={() => {
+                        onRestoreColumn(col.key);
+                        setMenu(false);
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        width: "100%",
+                        padding: "7px 8px",
+                        borderRadius: 6,
+                        border: 0,
+                        background: "none",
+                        color: "var(--foreground)",
+                        fontSize: 13,
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                      title="Restaurar coluna"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--accent)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "none";
+                      }}
+                    >
+                      <Eye size={13} />
+                      <span style={{ flex: 1 }}>{col.label}</span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          color: "var(--muted-foreground)",
+                        }}
+                      >
+                        Restaurar
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
           </div>
         </Popover>
       )}

@@ -127,6 +127,13 @@ export interface TableColumnDto {
    * ao clicar, nem grava em `dados.fields[key]`.
    */
   readOnly?: boolean;
+  /**
+   * Coluna arquivada (oculta na grade de forma reversível). Quando `true`, a
+   * coluna não aparece no board mas permanece no schema persistido e pode ser
+   * restaurada via `PATCH /projects/:id` com `hidden: false`. Aplica-se a
+   * builtin (somente ocultar, nunca remover) e a colunas custom.
+   */
+  hidden?: boolean;
 }
 
 /**

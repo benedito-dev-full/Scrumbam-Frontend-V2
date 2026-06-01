@@ -153,7 +153,10 @@ export const BACKEND_COLUMNS: ColumnDef[] = [
  *   antes do filtro de raízes; contém **todas** as tasks, incluindo filhas).
  * @returns TaskModel com campos mapeados e `childCount` preenchido se o pai tiver filhas.
  */
-function taskToRow(task: TaskResponseDto, childCountMap: Map<string, number>): TaskModel {
+function taskToRow(
+  task: TaskResponseDto,
+  childCountMap: Map<string, number>,
+): TaskModel {
   const statusColId = intentionToColumn(task.status as V3Intention);
 
   // Valores das colunas customizaveis vivem em `task.dados.fields` chaveados
@@ -211,7 +214,9 @@ function builtinConfigFallback(key: string): ColumnDef["config"] | undefined {
 function tableColumnToColumnDef(col: TableColumnDto): ColumnDef {
   const builtinFlag =
     col.builtin === true || col.key === TIME_SPENT_COLUMN_KEY
-      ? (col.key === "__nome" ? { builtin: true } : {})
+      ? col.key === "__nome"
+        ? { builtin: true }
+        : {}
       : { builtin: false };
 
   return {
@@ -224,7 +229,11 @@ function tableColumnToColumnDef(col: TableColumnDto): ColumnDef {
     ...builtinFlag,
     // Propaga o flag read-only (ex.: timeSpent — Fase 3 / ADR-V2-057) para a
     // GroupsView travar o editor inline da celula.
-    ...(col.readOnly === true || col.key === TIME_SPENT_COLUMN_KEY ? { readOnly: true } : {}),
+    ...(col.readOnly === true || col.key === TIME_SPENT_COLUMN_KEY
+      ? { readOnly: true }
+      : {}),
+    // Propaga hidden (arquivada) para que o board possa filtrar antes de exibir.
+    ...(col.hidden ? { hidden: true } : {}),
   };
 }
 
@@ -305,7 +314,9 @@ export function buildGroupsBoard(
     nome: block.nome,
     cor: block.dados?.cor ?? BLOCO_COR_FALLBACK,
     periodo: formatPeriodo(block.dados?.startDate, block.dados?.endDate),
-    tasks: (byBlock.get(block.id) ?? []).map((t) => taskToRow(t, childCountMap)),
+    tasks: (byBlock.get(block.id) ?? []).map((t) =>
+      taskToRow(t, childCountMap),
+    ),
   }));
 
   // Grupo "Sem bloco" no fim — so aparece se houver tasks orfas.
@@ -321,10 +332,15 @@ export function buildGroupsBoard(
   // Desde ADR-V2-056, `tableFields` e a fonte unica das colunas da Lista.
   // O fallback preserva o comportamento anterior quando o backend ainda nao
   // devolve schema algum.
+  // Colunas arquivadas (hidden:true) sao removidas da visualizacao do board
+  // mas permanecem no `tableFields` persistido — o dado nao e perdido.
   const tableFieldColumns = tableFields?.columns ?? [];
   const columns = ensureTimeSpentColumn(
     tableFieldColumns.length > 0
-      ? tableFieldColumns.map(tableColumnToColumnDef).sort((a, b) => a.order - b.order)
+      ? tableFieldColumns
+          .map(tableColumnToColumnDef)
+          .filter((c) => !c.hidden)
+          .sort((a, b) => a.order - b.order)
       : BACKEND_COLUMNS,
   );
 
@@ -334,10 +350,7 @@ export function buildGroupsBoard(
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 
 /** Formata "21 mai - 3 jun" a partir das datas ISO do bloco (se houver). */
-function formatPeriodo(
-  start?: string,
-  end?: string,
-): string | undefined {
+function formatPeriodo(start?: string, end?: string): string | undefined {
   if (!start && !end) return undefined;
   const fmt = (iso: string) =>
     new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", {

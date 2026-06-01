@@ -64,7 +64,10 @@ function toSchema(tableFields?: TableFieldsDto | null): TableFieldsDto {
   return normalizeSchema(tableFields ?? { version: 1, columns: [] });
 }
 
-export function makeColumnKey(label: string, existingKeys: Iterable<string>): string {
+export function makeColumnKey(
+  label: string,
+  existingKeys: Iterable<string>,
+): string {
   const existing = new Set(existingKeys);
   const stem = slugifyKeyStem(label);
   let key = `f_${stem}`;
@@ -86,7 +89,10 @@ export function applyAddColumn(
   const schema = toSchema(tableFields);
   const nextLabel = normalizeLabel(label) || "Nova coluna";
   const nextColumn: TableColumnDto = {
-    key: makeColumnKey(nextLabel, schema.columns.map((column) => column.key)),
+    key: makeColumnKey(
+      nextLabel,
+      schema.columns.map((column) => column.key),
+    ),
     type,
     label: nextLabel,
     order: schema.columns.length,
@@ -126,7 +132,24 @@ export function applyRemoveColumn(
 
   return normalizeSchema({
     version: schema.version,
-    columns: schema.columns.filter((column) => column.key !== key || column.builtin),
+    columns: schema.columns.filter(
+      (column) => column.key !== key || column.builtin,
+    ),
+  });
+}
+
+export function applySetColumnHidden(
+  tableFields: TableFieldsDto | null | undefined,
+  key: string,
+  hidden: boolean,
+): TableFieldsDto {
+  const schema = toSchema(tableFields);
+
+  return normalizeSchema({
+    version: schema.version,
+    columns: schema.columns.map((column) =>
+      column.key === key ? { ...column, hidden } : column,
+    ),
   });
 }
 
