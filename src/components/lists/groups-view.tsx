@@ -1247,7 +1247,6 @@ function GroupsBoardView({
 
 const W_CHECK = 36;
 const W_NOME = 360;
-const W_ADD = 44;
 const W_DEFAULT = 150;
 
 /** Largura da coluna de nome da subtarefa. */
@@ -1360,13 +1359,13 @@ function GroupBox({
       )
     : 0;
 
-  // largura minima da tabela = soma das colunas reais + a faixa minima do "+".
-  // Quando isso ultrapassa o container, surge scroll horizontal (tableLayout
-  // fixed respeita as larguras das <col>). Quando ha poucas colunas, a tabela
-  // estica ate 100% e a coluna do "+" (width auto) absorve o sobrando, em vez
-  // de deixar um bloco "solto" apos a ultima coluna.
+  // largura minima da tabela = soma das colunas reais (checkbox + colunas).
+  // NAO inclui o "+": sua <col> e auto e absorve o espaco que sobrar ate a
+  // borda. Quando a soma ultrapassa o container, surge scroll horizontal
+  // (tableLayout fixed respeita as <col>); quando ha poucas colunas, a tabela
+  // estica ate 100% e o "+" estica junto, colado na ultima coluna (Monday).
   const tableMinWidth =
-    W_CHECK + columns.reduce((s, c) => s + colWidth(c), 0) + W_ADD;
+    W_CHECK + columns.reduce((s, c) => s + colWidth(c), 0);
 
   return (
     <section>
@@ -1471,10 +1470,11 @@ function GroupBox({
               {columns.map((c) => (
                 <col key={c.key} style={{ width: colWidth(c) }} />
               ))}
-              {/* coluna do "+" com largura auto: absorve o espaco restante
-                  quando ha poucas colunas (mesmo padrao da sub-tabela), em vez
-                  de ficar um bloco fixo "solto" apos a ultima coluna. */}
-              <col style={{ width: "auto", minWidth: W_ADD }} />
+              {/* coluna do "+" SEM largura (auto puro, igual a sub-tabela):
+                  absorve TODO o espaco restante ate a borda direita, fazendo o
+                  "+" ser a ultima coluna que se estica (estilo Monday). Reservar
+                  minWidth aqui criava uma "meia coluna" sobrando. */}
+              <col />
             </colgroup>
 
             <HeadRow
