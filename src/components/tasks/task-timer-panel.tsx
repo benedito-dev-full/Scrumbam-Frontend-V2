@@ -5,6 +5,7 @@ import { Clock, Play, Pause, Square, Loader2, User } from "lucide-react";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { useTaskTimer, formatDuration } from "@/hooks/use-task-timer";
+import { useTask } from "@/hooks/use-tasks";
 import { useProjectMembers } from "@/hooks/use-members";
 import { cn } from "@/lib/utils";
 
@@ -41,6 +42,13 @@ export function TaskTimerPanel({
   projectId: string;
   timer: TaskTimerState | null | undefined;
 }) {
+  // O `timer` da prop pode vir de um objeto de task CONGELADO (ex.: o TaskSheet
+  // recebe a task via estado local, não do cache). Buscamos o estado fresco via
+  // `useTask` — que compartilha a query key invalidada após cada mutação de
+  // timer — e usamos a prop apenas como fallback inicial enquanto carrega.
+  const { data: liveTask } = useTask(taskId);
+  const liveTimer = liveTask?.timer ?? timer;
+
   const {
     start,
     pause,
@@ -54,7 +62,7 @@ export function TaskTimerPanel({
     isRunningMine,
     isRunningOther,
     displayMs,
-  } = useTaskTimer(taskId, projectId, timer);
+  } = useTaskTimer(taskId, projectId, liveTimer);
 
   const { data: members = [] } = useProjectMembers(projectId);
 

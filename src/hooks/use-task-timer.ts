@@ -3,9 +3,10 @@
 // ─── Externos ─────────────────────────────────────────────────────────────────
 import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
-import { api } from "@/lib/api";
+import { api, getApiErrorMessage } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
 import { useAuthStore } from "@/lib/stores/auth";
 
@@ -97,6 +98,10 @@ export function useTaskTimer(
       void queryClient.invalidateQueries({
         queryKey: qk.tasks.byProject(projectId),
       });
+    },
+    onError: (error) => {
+      // Sem feedback, uma falha (404/401/conflito 409) parece "nada acontece".
+      toast.error(getApiErrorMessage(error));
     },
   });
 
