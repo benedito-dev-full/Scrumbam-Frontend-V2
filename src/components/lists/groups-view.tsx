@@ -69,6 +69,8 @@ import {
   applyRenameColumn,
   applyReorderColumns,
   applySetColumnHidden,
+  applyUpdateColumnOptions,
+  makeOptionId,
 } from "@/lib/table-fields/schema-ops";
 import {
   useBlocks,
@@ -963,6 +965,24 @@ function BackendGroupsView({
     updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
   }
 
+  /**
+   * Substitui as opcoes de uma coluna `status`/`dropdown` (editor de opcoes
+   * no menu da coluna). Recebe a lista completa ja editada na UI.
+   */
+  async function handleUpdateColumnOptions(
+    key: string,
+    options: ColumnOption[],
+  ) {
+    const latestProject = await getFreshListProject();
+    if (!latestProject) return;
+    const tableFields = applyUpdateColumnOptions(
+      latestProject.tableFields ?? null,
+      key,
+      options,
+    );
+    updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
+  }
+
   // Arquivar (hidden=true) / restaurar (hidden=false) — funciona para builtin
   // E custom. As builtins ja vem materializadas no tableFields do backend.
   async function handleSetColumnHidden(key: string, hidden: boolean) {
@@ -1146,6 +1166,7 @@ function BackendGroupsView({
         onAddColumn={handleAddColumn}
         onRenameColumn={handleRenameColumn}
         onRemoveColumn={handleRemoveColumn}
+        onUpdateColumnOptions={handleUpdateColumnOptions}
         onReorderColumn={handleReorderColumn}
         onArchiveColumn={(key) => handleSetColumnHidden(key, true)}
         onRestoreColumn={(key) => handleSetColumnHidden(key, false)}
@@ -1190,6 +1211,8 @@ const NOME_KEY = "__nome";
 type AddColumnHandler = (type: ColumnType, label: string) => void;
 type RenameColumnHandler = (key: string, label: string) => void;
 type RemoveColumnHandler = (key: string) => void;
+/** Substitui as opcoes de uma coluna status/dropdown (lista completa). */
+type UpdateColumnOptionsHandler = (key: string, options: ColumnOption[]) => void;
 /** Arquiva ou restaura uma coluna pelo seu key. */
 type ArchiveColumnHandler = (key: string) => void;
 /** Recebe as keys custom (`f_*`) na nova ordem desejada. */
@@ -1270,6 +1293,7 @@ function GroupsBoardView({
   onAddColumn,
   onRenameColumn,
   onRemoveColumn,
+  onUpdateColumnOptions,
   onReorderColumn,
   onArchiveColumn,
   onRestoreColumn,
@@ -1295,6 +1319,7 @@ function GroupsBoardView({
   onAddColumn?: AddColumnHandler;
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
+  onUpdateColumnOptions?: UpdateColumnOptionsHandler;
   onReorderColumn?: ReorderColumnHandler;
   onArchiveColumn?: ArchiveColumnHandler;
   onRestoreColumn?: ArchiveColumnHandler;
@@ -1378,6 +1403,7 @@ function GroupsBoardView({
               onAddColumn={onAddColumn}
               onRenameColumn={onRenameColumn}
               onRemoveColumn={onRemoveColumn}
+              onUpdateColumnOptions={onUpdateColumnOptions}
               onReorderColumn={onReorderColumn}
               onArchiveColumn={onArchiveColumn}
               onRestoreColumn={onRestoreColumn}
@@ -1468,6 +1494,7 @@ function GroupBox({
   onAddColumn,
   onRenameColumn,
   onRemoveColumn,
+  onUpdateColumnOptions,
   onReorderColumn,
   onArchiveColumn,
   onRestoreColumn,
@@ -1493,6 +1520,7 @@ function GroupBox({
   onAddColumn?: AddColumnHandler;
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
+  onUpdateColumnOptions?: UpdateColumnOptionsHandler;
   onReorderColumn?: ReorderColumnHandler;
   onArchiveColumn?: ArchiveColumnHandler;
   onRestoreColumn?: ArchiveColumnHandler;
@@ -1771,6 +1799,7 @@ function GroupBox({
                 onAddColumn={onAddColumn}
                 onRenameColumn={onRenameColumn}
                 onRemoveColumn={onRemoveColumn}
+                onUpdateColumnOptions={onUpdateColumnOptions}
                 onArchiveColumn={onArchiveColumn}
                 onRestoreColumn={onRestoreColumn}
                 archivedColumns={archivedColumns}
@@ -1940,6 +1969,7 @@ function HeadRow({
   onAddColumn,
   onRenameColumn,
   onRemoveColumn,
+  onUpdateColumnOptions,
   onArchiveColumn,
   onRestoreColumn,
   archivedColumns,
@@ -1957,6 +1987,7 @@ function HeadRow({
   onAddColumn?: AddColumnHandler;
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
+  onUpdateColumnOptions?: UpdateColumnOptionsHandler;
   onArchiveColumn?: ArchiveColumnHandler;
   onRestoreColumn?: ArchiveColumnHandler;
   /** Colunas arquivadas (hidden) — alimentam o menu de restauração. */
@@ -1998,6 +2029,7 @@ function HeadRow({
               onRenameColumn={onRenameColumn}
               removable={isCustom}
               onRemoveColumn={isCustom ? onRemoveColumn : undefined}
+              onUpdateColumnOptions={onUpdateColumnOptions}
               archivable={!!onArchiveColumn}
               onArchiveColumn={onArchiveColumn}
               sortable={reorderable}
@@ -2121,6 +2153,7 @@ function ColumnHeader({
   thStyle,
   onRenameColumn,
   onRemoveColumn,
+  onUpdateColumnOptions,
   onArchiveColumn,
   removable = true,
   archivable = false,
@@ -2131,6 +2164,8 @@ function ColumnHeader({
   onRenameColumn: RenameColumnHandler;
   /** Remove a coluna do schema (só custom). Opcional quando `removable=false`. */
   onRemoveColumn?: RemoveColumnHandler;
+  /** Atualiza as opções (status/dropdown). Ativa o editor de opções no menu. */
+  onUpdateColumnOptions?: UpdateColumnOptionsHandler;
   /** Arquiva (oculta) a coluna — disponível para builtin e custom. */
   onArchiveColumn?: ArchiveColumnHandler;
   /** Mostra "Remover coluna" (só custom). Default true. */
@@ -2143,6 +2178,9 @@ function ColumnHeader({
   const [menu, setMenu] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
   const handledRenameRef = useRef(false);
+
+  // Colunas status/dropdown ganham o editor de opcoes no menu.
+  const isSelectable = column.type === "status" || column.type === "dropdown";
 
   // Sortable: o sensor (distance 6px) garante que o clique para abrir o menu
   // ainda funciona; so vira arraste apos o gesto. `attributes`/`listeners`
@@ -2262,6 +2300,12 @@ function ColumnHeader({
               }}
               style={inputStyle}
             />
+            {isSelectable && onUpdateColumnOptions && (
+              <ColumnOptionsEditor
+                options={column.config?.options ?? []}
+                onChange={(next) => onUpdateColumnOptions(column.key, next)}
+              />
+            )}
             {archivable && (
               <button
                 type="button"
@@ -2318,6 +2362,223 @@ function ColumnHeader({
         </Popover>
       )}
     </th>
+  );
+}
+
+/**
+ * Editor das opções de uma coluna `status`/`dropdown`, exibido dentro do menu
+ * da coluna (`ColumnHeader`). Permite adicionar, renomear, recolorir e remover
+ * opções. Mantém estado local enquanto edita e propaga a lista completa via
+ * `onChange` (debounce simples: grava ao confirmar nome, ao trocar cor, ao
+ * adicionar/remover) — o pai (`GroupsView`) persiste no backend.
+ */
+function ColumnOptionsEditor({
+  options,
+  onChange,
+}: {
+  options: ColumnOption[];
+  onChange: (next: ColumnOption[]) => void;
+}) {
+  // Espelha as props num estado local para edição fluida; ressincroniza
+  // durante a render quando a lista vinda do servidor muda (ex.: após salvar)
+  // — padrão "ajustar estado ao mudar prop" (sem useEffect, sem cascata).
+  const optionsKey = options.map((o) => `${o.id}:${o.label}:${o.color}`).join("|");
+  const [draft, setDraft] = useState<ColumnOption[]>(options);
+  const [syncedKey, setSyncedKey] = useState(optionsKey);
+  const [colorFor, setColorFor] = useState<string | null>(null);
+
+  if (syncedKey !== optionsKey) {
+    setDraft(options);
+    setSyncedKey(optionsKey);
+  }
+
+  function commit(next: ColumnOption[]) {
+    setDraft(next);
+    onChange(next);
+  }
+
+  function addOption() {
+    const id = makeOptionId(draft.map((o) => o.id));
+    const color = BLOCK_COLORS[draft.length % BLOCK_COLORS.length];
+    commit([...draft, { id, label: `Opção ${draft.length + 1}`, color }]);
+  }
+
+  function renameOption(id: string, label: string) {
+    const next = draft.map((o) => (o.id === id ? { ...o, label } : o));
+    setDraft(next);
+  }
+
+  function commitRenameOption(id: string, label: string) {
+    const trimmed = label.trim();
+    // Vazio: não persiste o vazio; restaura o último valor salvo da opção.
+    if (!trimmed) {
+      const saved = options.find((o) => o.id === id);
+      setDraft((d) =>
+        d.map((o) => (o.id === id ? { ...o, label: saved?.label ?? o.label } : o)),
+      );
+      return;
+    }
+    commit(draft.map((o) => (o.id === id ? { ...o, label: trimmed } : o)));
+  }
+
+  function recolorOption(id: string, color: string) {
+    setColorFor(null);
+    commit(draft.map((o) => (o.id === id ? { ...o, color } : o)));
+  }
+
+  function removeOption(id: string) {
+    commit(draft.filter((o) => o.id !== id));
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        borderTop: "1px solid var(--border)",
+        paddingTop: 8,
+      }}
+    >
+      <p
+        style={{
+          margin: "0 0 6px",
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: ".5px",
+          textTransform: "uppercase",
+          color: "var(--muted-foreground)",
+        }}
+      >
+        Opções
+      </p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {draft.map((opt) => (
+          <div
+            key={opt.id}
+            style={{ display: "flex", alignItems: "center", gap: 6, position: "relative" }}
+          >
+            {/* Swatch de cor — clique abre a paleta. */}
+            <button
+              type="button"
+              onClick={() => setColorFor((cur) => (cur === opt.id ? null : opt.id))}
+              aria-label="Mudar cor da opção"
+              title="Mudar cor"
+              style={{
+                width: 16,
+                height: 16,
+                flexShrink: 0,
+                borderRadius: "50%",
+                border: "1px solid var(--border)",
+                background: opt.color ?? "#6b7280",
+                cursor: "pointer",
+              }}
+            />
+            <input
+              defaultValue={opt.label}
+              onChange={(e) => renameOption(opt.id, e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter")
+                  commitRenameOption(opt.id, (e.target as HTMLInputElement).value);
+              }}
+              onBlur={(e) => commitRenameOption(opt.id, e.target.value)}
+              style={{ ...inputStyle, height: 28, flex: 1 }}
+            />
+            <button
+              type="button"
+              onClick={() => removeOption(opt.id)}
+              aria-label="Remover opção"
+              title="Remover opção"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 26,
+                height: 26,
+                flexShrink: 0,
+                borderRadius: 6,
+                border: 0,
+                background: "none",
+                color: "var(--muted-foreground)",
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "#ef4444";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--muted-foreground)";
+              }}
+            >
+              <Trash2 size={14} />
+            </button>
+            {colorFor === opt.id && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 4px)",
+                  left: 0,
+                  zIndex: 10,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(6, 1fr)",
+                  gap: 4,
+                  padding: 6,
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  background: "var(--popover, var(--background))",
+                  boxShadow: "0 6px 20px rgba(0,0,0,.18)",
+                }}
+              >
+                {BLOCK_COLORS.map((c) => {
+                  const selected = (opt.color ?? "").toLowerCase() === c.toLowerCase();
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => recolorOption(opt.id, c)}
+                      aria-label={`Cor ${c}`}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: "50%",
+                        border: selected
+                          ? "2px solid var(--foreground)"
+                          : "1px solid var(--border)",
+                        background: c,
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {selected && <Check size={11} color="#fff" strokeWidth={3} />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <button
+        type="button"
+        onClick={addOption}
+        style={{
+          marginTop: 6,
+          width: "100%",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          height: 30,
+          borderRadius: 6,
+          border: "1px dashed var(--border)",
+          background: "none",
+          color: "var(--muted-foreground)",
+          fontSize: 12,
+          cursor: "pointer",
+        }}
+      >
+        <Plus size={13} /> Adicionar opção
+      </button>
+    </div>
   );
 }
 

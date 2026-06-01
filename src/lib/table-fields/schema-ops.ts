@@ -64,6 +64,23 @@ function toSchema(tableFields?: TableFieldsDto | null): TableFieldsDto {
   return normalizeSchema(tableFields ?? { version: 1, columns: [] });
 }
 
+/**
+ * Gera um ID de opção único (`opt_<n>`) que não colide com os já existentes.
+ * Usado ao adicionar uma nova opção numa coluna `status`/`dropdown` pela UI.
+ */
+export function makeOptionId(existingIds: Iterable<string>): string {
+  const existing = new Set(existingIds);
+  let suffix = 1;
+  let id = `opt_${suffix}`;
+
+  while (existing.has(id)) {
+    suffix += 1;
+    id = `opt_${suffix}`;
+  }
+
+  return id;
+}
+
 export function makeColumnKey(
   label: string,
   existingKeys: Iterable<string>,
@@ -150,6 +167,39 @@ export function applySetColumnHidden(
     columns: schema.columns.map((column) =>
       column.key === key ? { ...column, hidden } : column,
     ),
+  });
+}
+
+/**
+ * Substitui as opções de uma coluna `status`/`dropdown`. Recebe a lista
+ * completa já editada (UI envia o estado final). Filtra opções sem `label`
+ * (vazias) e garante que sobre ao menos uma — colunas selecionáveis sem
+ * opção quebram o contrato do backend. Para colunas não-selecionáveis, é
+ * no-op.
+ */
+export function applyUpdateColumnOptions(
+  tableFields: TableFieldsDto | null | undefined,
+  key: string,
+  options: TableColumnOptionDto[],
+): TableFieldsDto {
+  const schema = toSchema(tableFields);
+
+  const cleaned = options
+    .map((option) => ({
+      ...option,
+      label: normalizeLabel(option.label),
+    }))
+    .filter((option) => option.label.length > 0);
+
+  return normalizeSchema({
+    version: schema.version,
+    columns: schema.columns.map((column) => {
+      if (column.key !== key || !isSelectableType(column.type)) return column;
+      // Nunca deixar a coluna sem nenhuma opção (cairia no default ao
+      // recarregar via ensureSelectableConfig — confuso para o usuário).
+      const next = cleaned.length > 0 ? cleaned : cloneDefaultOptions();
+      return { ...column, config: { ...column.config, options: next } };
+    }),
   });
 }
 
