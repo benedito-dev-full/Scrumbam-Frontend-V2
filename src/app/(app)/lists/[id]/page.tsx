@@ -33,14 +33,12 @@ import {
   IcCaret,
   IcCheck,
   IcChat,
-  IcFilter,
   IcGitFork,
   IcLayers,
   IcList,
   IcPending,
   IcPlus,
   IcSearch,
-  IcUser,
 } from "@/components/lists/icons";
 import { STATUS_CONFIG, GROUP_PILL_STYLE } from "@/components/lists/config";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
@@ -49,6 +47,12 @@ import { CreateTaskModal } from "@/components/tasks/create-task-modal";
 import { CalendarView } from "@/components/lists/calendar-view";
 import { GanttView } from "@/components/lists/gantt-view";
 import { GroupsView } from "@/components/lists/groups-view";
+import { TaskFilterControls } from "@/components/lists/task-filter-controls";
+import {
+  applyTaskFilters,
+  emptyTaskFilters,
+  type TaskFilters,
+} from "@/lib/filters/task-filters";
 
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
@@ -147,6 +151,7 @@ export default function ListPage({
   }));
   const members =
     projectMembers.length > 0 ? projectMembers : orgAsProjectMembers;
+  const { data: teams = [] } = useTeams();
 
   const [view, setView] = useState<ListViewId>("list");
   const [subtarefasMode, setSubtarefasMode] =
@@ -158,6 +163,8 @@ export default function ListPage({
   const [selectedTask, setSelectedTask] = useState<TaskResponseDto | null>(
     null,
   );
+  // Filtros compartilhados entre TODAS as views (client-side, em memória).
+  const [filters, setFilters] = useState<TaskFilters>(emptyTaskFilters);
 
   if (loadingProjeto) {
     return (
@@ -190,7 +197,9 @@ export default function ListPage({
   // na Lista por Status nem no Quadro. Só os agrupam-se no view="blocks"
   // via BlocksContent (que usa hook próprio).
   const tasksWithoutBlocks = tasks.filter((t) => t.idClasse !== "-200");
-  const grupos = agruparTasks(tasksWithoutBlocks);
+  // Resultado dos filtros (client-side) — fonte ÚNICA para todas as views.
+  const filteredTasks = applyTaskFilters(tasksWithoutBlocks, filters);
+  const grupos = agruparTasks(filteredTasks);
 
   return (
     <div
@@ -206,10 +215,15 @@ export default function ListPage({
       />
       {view !== "calendar" && view !== "gantt" && (
         <Toolbar
-          tarefasCount={loadingTasks ? null : tasksWithoutBlocks.length}
+          tarefasCount={loadingTasks ? null : filteredTasks.length}
+          totalCount={loadingTasks ? null : tasksWithoutBlocks.length}
           onAddTask={() => openModal()}
           subtarefasMode={subtarefasMode}
           onSubtarefasMode={setSubtarefasMode}
+          filters={filters}
+          onFiltersChange={setFilters}
+          members={members}
+          teams={teams}
         />
       )}
       {view === "list" ? (
@@ -221,26 +235,28 @@ export default function ListPage({
           onOpenTask={setSelectedTask}
           members={members}
           projectId={id}
-          allTasks={tasksWithoutBlocks}
+          allTasks={filteredTasks}
         />
       ) : view === "board" ? (
         <BoardContent
           listId={id}
-          tasks={tasksWithoutBlocks}
+          tasks={filteredTasks}
           onOpenTask={setSelectedTask}
         />
       ) : view === "calendar" ? (
-        <CalendarView tasks={tasksWithoutBlocks} onOpenTask={setSelectedTask} />
+        <CalendarView tasks={filteredTasks} onOpenTask={setSelectedTask} />
       ) : view === "gantt" ? (
-        <GanttView tasks={tasksWithoutBlocks} onOpenTask={setSelectedTask} />
+        <GanttView tasks={filteredTasks} onOpenTask={setSelectedTask} />
       ) : (
         // Aba "Blocos" — novo conceito de Blocos: visualizacao de Grupos
         // (estilo Monday) integrada ao backend. Cada Bloco vira um grupo;
         // tasks sem bloco caem em "Sem bloco". Read-only nesta v1.
         // onOpenTask: resolve o taskId (mesma fonte useTasksByProject) e abre a
         // TaskSheet compartilhada — paridade com Lista/Quadro/Calendário/Gantt.
+        // filters: aplicados também aqui (Blocos respeita a toolbar).
         <GroupsView
           projectId={id}
+          filters={filters}
           onOpenTask={(taskId) => {
             const found = tasks.find((t) => t.id === taskId);
             if (found) setSelectedTask(found);
@@ -663,16 +679,30 @@ type SubtarefasMode = "recolhidas" | "expandidas" | "separar";
 
 function Toolbar({
   tarefasCount,
+  totalCount,
   onAddTask,
   subtarefasMode,
   onSubtarefasMode,
+  filters,
+  onFiltersChange,
+  members,
+  teams,
 }: {
+  /** Contagem APÓS filtros (resultado visível). */
   tarefasCount: number | null;
+  /** Contagem total (antes dos filtros) — para exibir "X de Y". */
+  totalCount: number | null;
   onAddTask: () => void;
   subtarefasMode: SubtarefasMode;
   onSubtarefasMode: (m: SubtarefasMode) => void;
+  filters: TaskFilters;
+  onFiltersChange: (next: TaskFilters) => void;
+  members: ProjectMemberDto[];
+  teams: { id: string; nome: string; color?: string | null }[];
 }) {
   const [subtarefasOpen, setSubtarefasOpen] = useState(false);
+  const isFiltered =
+    totalCount !== null && tarefasCount !== null && tarefasCount !== totalCount;
 
   return (
     <div
@@ -806,9 +836,13 @@ function Toolbar({
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <SmallBtn icon={<IcFilter size={13} />} label="Filtro" />
-        <SmallBtn icon={<IcCheck size={13} />} label="Fechado" />
-        <SmallBtn icon={<IcUser size={13} />} label="Responsável" />
+        <TaskFilterControls
+          filters={filters}
+          onChange={onFiltersChange}
+          members={members}
+          teams={teams}
+          aiAssigneeId={AI_ASSIGNEE_ID}
+        />
         <button
           type="button"
           style={{
@@ -836,12 +870,15 @@ function Toolbar({
         {tarefasCount !== null && (
           <span
             style={{
-              color: "var(--muted-foreground)",
+              color: isFiltered ? "#cfc1ff" : "var(--muted-foreground)",
               fontSize: 12,
               padding: "0 4px",
             }}
+            title={isFiltered ? "Resultado filtrado" : undefined}
           >
-            {tarefasCount} tarefas
+            {isFiltered
+              ? `${tarefasCount} de ${totalCount} tarefas`
+              : `${tarefasCount} tarefas`}
           </span>
         )}
         <div
@@ -940,37 +977,6 @@ function TabBtn({
           e.currentTarget.style.background = "none";
           e.currentTarget.style.color = "var(--muted-foreground)";
         }
-      }}
-    >
-      {icon} {label}
-    </button>
-  );
-}
-
-function SmallBtn({ icon, label }: { icon: React.ReactNode; label: string }) {
-  return (
-    <button
-      type="button"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 6,
-        height: 28,
-        padding: "0 10px",
-        border: "1px solid #2a2a32",
-        background: "var(--card)",
-        borderRadius: 6,
-        color: "var(--muted-foreground)",
-        fontSize: 13,
-        cursor: "pointer",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.color = "var(--foreground)";
-        e.currentTarget.style.borderColor = "var(--accent)";
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.color = "var(--muted-foreground)";
-        e.currentTarget.style.borderColor = "var(--accent)";
       }}
     >
       {icon} {label}

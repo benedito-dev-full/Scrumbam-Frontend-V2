@@ -94,6 +94,7 @@ import {
   STATUS_OPTIONS,
   type MemberLike,
 } from "@/lib/mappers/groups-from-tasks";
+import { applyTaskFilters, type TaskFilters } from "@/lib/filters/task-filters";
 import { intentionToColumn } from "@/lib/mappers/task-status.mapper";
 
 const ID_CLASSE_LIST = "-352";
@@ -609,12 +610,21 @@ function MoveTargetList({
 export function GroupsView({
   projectId,
   onOpenTask,
+  filters,
 }: {
   projectId: string;
   /** Abre a TaskSheet compartilhada para o `taskId` (resolvido no caller). */
   onOpenTask?: (taskId: string) => void;
+  /** Filtros compartilhados da toolbar — aplicados ao board (mesma fonte). */
+  filters?: TaskFilters;
 }) {
-  return <BackendGroupsView projectId={projectId} onOpenTask={onOpenTask} />;
+  return (
+    <BackendGroupsView
+      projectId={projectId}
+      onOpenTask={onOpenTask}
+      filters={filters}
+    />
+  );
 }
 
 /* ─── Modo backend ───────────────────────────────────────────────────────── */
@@ -633,10 +643,13 @@ export function GroupsView({
 function BackendGroupsView({
   projectId,
   onOpenTask,
+  filters,
 }: {
   projectId: string;
   /** Abre a TaskSheet compartilhada para o `taskId` (resolvido no caller). */
   onOpenTask?: (taskId: string) => void;
+  /** Filtros compartilhados da toolbar — aplicados ao board. */
+  filters?: TaskFilters;
 }) {
   const { data: blocks = [], isLoading: loadingBlocks } = useBlocks(projectId);
   const { data: tasks = [], isLoading: loadingTasks } =
@@ -669,7 +682,12 @@ function BackendGroupsView({
     Array.isArray(membersRaw) ? membersRaw : []
   ).map((m) => ({ userId: m.userId, nome: m.nome }));
 
-  const board = buildGroupsBoard(blocks, realTasks, project?.tableFields);
+  // Filtro da toolbar aplicado APENAS ao que alimenta o board (display).
+  // `realTasks` permanece intacto para resolução de subtarefas/byId.
+  const visibleTasks = filters
+    ? applyTaskFilters(realTasks, filters)
+    : realTasks;
+  const board = buildGroupsBoard(blocks, visibleTasks, project?.tableFields);
 
   // ── Selecao de tarefas (checkbox) → barra de acoes flutuante ──
   const deleteTask = useDeleteTask();
