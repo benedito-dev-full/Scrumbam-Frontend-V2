@@ -294,13 +294,17 @@ export function buildGroupsBoard(
   const rootTasks = tasks.filter((t) => !t.idPai);
 
   // 3. Indexa tasks raiz por idBloco; o restante vai para "sem bloco".
+  //    Tasks cujo idBloco aponta para um bloco inexistente (ex: bloco recem
+  //    excluido) sao tratadas como orfas → caem em "Sem bloco" em vez de
+  //    sumirem da view (o cascade do backend opera em idPai, nao em idBloco).
+  const validBlockIds = new Set(blocks.map((b) => b.id));
   const byBlock = new Map<string, TaskResponseDto[]>();
   const semBloco: TaskResponseDto[] = [];
 
   for (const task of rootTasks) {
     const idBloco =
       typeof task.dados?.idBloco === "string" ? task.dados.idBloco : null;
-    if (idBloco) {
+    if (idBloco && validBlockIds.has(idBloco)) {
       const arr = byBlock.get(idBloco) ?? [];
       arr.push(task);
       byBlock.set(idBloco, arr);

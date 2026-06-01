@@ -81,6 +81,7 @@ import {
   useSubtasks,
   useDeleteTask,
 } from "@/hooks/use-tasks";
+import { DeleteBlockDialog } from "@/components/lists/delete-block-dialog";
 import { useProjectMembers } from "@/hooks/use-members";
 import { useProject, useUpdateProjectTableFields } from "@/hooks/use-projects";
 import { useQueryClient } from "@tanstack/react-query";
@@ -679,6 +680,13 @@ function BackendGroupsView({
   const [savingTaskId, setSavingTaskId] = useState<string | null>(null);
   const [savingGroupId, setSavingGroupId] = useState<string | null>(null);
 
+  // Bloco selecionado para exclusao → alimenta o DeleteBlockDialog.
+  const [blockToDelete, setBlockToDelete] = useState<{
+    id: string;
+    nome: string;
+    taskCount: number;
+  } | null>(null);
+
   // Blocos (idClasse=-200) nao sao tarefas — fora da listagem de tasks.
   const realTasks = tasks.filter((t) => t.idClasse !== "-200");
   const members: MemberLike[] = (
@@ -1130,6 +1138,9 @@ function BackendGroupsView({
         onEditField={handleEditField}
         onRenameGroup={handleRenameGroup}
         onRecolorGroup={handleRecolorGroup}
+        onDeleteGroup={(groupId, nome, taskCount) =>
+          setBlockToDelete({ id: groupId, nome, taskCount })
+        }
         onAddGroup={handleAddGroup}
         onAddTask={handleAddTask}
         onAddColumn={handleAddColumn}
@@ -1155,6 +1166,20 @@ function BackendGroupsView({
         onMoveToBlock={handleMoveToBlock}
         onMoveToParent={handleMoveToParent}
       />
+      {blockToDelete && (
+        <DeleteBlockDialog
+          block={{
+            id: blockToDelete.id,
+            nome: blockToDelete.nome,
+            projectId,
+          }}
+          taskCount={blockToDelete.taskCount}
+          open
+          onOpenChange={(o) => {
+            if (!o) setBlockToDelete(null);
+          }}
+        />
+      )}
     </SelectionContext.Provider>
   );
 }
@@ -1239,6 +1264,7 @@ function GroupsBoardView({
   onEditField,
   onRenameGroup,
   onRecolorGroup,
+  onDeleteGroup,
   onAddGroup,
   onAddTask,
   onAddColumn,
@@ -1262,6 +1288,8 @@ function GroupsBoardView({
   onRenameGroup?: (groupId: string, nome: string) => void;
   /** Altera a cor do bloco. Quando presente, o header mostra o seletor de cor. */
   onRecolorGroup?: (groupId: string, cor: string) => void;
+  /** Exclui o bloco. Quando presente, o header mostra a lixeira (exceto "Sem bloco"). */
+  onDeleteGroup?: (groupId: string, nome: string, taskCount: number) => void;
   onAddGroup?: () => void;
   onAddTask?: (groupId: string) => void;
   onAddColumn?: AddColumnHandler;
@@ -1345,6 +1373,7 @@ function GroupsBoardView({
               onEditField={onEditField}
               onRenameGroup={onRenameGroup}
               onRecolorGroup={onRecolorGroup}
+              onDeleteGroup={onDeleteGroup}
               onAddTask={onAddTask}
               onAddColumn={onAddColumn}
               onRenameColumn={onRenameColumn}
@@ -1434,6 +1463,7 @@ function GroupBox({
   onEditField,
   onRenameGroup,
   onRecolorGroup,
+  onDeleteGroup,
   onAddTask,
   onAddColumn,
   onRenameColumn,
@@ -1458,6 +1488,7 @@ function GroupBox({
   onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
   onRenameGroup?: (groupId: string, nome: string) => void;
   onRecolorGroup?: (groupId: string, cor: string) => void;
+  onDeleteGroup?: (groupId: string, nome: string, taskCount: number) => void;
   onAddTask?: (groupId: string) => void;
   onAddColumn?: AddColumnHandler;
   onRenameColumn?: RenameColumnHandler;
@@ -1468,7 +1499,11 @@ function GroupBox({
   archivedColumns?: ArchivedColumn[];
 }) {
   const [open, setOpen] = useState(true);
+  const [headerHovered, setHeaderHovered] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
+
+  // Lixeira no header so para bloco real (nao para o sintetico "Sem bloco").
+  const canDelete = !!onDeleteGroup && group.id !== SEM_BLOCO_ID;
 
   // Registra/desregistra este container no pool de scroll sincronizado.
   useEffect(() => {
@@ -1552,6 +1587,8 @@ function GroupBox({
     <section>
       {/* cabecalho do grupo */}
       <header
+        onMouseEnter={() => setHeaderHovered(true)}
+        onMouseLeave={() => setHeaderHovered(false)}
         style={{
           display: "flex",
           alignItems: "center",
@@ -1645,6 +1682,44 @@ function GroupBox({
           >
             {group.periodo}
           </span>
+        )}
+
+        {/* Lixeira do bloco — revelada no hover do header (bloco real apenas).
+            As tarefas do bloco NAO sao excluidas: voltam para "Sem bloco". */}
+        {canDelete && (
+          <button
+            type="button"
+            onClick={() =>
+              onDeleteGroup!(group.id, group.nome, group.tasks.length)
+            }
+            aria-label="Excluir bloco"
+            title="Excluir bloco"
+            style={{
+              marginLeft: group.periodo ? 0 : "auto",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 24,
+              height: 24,
+              border: 0,
+              borderRadius: 6,
+              background: "none",
+              color: "var(--muted-foreground)",
+              cursor: "pointer",
+              opacity: headerHovered ? 1 : 0,
+              transition: "opacity .15s, color .15s, background .15s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = "#ef4444";
+              e.currentTarget.style.background = "rgba(239,68,68,0.08)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = "var(--muted-foreground)";
+              e.currentTarget.style.background = "none";
+            }}
+          >
+            <Trash2 size={15} />
+          </button>
         )}
       </header>
 
