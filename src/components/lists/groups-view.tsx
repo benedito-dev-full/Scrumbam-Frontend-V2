@@ -1321,6 +1321,26 @@ function GroupBox({
     // re-registra quando abre/fecha (o no muda de existencia)
   }, [register, open]);
 
+  // ── Reorder de colunas custom (drag no header) ──
+  // O DndContext fica AQUI, envolvendo a <table> — NUNCA dentro da <tr>, pois
+  // o DndContext renderiza <div>s (wrapper + nos de acessibilidade) que, como
+  // filhos diretos de <tr>, viram celulas-fantasma e criam uma coluna vazia.
+  // O SortableContext (context puro, sem DOM) permanece dentro do HeadRow.
+  const colSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+  const customKeys = columns.filter((c) => c.builtin === false).map((c) => c.key);
+  const reorderable = !!onReorderColumn && customKeys.length > 1;
+
+  function handleColumnDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const from = customKeys.indexOf(active.id as string);
+    const to = customKeys.indexOf(over.id as string);
+    if (from === -1 || to === -1) return;
+    onReorderColumn?.(arrayMove(customKeys, from, to));
+  }
+
   /**
    * Rola o bloco na horizontal QUANDO o usuario segura SHIFT e usa a roda
    * sobre o bloco (padrao de planilha — Excel/Sheets). Sem Shift, o evento
@@ -1464,6 +1484,11 @@ function GroupBox({
             scrollbarWidth: "none",
           }}
         >
+          <DndContext
+            sensors={colSensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleColumnDragEnd}
+          >
           <table style={{ width: "100%", minWidth: tableMinWidth, borderCollapse: "collapse", tableLayout: "fixed" }}>
             <colgroup>
               <col style={{ width: W_CHECK }} />
@@ -1480,10 +1505,10 @@ function GroupBox({
             <HeadRow
               columns={columns}
               groupTaskIds={group.tasks.map((t) => t.id)}
+              reorderableKeys={reorderable ? customKeys : undefined}
               onAddColumn={onAddColumn}
               onRenameColumn={onRenameColumn}
               onRemoveColumn={onRemoveColumn}
-              onReorderColumn={onReorderColumn}
             />
 
             <tbody>
@@ -1508,6 +1533,7 @@ function GroupBox({
 
             <FooterRow columns={columns} tasks={group.tasks} totalSp={totalSp} />
           </table>
+          </DndContext>
         </div>
       )}
     </section>
@@ -1634,18 +1660,24 @@ const TYPE_ICON: Record<ColumnType, React.ComponentType<{ size?: number }>> = {
 function HeadRow({
   columns,
   groupTaskIds,
+  reorderableKeys,
   onAddColumn,
   onRenameColumn,
   onRemoveColumn,
-  onReorderColumn,
 }: {
   columns: ColumnDef[];
   /** IDs das tasks raiz do grupo — alimenta o "selecionar tudo" do header. */
   groupTaskIds?: string[];
+  /**
+   * Keys custom arrastaveis (na ordem atual). Quando presente (>1 coluna),
+   * habilita o SortableContext. O DndContext fica no GroupBox (fora da tabela)
+   * — aqui so o SortableContext, que e context puro e NAO renderiza DOM, por
+   * isso pode ficar dentro da <tr> sem criar celulas-fantasma.
+   */
+  reorderableKeys?: string[];
   onAddColumn?: AddColumnHandler;
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
-  onReorderColumn?: ReorderColumnHandler;
 }) {
   const selection = useSelection();
   const th: React.CSSProperties = {
@@ -1665,26 +1697,7 @@ function HeadRow({
     groupTaskIds.length > 0 &&
     groupTaskIds.every((id) => selection.selectedIds.has(id));
 
-  // Sensor: so dispara o arraste apos mover 6px — preserva o clique no header
-  // (abrir menu de renomear/remover) que e a interacao primaria. Mesmo padrao
-  // do kanban-board.
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-  );
-
-  // Apenas colunas custom (`builtin === false`) sao arrastaveis; builtin ficam
-  // ancoradas. As custom vem como um bloco contiguo no fim do schema.
-  const customKeys = columns.filter((c) => c.builtin === false).map((c) => c.key);
-  const reorderable = !!onReorderColumn && customKeys.length > 1;
-
-  function handleDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const from = customKeys.indexOf(active.id as string);
-    const to = customKeys.indexOf(over.id as string);
-    if (from === -1 || to === -1) return;
-    onReorderColumn?.(arrayMove(customKeys, from, to));
-  }
+  const reorderable = !!reorderableKeys && reorderableKeys.length > 1;
 
   const headerCells = (
     <>
@@ -1727,15 +1740,9 @@ function HeadRow({
           </span>
         </th>
         {reorderable ? (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext items={customKeys} strategy={horizontalListSortingStrategy}>
-              {headerCells}
-            </SortableContext>
-          </DndContext>
+          <SortableContext items={reorderableKeys!} strategy={horizontalListSortingStrategy}>
+            {headerCells}
+          </SortableContext>
         ) : (
           headerCells
         )}
