@@ -871,9 +871,9 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   }
 
   /**
-   * Reordena as colunas custom no schema da lista. `orderedKeys` traz apenas
-   * as keys custom (`f_*`) na nova ordem desejada; `applyReorderColumns`
-   * mantem as builtin ancoradas e renumera `order` de forma contigua.
+   * Reordena todas as colunas no schema da lista. `orderedKeys` traz o
+   * conjunto inteiro (builtin + custom) na nova ordem desejada;
+   * `applyReorderColumns` renumera `order` de forma contigua.
    *
    * Diferente de criar/renomear/remover, o reorder NAO faz refetch bloqueante
    * antes de gravar: o drag precisa de feedback imediato e ja traz a ordem
@@ -1329,16 +1329,16 @@ function GroupBox({
   const colSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
   );
-  const customKeys = columns.filter((c) => c.builtin === false).map((c) => c.key);
-  const reorderable = !!onReorderColumn && customKeys.length > 1;
+  const columnKeys = columns.map((c) => c.key);
+  const reorderable = !!onReorderColumn && columnKeys.length > 1;
 
   function handleColumnDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const from = customKeys.indexOf(active.id as string);
-    const to = customKeys.indexOf(over.id as string);
+    const from = columnKeys.indexOf(active.id as string);
+    const to = columnKeys.indexOf(over.id as string);
     if (from === -1 || to === -1) return;
-    onReorderColumn?.(arrayMove(customKeys, from, to));
+    onReorderColumn?.(arrayMove(columnKeys, from, to));
   }
 
   /**
@@ -1505,7 +1505,7 @@ function GroupBox({
             <HeadRow
               columns={columns}
               groupTaskIds={group.tasks.map((t) => t.id)}
-              reorderableKeys={reorderable ? customKeys : undefined}
+              reorderableKeys={reorderable ? columnKeys : undefined}
               onAddColumn={onAddColumn}
               onRenameColumn={onRenameColumn}
               onRemoveColumn={onRemoveColumn}
@@ -1669,7 +1669,7 @@ function HeadRow({
   /** IDs das tasks raiz do grupo — alimenta o "selecionar tudo" do header. */
   groupTaskIds?: string[];
   /**
-   * Keys custom arrastaveis (na ordem atual). Quando presente (>1 coluna),
+   * Keys de colunas arrastaveis (na ordem atual). Quando presente (>1 coluna),
    * habilita o SortableContext. O DndContext fica no GroupBox (fora da tabela)
    * — aqui so o SortableContext, que e context puro e NAO renderiza DOM, por
    * isso pode ficar dentro da <tr> sem criar celulas-fantasma.
@@ -1716,9 +1716,12 @@ function HeadRow({
         }
 
         return (
-          <th key={c.key} style={{ ...th, textAlign: c.builtin ? "left" : "center", paddingLeft: c.builtin ? 4 : 8 }}>
-            {c.label}
-          </th>
+          <PlainColumnHeader
+            key={c.key}
+            column={c}
+            thStyle={th}
+            sortable={reorderable}
+          />
         );
       })}
     </>
@@ -1756,6 +1759,59 @@ function HeadRow({
         </th>
       </tr>
     </thead>
+  );
+}
+
+/** Header de coluna fixa/read-only: arrastavel, mas sem menu de schema. */
+function PlainColumnHeader({
+  column,
+  thStyle,
+  sortable,
+}: {
+  column: ColumnDef;
+  thStyle: React.CSSProperties;
+  sortable?: boolean;
+}) {
+  const {
+    setNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: column.key, disabled: !sortable });
+
+  const dragStyle: React.CSSProperties = sortable
+    ? {
+        transform: CSS.Translate.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        zIndex: isDragging ? 5 : undefined,
+        position: "relative",
+      }
+    : {};
+
+  return (
+    <th
+      ref={sortable ? setNodeRef : undefined}
+      style={{
+        ...thStyle,
+        ...dragStyle,
+        textAlign: column.builtin ? "left" : "center",
+        paddingLeft: column.builtin ? 4 : 8,
+      }}
+    >
+      <span
+        {...(sortable ? attributes : {})}
+        {...(sortable ? listeners : {})}
+        style={{
+          cursor: sortable ? (isDragging ? "grabbing" : "grab") : undefined,
+          touchAction: sortable ? "none" : undefined,
+        }}
+      >
+        {column.label}
+      </span>
+    </th>
   );
 }
 

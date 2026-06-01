@@ -177,24 +177,34 @@ function taskToRow(task: TaskResponseDto, childCountMap: Map<string, number>): T
 
 /* ─── Colunas customizaveis (tableFields) ────────────────────────────────── */
 
+/** Config local usada quando um backend legado ainda nao envia options das fixas. */
+function builtinConfigFallback(key: string): ColumnDef["config"] | undefined {
+  if (key === "status") return { options: STATUS_OPTIONS };
+  if (key === "prioridade") return { options: PRIORITY_OPTIONS };
+  return undefined;
+}
+
 /**
  * Converte uma coluna do contrato `tableFields` (`TableColumnDto`) na
- * `ColumnDef` que a `GroupsView` desenha. As colunas custom NUNCA sao builtin
- * (sao persistidas em `DProject.tableFields`); preservamos `config`/`required`
- * tal como o backend devolve.
+ * `ColumnDef` que a `GroupsView` desenha.
  *
- * @param col - Coluna do schema `tableFields.columns[]`.
- * @returns `ColumnDef` equivalente (sem flag builtin).
+ * Compatibilidade visual da Fase 3: a `GroupsView` atual trata `builtin:true`
+ * como "coluna de titulo". Por isso apenas `__nome` recebe esse flag no view
+ * model; as demais fixas mantem `builtin` ausente, igual ao desenho anterior.
+ * Colunas custom continuam com `builtin:false` para rename/remove.
  */
 function tableColumnToColumnDef(col: TableColumnDto): ColumnDef {
+  const builtinFlag =
+    col.builtin === true ? (col.key === "__nome" ? { builtin: true } : {}) : { builtin: false };
+
   return {
     key: col.key,
     type: col.type,
     label: col.label,
     order: col.order,
     required: col.required,
-    config: col.config,
-    builtin: false,
+    config: col.config ?? builtinConfigFallback(col.key),
+    ...builtinFlag,
   };
 }
 
@@ -226,7 +236,7 @@ function tableColumnToColumnDef(col: TableColumnDto): ColumnDef {
  * const { blocks, tasks } = await fetchProjectData(projectId);
  * const board = buildGroupsBoard(blocks, tasks, project.tableFields);
  * // Resultado: tasks com idPai ausentes das linhas raiz; childCount preenchido;
- * // colunas custom mescladas apos as builtin (ordenadas por `order`).
+ * // colunas vindas de tableFields (ordenadas por `order`).
  */
 export function buildGroupsBoard(
   blocks: BlockDto[],
@@ -281,14 +291,16 @@ export function buildGroupsBoard(
     });
   }
 
-  // Colunas custom (tableFields) entram apos as 6 builtin. Ordenadas por
-  // `order` para respeitar a sequencia definida no backend. Quando nao ha
-  // tableFields, o board fica identico ao comportamento anterior (so builtin).
-  const customColumns = (tableFields?.columns ?? [])
-    .map(tableColumnToColumnDef)
-    .sort((a, b) => a.order - b.order);
+  // Desde ADR-V2-056, `tableFields` e a fonte unica das colunas da Lista.
+  // O fallback preserva o comportamento anterior quando o backend ainda nao
+  // devolve schema algum.
+  const tableFieldColumns = tableFields?.columns ?? [];
+  const columns =
+    tableFieldColumns.length > 0
+      ? tableFieldColumns.map(tableColumnToColumnDef).sort((a, b) => a.order - b.order)
+      : BACKEND_COLUMNS;
 
-  return { columns: [...BACKEND_COLUMNS, ...customColumns], groups };
+  return { columns, groups };
 }
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */

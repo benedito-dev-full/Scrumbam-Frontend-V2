@@ -135,6 +135,8 @@ export function applyReorderColumns(
   orderedKeys: string[],
 ): TableFieldsDto {
   const schema = toSchema(tableFields);
+  // `orderedKeys` representa a ordem completa enviada pela tabela (builtin +
+  // custom). Chaves ausentes/desconhecidas ficam em ordem estavel ao final.
   const rank = new Map(orderedKeys.map((key, index) => [key, index]));
 
   const columns = schema.columns
