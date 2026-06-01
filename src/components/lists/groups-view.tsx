@@ -1739,7 +1739,10 @@ function HeadRow({
         ) : (
           headerCells
         )}
-        <th style={th}>
+        {/* Coluna do "+" — alinhada a ESQUERDA (igual a sub-tabela) para o
+            botao colar logo apos a ultima coluna; a coluna estica ate a borda
+            absorvendo o espaco livre, sem deixar vao destacado no meio. */}
+        <th style={{ ...th, textAlign: "left" }}>
           {onAddColumn && <AddColumnButton onAddColumn={onAddColumn} />}
         </th>
       </tr>
