@@ -1392,6 +1392,10 @@ function GroupsBoardView({
 const W_CHECK = 36;
 const W_NOME = 360;
 const W_DEFAULT = 150;
+/** Largura minima reservada para a coluna "+" (auto). Garante que ela nunca
+ *  colapse para 0px quando a tabela transborda (ex.: zoom alto encolhe o
+ *  container abaixo do minWidth e nao sobra espaco para a coluna auto). */
+const W_PLUS = 48;
 
 /** Largura da coluna de nome da subtarefa. */
 const W_SUBTASK_NOME = 280;
@@ -1537,7 +1541,12 @@ function GroupBox({
   // borda. Quando a soma ultrapassa o container, surge scroll horizontal
   // (tableLayout fixed respeita as <col>); quando ha poucas colunas, a tabela
   // estica ate 100% e o "+" estica junto, colado na ultima coluna (Monday).
-  const tableMinWidth = W_CHECK + columns.reduce((s, c) => s + colWidth(c), 0);
+  // Reserva W_PLUS para a coluna "+": no overflow (container < soma das colunas)
+  // o minWidth garante esse naco extra, entao a <col> auto recebe ao menos
+  // W_PLUS em vez de colapsar para 0px. Com espaco sobrando, a coluna "+"
+  // continua esticando normalmente (Monday) — o minWidth so atua no aperto.
+  const tableMinWidth =
+    W_CHECK + columns.reduce((s, c) => s + colWidth(c), 0) + W_PLUS;
 
   return (
     <section>
