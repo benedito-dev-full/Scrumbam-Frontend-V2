@@ -134,7 +134,11 @@ export function applyReorderColumns(
   tableFields: TableFieldsDto | null | undefined,
   orderedKeys: string[],
 ): TableFieldsDto {
-  const schema = toSchema(tableFields);
+  // NAO usar toSchema/normalizeSchema aqui: ambos re-sortam por `column.order`
+  // (o ANTIGO), o que embaralharia a base ANTES de aplicar a nova ordem e
+  // desfaria o reorder (bug que reaparecia com fixas+custom materializadas).
+  // O `rank` por key define a ordem sozinho — partimos das colunas como estao.
+  const schema: TableFieldsDto = tableFields ?? { version: 1, columns: [] };
   // `orderedKeys` representa a ordem completa enviada pela tabela (builtin +
   // custom). Chaves ausentes/desconhecidas ficam em ordem estavel ao final.
   const rank = new Map(orderedKeys.map((key, index) => [key, index]));
