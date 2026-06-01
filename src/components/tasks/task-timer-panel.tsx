@@ -118,7 +118,9 @@ export function TaskTimerPanel({
 
       {/* Controles */}
       <div className="flex items-center gap-2">
-        {!running && (
+        {/* "Iniciar" só quando não há tempo acumulado — caso contrário o botão
+            "Retomar" (abaixo) cobre o caso e os dois seriam redundantes (M2). */}
+        {!running && displayMs === 0 && (
           <button
             type="button"
             disabled={isPending}
