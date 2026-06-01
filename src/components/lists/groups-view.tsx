@@ -617,18 +617,26 @@ export function GroupsView({
   projectId,
   onOpenTask,
   filters,
+  subtarefasMode,
 }: {
   projectId: string;
   /** Abre a TaskSheet compartilhada para o `taskId` (resolvido no caller). */
   onOpenTask?: (taskId: string) => void;
   /** Filtros compartilhados da toolbar — aplicados ao board (mesma fonte). */
   filters?: TaskFilters;
+  /**
+   * Modo de exibição das subtarefas vindo da toolbar (paridade com a Lista).
+   * "expandidas" abre todas as linhas; "recolhidas" fecha. "separar" não tem
+   * efeito nesta view (reservado).
+   */
+  subtarefasMode?: SubtarefasMode;
 }) {
   return (
     <BackendGroupsView
       projectId={projectId}
       onOpenTask={onOpenTask}
       filters={filters}
+      subtarefasMode={subtarefasMode}
     />
   );
 }
@@ -650,12 +658,15 @@ function BackendGroupsView({
   projectId,
   onOpenTask,
   filters,
+  subtarefasMode,
 }: {
   projectId: string;
   /** Abre a TaskSheet compartilhada para o `taskId` (resolvido no caller). */
   onOpenTask?: (taskId: string) => void;
   /** Filtros compartilhados da toolbar — aplicados ao board. */
   filters?: TaskFilters;
+  /** Modo de exibição de subtarefas (toolbar) — propagado às linhas. */
+  subtarefasMode?: SubtarefasMode;
 }) {
   const { data: blocks = [], isLoading: loadingBlocks } = useBlocks(projectId);
   const { data: tasks = [], isLoading: loadingTasks } =
@@ -1154,6 +1165,7 @@ function BackendGroupsView({
         savingTaskId={savingTaskId}
         savingGroupId={savingGroupId}
         projectId={projectId}
+        subtarefasMode={subtarefasMode}
         onOpenTask={onOpenTask}
         onEditField={handleEditField}
         onRenameGroup={handleRenameGroup}
@@ -1207,6 +1219,9 @@ function BackendGroupsView({
 
 /** Coluna sintetica do titulo da tarefa (builtin). Editavel no backend. */
 const NOME_KEY = "__nome";
+
+/** Modo de exibição de subtarefas (compartilhado com a toolbar da Lista). */
+type SubtarefasMode = "recolhidas" | "expandidas" | "separar";
 
 type AddColumnHandler = (type: ColumnType, label: string) => void;
 type RenameColumnHandler = (key: string, label: string) => void;
@@ -1283,6 +1298,7 @@ function GroupsBoardView({
   savingTaskId,
   savingGroupId,
   projectId,
+  subtarefasMode,
   onOpenTask,
   onEditField,
   onRenameGroup,
@@ -1306,6 +1322,8 @@ function GroupsBoardView({
   savingGroupId?: string | null;
   /** ID do projeto — quando presente, habilita subtarefas inline nos grupos. */
   projectId?: string;
+  /** Modo de exibição de subtarefas (toolbar) — propagado às linhas. */
+  subtarefasMode?: SubtarefasMode;
   /** Abre a TaskSheet compartilhada para o `taskId`. */
   onOpenTask?: (taskId: string) => void;
   onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
@@ -1394,6 +1412,7 @@ function GroupsBoardView({
               savingTaskId={savingTaskId}
               savingGroup={savingGroupId === g.id}
               projectId={projectId}
+              subtarefasMode={subtarefasMode}
               onOpenTask={onOpenTask}
               onEditField={onEditField}
               onRenameGroup={onRenameGroup}
@@ -1485,6 +1504,7 @@ function GroupBox({
   savingTaskId,
   savingGroup,
   projectId,
+  subtarefasMode,
   onOpenTask,
   onEditField,
   onRenameGroup,
@@ -1510,6 +1530,8 @@ function GroupBox({
   savingGroup?: boolean;
   /** ID do projeto — quando presente, habilita subtarefas inline. */
   projectId?: string;
+  /** Modo de exibição de subtarefas (toolbar) — propagado às linhas. */
+  subtarefasMode?: SubtarefasMode;
   /** Abre a TaskSheet compartilhada para o `taskId`. */
   onOpenTask?: (taskId: string) => void;
   onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
@@ -1815,6 +1837,7 @@ function GroupBox({
                     members={members}
                     saving={savingTaskId === t.id}
                     projectId={projectId}
+                    subtarefasMode={subtarefasMode}
                     groupColor={group.cor}
                     subtaskColSpan={columns.length + 2}
                     onOpenTask={onOpenTask}
@@ -2800,6 +2823,7 @@ function TaskRow({
   members,
   saving,
   projectId,
+  subtarefasMode,
   groupColor,
   subtaskColSpan,
   onOpenTask,
@@ -2812,6 +2836,8 @@ function TaskRow({
   saving?: boolean;
   /** ID do projeto — quando presente, habilita o caret e subtarefas inline. */
   projectId?: string;
+  /** Modo de exibição de subtarefas (toolbar) — controla expandir/recolher. */
+  subtarefasMode?: SubtarefasMode;
   /** Cor do grupo pai — passada para a borda esquerda da sub-tabela. */
   groupColor?: string;
   /** colSpan total da linha de expansao (columns.length + 2). */
@@ -2830,6 +2856,20 @@ function TaskRow({
   // No modo backend com projectId, qualquer task pode receber filhas —
   // o caret fica visivel no hover mesmo sem filhas (igual Monday).
   const showCaret = !!projectId;
+
+  // Reage ao controle "Mostrar subtarefas" da toolbar (paridade com a Lista),
+  // ajustando o estado DURANTE a render quando o modo muda — padrão sem
+  // useEffect (evita cascata). "expandidas" abre linhas COM filhas (não dispara
+  // useSubtasks a toa); "recolhidas" fecha tudo; "separar" não interfere.
+  const [syncedMode, setSyncedMode] = useState(subtarefasMode);
+  if (syncedMode !== subtarefasMode) {
+    setSyncedMode(subtarefasMode);
+    if (subtarefasMode === "expandidas") {
+      if (hasChildren) setExpanded(true);
+    } else if (subtarefasMode === "recolhidas") {
+      setExpanded(false);
+    }
+  }
 
   const td: React.CSSProperties = {
     padding: "0 8px",

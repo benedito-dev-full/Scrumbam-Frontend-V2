@@ -256,6 +256,7 @@ export default function ListPage({
         <GroupsView
           projectId={id}
           filters={filters}
+          subtarefasMode={subtarefasMode}
           onOpenTask={(taskId) => {
             const found = tasks.find((t) => t.id === taskId);
             if (found) setSelectedTask(found);
