@@ -230,20 +230,22 @@ export default function ListPage({
           onOpenTask={setSelectedTask}
         />
       ) : view === "calendar" ? (
-        <CalendarView
-          tasks={tasksWithoutBlocks}
-          onOpenTask={setSelectedTask}
-        />
+        <CalendarView tasks={tasksWithoutBlocks} onOpenTask={setSelectedTask} />
       ) : view === "gantt" ? (
-        <GanttView
-          tasks={tasksWithoutBlocks}
-          onOpenTask={setSelectedTask}
-        />
+        <GanttView tasks={tasksWithoutBlocks} onOpenTask={setSelectedTask} />
       ) : (
         // Aba "Blocos" — novo conceito de Blocos: visualizacao de Grupos
         // (estilo Monday) integrada ao backend. Cada Bloco vira um grupo;
         // tasks sem bloco caem em "Sem bloco". Read-only nesta v1.
-        <GroupsView projectId={id} />
+        // onOpenTask: resolve o taskId (mesma fonte useTasksByProject) e abre a
+        // TaskSheet compartilhada — paridade com Lista/Quadro/Calendário/Gantt.
+        <GroupsView
+          projectId={id}
+          onOpenTask={(taskId) => {
+            const found = tasks.find((t) => t.id === taskId);
+            if (found) setSelectedTask(found);
+          }}
+        />
       )}
       <TaskSheet task={selectedTask} onClose={() => setSelectedTask(null)} />
       <CreateTaskModal

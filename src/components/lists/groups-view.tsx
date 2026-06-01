@@ -34,6 +34,7 @@ import {
   ArrowRight,
   Sparkles,
   X,
+  Maximize2,
 } from "lucide-react";
 import {
   DndContext,
@@ -102,7 +103,9 @@ function getErrorStatus(error: unknown): number | undefined {
     return undefined;
   }
 
-  const response = (error as { response?: { status?: number; data?: { statusCode?: number } } }).response;
+  const response = (
+    error as { response?: { status?: number; data?: { statusCode?: number } } }
+  ).response;
   return response?.status ?? response?.data?.statusCode;
 }
 
@@ -369,7 +372,14 @@ function SelectionActionBar({
       <ActionBtn icon={<Sparkles size={16} />} label="Sidekick" />
 
       {/* Divisor + fechar */}
-      <span style={{ width: 1, height: 28, background: "var(--border)", margin: "0 4px" }} />
+      <span
+        style={{
+          width: 1,
+          height: 28,
+          background: "var(--border)",
+          margin: "0 4px",
+        }}
+      />
       <button
         type="button"
         onClick={onClose}
@@ -386,7 +396,9 @@ function SelectionActionBar({
           color: "var(--muted-foreground)",
           cursor: "pointer",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
+        onMouseEnter={(e) =>
+          (e.currentTarget.style.background = "var(--accent)")
+        }
         onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
       >
         <X size={18} />
@@ -514,7 +526,9 @@ function MoveTargetList({
   };
 
   return (
-    <div style={{ padding: 6, minWidth: 220, maxHeight: 320, overflowY: "auto" }}>
+    <div
+      style={{ padding: 6, minWidth: 220, maxHeight: 320, overflowY: "auto" }}
+    >
       {kind === "maes" ? (
         <>
           <p style={header}>Mover para bloco</p>
@@ -524,7 +538,9 @@ function MoveTargetList({
               type="button"
               onClick={() => onPickBlock(b.id)}
               style={itemStyle}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = "var(--accent)")
+              }
               onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
             >
               {b.nome}
@@ -535,7 +551,9 @@ function MoveTargetList({
             type="button"
             onClick={() => onPickBlock(null)}
             style={{ ...itemStyle, color: "var(--muted-foreground)" }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.background = "var(--accent)")
+            }
             onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
           >
             Sem bloco
@@ -545,7 +563,13 @@ function MoveTargetList({
         <>
           <p style={header}>Mover para tarefa-mãe</p>
           {parentTargets.length === 0 ? (
-            <div style={{ padding: "8px 10px", fontSize: 12, color: "var(--muted-foreground)" }}>
+            <div
+              style={{
+                padding: "8px 10px",
+                fontSize: 12,
+                color: "var(--muted-foreground)",
+              }}
+            >
               Nenhuma outra tarefa-mãe disponível.
             </div>
           ) : (
@@ -555,8 +579,12 @@ function MoveTargetList({
                 type="button"
                 onClick={() => onPickParent(p.id)}
                 style={itemStyle}
-                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--accent)")}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = "var(--accent)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = "none")
+                }
               >
                 {p.nome}
               </button>
@@ -578,8 +606,15 @@ function MoveTargetList({
  * @example
  * <GroupsView projectId={listId} />
  */
-export function GroupsView({ projectId }: { projectId: string }) {
-  return <BackendGroupsView projectId={projectId} />;
+export function GroupsView({
+  projectId,
+  onOpenTask,
+}: {
+  projectId: string;
+  /** Abre a TaskSheet compartilhada para o `taskId` (resolvido no caller). */
+  onOpenTask?: (taskId: string) => void;
+}) {
+  return <BackendGroupsView projectId={projectId} onOpenTask={onOpenTask} />;
 }
 
 /* ─── Modo backend ───────────────────────────────────────────────────────── */
@@ -595,7 +630,14 @@ export function GroupsView({ projectId }: { projectId: string }) {
  * "Adicionar tarefa" cria uma task vinculada via `dados.idBloco`
  * (`useCreateTask`). Tasks sem bloco caem no grupo "Sem bloco".
  */
-function BackendGroupsView({ projectId }: { projectId: string }) {
+function BackendGroupsView({
+  projectId,
+  onOpenTask,
+}: {
+  projectId: string;
+  /** Abre a TaskSheet compartilhada para o `taskId` (resolvido no caller). */
+  onOpenTask?: (taskId: string) => void;
+}) {
   const { data: blocks = [], isLoading: loadingBlocks } = useBlocks(projectId);
   const { data: tasks = [], isLoading: loadingTasks } =
     useTasksByProject(projectId);
@@ -679,7 +721,9 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   function handleDeleteSelected() {
     const ids = [...selectedIds];
     if (ids.length === 0) return;
-    const parentById = new Map(realTasks.map((t) => [t.id, t.idPai ?? undefined]));
+    const parentById = new Map(
+      realTasks.map((t) => [t.id, t.idPai ?? undefined]),
+    );
 
     /** True se algum ancestral de `id` tambem esta selecionado. */
     function hasSelectedAncestor(id: string): boolean {
@@ -800,13 +844,14 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
    * `dados.idBloco`; para o grupo sintetico "Sem bloco", cria solta.
    */
   function handleAddTask(groupId: string) {
-    const dados =
-      groupId === SEM_BLOCO_ID ? undefined : { idBloco: groupId };
+    const dados = groupId === SEM_BLOCO_ID ? undefined : { idBloco: groupId };
     createTask.mutate({ titulo: "Nova tarefa", idProject: projectId, dados });
   }
 
   function invalidateProjectTasks(taskId?: string) {
-    void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
+    void queryClient.invalidateQueries({
+      queryKey: qk.tasks.byProject(projectId),
+    });
     if (taskId) {
       void queryClient.invalidateQueries({ queryKey: qk.tasks.byId(taskId) });
     }
@@ -852,21 +897,32 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
   async function handleAddColumn(type: ColumnType, label: string) {
     const latestProject = await getFreshListProject();
     if (!latestProject) return;
-    const tableFields = applyAddColumn(latestProject.tableFields ?? null, type, label);
+    const tableFields = applyAddColumn(
+      latestProject.tableFields ?? null,
+      type,
+      label,
+    );
     updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
   }
 
   async function handleRenameColumn(key: string, label: string) {
     const latestProject = await getFreshListProject();
     if (!latestProject) return;
-    const tableFields = applyRenameColumn(latestProject.tableFields ?? null, key, label);
+    const tableFields = applyRenameColumn(
+      latestProject.tableFields ?? null,
+      key,
+      label,
+    );
     updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
   }
 
   async function handleRemoveColumn(key: string) {
     const latestProject = await getFreshListProject();
     if (!latestProject) return;
-    const tableFields = applyRemoveColumn(latestProject.tableFields ?? null, key);
+    const tableFields = applyRemoveColumn(
+      latestProject.tableFields ?? null,
+      key,
+    );
     updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
   }
 
@@ -882,7 +938,10 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
    */
   function handleReorderColumn(orderedKeys: string[]) {
     if (project?.idClasse !== ID_CLASSE_LIST) return;
-    const tableFields = applyReorderColumns(project?.tableFields ?? null, orderedKeys);
+    const tableFields = applyReorderColumns(
+      project?.tableFields ?? null,
+      orderedKeys,
+    );
     updateTableFields.mutate(tableFields, { onError: handleTableFieldsError });
   }
 
@@ -891,7 +950,11 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
    * DTO de update e dispara a mutation; o `savingTaskId` segura o spinner ate
    * a invalidacao trazer o valor confirmado (feedback conservador).
    */
-  function handleEditField(taskId: string, columnKey: string, value: FieldValue) {
+  function handleEditField(
+    taskId: string,
+    columnKey: string,
+    value: FieldValue,
+  ) {
     // Status vai por outro endpoint (PUT /tasks/:id/status) e por isso e
     // tratado a parte. A celula ja garante: nao chama se VALIDATED (terminal)
     // nem se a pilula escolhida e a mesma (preserva estado V3 fino). Aqui so
@@ -990,7 +1053,10 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
     return (
       <div
         className="grid flex-1 place-items-center p-8 text-sm"
-        style={{ background: "var(--background)", color: "var(--muted-foreground)" }}
+        style={{
+          background: "var(--background)",
+          color: "var(--muted-foreground)",
+        }}
       >
         Carregando blocos...
       </div>
@@ -999,7 +1065,11 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
 
   return (
     <SelectionContext.Provider
-      value={{ selectedIds, toggle: toggleSelect, toggleMany: toggleSelectGroup }}
+      value={{
+        selectedIds,
+        toggle: toggleSelect,
+        toggleMany: toggleSelectGroup,
+      }}
     >
       <GroupsBoardView
         board={board}
@@ -1008,6 +1078,7 @@ function BackendGroupsView({ projectId }: { projectId: string }) {
         savingTaskId={savingTaskId}
         savingGroupId={savingGroupId}
         projectId={projectId}
+        onOpenTask={onOpenTask}
         onEditField={handleEditField}
         onRenameGroup={handleRenameGroup}
         onRecolorGroup={handleRecolorGroup}
@@ -1066,7 +1137,13 @@ const noopFieldChange = () => {};
  * para manter consistencia visual com as pills do pai.
  */
 const SUBTASK_COLUMNS: ColumnDef[] = [
-  { key: "__nome", type: "text", label: "Subelemento", order: 0, builtin: true },
+  {
+    key: "__nome",
+    type: "text",
+    label: "Subelemento",
+    order: 0,
+    builtin: true,
+  },
   { key: "responsavel", type: "person", label: "Resp.", order: 1 },
   {
     key: "status",
@@ -1077,7 +1154,6 @@ const SUBTASK_COLUMNS: ColumnDef[] = [
   },
   { key: "dueDate", type: "date", label: "Data", order: 3 },
 ];
-
 
 /**
  * @param readOnly - Mantem a tabela em leitura por padrao. No modo backend e
@@ -1104,6 +1180,7 @@ function GroupsBoardView({
   savingTaskId,
   savingGroupId,
   projectId,
+  onOpenTask,
   onEditField,
   onRenameGroup,
   onRecolorGroup,
@@ -1121,6 +1198,8 @@ function GroupsBoardView({
   savingGroupId?: string | null;
   /** ID do projeto — quando presente, habilita subtarefas inline nos grupos. */
   projectId?: string;
+  /** Abre a TaskSheet compartilhada para o `taskId`. */
+  onOpenTask?: (taskId: string) => void;
   onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
   onRenameGroup?: (groupId: string, nome: string) => void;
   /** Altera a cor do bloco. Quando presente, o header mostra o seletor de cor. */
@@ -1201,6 +1280,7 @@ function GroupsBoardView({
               savingTaskId={savingTaskId}
               savingGroup={savingGroupId === g.id}
               projectId={projectId}
+              onOpenTask={onOpenTask}
               onEditField={onEditField}
               onRenameGroup={onRenameGroup}
               onRecolorGroup={onRecolorGroup}
@@ -1282,6 +1362,7 @@ function GroupBox({
   savingTaskId,
   savingGroup,
   projectId,
+  onOpenTask,
   onEditField,
   onRenameGroup,
   onRecolorGroup,
@@ -1301,6 +1382,8 @@ function GroupBox({
   savingGroup?: boolean;
   /** ID do projeto — quando presente, habilita subtarefas inline. */
   projectId?: string;
+  /** Abre a TaskSheet compartilhada para o `taskId`. */
+  onOpenTask?: (taskId: string) => void;
   onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
   onRenameGroup?: (groupId: string, nome: string) => void;
   onRecolorGroup?: (groupId: string, cor: string) => void;
@@ -1384,13 +1467,19 @@ function GroupBox({
   // borda. Quando a soma ultrapassa o container, surge scroll horizontal
   // (tableLayout fixed respeita as <col>); quando ha poucas colunas, a tabela
   // estica ate 100% e o "+" estica junto, colado na ultima coluna (Monday).
-  const tableMinWidth =
-    W_CHECK + columns.reduce((s, c) => s + colWidth(c), 0);
+  const tableMinWidth = W_CHECK + columns.reduce((s, c) => s + colWidth(c), 0);
 
   return (
     <section>
       {/* cabecalho do grupo */}
-      <header style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+      <header
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginBottom: 8,
+        }}
+      >
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -1444,7 +1533,13 @@ function GroupBox({
           return <span style={titleStyle}>{group.nome}</span>;
         })()}
 
-        <span style={{ fontSize: 12, color: "var(--muted-foreground)", marginLeft: 2 }}>
+        <span
+          style={{
+            fontSize: 12,
+            color: "var(--muted-foreground)",
+            marginLeft: 2,
+          }}
+        >
           {(() => {
             // Contador descritivo estilo Monday: "N Tarefas / M subelementos".
             // `childCount` vem de buildGroupsBoard (soma das filhas diretas de
@@ -1462,7 +1557,13 @@ function GroupBox({
         </span>
 
         {group.periodo && (
-          <span style={{ marginLeft: "auto", fontSize: 12, color: "var(--muted-foreground)" }}>
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+            }}
+          >
             {group.periodo}
           </span>
         )}
@@ -1489,50 +1590,65 @@ function GroupBox({
             collisionDetection={closestCenter}
             onDragEnd={handleColumnDragEnd}
           >
-          <table style={{ width: "100%", minWidth: tableMinWidth, borderCollapse: "collapse", tableLayout: "fixed" }}>
-            <colgroup>
-              <col style={{ width: W_CHECK }} />
-              {columns.map((c) => (
-                <col key={c.key} style={{ width: colWidth(c) }} />
-              ))}
-              {/* coluna do "+" SEM largura (auto puro, igual a sub-tabela):
+            <table
+              style={{
+                width: "100%",
+                minWidth: tableMinWidth,
+                borderCollapse: "collapse",
+                tableLayout: "fixed",
+              }}
+            >
+              <colgroup>
+                <col style={{ width: W_CHECK }} />
+                {columns.map((c) => (
+                  <col key={c.key} style={{ width: colWidth(c) }} />
+                ))}
+                {/* coluna do "+" SEM largura (auto puro, igual a sub-tabela):
                   absorve TODO o espaco restante ate a borda direita, fazendo o
                   "+" ser a ultima coluna que se estica (estilo Monday). Reservar
                   minWidth aqui criava uma "meia coluna" sobrando. */}
-              <col />
-            </colgroup>
+                <col />
+              </colgroup>
 
-            <HeadRow
-              columns={columns}
-              groupTaskIds={group.tasks.map((t) => t.id)}
-              reorderableKeys={reorderable ? columnKeys : undefined}
-              onAddColumn={onAddColumn}
-              onRenameColumn={onRenameColumn}
-              onRemoveColumn={onRemoveColumn}
-            />
+              <HeadRow
+                columns={columns}
+                groupTaskIds={group.tasks.map((t) => t.id)}
+                reorderableKeys={reorderable ? columnKeys : undefined}
+                onAddColumn={onAddColumn}
+                onRenameColumn={onRenameColumn}
+                onRemoveColumn={onRemoveColumn}
+              />
 
-            <tbody>
-              {group.tasks.map((t) => (
-                <TaskRow
-                  key={t.id}
-                  task={t}
-                  columns={columns}
-                  readOnly={readOnly}
-                  members={members}
-                  saving={savingTaskId === t.id}
-                  projectId={projectId}
-                  groupColor={group.cor}
-                  subtaskColSpan={columns.length + 2}
-                  onEditField={onEditField}
-                />
-              ))}
-              {onAddTask && (
-                <AddTaskRow colSpan={columns.length + 2} onAdd={() => onAddTask(group.id)} />
-              )}
-            </tbody>
+              <tbody>
+                {group.tasks.map((t) => (
+                  <TaskRow
+                    key={t.id}
+                    task={t}
+                    columns={columns}
+                    readOnly={readOnly}
+                    members={members}
+                    saving={savingTaskId === t.id}
+                    projectId={projectId}
+                    groupColor={group.cor}
+                    subtaskColSpan={columns.length + 2}
+                    onOpenTask={onOpenTask}
+                    onEditField={onEditField}
+                  />
+                ))}
+                {onAddTask && (
+                  <AddTaskRow
+                    colSpan={columns.length + 2}
+                    onAdd={() => onAddTask(group.id)}
+                  />
+                )}
+              </tbody>
 
-            <FooterRow columns={columns} tasks={group.tasks} totalSp={totalSp} />
-          </table>
+              <FooterRow
+                columns={columns}
+                tasks={group.tasks}
+                totalSp={totalSp}
+              />
+            </table>
           </DndContext>
         </div>
       )}
@@ -1590,7 +1706,8 @@ function GroupColorPicker({
           width: 14,
           height: 14,
           borderRadius: 4,
-          border: "1px solid color-mix(in srgb, var(--foreground) 20%, transparent)",
+          border:
+            "1px solid color-mix(in srgb, var(--foreground) 20%, transparent)",
           background: color,
           cursor: disabled ? "default" : "pointer",
           flexShrink: 0,
@@ -1624,7 +1741,9 @@ function GroupColorPicker({
                     height: 22,
                     borderRadius: 6,
                     background: c,
-                    border: selected ? "2px solid var(--foreground)" : "1px solid transparent",
+                    border: selected
+                      ? "2px solid var(--foreground)"
+                      : "1px solid transparent",
                     cursor: "pointer",
                     padding: 0,
                     display: "inline-grid",
@@ -1743,7 +1862,10 @@ function HeadRow({
           </span>
         </th>
         {reorderable ? (
-          <SortableContext items={reorderableKeys!} strategy={horizontalListSortingStrategy}>
+          <SortableContext
+            items={reorderableKeys!}
+            strategy={horizontalListSortingStrategy}
+          >
             {headerCells}
           </SortableContext>
         ) : (
@@ -1874,7 +1996,10 @@ function ColumnHeader({
     : {};
 
   return (
-    <th ref={sortable ? setNodeRef : undefined} style={{ ...thStyle, ...dragStyle }}>
+    <th
+      ref={sortable ? setNodeRef : undefined}
+      style={{ ...thStyle, ...dragStyle }}
+    >
       <button
         ref={ref}
         type="button"
@@ -1896,14 +2021,28 @@ function ColumnHeader({
         }}
         title="Editar coluna"
       >
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <span
+          style={{
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
           {column.label}
         </span>
       </button>
       {menu && (
         <Popover anchorRef={ref} onClose={() => setMenu(false)}>
           <div style={{ padding: 8, minWidth: 200 }}>
-            <p style={{ margin: "0 0 6px", fontSize: 10, letterSpacing: ".5px", textTransform: "uppercase", color: "var(--muted-foreground)" }}>
+            <p
+              style={{
+                margin: "0 0 6px",
+                fontSize: 10,
+                letterSpacing: ".5px",
+                textTransform: "uppercase",
+                color: "var(--muted-foreground)",
+              }}
+            >
               {COLUMN_TYPE_LABEL[column.type]}
             </p>
             <input
@@ -2000,7 +2139,14 @@ function AddColumnButton({ onAddColumn }: { onAddColumn: AddColumnHandler }) {
       {menu && (
         <Popover anchorRef={ref} onClose={() => setMenu(false)} align="right">
           <div style={{ padding: 10, minWidth: 240 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "var(--foreground)" }}>
+            <p
+              style={{
+                margin: "0 0 8px",
+                fontSize: 11,
+                fontWeight: 600,
+                color: "var(--foreground)",
+              }}
+            >
               Nova coluna
             </p>
             <input
@@ -2014,7 +2160,14 @@ function AddColumnButton({ onAddColumn }: { onAddColumn: AddColumnHandler }) {
               placeholder="Nome da coluna…"
               style={inputStyle}
             />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, margin: "8px 0" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 4,
+                margin: "8px 0",
+              }}
+            >
               {(Object.keys(COLUMN_TYPE_LABEL) as ColumnType[]).map((t) => {
                 const Icon = TYPE_ICON[t];
                 const active = type === t;
@@ -2030,9 +2183,15 @@ function AddColumnButton({ onAddColumn }: { onAddColumn: AddColumnHandler }) {
                       height: 30,
                       padding: "0 8px",
                       borderRadius: 6,
-                      border: active ? "1px solid #7c5cff" : "1px solid var(--border)",
-                      background: active ? "rgba(124,92,255,0.12)" : "transparent",
-                      color: active ? "var(--foreground)" : "var(--muted-foreground)",
+                      border: active
+                        ? "1px solid #7c5cff"
+                        : "1px solid var(--border)",
+                      background: active
+                        ? "rgba(124,92,255,0.12)"
+                        : "transparent",
+                      color: active
+                        ? "var(--foreground)"
+                        : "var(--muted-foreground)",
                       fontSize: 12,
                       cursor: "pointer",
                       textAlign: "left",
@@ -2079,6 +2238,7 @@ function TaskRow({
   projectId,
   groupColor,
   subtaskColSpan,
+  onOpenTask,
   onEditField,
 }: {
   task: TaskModel;
@@ -2092,6 +2252,8 @@ function TaskRow({
   groupColor?: string;
   /** colSpan total da linha de expansao (columns.length + 2). */
   subtaskColSpan?: number;
+  /** Abre a TaskSheet compartilhada para esta task (gatilho dedicado). */
+  onOpenTask?: (taskId: string) => void;
   onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
 }) {
   const [hover, setHover] = useState(false);
@@ -2119,7 +2281,10 @@ function TaskRow({
 
   return (
     <React.Fragment>
-      <tr onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <tr
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+      >
         <td style={{ ...td, padding: 0, textAlign: "center" }}>
           {selection ? (
             <Checkbox
@@ -2143,13 +2308,24 @@ function TaskRow({
               ...(saving ? { opacity: 0.5, pointerEvents: "none" } : {}),
             };
             return (
-              <td key={c.key} style={{ ...td, fontWeight: 500, borderRight: last ? "1px solid var(--border)" : td.borderRight }}>
+              <td
+                key={c.key}
+                style={{
+                  ...td,
+                  fontWeight: 500,
+                  borderRight: last
+                    ? "1px solid var(--border)"
+                    : td.borderRight,
+                }}
+              >
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   {/* Caret de expansao de subtarefas — visivel no hover ou quando ha filhas */}
                   {showCaret && (
                     <button
                       type="button"
-                      aria-label={expanded ? "Recolher subtarefas" : "Expandir subtarefas"}
+                      aria-label={
+                        expanded ? "Recolher subtarefas" : "Expandir subtarefas"
+                      }
                       onClick={() => setExpanded((v) => !v)}
                       style={{
                         display: "inline-flex",
@@ -2167,10 +2343,11 @@ function TaskRow({
                         padding: 0,
                       }}
                     >
-                      {expanded
-                        ? <ChevronDown size={13} strokeWidth={2.5} />
-                        : <ChevronRight size={13} strokeWidth={2.5} />
-                      }
+                      {expanded ? (
+                        <ChevronDown size={13} strokeWidth={2.5} />
+                      ) : (
+                        <ChevronRight size={13} strokeWidth={2.5} />
+                      )}
                     </button>
                   )}
                   {/* Contador de filhas quando recolhido */}
@@ -2187,7 +2364,15 @@ function TaskRow({
                       ({task.childCount})
                     </span>
                   )}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, overflow: "hidden" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      flex: 1,
+                      overflow: "hidden",
+                    }}
+                  >
                     {onEditField ? (
                       // Backend: edita o titulo via onEditField (feedback conservador).
                       <EditableText
@@ -2211,6 +2396,50 @@ function TaskRow({
                       </span>
                     ) : null}
                   </div>
+                  {/* Botão "Abrir" — gatilho DEDICADO da TaskSheet (hover).
+                      `onPointerDown` com stopPropagation garante que jamais
+                      inicie um drag (coluna/linha); `onClick` com stopPropagation
+                      evita disparar o editor de título da célula. Zero conflito. */}
+                  {onOpenTask && (
+                    <button
+                      type="button"
+                      aria-label="Abrir detalhes"
+                      title="Abrir detalhes"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenTask(task.id);
+                      }}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        flexShrink: 0,
+                        height: 22,
+                        padding: "0 8px",
+                        borderRadius: 6,
+                        border: "1px solid var(--border)",
+                        background: "var(--card)",
+                        color: "var(--muted-foreground)",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        opacity: hover ? 1 : 0,
+                        transition: "opacity .1s, color .1s, border-color .1s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "#7c5cff";
+                        e.currentTarget.style.borderColor = "#7c5cff";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "var(--muted-foreground)";
+                        e.currentTarget.style.borderColor = "var(--border)";
+                      }}
+                    >
+                      <Maximize2 size={12} />
+                      Abrir
+                    </button>
+                  )}
                   {/* Botão "+" de adicionar subtarefa — estilo Monday: círculo
                       destacado ao lado do nome. Expande a sub-tabela do pai.
                       Só no modo backend (showCaret). */}
@@ -2249,6 +2478,59 @@ function TaskRow({
                     </button>
                   )}
                 </div>
+              </td>
+            );
+          }
+          // Identificador (ex: DEV-94) — gatilho SECUNDARIO de abertura. É
+          // texto read-only, logo clicar nele nunca conflita com editor inline.
+          // stopPropagation no pointerDown evita iniciar drag.
+          if (c.key === "identifier" && onOpenTask) {
+            const idValue = task.fields["identifier"];
+            const idLabel =
+              typeof idValue === "string" && idValue.length > 0
+                ? idValue
+                : null;
+            return (
+              <td
+                key={c.key}
+                style={{
+                  ...td,
+                  borderRight: last
+                    ? "1px solid var(--border)"
+                    : td.borderRight,
+                }}
+              >
+                {idLabel ? (
+                  <button
+                    type="button"
+                    title="Abrir detalhes"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenTask(task.id);
+                    }}
+                    style={{
+                      background: "none",
+                      border: 0,
+                      padding: 0,
+                      font: "inherit",
+                      fontFamily: "monospace",
+                      fontSize: 12,
+                      color: "var(--muted-foreground)",
+                      cursor: "pointer",
+                      textDecorationLine: hover ? "underline" : "none",
+                      transition: "color .1s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "#7c5cff";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "var(--muted-foreground)";
+                    }}
+                  >
+                    {idLabel}
+                  </button>
+                ) : null}
               </td>
             );
           }
@@ -2479,39 +2761,35 @@ function SubtaskTable({
         <SubtaskHeadRow />
 
         <tbody>
-          {isLoading ? (
-            /* Skeleton de carregamento — 3 linhas cinza enquanto fetch */
-            Array.from({ length: 3 }).map((_, i) => (
-              <tr key={`sk-${i}`}>
-                <td colSpan={6} style={{ height: 34, padding: "4px 8px" }}>
-                  <div
-                    style={{
-                      height: 18,
-                      borderRadius: 4,
-                      background: "color-mix(in srgb, var(--muted-foreground) 15%, transparent)",
-                      width: `${60 + i * 15}%`,
-                    }}
-                  />
-                </td>
-              </tr>
-            ))
-          ) : (
-            subtasks.map((sub) => (
-              <SubtaskTaskRow
-                key={sub.id}
-                subtask={sub}
-                projectId={projectId}
-                members={members}
-                savingId={savingId}
-                onSavingChange={setSavingId}
-                parentId={parentId}
-              />
-            ))
-          )}
-          <AddSubtaskRow
-            parentId={parentId}
-            projectId={projectId}
-          />
+          {isLoading
+            ? /* Skeleton de carregamento — 3 linhas cinza enquanto fetch */
+              Array.from({ length: 3 }).map((_, i) => (
+                <tr key={`sk-${i}`}>
+                  <td colSpan={6} style={{ height: 34, padding: "4px 8px" }}>
+                    <div
+                      style={{
+                        height: 18,
+                        borderRadius: 4,
+                        background:
+                          "color-mix(in srgb, var(--muted-foreground) 15%, transparent)",
+                        width: `${60 + i * 15}%`,
+                      }}
+                    />
+                  </td>
+                </tr>
+              ))
+            : subtasks.map((sub) => (
+                <SubtaskTaskRow
+                  key={sub.id}
+                  subtask={sub}
+                  projectId={projectId}
+                  members={members}
+                  savingId={savingId}
+                  onSavingChange={setSavingId}
+                  parentId={parentId}
+                />
+              ))}
+          <AddSubtaskRow parentId={parentId} projectId={projectId} />
         </tbody>
       </table>
     </div>
@@ -2547,7 +2825,9 @@ function SubtaskHeadRow() {
     <thead>
       <tr>
         <th style={{ ...th, padding: 0 }} />
-        <th style={{ ...th, textAlign: "left", paddingLeft: 8 }}>Subelemento</th>
+        <th style={{ ...th, textAlign: "left", paddingLeft: 8 }}>
+          Subelemento
+        </th>
         <th style={th}>Resp.</th>
         <th style={th}>Status</th>
         <th style={th}>Data</th>
@@ -2556,7 +2836,14 @@ function SubtaskHeadRow() {
             esquerda (logo apos Data), nao centralizado no vazio.
             IMPORTANTE: opacity SO no icone — antes estava na <th> inteira, o
             que escurecia o FUNDO da coluna (deixava-a mais escura que as ativas). */}
-        <th style={{ ...th, borderRight: 0, textAlign: "left", color: "var(--muted-foreground)" }}>
+        <th
+          style={{
+            ...th,
+            borderRight: 0,
+            textAlign: "left",
+            color: "var(--muted-foreground)",
+          }}
+        >
           <Plus size={13} style={{ opacity: 0.4 }} />
         </th>
       </tr>
@@ -2625,8 +2912,12 @@ function SubtaskTaskRow({
     toast.error("Não foi possível salvar esta célula.", {
       description: fieldErrorDescription(error),
     });
-    void queryClient.invalidateQueries({ queryKey: qk.tasks.children(parentId) });
-    void queryClient.invalidateQueries({ queryKey: qk.tasks.byProject(projectId) });
+    void queryClient.invalidateQueries({
+      queryKey: qk.tasks.children(parentId),
+    });
+    void queryClient.invalidateQueries({
+      queryKey: qk.tasks.byProject(projectId),
+    });
     void queryClient.invalidateQueries({ queryKey: qk.tasks.byId(subtask.id) });
   }
 
@@ -2640,7 +2931,9 @@ function SubtaskTaskRow({
         { id: subtask.id, status: v3, projectId },
         {
           onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: qk.tasks.children(parentId) });
+            void queryClient.invalidateQueries({
+              queryKey: qk.tasks.children(parentId),
+            });
           },
           onError: handleSubtaskFieldError,
           onSettled: () => onSavingChange(null),
@@ -2671,7 +2964,9 @@ function SubtaskTaskRow({
       { id: subtask.id, projectId, dto },
       {
         onSuccess: () => {
-          void queryClient.invalidateQueries({ queryKey: qk.tasks.children(parentId) });
+          void queryClient.invalidateQueries({
+            queryKey: qk.tasks.children(parentId),
+          });
         },
         onError: handleSubtaskFieldError,
         onSettled: () => onSavingChange(null),
@@ -2697,8 +2992,18 @@ function SubtaskTaskRow({
   const dateCol = SUBTASK_COLUMNS.find((c) => c.key === "dueDate")!;
 
   return (
-    <tr onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
-      <td style={{ ...td, padding: 0, textAlign: "center", borderRight: "1px solid var(--border)" }}>
+    <tr
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <td
+        style={{
+          ...td,
+          padding: 0,
+          textAlign: "center",
+          borderRight: "1px solid var(--border)",
+        }}
+      >
         {selection ? (
           <Checkbox
             checked={selection.selectedIds.has(subtask.id)}
@@ -2713,7 +3018,14 @@ function SubtaskTaskRow({
       <td style={{ ...td, fontWeight: 500 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {saving && (
-            <Loader2 size={12} style={{ flexShrink: 0, opacity: 0.5, animation: "spin 1s linear infinite" }} />
+            <Loader2
+              size={12}
+              style={{
+                flexShrink: 0,
+                opacity: 0.5,
+                animation: "spin 1s linear infinite",
+              }}
+            />
           )}
           <EditableText
             value={subtask.nome}
@@ -2847,7 +3159,10 @@ function AddSubtaskRow({
   }
 
   return (
-    <tr onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <tr
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
       <td
         colSpan={6}
         style={{
@@ -2873,11 +3188,21 @@ function AddSubtaskRow({
               fontSize: 12,
             }}
           >
-            <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} />
+            <Loader2
+              size={13}
+              style={{ animation: "spin 1s linear infinite" }}
+            />
             Criando subelemento...
           </div>
         ) : adding ? (
-          <div style={{ display: "flex", alignItems: "center", padding: "0 8px 0 44px", height: 32 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              padding: "0 8px 0 44px",
+              height: 32,
+            }}
+          >
             <input
               autoFocus
               value={draft}
@@ -3019,11 +3344,23 @@ function FieldCell({
     return (
       <td
         ref={ref}
-        style={{ ...tdStyle, ...savingStyle, textAlign: nome ? "left" : "center", cursor: editCursor }}
+        style={{
+          ...tdStyle,
+          ...savingStyle,
+          textAlign: nome ? "left" : "center",
+          cursor: editCursor,
+        }}
         onClick={openCell}
       >
         {nome ? (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, maxWidth: "100%" }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              maxWidth: "100%",
+            }}
+          >
             <span
               style={{
                 display: "inline-flex",
@@ -3041,7 +3378,14 @@ function FieldCell({
             >
               {nome.charAt(0).toUpperCase()}
             </span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={nome}>
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+              title={nome}
+            >
               {nome}
             </span>
           </span>
@@ -3081,7 +3425,15 @@ function FieldCell({
   // ── checkbox ──
   if (column.type === "checkbox") {
     return (
-      <td style={{ ...tdStyle, ...savingStyle, textAlign: "center", cursor: editCursor }} onClick={locked ? undefined : () => onChange(!value)}>
+      <td
+        style={{
+          ...tdStyle,
+          ...savingStyle,
+          textAlign: "center",
+          cursor: editCursor,
+        }}
+        onClick={locked ? undefined : () => onChange(!value)}
+      >
         <Checkbox checked={value === true} />
       </td>
     );
@@ -3090,7 +3442,11 @@ function FieldCell({
   // ── link ──
   if (column.type === "link") {
     return (
-      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: editCursor }} onClick={openCell}>
+      <td
+        ref={ref}
+        style={{ ...tdStyle, textAlign: "center", cursor: editCursor }}
+        onClick={openCell}
+      >
         {typeof value === "string" && value ? (
           <a
             href={value}
@@ -3115,7 +3471,9 @@ function FieldCell({
                 placeholder="https://…"
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    onChange((e.target as HTMLInputElement).value.trim() || null);
+                    onChange(
+                      (e.target as HTMLInputElement).value.trim() || null,
+                    );
                     setOpen(false);
                   }
                   if (e.key === "Escape") setOpen(false);
@@ -3134,10 +3492,23 @@ function FieldCell({
   if (column.type === "date") {
     const dateText =
       typeof value === "string" && value
-        ? new Date(value + "T12:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+        ? new Date(value + "T12:00:00").toLocaleDateString("pt-BR", {
+            day: "2-digit",
+            month: "short",
+          })
         : "";
     return (
-      <td ref={ref} style={{ ...tdStyle, ...savingStyle, textAlign: "center", cursor: editCursor, color: dateText ? "var(--foreground)" : "var(--muted-foreground)" }} onClick={openCell}>
+      <td
+        ref={ref}
+        style={{
+          ...tdStyle,
+          ...savingStyle,
+          textAlign: "center",
+          cursor: editCursor,
+          color: dateText ? "var(--foreground)" : "var(--muted-foreground)",
+        }}
+        onClick={openCell}
+      >
         {dateText || "—"}
         {open && (
           <Popover anchorRef={ref} onClose={() => setOpen(false)}>
@@ -3162,14 +3533,25 @@ function FieldCell({
     const display =
       value != null && value !== ""
         ? column.config?.currency
-          ? new Intl.NumberFormat("pt-BR", { style: "currency", currency: column.config.currency }).format(Number(value))
+          ? new Intl.NumberFormat("pt-BR", {
+              style: "currency",
+              currency: column.config.currency,
+            }).format(Number(value))
           : column.key === "sp"
             ? `${value} SP`
             : String(value)
         : "";
     return (
-      <td ref={ref} style={{ ...tdStyle, textAlign: "center", cursor: editCursor }} onClick={openCell}>
-        {display || <span style={{ color: "var(--muted-foreground)", opacity: 0.5 }}>—</span>}
+      <td
+        ref={ref}
+        style={{ ...tdStyle, textAlign: "center", cursor: editCursor }}
+        onClick={openCell}
+      >
+        {display || (
+          <span style={{ color: "var(--muted-foreground)", opacity: 0.5 }}>
+            —
+          </span>
+        )}
         {open && (
           <Popover anchorRef={ref} onClose={() => setOpen(false)}>
             <div style={{ padding: 8 }}>
@@ -3185,7 +3567,11 @@ function FieldCell({
                   }
                   if (e.key === "Escape") setOpen(false);
                 }}
-                onBlur={(e) => onChange(e.target.value === "" ? null : Number(e.target.value))}
+                onBlur={(e) =>
+                  onChange(
+                    e.target.value === "" ? null : Number(e.target.value),
+                  )
+                }
                 style={inputStyle}
               />
             </div>
@@ -3227,10 +3613,19 @@ function FieldCell({
 
 /* ─── Linha "+ Adicionar tarefa" ─────────────────────────────────────────── */
 
-function AddTaskRow({ colSpan, onAdd }: { colSpan: number; onAdd: () => void }) {
+function AddTaskRow({
+  colSpan,
+  onAdd,
+}: {
+  colSpan: number;
+  onAdd: () => void;
+}) {
   const [hover, setHover] = useState(false);
   return (
-    <tr onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <tr
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
       <td
         colSpan={colSpan}
         style={{
@@ -3306,11 +3701,28 @@ function FooterRow({
           if (c.type === "number") {
             return (
               <td key={c.key} style={{ ...td, textAlign: "center" }}>
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", lineHeight: 1.2 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: "var(--foreground)",
+                    }}
+                  >
                     {totalSp} SP
                   </span>
-                  <span style={{ fontSize: 10, color: "var(--muted-foreground)" }}>Total</span>
+                  <span
+                    style={{ fontSize: 10, color: "var(--muted-foreground)" }}
+                  >
+                    Total
+                  </span>
                 </div>
               </td>
             );
@@ -3413,7 +3825,11 @@ function EditableText({
       }}
       title="Clique para editar"
     >
-      {value || <span style={{ color: "var(--muted-foreground)", opacity: 0.6 }}>{placeholder ?? "—"}</span>}
+      {value || (
+        <span style={{ color: "var(--muted-foreground)", opacity: 0.6 }}>
+          {placeholder ?? "—"}
+        </span>
+      )}
     </span>
   );
 }
@@ -3487,7 +3903,8 @@ function EmptyCell() {
       style={{
         height: 34,
         borderRadius: 4,
-        background: "color-mix(in srgb, var(--muted-foreground) 12%, transparent)",
+        background:
+          "color-mix(in srgb, var(--muted-foreground) 12%, transparent)",
       }}
     />
   );
@@ -3496,7 +3913,14 @@ function EmptyCell() {
 function SegmentBar({ colors }: { colors: string[] }) {
   if (colors.length === 0) return null;
   return (
-    <div style={{ display: "flex", height: 22, borderRadius: 4, overflow: "hidden" }}>
+    <div
+      style={{
+        display: "flex",
+        height: 22,
+        borderRadius: 4,
+        overflow: "hidden",
+      }}
+    >
       {colors.map((c, i) => (
         <span key={i} style={{ flex: 1, background: c }} />
       ))}
@@ -3590,15 +4014,26 @@ function OptionList({
             textAlign: "left",
           }}
           onMouseEnter={(e) => {
-            if (o.id !== currentId) e.currentTarget.style.background = "var(--accent)";
+            if (o.id !== currentId)
+              e.currentTarget.style.background = "var(--accent)";
           }}
           onMouseLeave={(e) => {
             if (o.id !== currentId) e.currentTarget.style.background = "none";
           }}
         >
-          <span style={{ width: 10, height: 10, borderRadius: "50%", background: o.color ?? "#6b7280", flexShrink: 0 }} />
+          <span
+            style={{
+              width: 10,
+              height: 10,
+              borderRadius: "50%",
+              background: o.color ?? "#6b7280",
+              flexShrink: 0,
+            }}
+          />
           {o.label}
-          {o.id === currentId && <Check size={14} color="#7c5cff" style={{ marginLeft: "auto" }} />}
+          {o.id === currentId && (
+            <Check size={14} color="#7c5cff" style={{ marginLeft: "auto" }} />
+          )}
         </button>
       ))}
     </div>
@@ -3633,12 +4068,17 @@ function PersonList({
     textAlign: "left",
   };
   return (
-    <div style={{ padding: 4, minWidth: 200, maxHeight: 320, overflowY: "auto" }}>
+    <div
+      style={{ padding: 4, minWidth: 200, maxHeight: 320, overflowY: "auto" }}
+    >
       {/* Sem responsavel */}
       <button
         type="button"
         onClick={() => onPick("")}
-        style={{ ...row, background: !currentId ? "rgba(124,92,255,0.12)" : "none" }}
+        style={{
+          ...row,
+          background: !currentId ? "rgba(124,92,255,0.12)" : "none",
+        }}
         onMouseEnter={(e) => {
           if (currentId) e.currentTarget.style.background = "var(--accent)";
         }}
@@ -3661,12 +4101,22 @@ function PersonList({
         >
           <User size={12} />
         </span>
-        <span style={{ color: "var(--muted-foreground)" }}>Sem responsável</span>
-        {!currentId && <Check size={14} color="#7c5cff" style={{ marginLeft: "auto" }} />}
+        <span style={{ color: "var(--muted-foreground)" }}>
+          Sem responsável
+        </span>
+        {!currentId && (
+          <Check size={14} color="#7c5cff" style={{ marginLeft: "auto" }} />
+        )}
       </button>
 
       {members.length === 0 ? (
-        <div style={{ padding: "8px 10px", fontSize: 12, color: "var(--muted-foreground)" }}>
+        <div
+          style={{
+            padding: "8px 10px",
+            fontSize: 12,
+            color: "var(--muted-foreground)",
+          }}
+        >
           Nenhum membro no projeto.
         </div>
       ) : (
@@ -3675,12 +4125,18 @@ function PersonList({
             key={m.userId}
             type="button"
             onClick={() => onPick(m.userId)}
-            style={{ ...row, background: m.userId === currentId ? "rgba(124,92,255,0.12)" : "none" }}
+            style={{
+              ...row,
+              background:
+                m.userId === currentId ? "rgba(124,92,255,0.12)" : "none",
+            }}
             onMouseEnter={(e) => {
-              if (m.userId !== currentId) e.currentTarget.style.background = "var(--accent)";
+              if (m.userId !== currentId)
+                e.currentTarget.style.background = "var(--accent)";
             }}
             onMouseLeave={(e) => {
-              if (m.userId !== currentId) e.currentTarget.style.background = "none";
+              if (m.userId !== currentId)
+                e.currentTarget.style.background = "none";
             }}
           >
             <span
@@ -3700,10 +4156,18 @@ function PersonList({
             >
               {m.nome.charAt(0).toUpperCase()}
             </span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {m.nome}
             </span>
-            {m.userId === currentId && <Check size={14} color="#7c5cff" style={{ marginLeft: "auto" }} />}
+            {m.userId === currentId && (
+              <Check size={14} color="#7c5cff" style={{ marginLeft: "auto" }} />
+            )}
           </button>
         ))
       )}
