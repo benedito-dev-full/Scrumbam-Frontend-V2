@@ -8,7 +8,13 @@
 // emite `onChange`. A aplicação real é feita por `applyTaskFilters` no caller.
 
 import React, { useState } from "react";
-import { IcFilter, IcCheck, IcUser, IcCaret } from "@/components/lists/icons";
+import {
+  IcFilter,
+  IcCheck,
+  IcUser,
+  IcCaret,
+  IcSearch,
+} from "@/components/lists/icons";
 import {
   KANBAN_COLUMNS,
   priorityToColor,
@@ -231,6 +237,7 @@ export function TaskFilterControls({
   aiAssigneeId: string;
 }) {
   const [open, setOpen] = useState<"filtro" | "responsavel" | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const panelCount = countPanelFilters(filters);
   const assigneeCount = countAssigneeFilters(filters);
@@ -494,6 +501,99 @@ export function TaskFilterControls({
           </>
         )}
       </div>
+
+      {/* ── Busca (lupa) ── */}
+      {searchOpen ? (
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            height: 28,
+            padding: "0 8px",
+            border: "1px solid #7c5cff",
+            background: "var(--card)",
+            borderRadius: 6,
+          }}
+        >
+          <IcSearch size={14} />
+          <input
+            autoFocus
+            type="text"
+            value={filters.search}
+            placeholder="buscar..."
+            onChange={(e) => onChange({ ...filters, search: e.target.value })}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                onChange({ ...filters, search: "" });
+                setSearchOpen(false);
+              }
+            }}
+            onBlur={() => {
+              // Recolhe só se vazio — evita "busca ativa escondida".
+              if (filters.search.trim() === "") setSearchOpen(false);
+            }}
+            style={{
+              width: 150,
+              background: "none",
+              border: 0,
+              outline: "none",
+              color: "var(--foreground)",
+              fontSize: 13,
+            }}
+          />
+          <button
+            type="button"
+            aria-label="Limpar busca"
+            title="Limpar busca"
+            onClick={() => {
+              onChange({ ...filters, search: "" });
+              setSearchOpen(false);
+            }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 16,
+              height: 16,
+              padding: 0,
+              border: 0,
+              background: "none",
+              color: "var(--muted-foreground)",
+              cursor: "pointer",
+              fontSize: 14,
+              lineHeight: 1,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          aria-label="Buscar tarefas"
+          title="Buscar tarefas"
+          onClick={() => setSearchOpen(true)}
+          style={{
+            width: 28,
+            height: 28,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            borderRadius: 6,
+            border: filters.search.trim() !== "" ? "1px solid #7c5cff" : 0,
+            background:
+              filters.search.trim() !== "" ? "rgba(124,92,255,0.12)" : "none",
+            color:
+              filters.search.trim() !== ""
+                ? "#cfc1ff"
+                : "var(--muted-foreground)",
+            cursor: "pointer",
+          }}
+        >
+          <IcSearch size={15} />
+        </button>
+      )}
     </>
   );
 }

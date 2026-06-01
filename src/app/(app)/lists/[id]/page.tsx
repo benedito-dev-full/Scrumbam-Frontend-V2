@@ -38,7 +38,6 @@ import {
   IcList,
   IcPending,
   IcPlus,
-  IcSearch,
 } from "@/components/lists/icons";
 import { STATUS_CONFIG, GROUP_PILL_STYLE } from "@/components/lists/config";
 import { KanbanBoard } from "@/components/tasks/kanban-board";
@@ -843,30 +842,6 @@ function Toolbar({
           teams={teams}
           aiAssigneeId={AI_ASSIGNEE_ID}
         />
-        <button
-          type="button"
-          style={{
-            width: 28,
-            height: 28,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            borderRadius: 6,
-            color: "var(--muted-foreground)",
-            background: "none",
-            border: 0,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "var(--card)";
-            e.currentTarget.style.color = "var(--foreground)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "none";
-            e.currentTarget.style.color = "var(--muted-foreground)";
-          }}
-        >
-          <IcSearch size={15} />
-        </button>
         {tarefasCount !== null && (
           <span
             style={{

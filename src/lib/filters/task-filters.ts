@@ -44,6 +44,8 @@ export interface TaskFilters {
   teams: string[];
   /** Toggle "Fechado": quando true, esconde tasks em status terminal. */
   hideClosed: boolean;
+  /** Lupa: busca textual por nome + identificador (case-insensitive). */
+  search: string;
 }
 
 /** Estado inicial — nenhum filtro ativo. */
@@ -54,6 +56,7 @@ export const emptyTaskFilters: TaskFilters = {
   assignees: [],
   teams: [],
   hideClosed: false,
+  search: "",
 };
 
 /** Converte ISO (com ou sem hora) para Date no meio-dia local (evita drift TZ). */
@@ -87,7 +90,8 @@ export function isAnyFilterActive(f: TaskFilters): boolean {
     f.due !== null ||
     f.assignees.length > 0 ||
     f.teams.length > 0 ||
-    f.hideClosed
+    f.hideClosed ||
+    f.search.trim() !== ""
   );
 }
 
@@ -122,7 +126,13 @@ export function applyTaskFilters(
 ): TaskResponseDto[] {
   if (!isAnyFilterActive(f)) return tasks;
 
+  const query = f.search.trim().toLowerCase();
+
   return tasks.filter((t) => {
+    if (query) {
+      const haystack = `${t.nome} ${t.identifier}`.toLowerCase();
+      if (!haystack.includes(query)) return false;
+    }
     if (f.hideClosed && CLOSED_STATUSES.includes(t.status)) return false;
     if (f.statuses.length && !f.statuses.includes(t.status)) return false;
     if (
