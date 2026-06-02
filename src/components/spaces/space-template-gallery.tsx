@@ -2,12 +2,19 @@
 
 import {
   ArrowLeft,
-  Zap,
-  LayoutGrid,
-  Rocket,
-  ClipboardList,
   Megaphone,
+  TrendingUp,
   Code,
+  Landmark,
+  Users,
+  Scale,
+  Stethoscope,
+  GraduationCap,
+  ShoppingBag,
+  Truck,
+  Beef,
+  Sprout,
+  HardHat,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -43,37 +50,10 @@ interface SpaceTemplate {
   color: string;
 }
 
-// Exemplos para validar a UI da galeria. A lista definitiva e o conteúdo de
-// cada template entram quando o mecanismo de criação for decidido.
+// Categorias de mercado/segmento. A lista definitiva, quais ficam ativas e o
+// conteúdo de cada template (lista + blocos + tasks) entram quando o mecanismo
+// de criação for decidido.
 const TEMPLATES: SpaceTemplate[] = [
-  {
-    id: "scrum",
-    nome: "Scrum",
-    descricao: "Sprint, backlog e cerimônias prontos para começar.",
-    icon: Zap,
-    color: "#6366f1",
-  },
-  {
-    id: "kanban",
-    nome: "Kanban",
-    descricao: "Fluxo contínuo: A fazer, Fazendo e Feito.",
-    icon: LayoutGrid,
-    color: "#10b981",
-  },
-  {
-    id: "produto",
-    nome: "Lançamento de produto",
-    descricao: "Roadmap, marcos e tarefas de lançamento.",
-    icon: Rocket,
-    color: "#f59e0b",
-  },
-  {
-    id: "onboarding",
-    nome: "Onboarding",
-    descricao: "Checklist de integração de novos membros.",
-    icon: ClipboardList,
-    color: "#ec4899",
-  },
   {
     id: "marketing",
     nome: "Marketing",
@@ -82,11 +62,88 @@ const TEMPLATES: SpaceTemplate[] = [
     color: "#ef4444",
   },
   {
-    id: "dev",
+    id: "vendas",
+    nome: "Vendas",
+    descricao: "Pipeline, leads e metas comerciais.",
+    icon: TrendingUp,
+    color: "#10b981",
+  },
+  {
+    id: "desenvolvimento",
     nome: "Desenvolvimento",
-    descricao: "Bugs, features e releases para times de engenharia.",
+    descricao: "Bugs, features e releases de engenharia.",
     icon: Code,
     color: "#3b82f6",
+  },
+  {
+    id: "financeiro",
+    nome: "Financeiro",
+    descricao: "Contas, fluxo de caixa e fechamento.",
+    icon: Landmark,
+    color: "#22c55e",
+  },
+  {
+    id: "rh",
+    nome: "Recursos Humanos",
+    descricao: "Vagas, onboarding e gestão de pessoas.",
+    icon: Users,
+    color: "#8b5cf6",
+  },
+  {
+    id: "juridico",
+    nome: "Jurídico",
+    descricao: "Contratos, processos e prazos.",
+    icon: Scale,
+    color: "#64748b",
+  },
+  {
+    id: "saude",
+    nome: "Saúde",
+    descricao: "Pacientes, agenda e procedimentos.",
+    icon: Stethoscope,
+    color: "#ec4899",
+  },
+  {
+    id: "educacao",
+    nome: "Educação",
+    descricao: "Turmas, conteúdo e avaliações.",
+    icon: GraduationCap,
+    color: "#6366f1",
+  },
+  {
+    id: "varejo",
+    nome: "Varejo / E-commerce",
+    descricao: "Pedidos, estoque e atendimento.",
+    icon: ShoppingBag,
+    color: "#f59e0b",
+  },
+  {
+    id: "logistica",
+    nome: "Logística",
+    descricao: "Entregas, rotas e frota.",
+    icon: Truck,
+    color: "#0ea5e9",
+  },
+  {
+    id: "frigorifico",
+    nome: "Frigorífico",
+    descricao: "Produção, lotes e controle de qualidade.",
+    icon: Beef,
+    color: "#b91c1c",
+  },
+  {
+    id: "agronegocio",
+    nome: "Agronegócio",
+    descricao: "Safras, talhões e insumos.",
+    icon: Sprout,
+    color: "#84cc16",
+  },
+  {
+    id: "construcao",
+    nome: "Construção",
+    descricao: "Obras, etapas e medições.",
+    icon: HardHat,
+    color: "#d97706",
   },
 ];
 
