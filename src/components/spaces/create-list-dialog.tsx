@@ -47,16 +47,6 @@ export function CreateListDialog({ parentId, parentName, open, onOpenChange }: C
 
   const selectedSpace = spaces?.find((s) => s.id === selectedId);
   const displayName = selectedSpace?.nome ?? parentName ?? "Espaço";
-  const displayId = selectedSpace?.id ?? parentId;
-
-  useEffect(() => {
-    if (!open) {
-      setNome("");
-      setPrivado(false);
-      setDropdownOpen(false);
-      setSelectedId(parentId);
-    }
-  }, [open, parentId]);
 
   // fecha dropdown ao clicar fora
   useEffect(() => {
@@ -70,6 +60,18 @@ export function CreateListDialog({ parentId, parentName, open, onOpenChange }: C
     return () => document.removeEventListener("mousedown", handler);
   }, [dropdownOpen]);
 
+  function resetForm() {
+    setNome("");
+    setPrivado(false);
+    setDropdownOpen(false);
+    setSelectedId(parentId);
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) resetForm();
+    onOpenChange(nextOpen);
+  }
+
   function handleSubmit() {
     const trimmed = nome.trim();
     if (!trimmed) return;
@@ -78,7 +80,7 @@ export function CreateListDialog({ parentId, parentName, open, onOpenChange }: C
       {
         onSuccess: (created) => {
           toast.success(`Lista "${created.nome}" criada`);
-          onOpenChange(false);
+          handleOpenChange(false);
         },
         onError: (err) => {
           toast.error("Erro ao criar lista", { description: getApiErrorMessage(err) });
@@ -88,8 +90,11 @@ export function CreateListDialog({ parentId, parentName, open, onOpenChange }: C
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="p-0 gap-0 w-[600px] max-w-[600px] bg-[#1e1e24] border border-[#2a2a35] rounded-xl shadow-2xl">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        className="p-0 gap-0 w-[600px] max-w-[600px] bg-[#1e1e24] border border-[#2a2a35] rounded-xl shadow-2xl"
+      >
         {/* header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-3">
           <div>
@@ -100,7 +105,8 @@ export function CreateListDialog({ parentId, parentName, open, onOpenChange }: C
           </div>
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            aria-label="Fechar"
+            onClick={() => handleOpenChange(false)}
             className="mt-0.5 grid size-6 place-items-center rounded-md text-[#8b8b9a] hover:bg-[#2a2a35] hover:text-white"
           >
             <X className="size-4" />

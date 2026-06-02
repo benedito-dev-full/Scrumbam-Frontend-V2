@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { X, Circle } from "lucide-react";
+import { X } from "lucide-react";
 
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useCreateFolder } from "@/hooks/use-projects";
@@ -21,13 +21,16 @@ export function CreateFolderDialog({ spaceId, open, onOpenChange }: CreateFolder
 
   const { mutate, isPending } = useCreateFolder();
 
-  useEffect(() => {
-    if (!open) {
-      setNome("");
-      setDescricao("");
-      setPrivado(false);
-    }
-  }, [open]);
+  function resetForm() {
+    setNome("");
+    setDescricao("");
+    setPrivado(false);
+  }
+
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) resetForm();
+    onOpenChange(nextOpen);
+  }
 
   function handleSubmit() {
     const trimmed = nome.trim();
@@ -37,7 +40,7 @@ export function CreateFolderDialog({ spaceId, open, onOpenChange }: CreateFolder
       {
         onSuccess: (created) => {
           toast.success(`Pasta "${created.nome}" criada`);
-          onOpenChange(false);
+          handleOpenChange(false);
         },
         onError: (err) => {
           toast.error("Erro ao criar pasta", { description: getApiErrorMessage(err) });
@@ -47,8 +50,11 @@ export function CreateFolderDialog({ spaceId, open, onOpenChange }: CreateFolder
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="p-0 gap-0 w-[600px] max-w-[600px] bg-[#1e1e24] border border-[#2a2a35] rounded-xl shadow-2xl">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        showCloseButton={false}
+        className="p-0 gap-0 w-[600px] max-w-[600px] bg-[#1e1e24] border border-[#2a2a35] rounded-xl shadow-2xl"
+      >
         {/* header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-3">
           <div>
@@ -59,7 +65,8 @@ export function CreateFolderDialog({ spaceId, open, onOpenChange }: CreateFolder
           </div>
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            aria-label="Fechar"
+            onClick={() => handleOpenChange(false)}
             className="mt-0.5 grid size-6 place-items-center rounded-md text-[#8b8b9a] hover:bg-[#2a2a35] hover:text-white"
           >
             <X className="size-4" />
@@ -70,17 +77,14 @@ export function CreateFolderDialog({ spaceId, open, onOpenChange }: CreateFolder
           {/* Nome */}
           <div className="space-y-1.5">
             <label className="text-[13px] font-medium text-white">Nome</label>
-            <div className="relative">
-              <input
-                autoFocus
-                placeholder="Por exemplo, Projeto, cliente, equipe"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
-                className="w-full rounded-md border border-[#3a3a45] bg-[#16161c] px-3 py-2.5 pr-8 text-[13px] text-white placeholder-[#52525e] outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
-              />
-              <Circle className="absolute right-2.5 top-1/2 -translate-y-1/2 size-4 text-[#52525e]" />
-            </div>
+            <input
+              autoFocus
+              placeholder="Por exemplo, Projeto, cliente, equipe"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+              className="w-full rounded-md border border-[#3a3a45] bg-[#16161c] px-3 py-2.5 text-[13px] text-white placeholder-[#52525e] outline-none focus:border-[#6366f1] focus:ring-1 focus:ring-[#6366f1]"
+            />
           </div>
 
           {/* Descrição */}
