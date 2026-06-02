@@ -6,8 +6,6 @@ import {
   Share2,
   Sparkles,
   Plus,
-  Filter,
-  RefreshCw,
   LayoutGrid,
   Maximize2,
 } from "lucide-react";
@@ -541,106 +539,6 @@ export default function SpacePage({
         {activeTab === "comentarios" && <CommentsTab projectId={id} />}
         {activeTab !== "comentarios" && (
           <>
-            {/* Toolbar */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                height: 44,
-                borderBottom: "1px solid var(--border)",
-              }}
-            >
-              <button
-                type="button"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  height: 28,
-                  padding: "0 10px",
-                  borderRadius: 6,
-                  border: "1px solid var(--border)",
-                  background: "none",
-                  cursor: "pointer",
-                  color: "var(--muted-foreground)",
-                  fontSize: 12,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--accent)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "none";
-                }}
-              >
-                <Filter size={11} />
-                Filtros
-              </button>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    fontSize: 11,
-                    color: "var(--muted-foreground)",
-                  }}
-                >
-                  <RefreshCw size={11} />
-                  Atualização: 10 minutos atrás
-                </span>
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    fontSize: 11,
-                    color: "var(--muted-foreground)",
-                  }}
-                >
-                  <RefreshCw size={11} style={{ color: "#22c55e" }} />
-                  Atualização automática: Ligado
-                </span>
-                <button
-                  type="button"
-                  style={{
-                    fontSize: 12,
-                    color: "var(--muted-foreground)",
-                    border: 0,
-                    background: "none",
-                    cursor: "pointer",
-                    padding: "0 6px",
-                  }}
-                >
-                  Personalizar
-                </button>
-                <button
-                  type="button"
-                  style={{
-                    height: 28,
-                    padding: "0 12px",
-                    borderRadius: 6,
-                    border: 0,
-                    background: "var(--primary)",
-                    cursor: "pointer",
-                    color: "var(--primary-foreground)",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    transition: "filter 120ms",
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.filter = "brightness(1.1)";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.filter = "none";
-                  }}
-                >
-                  Adicionar cartão
-                </button>
-              </div>
-            </div>
-
             {/* ── Cards: Recent | Docs | Bookmarks ── */}
             <div
               style={{
