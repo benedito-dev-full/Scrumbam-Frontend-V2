@@ -576,6 +576,19 @@ export interface OrganizationResponseDto {
   atualizadoEm: string;
 }
 
+/**
+ * Corpo para criar uma organização/workspace (`POST /organizations`).
+ *
+ * Backend cria DEntidade -152 + Default Team + Issue Counter + vínculo ADMIN
+ * numa transaction atômica. Aceita JWT órfão (ADR-V2-038).
+ */
+export interface CreateOrganizationDto {
+  /** Nome da workspace (2–255 caracteres). */
+  nome: string;
+  /** Descrição opcional (até 500 caracteres). */
+  description?: string;
+}
+
 export interface OrgMemberDto {
   userId: string;
   nome: string;

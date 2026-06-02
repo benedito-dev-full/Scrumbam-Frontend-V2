@@ -8,9 +8,11 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Settings, Users } from "lucide-react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMe, useSwitchOrg } from "@/hooks/use-auth";
 import { useAuthStore } from "@/lib/stores/auth";
+import { useCreateWorkspaceDialogStore } from "@/lib/stores/create-workspace-dialog";
 
 /**
  * Workspace switcher do topbar — botão "F Fortalshop ▾" com dropdown rico.
@@ -29,6 +31,8 @@ export function WorkspaceSwitcher() {
   const currentOrgName = me?.organizationName ?? me?.availableOrgs?.[0]?.nome ?? "Workspace";
   const orgInitial = currentOrgName.charAt(0).toUpperCase();
   const otherOrgs = me?.availableOrgs?.filter((o) => o.id !== currentOrgId) ?? [];
+  const openCreateWorkspace = useCreateWorkspaceDialogStore((s) => s.openDialog);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleSwitchOrg = (orgId: string) => {
     if (switchOrg.isPending) return;
@@ -38,7 +42,7 @@ export function WorkspaceSwitcher() {
   };
 
   return (
-    <DropdownMenu>
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
       <DropdownMenuTrigger
         render={
           <button
@@ -126,7 +130,7 @@ export function WorkspaceSwitcher() {
         {/* botões Configurações + Pessoas */}
         <div style={{ display: "flex", gap: 6, padding: "0 10px 10px" }}>
           {[
-            { icon: <Settings size={13} />, label: "Configurações", href: null },
+            { icon: <Settings size={13} />, label: "Configurações", href: "/settings" },
             { icon: <Users size={13} />,   label: "Pessoas",        href: "/people" },
           ].map(({ icon, label, href }) => (
             <button key={label} type="button"
@@ -228,13 +232,18 @@ export function WorkspaceSwitcher() {
         <DropdownMenuSeparator style={{ margin: "6px 0" }} />
 
         {/* Criar workspace */}
-        <button type="button" style={{
-          display: "flex", alignItems: "center", justifyContent: "center",
-          width: "calc(100% - 20px)", margin: "4px 10px 6px",
-          height: 32, borderRadius: 6,
-          border: "1px solid var(--border)", background: "none",
-          cursor: "pointer", color: "var(--foreground)", fontSize: 13,
-        }}
+        <button type="button"
+          onClick={() => {
+            setMenuOpen(false);
+            openCreateWorkspace();
+          }}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "center",
+            width: "calc(100% - 20px)", margin: "4px 10px 6px",
+            height: 32, borderRadius: 6,
+            border: "1px solid var(--border)", background: "none",
+            cursor: "pointer", color: "var(--foreground)", fontSize: 13,
+          }}
           onMouseEnter={e => { e.currentTarget.style.background = "var(--border)"; }}
           onMouseLeave={e => { e.currentTarget.style.background = "none"; }}
         >
