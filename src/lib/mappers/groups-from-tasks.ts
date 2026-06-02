@@ -291,7 +291,16 @@ export function buildGroupsBoard(
   // 2. Filtrar apenas tasks raiz (sem pai) para as linhas do board.
   //    Filhas nao devem aparecer como linhas independentes nos grupos —
   //    elas sao exibidas na sub-tabela embutida ao expandir o pai.
-  const rootTasks = tasks.filter((t) => !t.idPai);
+  //    Ordena por `chave` crescente (mais antiga primeiro) para que uma
+  //    tarefa recem-criada apareca SEMPRE no fim do bloco — mesmo conceito
+  //    aplicado aos blocos. O backend devolve por chave desc (nova no topo).
+  const rootTasks = tasks
+    .filter((t) => !t.idPai)
+    .sort((a, b) => {
+      if (BigInt(a.id) < BigInt(b.id)) return -1;
+      if (BigInt(a.id) > BigInt(b.id)) return 1;
+      return 0;
+    });
 
   // 3. Indexa tasks raiz por idBloco; o restante vai para "sem bloco".
   //    Tasks cujo idBloco aponta para um bloco inexistente (ex: bloco recem
