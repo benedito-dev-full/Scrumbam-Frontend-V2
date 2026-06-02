@@ -5,7 +5,6 @@ import {
   LayoutDashboard,
   List,
   Columns3,
-  Plus,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -90,14 +89,6 @@ export function ViewSwitcher({
           );
         })}
       </div>
-
-      <button
-        type="button"
-        className="ml-2 inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-      >
-        <Plus className="size-3.5" />
-        Visualização
-      </button>
     </div>
   );
 }

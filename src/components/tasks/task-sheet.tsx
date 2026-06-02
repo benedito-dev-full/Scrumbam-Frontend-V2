@@ -122,25 +122,6 @@ function IcArrowLeft({ size = 16 }: { size?: number }) {
   );
 }
 
-function IcDots({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <circle cx="5" cy="12" r="1.2" fill="currentColor" />
-      <circle cx="12" cy="12" r="1.2" fill="currentColor" />
-      <circle cx="19" cy="12" r="1.2" fill="currentColor" />
-    </svg>
-  );
-}
-
 function IcChevDown({ size = 12 }: { size?: number }) {
   return (
     <svg
@@ -969,32 +950,14 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
             {task.identifier.toUpperCase()}
           </span>
 
-          <button
-            type="button"
-            aria-label="Mais ações"
+          <div
+            aria-hidden="true"
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
               width: 30,
               height: 30,
-              borderRadius: 6,
-              background: "none",
-              border: 0,
-              color: "var(--muted-foreground)",
-              cursor: "pointer",
+              flexShrink: 0,
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--foreground)";
-              e.currentTarget.style.background = "var(--accent)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--muted-foreground)";
-              e.currentTarget.style.background = "none";
-            }}
-          >
-            <IcDots size={16} />
-          </button>
+          />
         </div>
 
         {/* ── Body scrollável ──────────────────────────────────────────── */}

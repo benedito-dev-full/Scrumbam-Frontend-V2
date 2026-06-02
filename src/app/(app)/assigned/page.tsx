@@ -166,6 +166,13 @@ export default function MinhasTarefasPage() {
     [myTasks],
   );
 
+  // Tarefas exibidas na view de Lista da Agenda — atribuídas a mim, não
+  // terminais. (A view de Calendário mostra a grade de horas do dia.)
+  const agendaTasks = useMemo(
+    () => myTasks.filter((t) => !TERMINAL_STATUSES.includes(t.status)),
+    [myTasks],
+  );
+
   const diaLabel = agendaDia.toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
@@ -497,38 +504,121 @@ export default function MinhasTarefasPage() {
               </div>
             </div>
 
-            {/* timeline */}
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                maxHeight: 240,
-                overflowY: "auto",
-              }}
-            >
-              {HOURS.map((h) => (
-                <div
-                  key={h}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "60px 1fr",
-                    minHeight: 32,
-                    borderTop: "1px solid var(--border)",
-                  }}
-                >
+            {/* view de calendário — timeline de horas (grade do dia) */}
+            {agendaView === "calendario" ? (
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  maxHeight: 240,
+                  overflowY: "auto",
+                }}
+              >
+                {HOURS.map((h) => (
                   <div
+                    key={h}
                     style={{
-                      fontSize: 11,
-                      color: "var(--muted-foreground)",
-                      paddingTop: 6,
+                      display: "grid",
+                      gridTemplateColumns: "60px 1fr",
+                      minHeight: 32,
+                      borderTop: "1px solid var(--border)",
                     }}
                   >
-                    {h}
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--muted-foreground)",
+                        paddingTop: 6,
+                      }}
+                    >
+                      {h}
+                    </div>
+                    <div />
                   </div>
-                  <div />
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              /* view de lista — tarefas do dia em formato de lista */
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
+                  maxHeight: 240,
+                  overflowY: "auto",
+                }}
+              >
+                {agendaTasks.length > 0 ? (
+                  agendaTasks.map((t) => {
+                    const dotColor =
+                      STATUS_DOT[t.status] ?? "var(--muted-foreground)";
+                    return (
+                      <Link
+                        key={t.id}
+                        href={`/lists/${t.projectId}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "8px 10px",
+                          margin: "0 -10px",
+                          borderRadius: 6,
+                          textDecoration: "none",
+                          transition: "background 120ms",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLElement).style.background =
+                            "var(--accent)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLElement).style.background =
+                            "transparent";
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: dotColor,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "var(--foreground)",
+                            flex: 1,
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                          }}
+                        >
+                          {t.nome}
+                        </span>
+                        {t.identifier && (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              color: "var(--muted-foreground)",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {t.identifier}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })
+                ) : (
+                  <EmptyArea
+                    icon={<List size={20} />}
+                    text="Nada agendado"
+                    hint="Nenhuma tarefa para este dia."
+                  />
+                )}
+              </div>
+            )}
           </Card>
 
           {/* ─── Atribuídas a mim ─── */}
