@@ -368,3 +368,24 @@ html[data-density="cozy"] {
     opacity: 1;
   }
 }
+
+/* Mensagem rotativa do loader: fade + leve subida a cada troca de frase
+ * (a troca é disparada remontando o span via `key` no componente). */
+.bl-msg {
+  animation: bl-msg-in 0.45s ease both;
+}
+@keyframes bl-msg-in {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bl-msg {
+    animation: none;
+  }
+}
