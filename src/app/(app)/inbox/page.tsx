@@ -6,9 +6,20 @@ import { Bell, Check, Settings2, Trash2 } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import {
   resolveNotificationTarget,
+  useDeleteAllNotifications,
   useDeleteNotification,
   useMarkAllAsRead,
   useMarkAsRead,
@@ -30,6 +41,7 @@ const TAB_DEFS: { id: TabId; label: string }[] = [
 export default function InboxPage() {
   const router = useRouter();
   const [tab, setTab] = useState<TabId>("all");
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   // Carrega "todas" uma única vez e filtra client-side para cada aba. A
   // contagem de não lidas vem do endpoint dedicado `/notifications/unread-count`
@@ -39,6 +51,7 @@ export default function InboxPage() {
   const markAsRead = useMarkAsRead();
   const markAllAsRead = useMarkAllAsRead();
   const deleteNotification = useDeleteNotification();
+  const deleteAll = useDeleteAllNotifications();
 
   const all = useMemo(() => allQuery.data ?? [], [allQuery.data]);
   const unreadCount =
@@ -75,11 +88,23 @@ export default function InboxPage() {
     router.push(target ?? "/inbox");
   }
 
+  function handleConfirmClear() {
+    // Apaga as notificações já carregadas (limite atual de 50 por fetch).
+    // Após invalidar, eventuais notificações além desse limite recarregam e
+    // podem ser apagadas num novo clique.
+    deleteAll.mutate(
+      all.map((n) => n.id),
+      { onSettled: () => setConfirmClearOpen(false) },
+    );
+  }
+
   return (
     <>
       <PageHeader
         onMarcarTodas={() => markAllAsRead.mutate()}
         marcarPending={markAllAsRead.isPending}
+        onApagarTodas={() => setConfirmClearOpen(true)}
+        apagarDisabled={all.length === 0 || deleteAll.isPending}
       />
 
       <div className="flex h-10 items-center gap-px border-b border-border bg-background px-4">
@@ -141,6 +166,42 @@ export default function InboxPage() {
           </div>
         )}
       </div>
+
+      <AlertDialog
+        open={confirmClearOpen}
+        onOpenChange={(v) => {
+          if (deleteAll.isPending) return;
+          setConfirmClearOpen(v);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Apagar todas as notificações</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja apagar{" "}
+              <strong>
+                {all.length} notificação{all.length === 1 ? "" : "ões"}
+              </strong>
+              ? Essa ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setConfirmClearOpen(false)}
+              disabled={deleteAll.isPending}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmClear}
+              disabled={deleteAll.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteAll.isPending ? "Apagando…" : "Apagar todas"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
@@ -148,9 +209,13 @@ export default function InboxPage() {
 function PageHeader({
   onMarcarTodas,
   marcarPending,
+  onApagarTodas,
+  apagarDisabled,
 }: {
   onMarcarTodas: () => void;
   marcarPending: boolean;
+  onApagarTodas: () => void;
+  apagarDisabled: boolean;
 }) {
   return (
     <header className="flex h-12 shrink-0 items-center justify-between gap-4 border-b border-border bg-background px-4">
@@ -170,6 +235,16 @@ function PageHeader({
         >
           <Check className="size-3.5" />
           Marcar tudo como lido
+        </Button>
+        <Button
+          variant="ghost"
+          size="xs"
+          className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={onApagarTodas}
+          disabled={apagarDisabled}
+        >
+          <Trash2 className="size-3.5" />
+          Apagar todas
         </Button>
         <Button variant="ghost" size="icon-xs">
           <Settings2 className="size-3.5" />

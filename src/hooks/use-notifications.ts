@@ -177,6 +177,45 @@ export function useDeleteNotification() {
   });
 }
 
+/**
+ * Apaga em lote as notificações recebidas (lista de IDs).
+ *
+ * O backend ainda não expõe um endpoint de bulk-delete (só
+ * `DELETE /notifications/:id`), então disparamos uma exclusão por ID em
+ * paralelo via `Promise.allSettled` — falhas isoladas não abortam as demais.
+ * Opera sobre os IDs passados pelo caller (tipicamente as notificações já
+ * carregadas, hoje limitadas a 50 por requisição).
+ *
+ * @returns `{ deleted, failed }` com a contagem de cada resultado.
+ */
+export function useDeleteAllNotifications() {
+  const queryClient = useQueryClient();
+  return useMutation<{ deleted: number; failed: number }, Error, string[]>({
+    mutationFn: async (ids: string[]) => {
+      const results = await Promise.allSettled(
+        ids.map((id) => api.delete(`/notifications/${id}`)),
+      );
+      const deleted = results.filter((r) => r.status === "fulfilled").length;
+      return { deleted, failed: results.length - deleted };
+    },
+    onSuccess: ({ deleted, failed }) => {
+      void queryClient.invalidateQueries({ queryKey: qk.notifications.all });
+      if (deleted > 0) {
+        toast.success(
+          failed > 0
+            ? `${deleted} notificação(ões) apagada(s) · ${failed} falharam`
+            : `${deleted} notificação(ões) apagada(s)`,
+        );
+      } else if (failed > 0) {
+        toast.error("Não foi possível apagar as notificações");
+      }
+    },
+    onError: (error) => {
+      toast.error(getApiErrorMessage(error));
+    },
+  });
+}
+
 // ─── Utilitário compartilhado entre popover e inbox ──────────────────────────
 
 /**
