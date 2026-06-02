@@ -3158,15 +3158,27 @@ type SidebarView = "equipes" | "pessoas";
 
 function TeamsPanel({
   teams,
+  myTeamIds,
+  isAdmin,
   onTeamClick,
   activeView,
   onViewChange,
 }: {
   teams: TeamLocal[];
+  myTeamIds: ReadonlySet<string>;
+  /** ADMIN vê todas as equipes do workspace; membro só as suas. */
+  isAdmin: boolean;
   onTeamClick?: (id: string) => void;
   activeView: SidebarView;
   onViewChange: (v: SidebarView) => void;
 }) {
+  // Equipes das quais o usuário participa — usado na seção "Minhas equipes" e,
+  // para membros, também como a unica lista visível no nav.
+  const myTeams = teams.filter(
+    (t) => t.myCargo != null || myTeamIds.has(t.id),
+  );
+  const visibleTeams = isAdmin ? teams : myTeams;
+
   const navItems: {
     id: SidebarView | null;
     label: string;
@@ -3175,8 +3187,8 @@ function TeamsPanel({
   }[] = [
     {
       id: "equipes",
-      label: "Todas as equipes",
-      badge: teams.length > 0 ? String(teams.length) : undefined,
+      label: isAdmin ? "Todas as equipes" : "Minhas equipes",
+      badge: visibleTeams.length > 0 ? String(visibleTeams.length) : undefined,
       icon: (
         <svg
           width={14}
@@ -3363,7 +3375,7 @@ function TeamsPanel({
           Minhas equipes
         </p>
 
-        {teams.length === 0 ? (
+        {myTeams.length === 0 ? (
           <div
             style={{
               margin: "0 2px",
@@ -3428,7 +3440,7 @@ function TeamsPanel({
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {teams.map((t) => (
+            {myTeams.map((t) => (
               <button
                 key={t.id}
                 type="button"
@@ -3669,6 +3681,8 @@ export default function TeamsPage() {
       >
         <TeamsPanel
           teams={teams}
+          myTeamIds={myTeamIds}
+          isAdmin={isAdmin}
           onTeamClick={handleTeamClick}
           activeView={activeView}
           onViewChange={setActiveView}
