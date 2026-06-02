@@ -1,7 +1,9 @@
 "use client";
 
 import React, { use, useEffect, useState } from "react";
+import Link from "next/link";
 import {
+  ChevronRight,
   Star,
   Share2,
   Sparkles,
@@ -73,6 +75,7 @@ import {
   priorityToLabel,
 } from "@/lib/mappers/task-status.mapper";
 import type {
+  DProjectDto,
   TaskResponseDto,
   TaskPriority,
   V3Intention,
@@ -205,7 +208,7 @@ export default function ListPage({
       className="flex h-full flex-col overflow-hidden"
       style={{ background: "var(--background)" }}
     >
-      <PageHeader id={id} nome={projeto.nome} />
+      <PageHeader projeto={projeto} />
       <ViewSwitcher
         views={LIST_VIEWS}
         defaultValue="blocks"
@@ -526,7 +529,8 @@ function ListContent({
 }
 
 // ─── PageHeader ───────────────────────────────────────────────────────────────
-function PageHeader({ id, nome }: { id: string; nome: string }) {
+function PageHeader({ projeto }: { projeto: DProjectDto }) {
+  const { id, nome } = projeto;
   const { isBookmarked, bookmark } = useIsBookmarked(id, "list");
   const { toggle, isPending } = useToggleBookmark();
 
@@ -538,7 +542,7 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
         background: "var(--background)",
       }}
     >
-      <div className="flex min-w-0 items-center gap-2">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         <IcList size={16} />
         <h1
           className="truncate text-sm font-semibold"
@@ -600,8 +604,16 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
             stroke={isBookmarked ? "#f59e0b" : "currentColor"}
           />
         </button>
+        <HierarchyBreadcrumb projeto={projeto} />
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          flexShrink: 0,
+        }}
+      >
         <AgentPopover projectId={id} projectName={nome} />
         <TbBtn
           icon={<Sparkles className="size-3.5" />}
@@ -623,6 +635,89 @@ function PageHeader({ id, nome }: { id: string; nome: string }) {
         />
       </div>
     </header>
+  );
+}
+
+type HierarchyCrumb = {
+  id: string;
+  label: string;
+  href?: string;
+};
+
+function HierarchyBreadcrumb({ projeto }: { projeto: DProjectDto }) {
+  const { data: parent } = useProject(projeto.idPai);
+  const parentIsFolder = parent?.idClasse === "-351";
+  const parentIsSpace = parent?.idClasse === "-350";
+  const { data: spaceParent } = useProject(
+    parentIsFolder ? parent.idPai : null,
+  );
+
+  if (projeto.idPai && !parent) return null;
+
+  const space =
+    parentIsSpace
+      ? parent
+      : spaceParent?.idClasse === "-350"
+        ? spaceParent
+        : null;
+
+  if (parentIsFolder && !space) return null;
+
+  const folder = parentIsFolder ? parent : null;
+  const crumbs: HierarchyCrumb[] = [];
+
+  if (space) {
+    crumbs.push({
+      id: space.id,
+      label: space.nome,
+      href: `/spaces/${space.id}`,
+    });
+  }
+
+  if (folder) {
+    crumbs.push({
+      id: folder.id,
+      label: folder.nome,
+      href: `/folders/${folder.id}`,
+    });
+  }
+
+  crumbs.push({ id: projeto.id, label: projeto.nome });
+
+  if (crumbs.length <= 1) return null;
+
+  return (
+    <nav
+      aria-label="Caminho da lista"
+      className="ml-1 hidden min-w-0 items-center gap-1 border-l border-border pl-2 text-xs text-muted-foreground md:flex"
+    >
+      {crumbs.map((crumb, index) => (
+        <React.Fragment key={crumb.id}>
+          {index > 0 && (
+            <ChevronRight
+              aria-hidden
+              className="size-3 shrink-0 text-muted-foreground/60"
+            />
+          )}
+          {crumb.href ? (
+            <Link
+              href={crumb.href}
+              className="max-w-32 truncate rounded px-1 py-0.5 transition-colors hover:bg-accent hover:text-foreground"
+              title={crumb.label}
+            >
+              {crumb.label}
+            </Link>
+          ) : (
+            <span
+              className="max-w-32 truncate px-1 py-0.5 font-medium text-foreground/80"
+              title={crumb.label}
+            >
+              {crumb.label}
+            </span>
+          )}
+        </React.Fragment>
+      ))}
+    </nav>
   );
 }
 
