@@ -1114,6 +1114,11 @@ export function WorkspacePanel() {
     return null;
   }
 
+  // Central de IA (MCP): tela cheia, sem painel lateral.
+  if (pathname.startsWith("/ai")) {
+    return null;
+  }
+
   if (pathname.startsWith("/teams")) {
     return null;
   }

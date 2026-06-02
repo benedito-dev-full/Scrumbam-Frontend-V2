@@ -170,8 +170,8 @@ function IcDocs() {
   );
 }
 
-/* Formulário — quadrado com checkmark dentro, igual ClickUp */
-function IcForm() {
+/* IA (central) — robozinho: cabeça com antena, olhos e "orelhas" */
+function IcBot() {
   return (
     <svg
       width={20}
@@ -183,8 +183,12 @@ function IcForm() {
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <rect x="3" y="3" width="18" height="18" rx="3" />
-      <path d="M8 12l3 3 5-5" />
+      <rect x="4" y="8" width="16" height="11" rx="3" />
+      <path d="M12 8V4.5" />
+      <circle cx="12" cy="3.2" r="1.1" />
+      <path d="M2 13.5h2M20 13.5h2" />
+      <circle cx="9.2" cy="13.5" r="1.25" fill="currentColor" stroke="none" />
+      <circle cx="14.8" cy="13.5" r="1.25" fill="currentColor" stroke="none" />
     </svg>
   );
 }
@@ -239,10 +243,10 @@ type RailItem = {
 const mainNav: RailItem[] = [
   { href: "/", label: "Início", renderIcon: (a) => <IcHome active={a} /> },
   { href: "/planner", label: "Planejador", renderIcon: () => <IcPlanner /> },
-  { href: "/ia", label: "IA", renderIcon: () => <IcAI /> },
+  { href: "/ia", label: "Nexus", renderIcon: () => <IcAI /> },
   { href: "/teams", label: "Equipes", renderIcon: () => <IcTeams /> },
   { href: "/docs", label: "Documen...", renderIcon: () => <IcDocs /> },
-  { href: "/forms", label: "Formulário", renderIcon: () => <IcForm /> },
+  { href: "/ai", label: "IA", renderIcon: () => <IcBot /> },
 ];
 
 /* ─── Botão do rail ───────────────────────────────────────────────────────── */

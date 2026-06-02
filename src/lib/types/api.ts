@@ -756,3 +756,36 @@ export interface CreateExecutionDto {
   risk?: ExecutionRisk;
   taskId?: string;
 }
+
+// ─── MCP (Model Context Protocol) ─────────────────────────────────────────────
+
+/** Corpo para gerar uma nova chave MCP (`POST /mcp/keys`). */
+export interface CreateMcpKeyDto {
+  /** Escopos concedidos (ex.: `tools:read`, `tools:call`). */
+  scopes?: string[];
+}
+
+/**
+ * Resposta da criação de uma chave MCP.
+ *
+ * `plaintext` é o token completo — retornado **uma única vez**. Depois disso
+ * o backend guarda só o hash; não há como recuperá-lo. Exibir/copiar na hora.
+ */
+export interface McpKeyCreatedDto {
+  id: string;
+  prefix: string;
+  /** Token completo — guardar agora, não será exibido de novo. */
+  plaintext: string;
+  scopes: string[];
+  createdAt: string;
+}
+
+/** Item da listagem de chaves MCP (`GET /mcp/keys`) — sem plaintext/hash. */
+export interface McpKeyListItemDto {
+  id: string;
+  prefix: string;
+  scopes: string[];
+  disabled: boolean;
+  createdAt: string;
+  lastUsedAt: string | null;
+}

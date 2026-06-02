@@ -109,4 +109,8 @@ export const qk = {
     byTarget: (targetType: CommentTargetType, targetId: string) =>
       ["comments", targetType, targetId] as const,
   },
+  mcp: {
+    /** Lista de chaves MCP do usuário autenticado (`GET /mcp/keys`). */
+    keys: ["mcp", "keys"] as const,
+  },
 } as const;
