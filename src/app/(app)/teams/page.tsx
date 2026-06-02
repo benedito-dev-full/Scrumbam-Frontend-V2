@@ -20,7 +20,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useCreateTeam, useTeams, useDeleteTeam } from "@/hooks/use-teams";
+import {
+  useCreateTeam,
+  useTeams,
+  useMyTeams,
+  useDeleteTeam,
+} from "@/hooks/use-teams";
 import { useAuthStore } from "@/lib/stores/auth";
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1149,6 +1154,7 @@ function FilterDropdown<T extends string>({
 }
 
 type MembrosFilter = "1" | "2-5" | "6-20" | "20+";
+type MembershipFilter = "mine";
 type CriadoFilter = "today" | "week" | "month" | "year";
 type SortBy =
   | "nome-asc"
@@ -1163,6 +1169,9 @@ const MEMBROS_OPTIONS: { id: MembrosFilter; label: string }[] = [
   { id: "2-5", label: "2 a 5 membros" },
   { id: "6-20", label: "6 a 20 membros" },
   { id: "20+", label: "Mais de 20 membros" },
+];
+const MEMBERSHIP_OPTIONS: { id: MembershipFilter; label: string }[] = [
+  { id: "mine", label: "Sou membro" },
 ];
 const CRIADO_OPTIONS: { id: CriadoFilter; label: string }[] = [
   { id: "today", label: "Hoje" },
@@ -1197,12 +1206,14 @@ function matchCriado(criadoEm: string, f: CriadoFilter): boolean {
 
 function TeamsListView({
   teams,
+  myTeamIds,
   onCreateTeam,
   onTeamClick,
   onEdit,
   onDelete,
 }: {
   teams: TeamLocal[];
+  myTeamIds: ReadonlySet<string>;
   onCreateTeam: () => void;
   onTeamClick: (id: string) => void;
   onEdit: (id: string) => void;
@@ -1215,6 +1226,8 @@ function TeamsListView({
   const [membrosFilter, setMembrosFilter] = useState<MembrosFilter | null>(
     null,
   );
+  const [membershipFilter, setMembershipFilter] =
+    useState<MembershipFilter | null>(null);
   const [criadoFilter, setCriadoFilter] = useState<CriadoFilter | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>("nome-asc");
 
@@ -1224,6 +1237,8 @@ function TeamsListView({
     if (q) out = out.filter((t) => t.nome.toLowerCase().includes(q));
     if (membrosFilter)
       out = out.filter((t) => matchMembros(t.memberCount, membrosFilter));
+    if (membershipFilter === "mine")
+      out = out.filter((t) => t.myCargo != null || myTeamIds.has(t.id));
     if (criadoFilter)
       out = out.filter((t) => matchCriado(t.criadoEm, criadoFilter));
 
@@ -1249,10 +1264,21 @@ function TeamsListView({
       }
     });
     return sorted;
-  }, [teams, search, membrosFilter, criadoFilter, sortBy]);
+  }, [
+    teams,
+    search,
+    membrosFilter,
+    membershipFilter,
+    myTeamIds,
+    criadoFilter,
+    sortBy,
+  ]);
 
   const membrosLabel =
     MEMBROS_OPTIONS.find((o) => o.id === membrosFilter)?.label ?? "Membros";
+  const membershipLabel =
+    MEMBERSHIP_OPTIONS.find((o) => o.id === membershipFilter)?.label ??
+    "Meus times";
   const criadoLabel =
     CRIADO_OPTIONS.find((o) => o.id === criadoFilter)?.label ?? "Criado";
   const sortLabel =
@@ -1333,6 +1359,14 @@ function TeamsListView({
             options={MEMBROS_OPTIONS}
             value={membrosFilter}
             onChange={setMembrosFilter}
+            clearable
+          />
+          <FilterDropdown
+            label={membershipLabel}
+            active={!!membershipFilter}
+            options={MEMBERSHIP_OPTIONS}
+            value={membershipFilter}
+            onChange={setMembershipFilter}
             clearable
           />
           <FilterDropdown
@@ -1435,9 +1469,12 @@ function TeamsListView({
 
       {/* grid de cards */}
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px" }}>
-        {filtered.length === 0 && search ? (
+        {filtered.length === 0 &&
+        (search || membrosFilter || membershipFilter || criadoFilter) ? (
           <p style={{ color: "var(--muted-foreground)", fontSize: 13 }}>
-            Nenhuma equipe encontrada para &ldquo;{search}&rdquo;.
+            {search
+              ? `Nenhuma equipe encontrada para "${search}".`
+              : "Nenhuma equipe encontrada com os filtros atuais."}
           </p>
         ) : viewMode === "grid" ? (
           <div
@@ -3462,6 +3499,11 @@ export default function TeamsPage() {
   const deleteTeam = useDeleteTeam();
   const user = useAuthStore((s) => s.user);
   const { data: apiTeams } = useTeams();
+  const { data: myTeams = [] } = useMyTeams();
+  const myTeamIds = useMemo(
+    () => new Set(myTeams.map((team) => team.id)),
+    [myTeams],
+  );
 
   // Mock de pessoas — apenas o usuário logado por enquanto
   const mockPessoas: PersonMock[] = user
@@ -3524,6 +3566,7 @@ export default function TeamsPage() {
         color: created.color ?? color,
         icon: created.icon ?? icon,
         criadoEm: created.criadoEm,
+        myCargo: created.myCargo ?? "LEAD",
       };
       const updated = [...localTeams, novo];
       setLocalTeams(updated);
@@ -3627,6 +3670,7 @@ export default function TeamsPage() {
       ) : (
         <TeamsListView
           teams={teams}
+          myTeamIds={myTeamIds}
           onCreateTeam={() => setModalOpen(true)}
           onTeamClick={handleTeamClick}
           onEdit={handleEdit}
