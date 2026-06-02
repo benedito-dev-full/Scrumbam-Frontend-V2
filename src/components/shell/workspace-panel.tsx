@@ -13,10 +13,16 @@ import {
   Folder,
   List,
   Users,
+  PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { SpaceTree } from "@/components/spaces/space-tree";
 import { PlannerPanel } from "./planner-panel";
@@ -1049,9 +1055,36 @@ function PlannerAside() {
 }
 
 /* ─── Painel principal ────────────────────────────────────────────────────── */
+function SidebarIconButton({
+  label,
+  side = "right",
+  children,
+  onClick,
+}: {
+  label: string;
+  side?: "top" | "right" | "bottom" | "left";
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        type="button"
+        aria-label={label}
+        className="grid size-6 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sidebar-ring"
+        onClick={onClick}
+      >
+        {children}
+      </TooltipTrigger>
+      <TooltipContent side={side}>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 export function WorkspacePanel() {
   const pathname = usePathname();
   const [homeOpen, setHomeOpen] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const sections = buildSections();
 
@@ -1094,10 +1127,26 @@ export function WorkspacePanel() {
     return null;
   }
 
+  if (sidebarCollapsed) {
+    return (
+      <aside
+        aria-label="Barra lateral recolhida"
+        className="flex h-full w-10 shrink-0 flex-col items-center border-r border-border bg-sidebar pt-2"
+      >
+        <SidebarIconButton
+          label="Abrir barra lateral"
+          onClick={() => setSidebarCollapsed(false)}
+        >
+          <PanelLeftOpen size={15} strokeWidth={1.7} />
+        </SidebarIconButton>
+      </aside>
+    );
+  }
+
   return (
     <aside
       aria-label="Painel do workspace"
-      className="flex h-full w-[260px] shrink-0 flex-col bg-sidebar"
+      className="flex h-full w-[260px] shrink-0 flex-col border-r border-border bg-sidebar"
     >
       {/* header "Início" */}
       <header className="flex h-10 items-center justify-between gap-1 px-3">
@@ -1115,6 +1164,13 @@ export function WorkspacePanel() {
         >
           <Plus className="size-3.5" />
         </button>
+        <SidebarIconButton
+          label="Fechar barra lateral"
+          side="bottom"
+          onClick={() => setSidebarCollapsed(true)}
+        >
+          <PanelLeftClose size={15} strokeWidth={1.7} />
+        </SidebarIconButton>
       </header>
 
       <ScrollArea className="min-h-0 flex-1 [&_[data-slot=scroll-area-scrollbar]]:hidden">
