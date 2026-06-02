@@ -207,16 +207,23 @@ export function TopBtn({
 export function ListRow({
   id,
   nome,
+  doneCount = 0,
+  totalCount = 0,
   isBookmarked,
   onBookmark,
   onDelete,
 }: {
   id: string;
   nome: string;
+  /** Tarefas concluídas (DONE+VALIDATED) — para a barra de progresso. */
+  doneCount?: number;
+  /** Total de tarefas da lista. */
+  totalCount?: number;
   isBookmarked?: boolean;
   onBookmark?: () => void;
   onDelete?: () => void;
 }) {
+  const pct = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -228,8 +235,7 @@ export function ListRow({
         href={`/lists/${id}`}
         style={{
           display: "grid",
-          gridTemplateColumns:
-            "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
+          gridTemplateColumns: "minmax(0,1fr) 180px 36px",
           minHeight: "var(--row-h)",
           padding: "0 16px",
           textDecoration: "none",
@@ -250,7 +256,6 @@ export function ListRow({
             {nome}
           </span>
         </div>
-        <div style={{ fontSize: 12, color: "var(--muted-foreground)" }}>-</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div
             style={{
@@ -262,7 +267,7 @@ export function ListRow({
           >
             <div
               style={{
-                width: "0%",
+                width: `${pct}%`,
                 height: "100%",
                 borderRadius: 2,
                 background: "#7c3aed",
@@ -276,82 +281,8 @@ export function ListRow({
               whiteSpace: "nowrap",
             }}
           >
-            0/0
+            {doneCount}/{totalCount}
           </span>
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            color: "var(--muted-foreground)",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          <svg
-            width={13}
-            height={13}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--muted-foreground)"
-            strokeWidth={1.6}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="3" y="4" width="18" height="18" rx="2" />
-            <path d="M3 10h18M8 3v4M16 3v4" />
-          </svg>
-        </div>
-        <div
-          style={{
-            fontSize: 12,
-            color: "var(--muted-foreground)",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
-          <svg
-            width={13}
-            height={13}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--muted-foreground)"
-            strokeWidth={1.6}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="3" y="4" width="18" height="18" rx="2" />
-            <path d="M3 10h18M8 3v4M16 3v4" />
-          </svg>
-        </div>
-        <div>
-          <svg
-            width={13}
-            height={13}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--muted-foreground)"
-            strokeWidth={1.6}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M5 21V4" />
-            <path d="M5 4h13l-2 4 2 4H5" />
-          </svg>
-        </div>
-        <div>
-          <svg
-            width={13}
-            height={13}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--muted-foreground)"
-            strokeWidth={1.6}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="12" cy="8" r="4" />
-            <path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6" />
-          </svg>
         </div>
         <div />
       </Link>

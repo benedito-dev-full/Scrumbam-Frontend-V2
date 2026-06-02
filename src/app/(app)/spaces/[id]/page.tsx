@@ -834,8 +834,7 @@ export default function SpacePage({
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns:
-                      "minmax(0,1fr) 80px 180px 120px 120px 100px 100px 36px",
+                    gridTemplateColumns: "minmax(0,1fr) 180px 36px",
                     minHeight: "calc(var(--row-h) - 6px)",
                     borderBottom: "1px solid var(--border)",
                     padding: "0 16px",
@@ -843,16 +842,7 @@ export default function SpacePage({
                     alignItems: "center",
                   }}
                 >
-                  {[
-                    "Nome",
-                    "Cor",
-                    "Progresso",
-                    "Início",
-                    "Término",
-                    "Prioridade",
-                    "Proprietário",
-                    "",
-                  ].map((col, i) => (
+                  {["Nome", "Progresso", ""].map((col, i) => (
                     <div
                       key={i}
                       style={{
@@ -878,6 +868,8 @@ export default function SpacePage({
                         key={lista.id}
                         id={lista.id}
                         nome={lista.nome}
+                        doneCount={lista.doneCount ?? 0}
+                        totalCount={lista.totalCount ?? 0}
                         isBookmarked={!!bm}
                         onBookmark={() =>
                           toggleSpace({

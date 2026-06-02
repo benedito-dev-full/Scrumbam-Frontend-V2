@@ -195,6 +195,13 @@ export interface DProjectDto {
   description: string | null;
   orgId: string | null;
   memberCount: number;
+  /**
+   * Progresso da Lista — tarefas concluídas (DONE+VALIDATED). Presente apenas
+   * na listagem (`GET /projects`); ausente em respostas de item único.
+   */
+  doneCount?: number;
+  /** Total de tarefas da Lista. Presente apenas na listagem. */
+  totalCount?: number;
   repoUrl: string | null;
   teamId: string | null;
   folderId: string | null;
