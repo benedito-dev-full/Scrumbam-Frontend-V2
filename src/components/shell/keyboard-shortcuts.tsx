@@ -11,7 +11,6 @@ const G_ROUTES: Record<string, string> = {
   h: "/",
   i: "/inbox",
   t: "/assigned",
-  s: "/sprints",
 };
 
 function isTypingTarget(target: EventTarget | null) {

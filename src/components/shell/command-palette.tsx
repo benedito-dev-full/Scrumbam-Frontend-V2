@@ -7,7 +7,6 @@ import {
   Home,
   Inbox,
   ListTodo,
-  Zap,
   Sparkles,
   Users,
   User,
@@ -206,14 +205,6 @@ export function CommandPalette() {
       icon: UserPlus,
       keywords: ["invite", "convidar", "membro"],
       onSelect: run(() => openInvite()),
-    },
-    {
-      id: "c:sprints",
-      label: "Abrir Sprints",
-      icon: Zap,
-      shortcut: "G S",
-      keywords: ["sprint", "iteracao"],
-      onSelect: run(() => router.push("/sprints")),
     },
     {
       id: "c:ia",
