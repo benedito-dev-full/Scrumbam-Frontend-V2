@@ -62,7 +62,7 @@ export function BrandLoader({
 
   return (
     <div
-      className={cn("flex flex-col items-center gap-3", className)}
+      className={cn("flex flex-col items-center", className)}
       role="status"
       aria-live="polite"
       aria-label={current ?? "Carregando"}
@@ -76,7 +76,7 @@ export function BrandLoader({
       {phrases.length > 0 && (
         <span
           key={index}
-          className="bl-msg text-[12px] font-medium text-muted-foreground"
+          className="bl-msg -mt-6 text-[24px] font-medium text-foreground"
         >
           {current}
         </span>
