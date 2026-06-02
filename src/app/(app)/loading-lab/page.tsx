@@ -24,8 +24,8 @@ export default function LoadingLabPage() {
 
       <div className="grid flex-1 place-items-center">
         <div className="flex flex-col items-center gap-10">
-          <div className="grid h-44 place-items-center">
-            <BrandLoader />
+          <div className="grid h-[360px] place-items-center">
+            <BrandLoader size={336} />
           </div>
 
           <p className="max-w-sm text-center text-[11px] leading-relaxed text-muted-foreground">
