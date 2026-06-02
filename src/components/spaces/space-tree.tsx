@@ -10,6 +10,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronRight, Plus, Lock, MoreHorizontal, Star, Pencil, Copy, Trash2 } from "lucide-react";
@@ -730,7 +731,7 @@ function MoreMenu({
         <MoreHorizontal className="size-3" />
       </button>
 
-      {open && typeof window !== "undefined" && (
+      {open && typeof window !== "undefined" && createPortal(
         <div
           ref={menuRef}
           role="menu"
@@ -776,7 +777,8 @@ function MoreMenu({
               archive({ id: project.id, idClasse: project.idClasse, idPai: project.idPai });
             }}
           />
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
@@ -866,7 +868,7 @@ function SpacePlusMenu({
         <Plus className="size-3" />
       </button>
 
-      {menuOpen && typeof window !== "undefined" && (
+      {menuOpen && typeof window !== "undefined" && createPortal(
         <div
           ref={menuRef}
           role="menu"
@@ -961,7 +963,8 @@ function SpacePlusMenu({
               onClick={() => setMenuOpen(false)}
             />
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
