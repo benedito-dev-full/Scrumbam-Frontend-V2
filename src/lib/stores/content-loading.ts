@@ -4,10 +4,13 @@ import { create } from "zustand";
  * Controla o overlay de carregamento da ÁREA DE CONTEÚDO (tudo abaixo da
  * topbar). A topbar permanece sempre visível e interativa.
  *
- * Acionado APENAS quando há carregamento real — hoje, o refresh do conteúdo
- * (botão da topbar → `invalidateQueries`). NÃO usar em navegação instantânea
- * (troca de aba com dados em cache) para não atrasar o que já está pronto.
- * Para um carregamento pontual, chame `show()/hide()` ao redor da operação.
+ * Acionado APENAS quando há carregamento real:
+ *  - `GlobalLoadingTrigger`: auto-mostra quando uma query em primeira carga
+ *    passa de ~400ms (ignora navegação rápida / refetch de fundo).
+ *  - refresh do conteúdo (botão da topbar → `invalidateQueries`).
+ *
+ * NÃO usar em navegação instantânea (dados em cache). Para um carregamento
+ * pontual, chame `show()/hide()` ao redor da operação.
  */
 type ContentLoadingState = {
   visible: boolean;
