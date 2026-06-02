@@ -714,11 +714,18 @@ function BackendGroupsView({
   const visibleTasks = filters
     ? applyTaskFilters(realTasks, filters)
     : realTasks;
-  // Ordena os blocos pela ordem definida pelo usuário (dados.ordem). Blocos
-  // sem ordem (legados) caem no fim, preservando a ordem original (chave desc).
-  const orderedBlocks = [...blocks].sort(
-    (a, b) => (a.dados?.ordem ?? Infinity) - (b.dados?.ordem ?? Infinity),
-  );
+  // Ordena os blocos pela ordem definida pelo usuário (dados.ordem). Em caso de
+  // empate (ex.: blocos ainda sem ordem), desempata por `chave` crescente —
+  // mais antigo primeiro, então um bloco recém-criado aparece SEMPRE no fim
+  // (alinhado ao botão "Adicionar grupo", que fica embaixo).
+  const orderedBlocks = [...blocks].sort((a, b) => {
+    const oa = a.dados?.ordem ?? Infinity;
+    const ob = b.dados?.ordem ?? Infinity;
+    if (oa !== ob) return oa - ob;
+    if (BigInt(a.id) < BigInt(b.id)) return -1;
+    if (BigInt(a.id) > BigInt(b.id)) return 1;
+    return 0;
+  });
   const board = buildGroupsBoard(orderedBlocks, visibleTasks, project?.tableFields);
 
   // Colunas arquivadas (hidden:true) — derivadas do schema COMPLETO (não do
