@@ -16,6 +16,20 @@ import { usePathname } from "next/navigation";
 import { ChevronRight, Plus, Lock, MoreHorizontal, Star, Pencil, Copy, Trash2 } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  pointerWithin,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type Active,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import {
@@ -24,6 +38,7 @@ import {
   useLists,
   useRenameProject,
   useArchiveProject,
+  useMoveProject,
 } from "@/hooks/use-projects";
 import { useIsBookmarked, useToggleBookmark } from "@/hooks/use-bookmarks";
 import type { BookmarkTargetType } from "@/lib/types/api";
@@ -77,12 +92,48 @@ function useExpandedState() {
     });
   }, []);
 
+  // Expande sem alternar — usado após mover um item por DnD para revelar
+  // onde ele caiu, sem o risco de fechar um nó que já estava aberto.
+  const expand = useCallback((id: string) => {
+    setExpanded((prev) => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.add(id);
+      saveExpandedIds(next);
+      return next;
+    });
+  }, []);
+
   const isExpanded = useCallback(
     (id: string) => expanded.has(id),
     [expanded],
   );
 
-  return { isExpanded, toggle };
+  return { isExpanded, toggle, expand };
+}
+
+// ─── Validação de drop (hierarquia ADR-V2-051) ─────────────────────────────────
+
+/**
+ * Decide se o item arrastado pode ser solto sobre `target`, espelhando as
+ * regras de hierarquia do backend (sem chamar a API):
+ * - LIST (-352)   → aceita FOLDER (-351) ou SPACE (-350) como destino
+ * - FOLDER (-351) → aceita apenas SPACE (-350) como destino
+ *
+ * Rejeita soltar sobre si mesmo ou sobre o pai atual (movimento nulo).
+ */
+function canDropOn(active: Active | null, target: DProjectDto): boolean {
+  const dragged = active?.data.current?.project as DProjectDto | undefined;
+  if (!dragged) return false;
+  if (dragged.id === target.id) return false;
+  if (dragged.idPai === target.id) return false;
+  if (dragged.idClasse === "-352") {
+    return target.idClasse === "-351" || target.idClasse === "-350";
+  }
+  if (dragged.idClasse === "-351") {
+    return target.idClasse === "-350";
+  }
+  return false;
 }
 
 // ─── Hook de inline rename ────────────────────────────────────────────────────
@@ -328,12 +379,21 @@ function ListNode({
   const { editing, draft, setDraft, inputRef, isPending, startEdit, handleKeyDown, commitEdit } =
     useInlineRename(list);
 
+  const { listeners, setNodeRef, isDragging } = useDraggable({
+    id: list.id,
+    data: { type: "list", project: list },
+    disabled: editing,
+  });
+
   return (
     <div
+      ref={setNodeRef}
+      {...(editing ? {} : listeners)}
       className={cn(
         "group flex h-[34px] items-center rounded-[4px] text-[13px] text-sidebar-foreground/85 transition-colors",
         "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
         active && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+        isDragging && "opacity-40",
       )}
       style={{ paddingLeft }}
     >
@@ -401,13 +461,31 @@ function FolderNode({
   const { editing, draft, setDraft, inputRef, isPending, startEdit, handleKeyDown, commitEdit } =
     useInlineRename(folder);
 
+  const { listeners, setNodeRef: setDragRef, isDragging } = useDraggable({
+    id: folder.id,
+    data: { type: "folder", project: folder },
+    disabled: editing,
+  });
+  const { setNodeRef: setDropRef, isOver, active: dndActive } = useDroppable({
+    id: `drop-${folder.id}`,
+    data: { type: "folder", project: folder },
+  });
+  const showDrop = isOver && canDropOn(dndActive, folder);
+
   return (
     <div>
       <div
+        ref={(node) => {
+          setDragRef(node);
+          setDropRef(node);
+        }}
+        {...(editing ? {} : listeners)}
         className={cn(
           "group flex h-[34px] items-center rounded-[4px] text-[13px] text-sidebar-foreground/85 transition-colors",
           "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
-          active && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+          active && !isDragging && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+          isDragging && "opacity-40",
+          showDrop && "ring-1 ring-inset ring-primary bg-primary/10",
         )}
         style={{ paddingLeft }}
       >
@@ -530,6 +608,12 @@ function SpaceNode({
   const { editing, draft, setDraft, inputRef, isPending, startEdit, handleKeyDown, commitEdit } =
     useInlineRename(space);
 
+  const { setNodeRef: setDropRef, isOver, active: dndActive } = useDroppable({
+    id: `drop-${space.id}`,
+    data: { type: "space", project: space },
+  });
+  const showDrop = isOver && canDropOn(dndActive, space);
+
   // Avatar: usa color/icon salvos ou fallback determinístico
   const inicial = (space.nome.trim().charAt(0) || "?").toUpperCase();
   const FALLBACK_COLORS = ["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#3b82f6","#ef4444","#14b8a6"];
@@ -539,10 +623,12 @@ function SpaceNode({
   return (
     <div>
       <div
+        ref={setDropRef}
         className={cn(
           "group flex h-[34px] items-center rounded-[4px] text-[13px] text-sidebar-foreground/85 transition-colors",
           "hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
           active && "bg-sidebar-accent text-sidebar-accent-foreground font-medium",
+          showDrop && "ring-1 ring-inset ring-primary bg-primary/10",
         )}
         style={{ paddingLeft }}
       >
@@ -985,9 +1071,47 @@ function SpacePlusMenu({
 export function SpaceTree() {
   const [sectionOpen, setSectionOpen] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const { isExpanded, toggle } = useExpandedState();
+  const { isExpanded, toggle, expand } = useExpandedState();
 
   const { data: spaces, isLoading } = useSpaces();
+
+  // ─── Drag & drop: mover Listas/Pastas para um novo pai ───────────────────────
+  const { mutate: moveProject } = useMoveProject();
+  const [activeDrag, setActiveDrag] = useState<DProjectDto | null>(null);
+
+  // Distância de 5px antes de iniciar o arraste — preserva cliques (navegação,
+  // toggle de colapso, menus) sem disparar drag acidental.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  function handleDragStart(event: DragStartEvent) {
+    const project = event.active.data.current?.project as DProjectDto | undefined;
+    setActiveDrag(project ?? null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setActiveDrag(null);
+    const dragged = event.active.data.current?.project as DProjectDto | undefined;
+    const target = event.over?.data.current?.project as DProjectDto | undefined;
+    if (!dragged || !target || !canDropOn(event.active, target)) return;
+
+    moveProject(
+      {
+        id: dragged.id,
+        idClasse: dragged.idClasse,
+        fromParentId: dragged.idPai,
+        toParentId: target.id,
+      },
+      {
+        onSuccess: () => {
+          expand(target.id);
+          toast.success(`"${dragged.nome}" movido para "${target.nome}"`);
+        },
+        onError: () => toast.error("Não foi possível mover. Tente novamente."),
+      },
+    );
+  }
 
   return (
     <div>
@@ -1020,29 +1144,51 @@ export function SpaceTree() {
 
       {/* lista de spaces */}
       {sectionOpen && (
-        <div className="space-y-0.5">
-          {isLoading && <SpaceTreeSkeleton />}
-          {!isLoading && spaces?.map((space) => (
-            <SpaceNode
-              key={space.id}
-              space={space}
-              depth={0}
-              isExpanded={isExpanded}
-              onToggle={toggle}
-            />
-          ))}
-          {/* "+ Novo Espaço" sempre visível no final */}
-          {!isLoading && (
-            <button
-              type="button"
-              onClick={() => setCreateDialogOpen(true)}
-              className="flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-muted-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-            >
-              <Plus className="size-3.5 shrink-0" />
-              Novo Espaço
-            </button>
-          )}
-        </div>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={pointerWithin}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={() => setActiveDrag(null)}
+        >
+          <div className="space-y-0.5">
+            {isLoading && <SpaceTreeSkeleton />}
+            {!isLoading && spaces?.map((space) => (
+              <SpaceNode
+                key={space.id}
+                space={space}
+                depth={0}
+                isExpanded={isExpanded}
+                onToggle={toggle}
+              />
+            ))}
+            {/* "+ Novo Espaço" sempre visível no final */}
+            {!isLoading && (
+              <button
+                type="button"
+                onClick={() => setCreateDialogOpen(true)}
+                className="flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-muted-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
+              >
+                <Plus className="size-3.5 shrink-0" />
+                Novo Espaço
+              </button>
+            )}
+          </div>
+
+          {/* Pré-visualização flutuante do item sendo arrastado */}
+          <DragOverlay dropAnimation={null}>
+            {activeDrag ? (
+              <div className="flex h-[34px] max-w-[220px] items-center gap-2 rounded-[6px] border border-border bg-sidebar px-2.5 text-[13px] font-medium text-sidebar-foreground shadow-xl">
+                {activeDrag.idClasse === "-351" ? (
+                  <IcFolder className="shrink-0 text-muted-foreground" />
+                ) : (
+                  <IcList className="shrink-0 text-violet-400" />
+                )}
+                <span className="truncate">{activeDrag.nome}</span>
+              </div>
+            ) : null}
+          </DragOverlay>
+        </DndContext>
       )}
 
       {/* dialog de criação de space */}

@@ -367,6 +367,59 @@ export function useRenameProject() {
 }
 
 /**
+ * Move um DProject (LIST ou FOLDER) para um novo pai na hierarquia.
+ *
+ * Mapeia para `PATCH /projects/:id { idPai: toParentId }`. Diferente de
+ * {@link useRenameProject}, invalida o cache do pai de **origem** E de
+ * **destino**, garantindo que o item suma da árvore antiga e apareça na nova:
+ * - LIST (-352)   → invalida `qk.projects.lists(fromParentId)` e `(toParentId)`
+ * - FOLDER (-351) → invalida `qk.projects.folders(fromParentId)` e `(toParentId)`
+ *
+ * O backend valida regras de hierarquia (LIST aceita FOLDER ou SPACE como pai;
+ * FOLDER só aceita SPACE) e previne ciclos — o client apenas pré-valida na UI.
+ *
+ * @returns Mutation com `mutate({ id, idClasse, fromParentId, toParentId })`
+ *
+ * @example
+ * ```tsx
+ * const { mutate } = useMoveProject();
+ * // mover lista 100 para dentro da pasta 200
+ * mutate({ id: '100', idClasse: '-352', fromParentId: '50', toParentId: '200' });
+ * ```
+ */
+export function useMoveProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    DProjectDto,
+    Error,
+    { id: string; idClasse: string; fromParentId: string | null; toParentId: string }
+  >({
+    mutationFn: async ({ id, toParentId }) => {
+      const res = await api.patch<DProjectDto>(`/projects/${id}`, {
+        idPai: toParentId,
+      } satisfies UpdateProjectDto);
+      return res.data;
+    },
+    onSuccess: (_data, { idClasse, fromParentId, toParentId }) => {
+      if (idClasse === ID_CLASSE_LIST) {
+        if (fromParentId) {
+          void queryClient.invalidateQueries({ queryKey: qk.projects.lists(fromParentId) });
+        }
+        void queryClient.invalidateQueries({ queryKey: qk.projects.lists(toParentId) });
+      } else if (idClasse === ID_CLASSE_FOLDER) {
+        if (fromParentId) {
+          void queryClient.invalidateQueries({ queryKey: qk.projects.folders(fromParentId) });
+        }
+        void queryClient.invalidateQueries({ queryKey: qk.projects.folders(toParentId) });
+      } else {
+        void queryClient.invalidateQueries({ queryKey: qk.projects.all });
+      }
+    },
+  });
+}
+
+/**
  * Atualiza o schema de colunas customizáveis de uma LIST.
  *
  * Mapeia para `PATCH /projects/:id { tableFields }` e invalida o projeto
