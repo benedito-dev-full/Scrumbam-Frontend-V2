@@ -32,7 +32,7 @@ import type { TaskPriority, TaskType, V3Intention } from "@/lib/types/api";
 
 /* ─── Mapeamentos StatusVisual ↔ V3Intention ─────────────────────────────── */
 
-type StatusVisual =
+export type StatusVisual =
   | "backlog"
   | "pronto"
   | "em-progresso"

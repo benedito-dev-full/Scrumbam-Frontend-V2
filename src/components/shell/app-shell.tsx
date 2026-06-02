@@ -6,6 +6,7 @@ import { KeyboardShortcuts } from "./keyboard-shortcuts";
 import { ShortcutsHelpDialog } from "./shortcuts-help-dialog";
 import { NewSpaceDialog } from "./new-space-dialog";
 import { InviteDialog } from "./invite-dialog";
+import { CreateTaskModalGlobal } from "./create-task-modal-global";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -28,6 +29,7 @@ export function AppShell({ children }: AppShellProps) {
       <ShortcutsHelpDialog />
       <NewSpaceDialog />
       <InviteDialog />
+      <CreateTaskModalGlobal />
       <KeyboardShortcuts />
     </div>
   );

@@ -26,6 +26,8 @@ import {
 } from "lucide-react";
 import { useCommandPaletteStore } from "@/lib/stores/command-palette";
 import { useInviteDialogStore } from "@/lib/stores/invite-dialog";
+import { useShortcutsHelpStore } from "@/lib/stores/shortcuts-help";
+import { useCreateTaskModalStore } from "@/lib/stores/create-task-modal";
 import { useSpaces } from "@/hooks/use-projects";
 import { useSearch } from "@/hooks/use-search";
 import { api } from "@/lib/api";
@@ -53,6 +55,8 @@ export function CommandPalette() {
   const open = useCommandPaletteStore((s) => s.open);
   const setOpen = useCommandPaletteStore((s) => s.setOpen);
   const openInvite = useInviteDialogStore((s) => s.openDialog);
+  const toggleHelp = useShortcutsHelpStore((s) => s.toggle);
+  const openCreateTask = useCreateTaskModalStore((s) => s.openModal);
 
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -194,7 +198,7 @@ export function CommandPalette() {
       icon: Plus,
       shortcut: "C T",
       keywords: ["nova tarefa", "criar", "add"],
-      onSelect: run(() => {}),
+      onSelect: run(() => openCreateTask()),
     },
     {
       id: "c:invite",
@@ -238,7 +242,7 @@ export function CommandPalette() {
       icon: Keyboard,
       shortcut: "⌘ /",
       keywords: ["shortcuts", "atalhos", "ajuda"],
-      onSelect: run(() => {}),
+      onSelect: run(() => toggleHelp()),
     },
     {
       id: "c:settings",
@@ -279,6 +283,25 @@ export function CommandPalette() {
     if (navF.length) sections.push({ label: "Ir para", entries: navF });
     const cmdF = localFilter(commands);
     if (cmdF.length) sections.push({ label: "Comandos", entries: cmdF });
+
+    // Ponte com o Nexus: leva o texto digitado direto para a IA.
+    // /ia?q=... dispara o envio automático da pergunta ao montar.
+    const ask = query.trim();
+    sections.push({
+      label: "Inteligência artificial",
+      entries: [
+        {
+          id: "ai:ask",
+          label: `Perguntar à IA: "${ask}"`,
+          icon: Sparkles,
+          iconColor: "#c084fc",
+          keywords: ["ia", "ai", "nexus", "perguntar", "pergunta"],
+          onSelect: run(() =>
+            router.push(`/ia?q=${encodeURIComponent(ask)}`),
+          ),
+        },
+      ],
+    });
   } else {
     if (recentEntries.length)
       sections.push({ label: "Recentes", entries: recentEntries });
