@@ -1119,6 +1119,11 @@ export function WorkspacePanel() {
     return null;
   }
 
+  // Loading Lab: bancada do loader em tela cheia.
+  if (pathname.startsWith("/loading-lab")) {
+    return null;
+  }
+
   if (pathname.startsWith("/teams")) {
     return null;
   }
