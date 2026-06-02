@@ -16,6 +16,7 @@ import {
 import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
 import { NotificationsPopover } from "@/components/shell/notifications-popover";
 import { useCommandPaletteStore } from "@/lib/stores/command-palette";
+import { useContentLoadingStore } from "@/lib/stores/content-loading";
 import { useLogout } from "@/hooks/use-auth";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useRouter } from "next/navigation";
@@ -31,19 +32,23 @@ import { useRouter } from "next/navigation";
 export function AppTopbar() {
   const openCommandPalette = useCommandPaletteStore((s) => s.setOpen);
   const queryClient = useQueryClient();
+  const showLoading = useContentLoadingStore((s) => s.show);
+  const hideLoading = useContentLoadingStore((s) => s.hide);
   const [refreshing, setRefreshing] = useState(false);
 
   /**
    * Atualiza todo o conteúdo abaixo da topbar sem recarregar a página:
    * invalida o cache do TanStack Query (refaz o fetch das queries ativas —
-   * sidebar, listas, board, etc.). A topbar permanece intacta.
+   * sidebar, listas, board, etc.) e exibe o loader sobre a área de conteúdo.
+   * A topbar permanece intacta.
    */
   async function handleRefresh() {
     if (refreshing) return;
     setRefreshing(true);
+    showLoading();
     try {
       // `invalidateQueries()` sem filtro marca tudo como stale e refaz as
-      // queries ativas. O delay mínimo garante feedback visual do giro.
+      // queries ativas. O delay mínimo garante feedback visual do loader.
       await Promise.all([
         queryClient.invalidateQueries(),
         new Promise((resolve) => setTimeout(resolve, 500)),
@@ -51,6 +56,7 @@ export function AppTopbar() {
       toast.success("Conteúdo atualizado");
     } finally {
       setRefreshing(false);
+      hideLoading();
     }
   }
 

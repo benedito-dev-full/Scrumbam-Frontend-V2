@@ -8,6 +8,8 @@ import { NewSpaceDialog } from "./new-space-dialog";
 import { InviteDialog } from "./invite-dialog";
 import { CreateTaskModalGlobal } from "./create-task-modal-global";
 import { CreateWorkspaceDialog } from "./create-workspace-dialog";
+import { ContentLoadingOverlay } from "./content-loading-overlay";
+import { NavigationLoader } from "./navigation-loader";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -19,13 +21,16 @@ export function AppShell({ children }: AppShellProps) {
       {/* Topbar cobre 100% da largura */}
       <AppTopbar />
 
-      {/* Abaixo da topbar: rail + sidebar + conteúdo */}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      {/* Abaixo da topbar: rail + sidebar + conteúdo.
+          `relative` ancora o overlay de carregamento (cobre tudo abaixo da topbar). */}
+      <div className="relative flex min-h-0 flex-1 overflow-hidden">
         <IconRail />
         <WorkspacePanel />
         <main className="min-h-0 flex-1 overflow-auto">{children}</main>
+        <ContentLoadingOverlay />
       </div>
 
+      <NavigationLoader />
       <CommandPalette />
       <ShortcutsHelpDialog />
       <NewSpaceDialog />
