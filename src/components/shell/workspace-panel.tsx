@@ -985,6 +985,12 @@ function SectionBlock({ section }: { section: Section }) {
           onClick={() => setOpen((v) => !v)}
           className="flex flex-1 items-center gap-1 text-[12px] font-semibold text-sidebar-foreground/70 transition-colors hover:text-sidebar-foreground"
         >
+          <ChevronRight
+            className={cn(
+              "size-3 shrink-0 transition-transform duration-150",
+              open && "rotate-90",
+            )}
+          />
           {section.label}
         </button>
         {section.showAddButton && (
