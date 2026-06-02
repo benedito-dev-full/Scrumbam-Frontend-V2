@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { api, getApiErrorMessage } from "@/lib/api";
 
 /* ─── Schema ─────────────────────────────────────────────────────────────── */
 
@@ -47,14 +48,25 @@ export default function ChangePasswordPage() {
   const novaSenha = form.watch("novaSenha");
   const strength = computeStrength(novaSenha);
 
-  const onSubmit = form.handleSubmit(async () => {
+  const onSubmit = form.handleSubmit(async (data) => {
     setSubmitting(true);
-    // mock: simula chamada de API
-    await new Promise((r) => setTimeout(r, 800));
-    setSubmitting(false);
-    setSuccess(true);
-    form.reset();
-    setTimeout(() => router.push("/profile"), 1500);
+    try {
+      await api.patch("/auth/me", {
+        currentPassword: data.senhaAtual,
+        newPassword: data.novaSenha,
+      });
+      setSuccess(true);
+      form.reset();
+      setTimeout(() => router.push("/profile"), 1500);
+    } catch (err) {
+      // Senha atual incorreta vem como 401 do backend — direciona o erro
+      // para o campo correto; demais erros vão para a confirmação.
+      const message = getApiErrorMessage(err);
+      const isCurrentPwd = /senha atual/i.test(message);
+      form.setError(isCurrentPwd ? "senhaAtual" : "confirmar", { message });
+    } finally {
+      setSubmitting(false);
+    }
   });
 
   return (
