@@ -1,6 +1,9 @@
 "use client";
 
-import { CalendarDays, Search, RefreshCw } from "lucide-react";
+import { Search, RefreshCw } from "lucide-react";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -27,6 +30,29 @@ import { useRouter } from "next/navigation";
 
 export function AppTopbar() {
   const openCommandPalette = useCommandPaletteStore((s) => s.setOpen);
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+
+  /**
+   * Atualiza todo o conteúdo abaixo da topbar sem recarregar a página:
+   * invalida o cache do TanStack Query (refaz o fetch das queries ativas —
+   * sidebar, listas, board, etc.). A topbar permanece intacta.
+   */
+  async function handleRefresh() {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      // `invalidateQueries()` sem filtro marca tudo como stale e refaz as
+      // queries ativas. O delay mínimo garante feedback visual do giro.
+      await Promise.all([
+        queryClient.invalidateQueries(),
+        new Promise((resolve) => setTimeout(resolve, 500)),
+      ]);
+      toast.success("Conteúdo atualizado");
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   return (
     <header
@@ -43,18 +69,11 @@ export function AppTopbar() {
         zIndex: 10,
       }}
     >
-      {/* ── Esquerda: workspace switcher + calendário ── */}
+      {/* ── Esquerda: workspace switcher ── */}
       <div
         style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}
       >
         <WorkspaceSwitcher />
-        <TopbarIconBtn aria-label="Calendário">
-          <CalendarDays
-            size={16}
-            strokeWidth={1.6}
-            style={{ color: "var(--muted-foreground)" }}
-          />
-        </TopbarIconBtn>
       </div>
 
       {/* ── Centro: barra de pesquisa ── */}
@@ -131,10 +150,15 @@ export function AppTopbar() {
       <div
         style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}
       >
-        <TopbarIconBtn aria-label="Sincronizar">
+        <TopbarIconBtn
+          aria-label="Atualizar conteúdo"
+          onClick={handleRefresh}
+          disabled={refreshing}
+        >
           <RefreshCw
             size={15}
             strokeWidth={1.6}
+            className={refreshing ? "animate-spin" : undefined}
             style={{ color: "var(--muted-foreground)" }}
           />
         </TopbarIconBtn>
@@ -241,14 +265,20 @@ function UserMenu() {
 function TopbarIconBtn({
   children,
   "aria-label": ariaLabel,
+  onClick,
+  disabled,
 }: {
   children: React.ReactNode;
   "aria-label": string;
+  onClick?: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={ariaLabel}
+      onClick={onClick}
+      disabled={disabled}
       style={{
         width: 30,
         height: 30,
@@ -258,11 +288,12 @@ function TopbarIconBtn({
         borderRadius: 6,
         background: "none",
         border: 0,
-        cursor: "pointer",
+        cursor: disabled ? "default" : "pointer",
         color: "var(--muted-foreground)",
         transition: "background .12s, color .12s",
       }}
       onMouseEnter={(e) => {
+        if (disabled) return;
         e.currentTarget.style.background = "var(--accent)";
         e.currentTarget.style.color = "var(--foreground)";
       }}
