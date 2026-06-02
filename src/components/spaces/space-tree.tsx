@@ -43,6 +43,8 @@ import {
 import { useIsBookmarked, useToggleBookmark } from "@/hooks/use-bookmarks";
 import type { BookmarkTargetType } from "@/lib/types/api";
 import { CreateSpaceDialog } from "./create-space-dialog";
+import { CreateSpaceChooserDialog } from "./create-space-chooser";
+import { SpaceTemplateGalleryDialog } from "./space-template-gallery";
 import { CreateFolderDialog } from "./create-folder-dialog";
 import { CreateListDialog } from "./create-list-dialog";
 import type { DProjectDto } from "@/lib/types/api";
@@ -1071,6 +1073,9 @@ function SpacePlusMenu({
 export function SpaceTree() {
   const [sectionOpen, setSectionOpen] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  // Fluxo de criação: "+" abre o chooser; daí vai p/ modal em branco ou galeria.
+  const [chooserOpen, setChooserOpen] = useState(false);
+  const [galleryOpen, setGalleryOpen] = useState(false);
   const { isExpanded, toggle, expand } = useExpandedState();
 
   const { data: spaces, isLoading } = useSpaces();
@@ -1135,7 +1140,7 @@ export function SpaceTree() {
         <button
           type="button"
           aria-label="Novo espaço"
-          onClick={() => setCreateDialogOpen(true)}
+          onClick={() => setChooserOpen(true)}
           className="grid size-4 place-items-center rounded text-muted-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <Plus className="size-3" />
@@ -1166,7 +1171,7 @@ export function SpaceTree() {
             {!isLoading && (
               <button
                 type="button"
-                onClick={() => setCreateDialogOpen(true)}
+                onClick={() => setChooserOpen(true)}
                 className="flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-muted-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
               >
                 <Plus className="size-3.5 shrink-0" />
@@ -1191,7 +1196,31 @@ export function SpaceTree() {
         </DndContext>
       )}
 
-      {/* dialog de criação de space */}
+      {/* Passo 1: escolher em branco ou template */}
+      <CreateSpaceChooserDialog
+        open={chooserOpen}
+        onOpenChange={setChooserOpen}
+        onChooseBlank={() => {
+          setChooserOpen(false);
+          setCreateDialogOpen(true);
+        }}
+        onChooseTemplate={() => {
+          setChooserOpen(false);
+          setGalleryOpen(true);
+        }}
+      />
+
+      {/* Passo 2a: galeria de templates (criação real pendente) */}
+      <SpaceTemplateGalleryDialog
+        open={galleryOpen}
+        onOpenChange={setGalleryOpen}
+        onBack={() => {
+          setGalleryOpen(false);
+          setChooserOpen(true);
+        }}
+      />
+
+      {/* Passo 2b: modal de criação de space "em branco" */}
       <CreateSpaceDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}
