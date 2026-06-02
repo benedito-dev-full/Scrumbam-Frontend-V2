@@ -42,135 +42,10 @@ import { CommentsPanel } from "@/components/comments/CommentsPanel";
 import { CommentTargetType } from "@/lib/types/comment";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
-type TabId =
-  | "overview"
-  | "lista"
-  | "quadro"
-  | "calendario"
-  | "gantt"
-  | "tabela"
-  | "comentarios";
+type TabId = "overview" | "comentarios";
 
 const TABS: { id: TabId; label: string; icon?: React.ReactNode }[] = [
   { id: "overview", label: "Overview" },
-  {
-    id: "lista",
-    label: "Lista",
-    icon: (
-      <svg width={12} height={12} viewBox="0 0 18 18" fill="none">
-        <path
-          d="M2 4.5 L4.5 7 L7 3"
-          stroke="#e879f9"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <line
-          x1="9"
-          y1="5"
-          x2="16"
-          y2="5"
-          stroke="#e879f9"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-        />
-        <path
-          d="M2 10.5 L4.5 13 L7 9"
-          stroke="#e879f9"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <line
-          x1="9"
-          y1="11"
-          x2="16"
-          y2="11"
-          stroke="#e879f9"
-          strokeWidth={1.6}
-          strokeLinecap="round"
-        />
-      </svg>
-    ),
-  },
-  {
-    id: "quadro",
-    label: "Quadro",
-    icon: (
-      <svg
-        width={12}
-        height={12}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#60a5fa"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="3" y="3" width="5" height="18" rx="1" />
-        <rect x="10" y="3" width="5" height="12" rx="1" />
-        <rect x="17" y="3" width="5" height="15" rx="1" />
-      </svg>
-    ),
-  },
-  {
-    id: "calendario",
-    label: "Calendário",
-    icon: (
-      <svg
-        width={12}
-        height={12}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#f97316"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="3" y="4" width="18" height="18" rx="2" />
-        <path d="M3 10h18M8 3v4M16 3v4" />
-      </svg>
-    ),
-  },
-  {
-    id: "gantt",
-    label: "Gantt",
-    icon: (
-      <svg
-        width={12}
-        height={12}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#22c55e"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <line x1="3" y1="6" x2="14" y2="6" />
-        <line x1="7" y1="12" x2="20" y2="12" />
-        <line x1="3" y1="18" x2="16" y2="18" />
-      </svg>
-    ),
-  },
-  {
-    id: "tabela",
-    label: "Tabela",
-    icon: (
-      <svg
-        width={12}
-        height={12}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="#a78bfa"
-        strokeWidth={1.8}
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="3" y="3" width="18" height="18" rx="2" />
-        <path d="M3 9h18M3 15h18M9 3v18" />
-      </svg>
-    ),
-  },
   {
     id: "comentarios",
     label: "Comentários",
@@ -485,32 +360,6 @@ export default function SpacePage({
             {tab.label}
           </button>
         ))}
-
-        <button
-          type="button"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 4,
-            height: 36,
-            padding: "0 10px",
-            border: 0,
-            background: "none",
-            cursor: "pointer",
-            color: "var(--muted-foreground)",
-            fontSize: 12,
-            whiteSpace: "nowrap",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "var(--foreground)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "var(--muted-foreground)";
-          }}
-        >
-          <Plus size={12} />
-          Visualização
-        </button>
       </div>
 
       {/* ── Conteúdo scrollável ── */}
