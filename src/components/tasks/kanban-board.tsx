@@ -314,24 +314,6 @@ function TaskCard({
         isAiAssigned && isDone && !isLocked && "border-green-500/20",
       )}
     >
-      {/* Lixeira no hover — só aparece quando não está em execução */}
-      {!isLocked && !isDragOverlay && (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setDeleteOpen(true);
-          }}
-          onPointerDown={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-          title="Excluir task"
-          aria-label="Excluir task"
-          className="absolute right-1.5 top-1.5 z-10 rounded p-1 text-muted-foreground opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
-      )}
-
       {/* Dialog de confirmação — controlado por `deleteOpen` */}
       <DeleteTaskDialog
         task={task}
@@ -344,7 +326,7 @@ function TaskCard({
         <span className="font-mono text-[11px] text-muted-foreground">
           {task.identifier}
         </span>
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-h-5 items-center gap-1.5">
           {isLocked && (
             <span
               title="Em execução pela IA"
@@ -363,6 +345,23 @@ function TaskCard({
               style={{ background: prioColor }}
               title={task.priority}
             />
+          )}
+          {/* Lixeira no hover: fica no fluxo para nao cobrir a prioridade. */}
+          {!isLocked && !isDragOverlay && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setDeleteOpen(true);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => e.stopPropagation()}
+              title="Excluir task"
+              aria-label="Excluir task"
+              className="pointer-events-none -mr-1 inline-flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:pointer-events-auto group-hover:opacity-100"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
           )}
         </div>
       </div>
