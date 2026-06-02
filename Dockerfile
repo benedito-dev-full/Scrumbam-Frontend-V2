@@ -21,6 +21,12 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_MOCK_AUTH=$NEXT_PUBLIC_MOCK_AUTH
 ENV NEXT_TELEMETRY_DISABLED=1
 
+# Cache-bust: garante que o build sempre rode com o código atual.
+# Dokploy injeta o commit em variáveis como SOURCE_COMMIT quando disponível;
+# qualquer mudança no valor invalida o cache a partir daqui.
+ARG SOURCE_COMMIT=unknown
+RUN echo "Building commit: ${SOURCE_COMMIT}"
+
 RUN npm run build
 
 # Imagem de produção
