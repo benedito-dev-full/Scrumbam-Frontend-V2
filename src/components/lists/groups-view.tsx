@@ -38,6 +38,7 @@ import {
   X,
   Maximize2,
   Layers,
+  GripVertical,
 } from "lucide-react";
 import {
   DndContext,
@@ -51,6 +52,7 @@ import {
   SortableContext,
   arrayMove,
   horizontalListSortingStrategy,
+  verticalListSortingStrategy,
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -91,7 +93,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getApiErrorMessage } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
-import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
+import type { BlockDto, TaskResponseDto, V3Intention } from "@/lib/types/api";
 import {
   buildGroupsBoard,
   SEM_BLOCO_ID,
@@ -712,7 +714,12 @@ function BackendGroupsView({
   const visibleTasks = filters
     ? applyTaskFilters(realTasks, filters)
     : realTasks;
-  const board = buildGroupsBoard(blocks, visibleTasks, project?.tableFields);
+  // Ordena os blocos pela ordem definida pelo usuário (dados.ordem). Blocos
+  // sem ordem (legados) caem no fim, preservando a ordem original (chave desc).
+  const orderedBlocks = [...blocks].sort(
+    (a, b) => (a.dados?.ordem ?? Infinity) - (b.dados?.ordem ?? Infinity),
+  );
+  const board = buildGroupsBoard(orderedBlocks, visibleTasks, project?.tableFields);
 
   // Colunas arquivadas (hidden:true) — derivadas do schema COMPLETO (não do
   // board, que já as filtra). Alimentam o menu "Arquivadas" para restaurar.
@@ -1137,6 +1144,38 @@ function BackendGroupsView({
     );
   }
 
+  /**
+   * Reordena os Blocos persistindo `dados.ordem` em cada um. Recebe os ids dos
+   * blocos reais na nova ordem (o grupo sintetico "Sem bloco" fica fora). Aplica
+   * atualizacao otimista no cache de blocos para a UI reagir na hora; cada PATCH
+   * grava a nova ordem no backend (recarregar mantem).
+   */
+  function handleReorderGroups(orderedBlockIds: string[]) {
+    if (!projectId) return;
+    const orderMap = new Map(orderedBlockIds.map((id, i) => [id, i]));
+
+    // Otimista: aplica a nova ordem no cache imediatamente.
+    const key = qk.tasks.blocks(projectId);
+    const current = queryClient.getQueryData<BlockDto[]>(key);
+    if (current) {
+      queryClient.setQueryData<BlockDto[]>(
+        key,
+        current.map((b) =>
+          orderMap.has(b.id)
+            ? { ...b, dados: { ...(b.dados ?? {}), ordem: orderMap.get(b.id)! } }
+            : b,
+        ),
+      );
+    }
+
+    // Persiste so os blocos cuja ordem mudou.
+    orderedBlockIds.forEach((id, index) => {
+      const block = blocks.find((b) => b.id === id);
+      if (!block || (block.dados?.ordem ?? -1) === index) return;
+      updateBlock.mutate({ id, projectId, dto: { dados: { ordem: index } } });
+    });
+  }
+
   if (loadingBlocks || loadingTasks || loadingProject) {
     return (
       <div
@@ -1171,6 +1210,7 @@ function BackendGroupsView({
         onEditField={handleEditField}
         onRenameGroup={handleRenameGroup}
         onRecolorGroup={handleRecolorGroup}
+        onReorderGroups={handleReorderGroups}
         onDeleteGroup={(groupId, nome, taskCount) =>
           setBlockToDelete({ id: groupId, nome, taskCount })
         }
@@ -1304,6 +1344,7 @@ function GroupsBoardView({
   onEditField,
   onRenameGroup,
   onRecolorGroup,
+  onReorderGroups,
   onDeleteGroup,
   onAddGroup,
   onAddTask,
@@ -1331,6 +1372,8 @@ function GroupsBoardView({
   onRenameGroup?: (groupId: string, nome: string) => void;
   /** Altera a cor do bloco. Quando presente, o header mostra o seletor de cor. */
   onRecolorGroup?: (groupId: string, cor: string) => void;
+  /** Reordena os blocos. Recebe os ids dos blocos reais na nova ordem. */
+  onReorderGroups?: (orderedBlockIds: string[]) => void;
   /** Exclui o bloco. Quando presente, o header mostra a lixeira (exceto "Sem bloco"). */
   onDeleteGroup?: (groupId: string, nome: string, taskCount: number) => void;
   onAddGroup?: () => void;
@@ -1479,35 +1522,38 @@ function GroupsBoardView({
             )}
           </div>
         ) : (
-          board.groups.map((g) => (
-            <GroupBox
-              key={g.id}
-              group={g}
-              columns={cols}
-              register={register}
-              onSyncScroll={syncScroll}
-              readOnly={readOnly}
-              members={members}
-              savingTaskId={savingTaskId}
-              savingGroup={savingGroupId === g.id}
-              projectId={projectId}
-              subtarefasMode={subtarefasMode}
-              onOpenTask={onOpenTask}
-              onEditField={onEditField}
-              onRenameGroup={onRenameGroup}
-              onRecolorGroup={onRecolorGroup}
-              onDeleteGroup={onDeleteGroup}
-              onAddTask={onAddTask}
-              onAddColumn={onAddColumn}
-              onRenameColumn={onRenameColumn}
-              onRemoveColumn={onRemoveColumn}
-              onUpdateColumnOptions={onUpdateColumnOptions}
-              onReorderColumn={onReorderColumn}
-              onArchiveColumn={onArchiveColumn}
-              onRestoreColumn={onRestoreColumn}
-              archivedColumns={archivedColumns}
-            />
-          ))
+          <SortableGroupList
+            groups={board.groups}
+            onReorderGroups={onReorderGroups}
+            renderGroup={(g) => (
+              <GroupBox
+                group={g}
+                columns={cols}
+                register={register}
+                onSyncScroll={syncScroll}
+                readOnly={readOnly}
+                members={members}
+                savingTaskId={savingTaskId}
+                savingGroup={savingGroupId === g.id}
+                projectId={projectId}
+                subtarefasMode={subtarefasMode}
+                onOpenTask={onOpenTask}
+                onEditField={onEditField}
+                onRenameGroup={onRenameGroup}
+                onRecolorGroup={onRecolorGroup}
+                onDeleteGroup={onDeleteGroup}
+                onAddTask={onAddTask}
+                onAddColumn={onAddColumn}
+                onRenameColumn={onRenameColumn}
+                onRemoveColumn={onRemoveColumn}
+                onUpdateColumnOptions={onUpdateColumnOptions}
+                onReorderColumn={onReorderColumn}
+                onArchiveColumn={onArchiveColumn}
+                onRestoreColumn={onRestoreColumn}
+                archivedColumns={archivedColumns}
+              />
+            )}
+          />
         )}
 
         {/* adicionar grupo — aparece quando ha handler (cria Bloco no backend).
@@ -1570,6 +1616,114 @@ function colWidth(c: ColumnDef): number {
   if (c.type === "link") return 150;
   if (c.type === "text") return 130;
   return W_DEFAULT;
+}
+
+/* ─── Reordenacao de blocos (drag & drop) ───────────────────────────────── */
+
+/**
+ * Renderiza a lista de grupos permitindo reordenar os blocos reais por drag.
+ * O grupo sintetico "Sem bloco" (SEM_BLOCO_ID) nao e arrastavel e fica fixo
+ * no fim. DnD so liga com `onReorderGroups` e 2+ blocos reais.
+ */
+function SortableGroupList({
+  groups,
+  onReorderGroups,
+  renderGroup,
+}: {
+  groups: GroupModel[];
+  onReorderGroups?: (orderedBlockIds: string[]) => void;
+  renderGroup: (group: GroupModel) => React.ReactNode;
+}) {
+  const realGroups = groups.filter((g) => g.id !== SEM_BLOCO_ID);
+  const semBloco = groups.filter((g) => g.id === SEM_BLOCO_ID);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+  );
+
+  const dndEnabled = !!onReorderGroups && realGroups.length > 1;
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const ids = realGroups.map((g) => g.id);
+    const from = ids.indexOf(String(active.id));
+    const to = ids.indexOf(String(over.id));
+    if (from === -1 || to === -1) return;
+    onReorderGroups?.(arrayMove(ids, from, to));
+  }
+
+  if (!dndEnabled) {
+    return (
+      <>
+        {groups.map((g) => (
+          <div key={g.id} className="min-w-0">
+            {renderGroup(g)}
+          </div>
+        ))}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={realGroups.map((g) => g.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {realGroups.map((g) => (
+            <SortableGroup key={g.id} id={g.id}>
+              {renderGroup(g)}
+            </SortableGroup>
+          ))}
+        </SortableContext>
+      </DndContext>
+      {semBloco.map((g) => (
+        <div key={g.id} className="min-w-0">
+          {renderGroup(g)}
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** Wrapper sortable de um bloco: handle de arraste (grip) à esquerda. */
+function SortableGroup({
+  id,
+  children,
+}: {
+  id: string;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        zIndex: isDragging ? 10 : undefined,
+      }}
+      className="group/sortable flex min-w-0 items-start gap-1.5"
+    >
+      <button
+        type="button"
+        aria-label="Arrastar para reordenar bloco"
+        {...attributes}
+        {...listeners}
+        className="mt-2 shrink-0 cursor-grab rounded-md p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-accent active:cursor-grabbing group-hover/sortable:opacity-100"
+      >
+        <GripVertical size={16} />
+      </button>
+      <div className="min-w-0 flex-1">{children}</div>
+    </div>
+  );
 }
 
 /* ─── GroupBox ───────────────────────────────────────────────────────────── */

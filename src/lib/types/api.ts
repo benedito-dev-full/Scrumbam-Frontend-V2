@@ -461,6 +461,8 @@ export interface BlockDto extends TaskResponseDto {
     endDate?: string;
     /** Cor hex do bloco (ex: '#3B82F6'). */
     cor?: string;
+    /** Ordem do bloco na lista (reordenável por drag). Menor = mais acima. */
+    ordem?: number;
   } | null;
 }
 

@@ -470,6 +470,7 @@ export function useUpdateBlock() {
           startDate?: string | null;
           endDate?: string | null;
           cor?: string | null;
+          ordem?: number | null;
         };
       };
     }
