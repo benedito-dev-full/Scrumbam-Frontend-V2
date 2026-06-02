@@ -2,12 +2,12 @@
 
 import { use, useState } from "react";
 import {
+  ChevronRight,
+  FolderOpen,
   Star,
   Share2,
   Sparkles,
   Plus,
-  Filter,
-  RefreshCw,
   LayoutGrid,
 } from "lucide-react";
 import {
@@ -32,6 +32,8 @@ import {
 } from "@/hooks/use-bookmarks";
 import { CommentsPanel } from "@/components/comments/CommentsPanel";
 import { CommentTargetType } from "@/lib/types/comment";
+import { SpaceChip } from "@/components/shell/space-chip";
+import type { DProjectDto } from "@/lib/types/api";
 
 /* ─── Tabs ────────────────────────────────────────────────────────────────── */
 type TabId =
@@ -196,6 +198,48 @@ function CommentsTab({ projectId }: { projectId: string }) {
 }
 
 /* ─── Página ──────────────────────────────────────────────────────────────── */
+function FolderHierarchyBreadcrumb({ folder }: { folder: DProjectDto }) {
+  const { data: space } = useProject(folder.idPai);
+
+  if (!space) return null;
+
+  return (
+    <nav
+      aria-label="Caminho da pasta"
+      className="ml-1 hidden min-w-0 items-center gap-1 border-l border-border pl-2 text-xs text-muted-foreground md:flex"
+    >
+      <Link
+        href={`/spaces/${space.id}`}
+        className="inline-flex max-w-36 min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 transition-colors hover:bg-accent hover:text-foreground"
+        title={space.nome}
+      >
+        <SpaceChip
+          iniciais={space.nome.slice(0, 2).toUpperCase()}
+          cor={space.color ?? "#6366f1"}
+          iconName={space.icon}
+          size="xs"
+        />
+        <span className="truncate">{space.nome}</span>
+      </Link>
+      <ChevronRight
+        aria-hidden
+        className="size-3 shrink-0 text-muted-foreground/60"
+      />
+      <span
+        className="inline-flex max-w-36 min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 font-medium text-foreground/80"
+        title={folder.nome}
+      >
+        <FolderOpen
+          aria-hidden
+          className="size-3.5 shrink-0 text-muted-foreground"
+          strokeWidth={1.8}
+        />
+        <span className="truncate">{folder.nome}</span>
+      </span>
+    </nav>
+  );
+}
+
 export default function FolderPage({
   params,
 }: {
@@ -274,7 +318,15 @@ export default function FolderPage({
           background: "var(--background)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            flex: 1,
+            minWidth: 0,
+          }}
+        >
           <div
             style={{
               display: "grid",
@@ -341,9 +393,17 @@ export default function FolderPage({
           >
             <Star size={14} fill={folderBookmarked ? "#f59e0b" : "none"} />
           </button>
+          <FolderHierarchyBreadcrumb folder={entidade} />
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            flexShrink: 0,
+          }}
+        >
           <TopBtn icon={<IcVoice />} />
           <div
             style={{
@@ -518,105 +578,6 @@ export default function FolderPage({
         {activeTab === "comentarios" && <CommentsTab projectId={id} />}
         {activeTab !== "comentarios" && (
           <>
-            {/* Toolbar */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                height: 44,
-                borderBottom: "1px solid var(--border)",
-              }}
-            >
-              <button
-                type="button"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 5,
-                  height: 28,
-                  padding: "0 10px",
-                  borderRadius: 6,
-                  border: "1px solid var(--border)",
-                  background: "none",
-                  cursor: "pointer",
-                  color: "var(--muted-foreground)",
-                  fontSize: 12,
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "var(--accent)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "none";
-                }}
-              >
-                <Filter size={11} />
-                Filtros
-              </button>
-
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    fontSize: 11,
-                    color: "var(--muted-foreground)",
-                  }}
-                >
-                  <RefreshCw size={11} />
-                  Atualização: 10 minutos atrás
-                </span>
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 5,
-                    fontSize: 11,
-                    color: "var(--muted-foreground)",
-                  }}
-                >
-                  <RefreshCw size={11} style={{ color: "#22c55e" }} />
-                  Atualização automática: Ligado
-                </span>
-                <button
-                  type="button"
-                  style={{
-                    fontSize: 12,
-                    color: "var(--muted-foreground)",
-                    border: 0,
-                    background: "none",
-                    cursor: "pointer",
-                    padding: "0 6px",
-                  }}
-                >
-                  Personalizar
-                </button>
-                <button
-                  type="button"
-                  style={{
-                    height: 28,
-                    padding: "0 12px",
-                    borderRadius: 6,
-                    border: 0,
-                    background: "var(--primary)",
-                    cursor: "pointer",
-                    color: "var(--primary-foreground)",
-                    fontSize: 12,
-                    fontWeight: 600,
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = "#fff";
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = "var(--foreground)";
-                  }}
-                >
-                  Adicionar cartão
-                </button>
-              </div>
-            </div>
-
             {/* ── Cards: Recent | Docs | Bookmarks ── */}
             <div
               style={{
