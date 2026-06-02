@@ -7,7 +7,7 @@ import {
   Sparkles,
   Plus,
   LayoutGrid,
-  Maximize2,
+  ChevronDown,
 } from "lucide-react";
 import { SpaceChip } from "@/components/shell/space-chip";
 import {
@@ -213,6 +213,8 @@ export default function SpacePage({
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
   const [listDialogOpen, setListDialogOpen] = useState(false);
+  const [foldersExpanded, setFoldersExpanded] = useState(true);
+  const [listsExpanded, setListsExpanded] = useState(true);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
@@ -764,7 +766,7 @@ export default function SpacePage({
                     alignItems: "center",
                     justifyContent: "space-between",
                     padding: "10px 16px",
-                    borderBottom: "1px solid var(--border)",
+                    borderBottom: foldersExpanded ? "1px solid var(--border)" : "none",
                     background: "var(--card)",
                   }}
                 >
@@ -788,6 +790,9 @@ export default function SpacePage({
                   <div style={{ display: "flex", gap: 4 }}>
                     <button
                       type="button"
+                      onClick={() => setFoldersExpanded((value) => !value)}
+                      aria-label={foldersExpanded ? "Recolher pastas" : "Expandir pastas"}
+                      aria-expanded={foldersExpanded}
                       style={{
                         width: 24,
                         height: 24,
@@ -808,7 +813,13 @@ export default function SpacePage({
                         e.currentTarget.style.color = "var(--muted-foreground)";
                       }}
                     >
-                      <Maximize2 size={12} />
+                      <ChevronDown
+                        size={14}
+                        style={{
+                          transition: "transform 160ms ease",
+                          transform: foldersExpanded ? "rotate(0deg)" : "rotate(-90deg)",
+                        }}
+                      />
                     </button>
                     <button
                       type="button"
@@ -839,56 +850,58 @@ export default function SpacePage({
                     </button>
                   </div>
                 </div>
-                <div
-                  style={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 10,
-                    padding: "14px 16px",
-                    background: "var(--background)",
-                    minHeight: "28vh",
-                    maxHeight: "33vh",
-                    overflowY: "auto",
-                    alignContent: "flex-start",
-                  }}
-                >
-                  {pastas.map((pasta) => (
-                    <Link
-                      key={pasta.id}
-                      href={`/folders/${pasta.id}`}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        width: 200,
-                        padding: "var(--row-py) 14px",
-                        borderRadius: 8,
-                        border: "1px solid var(--border)",
-                        background: "var(--card)",
-                        textDecoration: "none",
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLElement).style.background =
-                          "var(--accent)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.background =
-                          "var(--card)";
-                      }}
-                    >
-                      <IcFolder color="#9ca3af" />
-                      <span
+                {foldersExpanded && (
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: 10,
+                      padding: "14px 16px",
+                      background: "var(--background)",
+                      minHeight: "28vh",
+                      maxHeight: "33vh",
+                      overflowY: "auto",
+                      alignContent: "flex-start",
+                    }}
+                  >
+                    {pastas.map((pasta) => (
+                      <Link
+                        key={pasta.id}
+                        href={`/folders/${pasta.id}`}
                         style={{
-                          fontSize: 13,
-                          color: "var(--foreground)",
-                          fontWeight: 500,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          width: 200,
+                          padding: "var(--row-py) 14px",
+                          borderRadius: 8,
+                          border: "1px solid var(--border)",
+                          background: "var(--card)",
+                          textDecoration: "none",
+                        }}
+                        onMouseEnter={(e) => {
+                          (e.currentTarget as HTMLElement).style.background =
+                            "var(--accent)";
+                        }}
+                        onMouseLeave={(e) => {
+                          (e.currentTarget as HTMLElement).style.background =
+                            "var(--card)";
                         }}
                       >
-                        {pasta.nome}
-                      </span>
-                    </Link>
-                  ))}
-                </div>
+                        <IcFolder color="#9ca3af" />
+                        <span
+                          style={{
+                            fontSize: 13,
+                            color: "var(--foreground)",
+                            fontWeight: 500,
+                          }}
+                        >
+                          {pasta.nome}
+                        </span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
               </section>
             )}
 
@@ -906,7 +919,7 @@ export default function SpacePage({
                   alignItems: "center",
                   justifyContent: "space-between",
                   padding: "10px 16px",
-                  borderBottom: "1px solid var(--border)",
+                  borderBottom: listsExpanded ? "1px solid var(--border)" : "none",
                   background: "var(--card)",
                 }}
               >
@@ -925,16 +938,50 @@ export default function SpacePage({
                     Lists
                   </span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setListsExpanded((value) => !value)}
+                  aria-label={listsExpanded ? "Recolher listas" : "Expandir listas"}
+                  aria-expanded={listsExpanded}
+                  style={{
+                    width: 24,
+                    height: 24,
+                    display: "grid",
+                    placeItems: "center",
+                    border: 0,
+                    background: "none",
+                    cursor: "pointer",
+                    color: "var(--muted-foreground)",
+                    borderRadius: 5,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--accent)";
+                    e.currentTarget.style.color = "var(--foreground)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "none";
+                    e.currentTarget.style.color = "var(--muted-foreground)";
+                  }}
+                >
+                  <ChevronDown
+                    size={14}
+                    style={{
+                      transition: "transform 160ms ease",
+                      transform: listsExpanded ? "rotate(0deg)" : "rotate(-90deg)",
+                    }}
+                  />
+                </button>
               </div>
 
-              <div
-                style={{
-                  background: "var(--background)",
-                  minHeight: "28vh",
-                  maxHeight: "33vh",
-                  overflowY: "auto",
-                }}
-              >
+              {listsExpanded && (
+                <div
+                  style={{
+                    background: "var(--background)",
+                    minHeight: "28vh",
+                    maxHeight: "33vh",
+                    overflowY: "auto",
+                  }}
+                >
                 <div
                   style={{
                     display: "grid",
@@ -1009,7 +1056,8 @@ export default function SpacePage({
                 )}
 
                 <AddListRow onClick={() => setListDialogOpen(true)} />
-              </div>
+                </div>
+              )}
             </section>
           </>
         )}
