@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, LayoutTemplate, type LucideIcon } from "lucide-react";
 
 import {
   Dialog,
@@ -14,8 +14,12 @@ import type { SpaceTemplate } from "@/lib/templates/space-templates";
 interface SpaceTemplatePreviewDialogProps {
   /** Template a pré-visualizar; null fecha o dialog. */
   template: SpaceTemplate | null;
+  /** Ícone da categoria (exibido no cabeçalho). */
+  icon?: LucideIcon;
+  /** Cor da categoria (hex) para o chip do ícone. */
+  color?: string;
   onOpenChange: (open: boolean) => void;
-  /** Volta para a galeria. */
+  /** Volta para a lista de templates da categoria. */
   onBack: () => void;
 }
 
@@ -29,12 +33,14 @@ interface SpaceTemplatePreviewDialogProps {
  */
 export function SpaceTemplatePreviewDialog({
   template,
+  icon,
+  color,
   onOpenChange,
   onBack,
 }: SpaceTemplatePreviewDialogProps) {
   if (!template) return null;
 
-  const Icon = template.icon;
+  const Icon = icon ?? LayoutTemplate;
   const totalTasks = template.blocks.reduce((sum, b) => sum + b.tasks.length, 0);
 
   return (
@@ -53,7 +59,7 @@ export function SpaceTemplatePreviewDialog({
               </button>
               <span
                 className="grid size-8 place-items-center rounded-lg text-white"
-                style={{ background: template.color }}
+                style={{ background: color ?? "#6366f1" }}
               >
                 <Icon className="size-[18px]" />
               </span>
