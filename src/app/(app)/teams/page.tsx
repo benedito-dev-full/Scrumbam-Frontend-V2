@@ -2451,7 +2451,7 @@ function CreateTeamModal({
                 padding: "0 20px",
                 borderRadius: 7,
                 border: "none",
-                background: nome.trim() ? "var(--foreground)" : "var(--accent)",
+                background: nome.trim() ? "var(--primary)" : "var(--accent)",
                 cursor: nome.trim() ? "pointer" : "not-allowed",
                 color: nome.trim()
                   ? "var(--primary-foreground)"
@@ -2608,7 +2608,7 @@ function EditTeamModal({
                 padding: "0 20px",
                 borderRadius: 7,
                 border: "none",
-                background: nome.trim() ? "var(--foreground)" : "var(--accent)",
+                background: nome.trim() ? "var(--primary)" : "var(--accent)",
                 cursor: nome.trim() ? "pointer" : "not-allowed",
                 color: nome.trim()
                   ? "var(--primary-foreground)"
