@@ -690,7 +690,6 @@ function MoreMenu({
   function openMenu(e: React.MouseEvent) {
     e.stopPropagation();
     e.preventDefault();
-    alert(`TESTE MoreMenu: ${project.nome}`); // diagnostico de hidratacao — REMOVER
     const rect = btnRef.current?.getBoundingClientRect();
     if (rect) setPos({ top: rect.bottom + 4, left: rect.left });
     setOpen((v) => !v);

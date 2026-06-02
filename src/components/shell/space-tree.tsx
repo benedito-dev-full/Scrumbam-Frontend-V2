@@ -16,7 +16,6 @@ import type { Entidade } from "@/lib/types/entidade";
 import { useEspacos, useFilhosDe } from "@/lib/stores/entidades";
 import { useNewSpaceDialogStore } from "@/lib/stores/new-space-dialog";
 import { CreateMenu } from "./create-menu";
-import { EntityActionsMenu } from "./entity-actions-menu";
 import { SpaceChip } from "./space-chip";
 
 /* ─── Ícones SVG custom — pixel-perfect ClickUp ──────────────────────────── */
@@ -209,17 +208,17 @@ function EntidadeNode({
         )}
 
         {/* ações flutuantes (aparecem no hover) */}
-        <div className="mr-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 has-data-[popup-open]:opacity-100">
-          <EntityActionsMenu entity={entidade}>
-            <button
-              type="button"
-              aria-label={`Mais ações de ${entidade.nome}`}
-              className="grid size-4 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground data-popup-open:bg-muted data-popup-open:text-foreground"
-            >
-              <MoreHorizontal className="size-3" />
-            </button>
-          </EntityActionsMenu>
-          {canHaveChildren && (
+        {canHaveChildren && (
+          <div className="mr-1 flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 has-data-[popup-open]:opacity-100">
+            {isEspaco && (
+              <button
+                type="button"
+                aria-label="Mais ações"
+                className="grid size-4 place-items-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <MoreHorizontal className="size-3" />
+              </button>
+            )}
             <CreateMenu parent={entidade}>
               <button
                 type="button"
@@ -229,8 +228,8 @@ function EntidadeNode({
                 <Plus className="size-3" />
               </button>
             </CreateMenu>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {open && hasChildren && (
