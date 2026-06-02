@@ -155,7 +155,7 @@ export function TaskTimerPanel({
               type="button"
               disabled={isPending}
               onClick={stop}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-border px-3 py-2.5 text-[13px] font-semibold text-muted-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+              className="timer-stop-btn flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-semibold text-white disabled:cursor-not-allowed"
             >
               <Square className="size-3.5" />
               Parar
