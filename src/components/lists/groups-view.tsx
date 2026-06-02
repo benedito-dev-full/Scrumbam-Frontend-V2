@@ -37,6 +37,7 @@ import {
   Sparkles,
   X,
   Maximize2,
+  Layers,
 } from "lucide-react";
 import {
   DndContext,
@@ -1391,13 +1392,91 @@ function GroupsBoardView({
         {board.groups.length === 0 ? (
           <div
             style={{
-              padding: "60px 0",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 16,
+              padding: "80px 24px",
               textAlign: "center",
-              color: "var(--muted-foreground)",
-              fontSize: 13,
             }}
           >
-            Nenhuma tarefa nesta lista ainda.
+            {/* ícone num círculo suave */}
+            <div
+              style={{
+                display: "grid",
+                placeItems: "center",
+                width: 72,
+                height: 72,
+                borderRadius: 20,
+                background:
+                  "linear-gradient(135deg, color-mix(in oklab, var(--primary) 22%, transparent), color-mix(in oklab, var(--primary) 8%, transparent))",
+                color: "var(--primary)",
+                boxShadow: "0 0 0 1px color-mix(in oklab, var(--primary) 18%, transparent)",
+              }}
+            >
+              <Layers size={32} strokeWidth={1.6} />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxWidth: 360 }}>
+              <h3
+                style={{
+                  margin: 0,
+                  fontSize: 17,
+                  fontWeight: 600,
+                  color: "var(--foreground)",
+                }}
+              >
+                Comece organizando em blocos
+              </h3>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  lineHeight: 1.5,
+                  color: "var(--muted-foreground)",
+                }}
+              >
+                Blocos agrupam suas tarefas por etapa, status ou o que fizer sentido.
+                Crie o primeiro para começar a planejar.
+              </p>
+            </div>
+
+            {onAddGroup && (
+              <button
+                type="button"
+                onClick={onAddGroup}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  height: 40,
+                  padding: "0 20px",
+                  borderRadius: 10,
+                  border: "none",
+                  background: "var(--primary)",
+                  color: "var(--primary-foreground)",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 14px color-mix(in oklab, var(--primary) 35%, transparent)",
+                  transition: "transform 0.12s ease, box-shadow 0.12s ease",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.boxShadow =
+                    "0 6px 20px color-mix(in oklab, var(--primary) 45%, transparent)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow =
+                    "0 4px 14px color-mix(in oklab, var(--primary) 35%, transparent)";
+                }}
+              >
+                <Plus size={16} strokeWidth={2.5} />
+                Criar primeiro bloco
+              </button>
+            )}
           </div>
         ) : (
           board.groups.map((g) => (
@@ -1431,9 +1510,10 @@ function GroupsBoardView({
           ))
         )}
 
-        {/* adicionar grupo — aparece quando ha handler (cria Bloco no backend
-            no backend). Independe de readOnly. */}
-        {onAddGroup && (
+        {/* adicionar grupo — aparece quando ha handler (cria Bloco no backend).
+            Independe de readOnly. Escondido no empty state, pois o botao
+            "Criar primeiro bloco" ja cumpre esse papel de forma evidente. */}
+        {onAddGroup && board.groups.length > 0 && (
           <button
             type="button"
             onClick={onAddGroup}
@@ -1722,18 +1802,6 @@ function GroupBox({
           })()}
         </span>
 
-        {group.periodo && (
-          <span
-            style={{
-              marginLeft: "auto",
-              fontSize: 12,
-              color: "var(--muted-foreground)",
-            }}
-          >
-            {group.periodo}
-          </span>
-        )}
-
         {/* Lixeira do bloco — revelada no hover do header (bloco real apenas).
             As tarefas do bloco NAO sao excluidas: voltam para "Sem bloco". */}
         {canDelete && (
@@ -1745,7 +1813,6 @@ function GroupBox({
             aria-label="Excluir bloco"
             title="Excluir bloco"
             style={{
-              marginLeft: group.periodo ? 0 : "auto",
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -1770,6 +1837,18 @@ function GroupBox({
           >
             <Trash2 size={15} />
           </button>
+        )}
+
+        {group.periodo && (
+          <span
+            style={{
+              marginLeft: "auto",
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+            }}
+          >
+            {group.periodo}
+          </span>
         )}
       </header>
 
