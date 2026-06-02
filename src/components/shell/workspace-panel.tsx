@@ -1127,27 +1127,36 @@ export function WorkspacePanel() {
     return null;
   }
 
-  if (sidebarCollapsed) {
-    return (
-      <aside
-        aria-label="Barra lateral recolhida"
-        className="flex h-full w-10 shrink-0 flex-col items-center border-r border-border bg-sidebar pt-2"
-      >
-        <SidebarIconButton
-          label="Abrir barra lateral"
-          onClick={() => setSidebarCollapsed(false)}
-        >
-          <PanelLeftOpen size={15} strokeWidth={1.7} />
-        </SidebarIconButton>
-      </aside>
-    );
-  }
-
   return (
     <aside
-      aria-label="Painel do workspace"
-      className="flex h-full w-[260px] shrink-0 flex-col border-r border-border bg-sidebar"
+      aria-label={
+        sidebarCollapsed ? "Barra lateral recolhida" : "Painel do workspace"
+      }
+      className={cn(
+        "relative flex h-full shrink-0 flex-col overflow-hidden border-r border-border bg-sidebar transition-[width] duration-200 ease-out",
+        sidebarCollapsed ? "w-10" : "w-[260px]",
+      )}
     >
+      {sidebarCollapsed && (
+        <div className="absolute left-1/2 top-2 z-10 -translate-x-1/2">
+          <SidebarIconButton
+            label="Abrir barra lateral"
+            onClick={() => setSidebarCollapsed(false)}
+          >
+            <PanelLeftOpen size={15} strokeWidth={1.7} />
+          </SidebarIconButton>
+        </div>
+      )}
+
+      <div
+        aria-hidden={sidebarCollapsed}
+        className={cn(
+          "flex h-full w-[260px] shrink-0 flex-col transition-all duration-150 ease-out",
+          sidebarCollapsed
+            ? "pointer-events-none -translate-x-2 opacity-0"
+            : "translate-x-0 opacity-100",
+        )}
+      >
       {/* header "Início" */}
       <header className="flex h-10 items-center justify-between gap-1 px-3">
         <button
@@ -1210,6 +1219,7 @@ export function WorkspacePanel() {
           <Settings2 className="size-3.5 shrink-0" />
           Personalizar a barra lateral
         </button>
+      </div>
       </div>
     </aside>
   );
