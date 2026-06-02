@@ -4,6 +4,7 @@ import React, { use, useEffect, useState } from "react";
 import Link from "next/link";
 import {
   ChevronRight,
+  FolderOpen,
   Star,
   Share2,
   Sparkles,
@@ -54,6 +55,7 @@ import {
   emptyTaskFilters,
   type TaskFilters,
 } from "@/lib/filters/task-filters";
+import { SpaceChip } from "@/components/shell/space-chip";
 
 // ─── Hooks e tipos do backend ─────────────────────────────────────────────────
 import { useProject } from "@/hooks/use-projects";
@@ -641,7 +643,9 @@ function PageHeader({ projeto }: { projeto: DProjectDto }) {
 type HierarchyCrumb = {
   id: string;
   label: string;
+  type: "space" | "folder" | "list";
   href?: string;
+  project?: DProjectDto;
 };
 
 function HierarchyBreadcrumb({ projeto }: { projeto: DProjectDto }) {
@@ -670,7 +674,9 @@ function HierarchyBreadcrumb({ projeto }: { projeto: DProjectDto }) {
     crumbs.push({
       id: space.id,
       label: space.nome,
+      type: "space",
       href: `/spaces/${space.id}`,
+      project: space,
     });
   }
 
@@ -678,11 +684,12 @@ function HierarchyBreadcrumb({ projeto }: { projeto: DProjectDto }) {
     crumbs.push({
       id: folder.id,
       label: folder.nome,
+      type: "folder",
       href: `/folders/${folder.id}`,
     });
   }
 
-  crumbs.push({ id: projeto.id, label: projeto.nome });
+  crumbs.push({ id: projeto.id, label: projeto.nome, type: "list" });
 
   if (crumbs.length <= 1) return null;
 
@@ -699,26 +706,69 @@ function HierarchyBreadcrumb({ projeto }: { projeto: DProjectDto }) {
               className="size-3 shrink-0 text-muted-foreground/60"
             />
           )}
-          {crumb.href ? (
-            <Link
-              href={crumb.href}
-              className="max-w-32 truncate rounded px-1 py-0.5 transition-colors hover:bg-accent hover:text-foreground"
-              title={crumb.label}
-            >
-              {crumb.label}
-            </Link>
-          ) : (
-            <span
-              className="max-w-32 truncate px-1 py-0.5 font-medium text-foreground/80"
-              title={crumb.label}
-            >
-              {crumb.label}
-            </span>
-          )}
+          <BreadcrumbItem crumb={crumb} />
         </React.Fragment>
       ))}
     </nav>
   );
+}
+
+function BreadcrumbItem({ crumb }: { crumb: HierarchyCrumb }) {
+  const content = (
+    <>
+      <BreadcrumbIcon crumb={crumb} />
+      <span className="truncate">{crumb.label}</span>
+    </>
+  );
+  const className =
+    "inline-flex max-w-36 min-w-0 items-center gap-1.5 rounded px-1.5 py-0.5 transition-colors";
+
+  if (crumb.href) {
+    return (
+      <Link
+        href={crumb.href}
+        className={`${className} hover:bg-accent hover:text-foreground`}
+        title={crumb.label}
+      >
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <span
+      className={`${className} font-medium text-foreground/80`}
+      title={crumb.label}
+    >
+      {content}
+    </span>
+  );
+}
+
+function BreadcrumbIcon({ crumb }: { crumb: HierarchyCrumb }) {
+  if (crumb.type === "space") {
+    const space = crumb.project;
+    return (
+      <SpaceChip
+        iniciais={(space?.nome ?? crumb.label).slice(0, 2).toUpperCase()}
+        cor={space?.color ?? "#6366f1"}
+        iconName={space?.icon}
+        size="xs"
+      />
+    );
+  }
+
+  if (crumb.type === "folder") {
+    return (
+      <FolderOpen
+        aria-hidden
+        className="size-3.5 shrink-0 text-muted-foreground"
+        strokeWidth={1.8}
+      />
+    );
+  }
+
+  return <IcList size={13} />;
 }
 
 function TbBtn({
