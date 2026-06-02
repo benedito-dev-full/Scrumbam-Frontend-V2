@@ -1207,6 +1207,7 @@ function matchCriado(criadoEm: string, f: CriadoFilter): boolean {
 function TeamsListView({
   teams,
   myTeamIds,
+  isAdmin,
   onCreateTeam,
   onTeamClick,
   onEdit,
@@ -1214,6 +1215,8 @@ function TeamsListView({
 }: {
   teams: TeamLocal[];
   myTeamIds: ReadonlySet<string>;
+  /** ADMIN vê todos os times + toggle "Sou membro"; membro só vê os seus, sem toggle. */
+  isAdmin: boolean;
   onCreateTeam: () => void;
   onTeamClick: (id: string) => void;
   onEdit: (id: string) => void;
@@ -1231,13 +1234,19 @@ function TeamsListView({
   const [criadoFilter, setCriadoFilter] = useState<CriadoFilter | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>("nome-asc");
 
+  // Membro comum não escolhe: o filtro "Sou membro" fica sempre ativo (e o
+  // dropdown some). Admin controla livremente via `membershipFilter`.
+  const effectiveMembership: MembershipFilter | null = isAdmin
+    ? membershipFilter
+    : "mine";
+
   const filtered = useMemo(() => {
     let out = teams;
     const q = search.trim().toLowerCase();
     if (q) out = out.filter((t) => t.nome.toLowerCase().includes(q));
     if (membrosFilter)
       out = out.filter((t) => matchMembros(t.memberCount, membrosFilter));
-    if (membershipFilter === "mine")
+    if (effectiveMembership === "mine")
       out = out.filter((t) => t.myCargo != null || myTeamIds.has(t.id));
     if (criadoFilter)
       out = out.filter((t) => matchCriado(t.criadoEm, criadoFilter));
@@ -1268,7 +1277,7 @@ function TeamsListView({
     teams,
     search,
     membrosFilter,
-    membershipFilter,
+    effectiveMembership,
     myTeamIds,
     criadoFilter,
     sortBy,
@@ -1308,7 +1317,7 @@ function TeamsListView({
         <h1
           style={{ fontSize: 15, fontWeight: 700, color: "var(--foreground)" }}
         >
-          Todas as equipes
+          {isAdmin ? "Todas as equipes" : "Minhas equipes"}
         </h1>
         <button
           type="button"
@@ -1361,14 +1370,17 @@ function TeamsListView({
             onChange={setMembrosFilter}
             clearable
           />
-          <FilterDropdown
-            label={membershipLabel}
-            active={!!membershipFilter}
-            options={MEMBERSHIP_OPTIONS}
-            value={membershipFilter}
-            onChange={setMembershipFilter}
-            clearable
-          />
+          {/* Toggle "Sou membro" só para admin — membro já vê apenas os seus times */}
+          {isAdmin && (
+            <FilterDropdown
+              label={membershipLabel}
+              active={!!membershipFilter}
+              options={MEMBERSHIP_OPTIONS}
+              value={membershipFilter}
+              onChange={setMembershipFilter}
+              clearable
+            />
+          )}
           <FilterDropdown
             label={criadoLabel}
             active={!!criadoFilter}
@@ -3498,6 +3510,7 @@ export default function TeamsPage() {
   const createTeam = useCreateTeam();
   const deleteTeam = useDeleteTeam();
   const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.orgRole === "ADMIN";
   const { data: apiTeams } = useTeams();
   const { data: myTeams = [] } = useMyTeams();
   const myTeamIds = useMemo(
@@ -3671,6 +3684,7 @@ export default function TeamsPage() {
         <TeamsListView
           teams={teams}
           myTeamIds={myTeamIds}
+          isAdmin={isAdmin}
           onCreateTeam={() => setModalOpen(true)}
           onTeamClick={handleTeamClick}
           onEdit={handleEdit}
