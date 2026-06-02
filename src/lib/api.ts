@@ -2,6 +2,15 @@ import axios from "axios";
 import type { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from "axios";
 import type { ApiErrorResponse } from "@/lib/types/api";
 
+// Augmenta o config do axios com `skipAuth`: quando true, a request não anexa
+// o token da sessão nem dispara refresh/redirect em 401 (usado em rotas
+// públicas como aceitar convite).
+declare module "axios" {
+  export interface AxiosRequestConfig {
+    skipAuth?: boolean;
+  }
+}
+
 // ─── Controle de refresh ──────────────────────────────────────────────────────
 
 let isRefreshing = false;
@@ -45,6 +54,13 @@ const api = axios.create({
 // ─── Interceptor de REQUEST ───────────────────────────────────────────────────
 
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
+  // Requests públicas (ex: aceitar convite) NÃO devem anexar o token de uma
+  // sessão antiga do navegador — senão um token expirado força 401 → /login,
+  // sequestrando o fluxo de convite. Ver `skipAuth` na response abaixo.
+  if (config.skipAuth) {
+    return config;
+  }
+
   // Import lazy para evitar dependência circular
   const { useAuthStore } = await import("@/lib/stores/auth");
   const token = useAuthStore.getState().accessToken;
@@ -64,6 +80,12 @@ api.interceptors.response.use(
     };
 
     if (error.response?.status !== 401) {
+      return Promise.reject(error);
+    }
+
+    // Requests públicas (skipAuth) NUNCA disparam refresh nem redirect p/ /login.
+    // A própria página trata o erro (ex: convite inválido/expirado).
+    if (originalRequest.skipAuth) {
       return Promise.reject(error);
     }
 

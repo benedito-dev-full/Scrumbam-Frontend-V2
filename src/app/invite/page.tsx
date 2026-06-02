@@ -65,7 +65,7 @@ function InvitePageInner() {
   // Busca info do convite
   useEffect(() => {
     if (!token) { setLoadState('invalid'); return; }
-    api.get<InviteInfo>(`/invites/${token}`)
+    api.get<InviteInfo>(`/invites/${token}`, { skipAuth: true })
       .then((res) => { setInfo(res.data); setLoadState('ready'); })
       .catch(() => setLoadState('invalid'));
   }, [token]);
@@ -89,7 +89,7 @@ function InvitePageInner() {
         ? { name: name.trim(), password }
         : {};
 
-      const res = await api.post<AcceptResponse>(`/invites/${token}/accept`, body);
+      const res = await api.post<AcceptResponse>(`/invites/${token}/accept`, body, { skipAuth: true });
       const { accessToken, refreshToken, user, redirectTo } = res.data;
 
       setTokens(accessToken, refreshToken);

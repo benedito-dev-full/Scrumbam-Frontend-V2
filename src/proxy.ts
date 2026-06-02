@@ -11,11 +11,22 @@ function isAuthRoute(pathname: string): boolean {
 }
 
 /**
+ * Retorna true se o pathname é uma rota PÚBLICA — acessível sem sessão.
+ * O fluxo de convite (/invite) DEVE ser público: o convidado nunca tem
+ * o cookie `scrumbam_auth`, então não pode ser redirecionado para /login
+ * (senão o onboarding de convite nunca aparece).
+ */
+function isPublicRoute(pathname: string): boolean {
+  return pathname === "/invite" || pathname.startsWith("/invite/");
+}
+
+/**
  * Retorna true se o pathname pertence ao app protegido.
- * Exclui rotas de auth, _next, api e favicon.ico.
+ * Exclui rotas de auth, públicas, _next, api e favicon.ico.
  */
 function isAppRoute(pathname: string): boolean {
   if (isAuthRoute(pathname)) return false;
+  if (isPublicRoute(pathname)) return false;
   if (pathname.startsWith("/_next")) return false;
   if (pathname.startsWith("/api")) return false;
   if (pathname === "/favicon.ico") return false;
