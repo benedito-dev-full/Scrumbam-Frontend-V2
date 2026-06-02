@@ -1,6 +1,3 @@
-"use client";
-
-import { useEffect, useRef, useState } from "react";
 import {
   Calendar,
   FileText,
@@ -14,13 +11,13 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * Loader de marca — fila de ícones de "setores" do app (estilo ClickUp).
+ * Loader de marca — fila circular de ícones de "setores" (estilo ClickUp).
  *
- * O card da frente recua para trás da pilha enquanto o próximo avança, num
- * loop contínuo com uma pausa entre ciclos (não troca "no seco"). A coreografia
- * é dirigida por um índice ativo: cada card é posicionado pela sua distância
- * relativa do ativo (`rel`), e o CSS (`globals.css`, bloco "Brand loader")
- * anima a transição entre as posições.
+ * Os cards sobem a fila até a frente; o da frente sai lateralmente afundando e
+ * dá a volta para o fim da fila. Toda a coreografia vive no CSS (`globals.css`,
+ * bloco "Brand loader", keyframe `bl-queue`); aqui só posicionamos cada card na
+ * fila via `animation-delay` negativo (defasagem por índice). Velocidade:
+ * ajuste `--bl-duration` no CSS.
  *
  * @example
  * <BrandLoader />
@@ -39,7 +36,7 @@ interface Feature {
   Icon: LucideIcon;
 }
 
-/** Setores do produto exibidos na fila. Ordem = ordem de exibição. */
+/** Setores do produto exibidos na fila. Ordem = ordem de entrada na fila. */
 const FEATURES: Feature[] = [
   { key: "list", color: "#4c6ef5", Icon: List },
   { key: "board", color: "#7c5cff", Icon: LayoutGrid },
@@ -50,50 +47,10 @@ const FEATURES: Feature[] = [
 ];
 const N = FEATURES.length;
 
-/** Tempo que cada ícone fica na frente, e pausa extra ao reiniciar o ciclo. */
-const STEP_MS = 1000;
-const PAUSE_MS = 650;
-
-/**
- * Posição de um card pela distância relativa do ativo:
- * `rel = 0` → frente; valores maiores → mais ao fundo da pilha (descendo,
- * menores e mais apagados). A partir de `rel > 3` o card fica invisível atrás
- * (é onde o ex-frente "se esconde" ao recuar).
- */
-function cardStyle(rel: number): React.CSSProperties {
-  const depth = Math.min(rel, 4);
-  return {
-    transform: `translateY(${depth * 8}px) scale(${1 - depth * 0.09})`,
-    opacity: rel === 0 ? 1 : rel <= 3 ? Math.max(0, 0.55 - (rel - 1) * 0.2) : 0,
-    zIndex: N - rel,
-  };
-}
-
 export function BrandLoader({
   label = "Carregando…",
   className,
 }: BrandLoaderProps) {
-  const [active, setActive] = useState(0);
-  const activeRef = useRef(0);
-
-  useEffect(() => {
-    const reduce = window.matchMedia?.(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    if (reduce) return;
-
-    let timer: ReturnType<typeof setTimeout>;
-    function step() {
-      const next = (activeRef.current + 1) % N;
-      activeRef.current = next;
-      setActive(next);
-      // Pausa extra ao completar uma volta (next === 0) = pausa entre ciclos.
-      timer = setTimeout(step, next === 0 ? STEP_MS + PAUSE_MS : STEP_MS);
-    }
-    timer = setTimeout(step, STEP_MS);
-    return () => clearTimeout(timer);
-  }, []);
-
   return (
     <div
       className={cn("brand-loader", className)}
@@ -103,13 +60,16 @@ export function BrandLoader({
     >
       <div className="bl-stage">
         {FEATURES.map((f, i) => {
-          const rel = (i - active + N) % N;
           const Icon = f.Icon;
           return (
             <div
               key={f.key}
               className="bl-card"
-              style={{ ...cardStyle(rel), background: f.color }}
+              style={{
+                background: f.color,
+                // Defasa cada card ao longo do mesmo caminho → forma a fila.
+                animationDelay: `calc(var(--bl-duration) / ${N} * -${i})`,
+              }}
             >
               <Icon size={28} strokeWidth={2} aria-hidden />
             </div>

@@ -275,32 +275,32 @@ html[data-density="cozy"] {
 }
 
 /* ─── Brand loader (estado de carregamento) ──────────────────────────────────
- * Fila/pilha de ícones de "setores" do app (estilo ClickUp): o card da frente
- * recua para trás da pilha e o próximo avança — contínuo, com pausa entre
- * ciclos. As POSIÇÕES (translate/scale/opacity por slot da fila) são calculadas
- * no componente `BrandLoader`; aqui ficam o tamanho, o visual do card e a
- * TRANSIÇÃO do deslize (é o que dá o efeito de "um indo atrás do outro"). */
+ * Fila circular de ícones de "setores" (estilo ClickUp): os cards sobem a fila
+ * até a frente; o da frente SAI lateralmente afundando e dá a volta para o fim
+ * da fila. Cada card roda o MESMO keyframe (`bl-queue`), defasado no tempo
+ * (animation-delay negativo por índice no componente) — por isso eles formam
+ * uma fila contínua. Ajuste a velocidade num lugar só: `--bl-duration`. */
 .brand-loader {
+  --bl-duration: 11s;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 18px;
+  gap: 20px;
 }
 
-/* Palco da pilha — altura extra abaixo para os cards recuarem para trás */
+/* Palco — espaço acima (fim da fila) e abaixo (saída afundando) */
 .bl-stage {
   position: relative;
-  width: 72px;
-  height: 92px;
-  perspective: 600px;
+  width: 120px;
+  height: 132px;
 }
 
-/* Card de cada setor — cor vem inline (por feature); transição = o deslize */
+/* Card de cada setor — cor vem inline (por feature) */
 .bl-card {
   position: absolute;
   left: 50%;
-  top: 4px;
-  margin-left: -32px;
+  top: 50%;
+  margin: -32px 0 0 -32px;
   width: 64px;
   height: 64px;
   border-radius: 16px;
@@ -308,15 +308,63 @@ html[data-density="cozy"] {
   align-items: center;
   justify-content: center;
   color: #fff;
-  box-shadow: 0 12px 26px -10px rgba(0, 0, 0, 0.5);
-  transition:
-    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.5s ease;
+  box-shadow: 0 14px 28px -12px rgba(0, 0, 0, 0.5);
+  animation: bl-queue var(--bl-duration) linear infinite;
   will-change: transform, opacity;
+}
+
+/* Caminho de um card: nasce no fim da fila (topo, pequeno e apagado), sobe até
+ * a frente (centro/baixo, grande e nítido), segura um instante, então SAI para
+ * o lado afundando e some — voltando (invisível) ao fim da fila. */
+@keyframes bl-queue {
+  0% {
+    transform: translate(-6px, -48px) scale(0.5);
+    opacity: 0;
+  }
+  7% {
+    transform: translate(-6px, -48px) scale(0.5);
+    opacity: 0.16;
+  }
+  24% {
+    transform: translate(-4px, -28px) scale(0.66);
+    opacity: 0.34;
+  }
+  40% {
+    transform: translate(-2px, -7px) scale(0.83);
+    opacity: 0.64;
+  }
+  54% {
+    transform: translate(0, 14px) scale(1);
+    opacity: 1;
+  }
+  62% {
+    /* segura na frente (leve respiro antes de sair) */
+    transform: translate(0, 14px) scale(1);
+    opacity: 1;
+  }
+  74% {
+    /* começa a sair pro lado, afundando */
+    transform: translate(34px, 30px) scale(0.88);
+    opacity: 0.55;
+  }
+  84% {
+    transform: translate(50px, 56px) scale(0.58);
+    opacity: 0;
+  }
+  100% {
+    /* volta (invisível) para o fim da fila */
+    transform: translate(-6px, -48px) scale(0.5);
+    opacity: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .bl-card {
-    transition: none;
+    animation: none;
+    opacity: 0;
+    transform: translate(0, 14px) scale(1);
+  }
+  .bl-card:first-child {
+    opacity: 1;
   }
 }
