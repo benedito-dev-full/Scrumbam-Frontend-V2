@@ -88,6 +88,14 @@ export const qk = {
     /** Histórico de mensagens do chat Nexus do usuário autenticado. */
     history: ["nexus", "history"] as const,
   },
+  search: {
+    /**
+     * Busca cross-entity (GET /search) por termo.
+     *
+     * @param q - Termo de busca já normalizado (trim/lowercase a critério do caller).
+     */
+    byQuery: (q: string) => ["search", q] as const,
+  },
   comments: {
     /** Raiz da árvore de comentários — usar para invalidação ampla. */
     all: ["comments"] as const,

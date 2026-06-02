@@ -10,6 +10,8 @@ import {
   Zap,
   Sparkles,
   Users,
+  User,
+  Layers,
   FileText,
   Plus,
   UserPlus,
@@ -24,6 +26,10 @@ import {
 } from "lucide-react";
 import { useCommandPaletteStore } from "@/lib/stores/command-palette";
 import { useInviteDialogStore } from "@/lib/stores/invite-dialog";
+import { useSpaces } from "@/hooks/use-projects";
+import { useSearch } from "@/hooks/use-search";
+import { api } from "@/lib/api";
+import type { DProjectDto } from "@/lib/types/api";
 import { cn } from "@/lib/utils";
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -62,7 +68,78 @@ export function CommandPalette() {
     setTimeout(fn, 50);
   };
 
-  const recents: Entry[] = [
+  // ─── Dados dinâmicos ──────────────────────────────────────────────────────
+  // Recentes: reaproveita o padrão das telas de Início/Espaço — ordena os
+  // Spaces por `atualizadoEm` (mais recente primeiro) e fatia os 5 primeiros.
+  const { data: spaces } = useSpaces();
+
+  // Busca cross-entity: debounce de 250ms antes de bater no backend (mín 2 chars).
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(query.trim()), 250);
+    return () => clearTimeout(t);
+  }, [query]);
+  const { data: search, isFetching: searching } = useSearch(debouncedQuery);
+
+  // Resultado de busca de "projeto" não traz idClasse — resolve o tipo
+  // (Space/Folder/List) no clique para rotear corretamente.
+  const goToProject = async (id: string) => {
+    try {
+      const res = await api.get<DProjectDto>(`/projects/${id}`);
+      const c = res.data.idClasse;
+      const base = c === "-350" ? "spaces" : c === "-351" ? "folders" : "lists";
+      router.push(`/${base}/${id}`);
+    } catch {
+      router.push(`/lists/${id}`);
+    }
+  };
+
+  const recentEntries: Entry[] = (spaces ?? [])
+    .slice()
+    .sort((a, b) => (b.atualizadoEm > a.atualizadoEm ? 1 : -1))
+    .slice(0, 5)
+    .map((s) => ({
+      id: `recent:${s.id}`,
+      label: s.nome,
+      sublabel: "Espaço",
+      icon: Layers,
+      iconColor: s.color ?? "#60a5fa",
+      keywords: [s.nome.toLowerCase()],
+      onSelect: run(() => router.push(`/spaces/${s.id}`)),
+    }));
+
+  const taskEntries: Entry[] = (search?.tasks ?? []).map((t) => ({
+    id: `task:${t.chave}`,
+    label: t.nome,
+    sublabel: t.projectNome ?? "Tarefa",
+    icon: ListTodo,
+    iconColor: "#34d399",
+    onSelect: run(() => {
+      if (t.idProject) router.push(`/lists/${t.idProject}`);
+    }),
+  }));
+
+  const projectEntries: Entry[] = (search?.projects ?? []).map((p) => ({
+    id: `project:${p.chave}`,
+    label: p.nome,
+    sublabel: p.descricao ?? "Projeto",
+    icon: Layers,
+    iconColor: "#60a5fa",
+    onSelect: run(() => {
+      void goToProject(p.chave);
+    }),
+  }));
+
+  const peopleEntries: Entry[] = (search?.people ?? []).map((pe) => ({
+    id: `person:${pe.chave}`,
+    label: pe.nome,
+    sublabel: pe.email ?? "Pessoa",
+    icon: User,
+    iconColor: "#a78bfa",
+    onSelect: run(() => router.push("/people")),
+  }));
+
+  const navShortcuts: Entry[] = [
     {
       id: "r:home",
       label: "Início",
@@ -173,28 +250,50 @@ export function CommandPalette() {
     },
   ];
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const allEntries = [...recents, ...commands];
-
-  // filtro por query
+  // filtro local (navegação e comandos) por query
   const q = query.toLowerCase().trim();
-  const filteredRecents = q
-    ? recents.filter(
-        (e) =>
-          e.label.toLowerCase().includes(q) ||
-          (e.sublabel ?? "").toLowerCase().includes(q) ||
-          (e.keywords ?? []).some((k) => k.includes(q)),
-      )
-    : recents;
-  const filteredCommands = q
-    ? commands.filter(
-        (e) =>
-          e.label.toLowerCase().includes(q) ||
-          (e.keywords ?? []).some((k) => k.includes(q)),
-      )
-    : commands;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const filtered = [...filteredRecents, ...filteredCommands];
+  const localFilter = (entries: Entry[]) =>
+    q
+      ? entries.filter(
+          (e) =>
+            e.label.toLowerCase().includes(q) ||
+            (e.sublabel ?? "").toLowerCase().includes(q) ||
+            (e.keywords ?? []).some((k) => k.includes(q)),
+        )
+      : entries;
+
+  // Monta as seções conforme há ou não termo de busca.
+  // - Sem termo: Recentes (reais) + Ir para (navegação) + Comandos.
+  // - Com termo: resultados do backend (Tarefas/Projetos/Pessoas) + navegação
+  //   e comandos locais que casam com o texto.
+  const sections: { label: string; entries: Entry[] }[] = [];
+  if (q) {
+    if (taskEntries.length)
+      sections.push({ label: "Tarefas", entries: taskEntries });
+    if (projectEntries.length)
+      sections.push({ label: "Projetos", entries: projectEntries });
+    if (peopleEntries.length)
+      sections.push({ label: "Pessoas", entries: peopleEntries });
+
+    const navF = localFilter(navShortcuts);
+    if (navF.length) sections.push({ label: "Ir para", entries: navF });
+    const cmdF = localFilter(commands);
+    if (cmdF.length) sections.push({ label: "Comandos", entries: cmdF });
+  } else {
+    if (recentEntries.length)
+      sections.push({ label: "Recentes", entries: recentEntries });
+    sections.push({ label: "Ir para", entries: navShortcuts });
+    sections.push({ label: "Comandos", entries: commands });
+  }
+
+  // Lista achatada (para navegação por teclado) + offset por seção.
+  let runningOffset = 0;
+  const renderSections = sections.map((s) => {
+    const offset = runningOffset;
+    runningOffset += s.entries.length;
+    return { ...s, offset };
+  });
+  const filtered = sections.flatMap((s) => s.entries);
 
   // reset cursor quando muda a query
   useEffect(() => {
@@ -271,29 +370,22 @@ export function CommandPalette() {
         <div ref={listRef} className="max-h-[360px] overflow-y-auto py-1.5">
           {filtered.length === 0 && (
             <p className="py-8 text-center text-[13px] text-muted-foreground">
-              Nenhum resultado para &ldquo;{query}&rdquo;
+              {debouncedQuery.length >= 2 && searching
+                ? "Buscando…"
+                : `Nenhum resultado para "${query}"`}
             </p>
           )}
 
-          {filteredRecents.length > 0 && (
+          {renderSections.map((s) => (
             <Section
-              label={q ? "Resultados" : "Recentes"}
-              entries={filteredRecents}
-              offset={0}
+              key={s.label}
+              label={s.label}
+              entries={s.entries}
+              offset={s.offset}
               cursor={cursor}
               onHover={setCursor}
             />
-          )}
-
-          {filteredCommands.length > 0 && (
-            <Section
-              label="Comandos"
-              entries={filteredCommands}
-              offset={filteredRecents.length}
-              cursor={cursor}
-              onHover={setCursor}
-            />
-          )}
+          ))}
         </div>
 
         {/* rodapé */}
