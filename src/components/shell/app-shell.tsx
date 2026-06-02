@@ -9,7 +9,6 @@ import { InviteDialog } from "./invite-dialog";
 import { CreateTaskModalGlobal } from "./create-task-modal-global";
 import { CreateWorkspaceDialog } from "./create-workspace-dialog";
 import { ContentLoadingOverlay } from "./content-loading-overlay";
-import { NavigationLoader } from "./navigation-loader";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -30,7 +29,6 @@ export function AppShell({ children }: AppShellProps) {
         <ContentLoadingOverlay />
       </div>
 
-      <NavigationLoader />
       <CommandPalette />
       <ShortcutsHelpDialog />
       <NewSpaceDialog />
