@@ -1157,30 +1157,23 @@ export function WorkspacePanel() {
             : "translate-x-0 opacity-100",
         )}
       >
-      {/* header "Início" */}
-      <header className="flex h-10 items-center justify-between gap-1 px-3">
-        <button
-          type="button"
-          onClick={() => setHomeOpen((v) => !v)}
-          className="flex h-7 flex-1 items-center gap-1 rounded px-1 text-[13px] font-semibold text-sidebar-foreground transition-colors hover:text-foreground"
-        >
-          Início
-        </button>
-        <button
-          type="button"
-          aria-label="Adicionar"
-          className="grid size-5 place-items-center rounded text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        >
-          <Plus className="size-3.5" />
-        </button>
-        <SidebarIconButton
-          label="Fechar barra lateral"
-          side="bottom"
-          onClick={() => setSidebarCollapsed(true)}
-        >
-          <PanelLeftClose size={15} strokeWidth={1.7} />
-        </SidebarIconButton>
-      </header>
+        {/* header "Início" */}
+        <header className="flex h-10 items-center justify-between gap-1 px-3">
+          <button
+            type="button"
+            onClick={() => setHomeOpen((v) => !v)}
+            className="flex h-7 flex-1 items-center gap-1 rounded px-1 text-[13px] font-semibold text-sidebar-foreground transition-colors hover:text-foreground"
+          >
+            Início
+          </button>
+          <SidebarIconButton
+            label="Fechar barra lateral"
+            side="bottom"
+            onClick={() => setSidebarCollapsed(true)}
+          >
+            <PanelLeftClose size={15} strokeWidth={1.7} />
+          </SidebarIconButton>
+        </header>
 
       <ScrollArea className="min-h-0 flex-1 [&_[data-slot=scroll-area-scrollbar]]:hidden">
         <div className="space-y-5 px-2 pb-4">

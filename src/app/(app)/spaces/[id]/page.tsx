@@ -14,7 +14,6 @@ import {
   IcList,
   IcFolder,
   IcDoc,
-  IcMenu,
   IcVoice,
   TopBtn,
   ListRow,
@@ -295,7 +294,7 @@ export default function SpacePage({
           background: "var(--background)",
         }}
       >
-        {/* esquerda: chip + nome + estrela + menu */}
+        {/* esquerda: chip + nome + estrela */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <SpaceChip
             iniciais={entidade.nome.slice(0, 2).toUpperCase()}
@@ -340,28 +339,6 @@ export default function SpacePage({
             }}
           >
             <Star size={14} fill={spaceBookmarked ? "#f59e0b" : "none"} />
-          </button>
-          <button
-            type="button"
-            style={{
-              display: "grid",
-              width: 24,
-              height: 24,
-              placeItems: "center",
-              borderRadius: 5,
-              border: 0,
-              background: "none",
-              cursor: "pointer",
-              color: "var(--muted-foreground)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--foreground)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--muted-foreground)";
-            }}
-          >
-            <IcMenu />
           </button>
         </div>
 

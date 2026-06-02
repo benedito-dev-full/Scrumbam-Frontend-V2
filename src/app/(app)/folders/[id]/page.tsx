@@ -15,7 +15,6 @@ import {
   IcFolder,
   IcDoc,
   IcCaret,
-  IcMenu,
   IcVoice,
   TopBtn,
   ListRow,
@@ -341,28 +340,6 @@ export default function FolderPage({
             }}
           >
             <Star size={14} fill={folderBookmarked ? "#f59e0b" : "none"} />
-          </button>
-          <button
-            type="button"
-            style={{
-              display: "grid",
-              width: 24,
-              height: 24,
-              placeItems: "center",
-              borderRadius: 5,
-              border: 0,
-              background: "none",
-              cursor: "pointer",
-              color: "var(--muted-foreground)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = "var(--foreground)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = "var(--muted-foreground)";
-            }}
-          >
-            <IcMenu />
           </button>
         </div>
 
