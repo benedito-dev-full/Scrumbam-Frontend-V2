@@ -12,6 +12,7 @@ import {
   Beef,
   Sprout,
   HardHat,
+  LayoutTemplate,
   type LucideIcon,
 } from "lucide-react";
 
@@ -399,10 +400,7 @@ export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
         blocks: [
           {
             nome: "Abertura",
-            tasks: [
-              { titulo: "Abrir vaga" },
-              { titulo: "Divulgar" },
-            ],
+            tasks: [{ titulo: "Abrir vaga" }, { titulo: "Divulgar" }],
           },
           {
             nome: "Seleção",
@@ -453,10 +451,7 @@ export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
         blocks: [
           {
             nome: "Análise",
-            tasks: [
-              { titulo: "Revisar minuta" },
-              { titulo: "Apontar riscos" },
-            ],
+            tasks: [{ titulo: "Revisar minuta" }, { titulo: "Apontar riscos" }],
           },
           {
             nome: "Aprovação",
@@ -574,10 +569,7 @@ export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
           },
           {
             nome: "Avaliação",
-            tasks: [
-              { titulo: "Corrigir provas" },
-              { titulo: "Lançar notas" },
-            ],
+            tasks: [{ titulo: "Corrigir provas" }, { titulo: "Lançar notas" }],
           },
         ],
       },
@@ -628,10 +620,7 @@ export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
           },
           {
             nome: "Estoque",
-            tasks: [
-              { titulo: "Repor estoque" },
-              { titulo: "Inventário" },
-            ],
+            tasks: [{ titulo: "Repor estoque" }, { titulo: "Inventário" }],
           },
           {
             nome: "Atendimento",
@@ -810,10 +799,7 @@ export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
           },
           {
             nome: "Plantio",
-            tasks: [
-              { titulo: "Plantar" },
-              { titulo: "Adubação" },
-            ],
+            tasks: [{ titulo: "Plantar" }, { titulo: "Adubação" }],
           },
           {
             nome: "Colheita",
@@ -918,4 +904,41 @@ export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
 /** Busca uma categoria pelo id. */
 export function getTemplateCategory(id: string): TemplateCategory | undefined {
   return TEMPLATE_CATEGORIES.find((c) => c.id === id);
+}
+
+/** Metadados visuais de uma categoria (nome, ícone, cor) para a galeria real. */
+export interface CategoryMeta {
+  nome: string;
+  descricao: string;
+  icon: LucideIcon;
+  color: string;
+}
+
+/**
+ * Resolve os metadados visuais de uma categoria do catálogo REAL de templates
+ * (feature Templates — ADR-V2-061), a partir do `categoria` de `DProjectDto`.
+ *
+ * Reusa a paleta/ícones de {@link TEMPLATE_CATEGORIES} quando o id casa; cai
+ * num default neutro para categorias desconhecidas (ou ausentes).
+ */
+export function getCategoryMeta(
+  categoria: string | null | undefined,
+): CategoryMeta {
+  const found = categoria
+    ? TEMPLATE_CATEGORIES.find((c) => c.id === categoria)
+    : undefined;
+  if (found) {
+    return {
+      nome: found.nome,
+      descricao: found.descricao,
+      icon: found.icon,
+      color: found.color,
+    };
+  }
+  return {
+    nome: categoria || "Outros",
+    descricao: "",
+    icon: LayoutTemplate,
+    color: "#6366f1",
+  };
 }

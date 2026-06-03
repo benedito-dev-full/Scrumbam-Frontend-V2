@@ -211,6 +211,12 @@ export interface DProjectDto {
   color?: string | null;
   /** Ícone do espaço (emoji ou slug), lido de dados.icon. Null se não definido. */
   icon?: string | null;
+  /**
+   * Categoria do template (catálogo — ADR-V2-061), lida de `dados.categoria`.
+   * Presente em templates (idClasse -401/-402); `null`/ausente em projetos
+   * normais. Usada para agrupar o catálogo de templates na galeria.
+   */
+  categoria?: string | null;
   /** ID do agente VPS vinculado a este projeto. Null se não vinculado. */
   idAgent?: string | null;
   /** URL do repositório remoto no agente vinculado. */

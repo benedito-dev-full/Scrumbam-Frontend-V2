@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowLeft, LayoutTemplate } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ArrowLeft, LayoutTemplate, Loader2 } from "lucide-react";
 
 import {
   Dialog,
@@ -11,12 +11,22 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useListTemplates } from "@/hooks/use-templates";
 import {
-  TEMPLATE_CATEGORIES,
-  type SpaceTemplate,
-  type TemplateCategory,
+  getCategoryMeta,
+  type CategoryMeta,
 } from "@/lib/templates/space-templates";
+import type { DProjectDto } from "@/lib/types/api";
 import { ListTemplatePreviewDialog } from "./list-template-preview";
+
+/** Chave de agrupamento para templates sem categoria. */
+const SEM_CATEGORIA = "outros";
+
+interface GalleryCategory {
+  id: string;
+  meta: CategoryMeta;
+  templates: DProjectDto[];
+}
 
 interface ListTemplateGalleryDialogProps {
   open: boolean;
@@ -24,21 +34,20 @@ interface ListTemplateGalleryDialogProps {
   /** Volta para o chooser (Em branco / Template). */
   onBack?: () => void;
   /** Cria a Lista a partir do template escolhido. */
-  onUse: (template: SpaceTemplate) => void;
+  onUse: (template: DProjectDto) => void;
   /** true enquanto a criação está em andamento (trava o botão da prévia). */
   isCreating?: boolean;
 }
 
 /**
- * Galeria de templates de Lista em 3 níveis:
+ * Galeria de templates de Lista em 3 níveis (catálogo REAL — ADR-V2-061):
  *
- *   1. Categorias (nichos de mercado)
+ *   1. Categorias (agrupadas por `dados.categoria` dos templates reais)
  *   2. Templates daquela categoria
- *   3. Prévia + criação do template escolhido
+ *   3. Prévia (árvore real) + criação via `POST /projects/:id/from-template`
  *
- * Reusa o catálogo fixo `TEMPLATE_CATEGORIES` (compartilhado com o fluxo de
- * Espaço). Cada `SpaceTemplate` já descreve uma lista com blocos e tarefas —
- * para Lista, ignoramos a noção de Espaço e criamos só a Lista.
+ * Fonte: `GET /projects?idClasse=-401` (templates da org + globais de
+ * plataforma). Enquanto não houver templates cadastrados, mostra estado vazio.
  */
 export function ListTemplateGalleryDialog({
   open,
@@ -47,19 +56,44 @@ export function ListTemplateGalleryDialog({
   onUse,
   isCreating,
 }: ListTemplateGalleryDialogProps) {
-  const [category, setCategory] = useState<TemplateCategory | null>(null);
-  const [preview, setPreview] = useState<SpaceTemplate | null>(null);
+  const { data: templates = [], isLoading } = useListTemplates();
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<DProjectDto | null>(null);
+
+  const categories = useMemo<GalleryCategory[]>(() => {
+    const byCat = new Map<string, DProjectDto[]>();
+    for (const t of templates) {
+      const key = t.categoria ?? SEM_CATEGORIA;
+      const arr = byCat.get(key) ?? [];
+      arr.push(t);
+      byCat.set(key, arr);
+    }
+    return Array.from(byCat.entries())
+      .map(([id, tpls]) => ({
+        id,
+        meta: getCategoryMeta(id === SEM_CATEGORIA ? null : id),
+        templates: tpls,
+      }))
+      .sort((a, b) => a.meta.nome.localeCompare(b.meta.nome, "pt-BR"));
+  }, [templates]);
+
+  const category = categories.find((c) => c.id === categoryId) ?? null;
 
   function closeAll() {
     setPreview(null);
-    setCategory(null);
+    setCategoryId(null);
     onOpenChange(false);
   }
+
+  const previewMeta = preview ? getCategoryMeta(preview.categoria) : undefined;
 
   return (
     <>
       {/* Nível 1: categorias */}
-      <Dialog open={open && !category && !preview} onOpenChange={(o) => !o && closeAll()}>
+      <Dialog
+        open={open && !category && !preview}
+        onOpenChange={(o) => !o && closeAll()}
+      >
         <DialogContent className="p-0 gap-0 sm:max-w-[680px]">
           <div className="px-7 pt-7 pb-5">
             <DialogHeader className="space-y-1.5">
@@ -74,14 +108,25 @@ export function ListTemplateGalleryDialog({
             </DialogHeader>
           </div>
 
-          <div className="grid max-h-[55vh] grid-cols-1 gap-3 overflow-y-auto px-7 pb-7 sm:grid-cols-2">
-            {TEMPLATE_CATEGORIES.map((cat) => (
-              <CategoryCard
-                key={cat.id}
-                category={cat}
-                onSelect={() => setCategory(cat)}
-              />
-            ))}
+          <div className="min-h-[200px] px-7 pb-7">
+            {isLoading ? (
+              <CenteredHint>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Carregando templates…
+              </CenteredHint>
+            ) : categories.length === 0 ? (
+              <CenteredHint>Nenhum template disponível ainda.</CenteredHint>
+            ) : (
+              <div className="grid max-h-[55vh] grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2">
+                {categories.map((cat) => (
+                  <CategoryCard
+                    key={cat.id}
+                    category={cat}
+                    onSelect={() => setCategoryId(cat.id)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -97,17 +142,17 @@ export function ListTemplateGalleryDialog({
               <div className="px-7 pt-7 pb-5">
                 <DialogHeader className="space-y-1.5">
                   <DialogTitle className="flex items-center gap-2.5 text-xl font-semibold">
-                    <BackButton onClick={() => setCategory(null)} />
+                    <BackButton onClick={() => setCategoryId(null)} />
                     <span
                       className="grid size-8 place-items-center rounded-lg text-white"
-                      style={{ background: category.color }}
+                      style={{ background: category.meta.color }}
                     >
-                      <category.icon className="size-[18px]" />
+                      <category.meta.icon className="size-[18px]" />
                     </span>
-                    {category.nome}
+                    {category.meta.nome}
                   </DialogTitle>
                   <DialogDescription className="text-sm leading-relaxed text-muted-foreground">
-                    Escolha um template de {category.nome.toLowerCase()}.
+                    Escolha um template de {category.meta.nome.toLowerCase()}.
                   </DialogDescription>
                 </DialogHeader>
               </div>
@@ -129,8 +174,8 @@ export function ListTemplateGalleryDialog({
       {/* Nível 3: prévia + criação */}
       <ListTemplatePreviewDialog
         template={preview}
-        icon={category?.icon}
-        color={category?.color}
+        icon={previewMeta?.icon}
+        color={previewMeta?.color}
         onOpenChange={(o) => {
           if (!o) closeAll();
         }}
@@ -139,6 +184,14 @@ export function ListTemplateGalleryDialog({
         isCreating={isCreating}
       />
     </>
+  );
+}
+
+function CenteredHint({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex h-[160px] items-center justify-center text-center text-sm text-muted-foreground">
+      {children}
+    </div>
   );
 }
 
@@ -159,10 +212,10 @@ function CategoryCard({
   category,
   onSelect,
 }: {
-  category: TemplateCategory;
+  category: GalleryCategory;
   onSelect: () => void;
 }) {
-  const Icon = category.icon;
+  const Icon = category.meta.icon;
   return (
     <button
       type="button"
@@ -175,20 +228,22 @@ function CategoryCard({
     >
       <span
         className="grid size-9 shrink-0 place-items-center rounded-lg text-white"
-        style={{ background: category.color }}
+        style={{ background: category.meta.color }}
       >
         <Icon className="size-[18px]" />
       </span>
       <span className="flex min-w-0 flex-col gap-1">
         <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
-          {category.nome}
+          {category.meta.nome}
           <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
             {category.templates.length}
           </span>
         </span>
-        <span className="text-xs leading-relaxed text-muted-foreground">
-          {category.descricao}
-        </span>
+        {category.meta.descricao && (
+          <span className="text-xs leading-relaxed text-muted-foreground">
+            {category.meta.descricao}
+          </span>
+        )}
       </span>
     </button>
   );
@@ -198,10 +253,9 @@ function TemplateRow({
   template,
   onSelect,
 }: {
-  template: SpaceTemplate;
+  template: DProjectDto;
   onSelect: () => void;
 }) {
-  const totalTasks = template.blocks.reduce((s, b) => s + b.tasks.length, 0);
   return (
     <button
       type="button"
@@ -219,12 +273,11 @@ function TemplateRow({
         <span className="text-sm font-medium text-foreground">
           {template.nome}
         </span>
-        <span className="truncate text-xs text-muted-foreground">
-          {template.descricao}
-        </span>
-      </span>
-      <span className="shrink-0 text-[11px] text-muted-foreground">
-        {template.blocks.length} blocos · {totalTasks} tarefas
+        {template.description && (
+          <span className="truncate text-xs text-muted-foreground">
+            {template.description}
+          </span>
+        )}
       </span>
     </button>
   );

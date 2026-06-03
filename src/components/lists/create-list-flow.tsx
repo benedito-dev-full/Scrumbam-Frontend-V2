@@ -7,10 +7,9 @@ import { CreateListDialog } from "@/components/spaces/create-list-dialog";
 import { CreateListChooserDialog } from "./create-list-chooser";
 import { ListTemplateGalleryDialog } from "./list-template-gallery";
 import { useCreateListFlowStore } from "@/lib/stores/create-list-flow";
-import { useTemplateMockStore } from "@/lib/stores/template-mock";
-import { useCreateList } from "@/hooks/use-projects";
+import { useCreateFromTemplate } from "@/hooks/use-templates";
 import { getApiErrorMessage } from "@/lib/api";
-import type { SpaceTemplate } from "@/lib/templates/space-templates";
+import type { DProjectDto } from "@/lib/types/api";
 
 /**
  * Orquestrador único do fluxo de criação de Lista.
@@ -20,9 +19,9 @@ import type { SpaceTemplate } from "@/lib/templates/space-templates";
  *   chooser → (em branco) CreateListDialog
  *           → (template)  ListTemplateGalleryDialog → cria + navega
  *
- * "Em branco" continua 100% real. "Com template" cria a casca real da Lista e
- * injeta blocos+tarefas em memória (`template-mock`), navegando para a Lista
- * já populada — até o backend expor `POST /projects/from-template`.
+ * "Em branco" cria uma Lista vazia. "Com template" clona um template real via
+ * `POST /projects/:id/from-template` (blocos + tarefas), navegando para a Lista
+ * já populada que o backend devolve.
  */
 export function CreateListFlow() {
   const open = useCreateListFlowStore((s) => s.open);
@@ -33,23 +32,20 @@ export function CreateListFlow() {
   const close = useCreateListFlowStore((s) => s.close);
 
   const router = useRouter();
-  const { mutateAsync, isPending } = useCreateList();
-  const registerFromTemplate = useTemplateMockStore((s) => s.registerFromTemplate);
+  const { mutateAsync: createFromTemplate, isPending } =
+    useCreateFromTemplate();
 
-  async function handleUseTemplate(template: SpaceTemplate) {
+  async function handleUseTemplate(template: DProjectDto) {
     if (!parentId) return;
     try {
-      const created = await mutateAsync({
-        nome: template.listName,
+      const created = await createFromTemplate({
+        id: template.id,
         idPai: parentId,
+        novoNome: template.nome,
+        includeTasks: true,
       });
-      // Injeta blocos+tarefas do template em memória para esta Lista.
-      registerFromTemplate(created.id, template);
 
-      const totalTasks = template.blocks.reduce((s, b) => s + b.tasks.length, 0);
-      toast.success(`Lista "${created.nome}" criada a partir do template`, {
-        description: `${template.blocks.length} blocos e ${totalTasks} tarefas (prévia em memória).`,
-      });
+      toast.success(`Lista "${created.nome}" criada a partir do template`);
 
       close();
       router.push(`/lists/${created.id}`);
