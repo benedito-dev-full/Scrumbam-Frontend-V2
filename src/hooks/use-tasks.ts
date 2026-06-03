@@ -359,7 +359,7 @@ export function useBlocks(projectId: string | null) {
  * @example
  * ```tsx
  * const { mutate, isPending } = useCreateBlock();
- * mutate({ nome: 'Sprint Bloco', projectId: listId, dados: { startDate: '2026-06-01', cor: '#3B82F6' } });
+ * mutate({ nome: 'Bloco 1', projectId: listId, dados: { startDate: '2026-06-01', cor: '#3B82F6' } });
  * ```
  */
 export function useCreateBlock() {

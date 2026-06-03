@@ -19,11 +19,11 @@ export const mockPlannerEvents: PlannerEvent[] = [
   },
   {
     id: "pe-002",
-    title: "Review de sprint 14",
+    title: "Review semanal",
     start: "2026-05-26T14:00:00",
     end: "2026-05-26T15:30:00",
     color: "violet",
-    source: "sprint",
+    source: "manual",
   },
   {
     id: "pe-003",
@@ -52,10 +52,10 @@ export const mockPlannerEvents: PlannerEvent[] = [
   },
   {
     id: "pe-006",
-    title: "Planning sprint 15",
+    title: "Planejamento da semana",
     start: "2026-05-29T13:00:00",
     end: "2026-05-29T15:00:00",
     color: "blue",
-    source: "sprint",
+    source: "manual",
   },
 ];

@@ -30,7 +30,7 @@ export const mockEntidades: Entidade[] = [
       iconName: "rocket",
       visibilidade: "publico",
       tiposHabilitados: ["board", "backlog", "doc"],
-      descricao: "Roadmap, sprints e specs do produto.",
+      descricao: "Roadmap, entregas e specs do produto.",
     },
   },
   {
@@ -67,9 +67,9 @@ export const mockEntidades: Entidade[] = [
 
   // Pastas em Produto
   {
-    id: "pasta-sprints",
+    id: "pasta-entregas",
     idClasse: "pasta",
-    nome: "Sprints",
+    nome: "Entregas",
     idPai: "esp-produto",
     criadoEm: now,
     atualizadoEm: now,
@@ -83,12 +83,12 @@ export const mockEntidades: Entidade[] = [
     atualizadoEm: now,
   },
 
-  // Items em Produto > Sprints
+  // Items em Produto > Entregas
   {
     id: "board-q2",
     idClasse: "board",
-    nome: "Sprint Q2 — semana 1",
-    idPai: "pasta-sprints",
+    nome: "Entrega Q2 — semana 1",
+    idPai: "pasta-entregas",
     criadoEm: now,
     atualizadoEm: now,
   },
@@ -96,7 +96,7 @@ export const mockEntidades: Entidade[] = [
     id: "backlog-produto",
     idClasse: "backlog",
     nome: "Backlog principal",
-    idPai: "pasta-sprints",
+    idPai: "pasta-entregas",
     criadoEm: now,
     atualizadoEm: now,
   },

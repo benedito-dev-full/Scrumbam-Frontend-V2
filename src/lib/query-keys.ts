@@ -33,7 +33,6 @@ export const qk = {
     byProject: (projectId: string) => ["tasks", "project", projectId] as const,
     byId: (id: string) => ["tasks", id] as const,
     children: (parentId: string) => ["tasks", "children", parentId] as const,
-    bySprint: (sprintId: string) => ["tasks", "sprint", sprintId] as const,
     assigned: (userId: string) => ["tasks", "assigned", userId] as const,
     filtered: (filters: TaskFilters) => ["tasks", "filtered", filters] as const,
     /**
@@ -48,11 +47,6 @@ export const qk = {
      * @param blockId - ID do Block (DTask idClasse=-200).
      */
     blockTasks: (blockId: string) => ["tasks", "block-tasks", blockId] as const,
-  },
-  sprints: {
-    byProject: (projectId: string) =>
-      ["sprints", "project", projectId] as const,
-    byId: (id: string) => ["sprints", id] as const,
   },
   teams: {
     all: ["teams"] as const,

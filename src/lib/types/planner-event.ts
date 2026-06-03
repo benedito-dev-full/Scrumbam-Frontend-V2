@@ -28,8 +28,8 @@ export interface PlannerEvent {
   end: string;
   color: PlannerEventColor;
   allDay?: boolean;
-  /** Origem do bloco — futuro link com Tarefa/Sprint/Doc */
-  source?: "manual" | "task" | "sprint";
+  /** Origem do bloco — futuro link com Tarefa/Doc */
+  source?: "manual" | "task";
 }
 
 /**

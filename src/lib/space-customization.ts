@@ -158,7 +158,7 @@ export const ICONS: IconEntry[] = [
   { name: "beaker", label: "Béquer", keywords: "experimento lab", Icon: Beaker },
   { name: "flask", label: "Frasco", keywords: "lab quimica experimento", Icon: FlaskConical },
   { name: "lightbulb", label: "Lâmpada", keywords: "ideia inovacao", Icon: Lightbulb },
-  { name: "zap", label: "Raio", keywords: "energia rapido sprint", Icon: Zap },
+  { name: "zap", label: "Raio", keywords: "energia rapido", Icon: Zap },
   { name: "sparkles", label: "Brilho", keywords: "ai ia novo", Icon: Sparkles },
   { name: "search", label: "Lupa", keywords: "buscar pesquisa", Icon: Search },
   { name: "filter", label: "Filtro", keywords: "filtrar segmentar", Icon: Filter },

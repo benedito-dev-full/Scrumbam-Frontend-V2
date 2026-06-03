@@ -97,14 +97,14 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           </h1>
 
           <p style={{ fontSize: 15, color: '#4a7a78', lineHeight: 1.7, marginBottom: 44 }}>
-            Do backlog à entrega — organize tarefas, acompanhe sprints e colabore em tempo real. Sem curva de aprendizado.
+            Do backlog à entrega — organize tarefas, acompanhe fases e colabore em tempo real. Sem curva de aprendizado.
           </p>
 
           {/* três bullets */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             {[
               { emoji: '⚡', title: 'Pronto em minutos', desc: 'Configure seu workspace e comece a criar tarefas agora mesmo.' },
-              { emoji: '🎯', title: 'Foco no que importa', desc: 'Kanban, sprints e planejador visual em uma só ferramenta.' },
+              { emoji: '🎯', title: 'Foco no que importa', desc: 'Kanban, fases e planejador visual em uma só ferramenta.' },
               { emoji: '🤝', title: 'Time sempre alinhado', desc: 'Comentários, menções e atualizações em tempo real.' },
             ].map((item) => (
               <div key={item.title} style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>

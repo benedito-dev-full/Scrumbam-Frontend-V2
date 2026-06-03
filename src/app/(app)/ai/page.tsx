@@ -70,10 +70,9 @@ const TOOL_GROUPS: {
     ],
   },
   {
-    label: "Sprints & Fases",
+    label: "Fases & Blocks",
     color: "#22c55e",
     tools: [
-      { name: "list_sprints", desc: "Sprints do projeto" },
       { name: "list_phases", desc: "Fases (blocks)" },
       { name: "get_phase_tree", desc: "Árvore completa de fases" },
     ],
@@ -181,7 +180,7 @@ export default function AiHubPage() {
                 <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
                   Gere uma chave <strong className="font-medium text-foreground">MCP</strong>{" "}
                   e plugue Claude, Cursor ou qualquer cliente compatível. A IA
-                  passa a enxergar suas tarefas, projetos e sprints — com{" "}
+                  passa a enxergar suas tarefas, projetos e fases — com{" "}
                   <strong className="font-medium text-foreground">
                     {TOOL_COUNT} ferramentas
                   </strong>{" "}

@@ -488,33 +488,6 @@ export interface TaskFilters {
   projectId?: string;
   status?: V3Intention;
   assigneeId?: string;
-  sprintId?: string;
-}
-
-// ─── Sprints ─────────────────────────────────────────────────────────────────
-
-export interface SprintResponseDto {
-  id: string;
-  nome: string;
-  projectId?: string;
-  startDate: string | null;
-  endDate: string | null;
-  status?: string;
-  criadoEm: string;
-  atualizadoEm: string;
-}
-
-export interface CreateSprintDto {
-  nome: string;
-  projectId: string;
-  startDate?: string;
-  endDate?: string;
-}
-
-export interface UpdateSprintDto {
-  nome?: string;
-  startDate?: string;
-  endDate?: string;
 }
 
 // ─── Teams ───────────────────────────────────────────────────────────────────

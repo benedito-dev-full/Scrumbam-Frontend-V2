@@ -478,7 +478,7 @@ export function useUpdateProjectTableFields(projectId: string) {
  * @example
  * ```tsx
  * const { mutate, isPending } = useCreateFolder();
- * mutate({ nome: 'Sprint 1', idPai: spaceId });
+ * mutate({ nome: 'Pasta 1', idPai: spaceId });
  * ```
  */
 export function useCreateFolder() {
