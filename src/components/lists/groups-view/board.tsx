@@ -604,14 +604,19 @@ export function GroupBox({
           <ChevronDown size={16} strokeWidth={2.5} />
         </button>
 
-        {/* Seletor de cor do bloco — so no modo backend (bloco real). */}
-        {onRecolorGroup && group.id !== SEM_BLOCO_ID && (
-          <GroupColorPicker
-            color={group.cor}
-            disabled={savingGroup}
-            onPick={(cor) => onRecolorGroup(group.id, cor)}
-          />
-        )}
+        {/* Seletor de cor do bloco — so no modo backend (bloco real). O grupo
+            sintetico "Sem bloco" nao tem seletor, mas reserva o mesmo espaco
+            (14px) para que o titulo fique alinhado com os blocos reais. */}
+        {onRecolorGroup &&
+          (group.id !== SEM_BLOCO_ID ? (
+            <GroupColorPicker
+              color={group.cor}
+              disabled={savingGroup}
+              onPick={(cor) => onRecolorGroup(group.id, cor)}
+            />
+          ) : (
+            <span style={{ width: 14, flexShrink: 0 }} aria-hidden />
+          ))}
 
         {(() => {
           const titleStyle: React.CSSProperties = {
