@@ -569,3 +569,50 @@ export function useArchiveProject() {
     },
   });
 }
+
+/**
+ * Duplica um DProject (Space/Folder/List) como esqueleto + blocos.
+ *
+ * Mapeia para `POST /projects/:id/duplicate`. O backend copia a hierarquia
+ * inteira abaixo do nó e os BLOCOS/FASES de cada Lista, mas NÃO as tasks de
+ * trabalho. A cópia nasce no mesmo nível, com sufixo " (cópia)" no nome.
+ *
+ * Invalida a query do pai (onde a cópia aparece), com base no `idClasse` —
+ * mesmo critério de {@link useArchiveProject}. Exige MANAGER no backend (403
+ * caso contrário; o interceptor global avisa).
+ *
+ * @returns Mutation com `mutate({ id, idClasse, idPai? })`
+ *
+ * @example
+ * ```tsx
+ * const { mutate, isPending } = useDuplicateProject();
+ * mutate({ id: '500', idClasse: '-352', idPai: '200' });
+ * ```
+ */
+export function useDuplicateProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    DProjectDto,
+    Error,
+    { id: string; idClasse: string; idPai?: string | null }
+  >({
+    mutationFn: async ({ id }) => {
+      const res = await api.post<DProjectDto>(`/projects/${id}/duplicate`);
+      return res.data;
+    },
+    onSuccess: (_data, variables) => {
+      const { idClasse, idPai } = variables;
+
+      if (idClasse === ID_CLASSE_SPACE) {
+        void queryClient.invalidateQueries({ queryKey: qk.projects.spaces });
+      } else if (idClasse === ID_CLASSE_FOLDER && idPai) {
+        void queryClient.invalidateQueries({ queryKey: qk.projects.folders(idPai) });
+      } else if (idClasse === ID_CLASSE_LIST && idPai) {
+        void queryClient.invalidateQueries({ queryKey: qk.projects.lists(idPai) });
+      } else {
+        void queryClient.invalidateQueries({ queryKey: qk.projects.all });
+      }
+    },
+  });
+}

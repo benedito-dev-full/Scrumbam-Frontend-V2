@@ -4,8 +4,10 @@ import React, { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Copy, MoreHorizontal, Pencil, Plus, Star, Trash2 } from "lucide-react";
 
+import { toast } from "sonner";
+
 import { cn } from "@/lib/utils";
-import { useArchiveProject } from "@/hooks/use-projects";
+import { useArchiveProject, useDuplicateProject } from "@/hooks/use-projects";
 import { useIsBookmarked, useToggleBookmark } from "@/hooks/use-bookmarks";
 import type { BookmarkTargetType, DProjectDto } from "@/lib/types/api";
 
@@ -97,6 +99,7 @@ export function MoreMenu({
   const btnRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const { mutate: archive } = useArchiveProject();
+  const { mutate: duplicate, isPending: isDuplicating } = useDuplicateProject();
 
   const targetType: BookmarkTargetType =
     project.idClasse === "-350" ? "space"
@@ -185,8 +188,25 @@ export function MoreMenu({
           />
           <MoreMenuItem
             icon={<Copy className="size-3.5" />}
-            label="Duplicar"
-            onClick={() => setOpen(false)}
+            label={isDuplicating ? "Duplicando..." : "Duplicar"}
+            disabled={!canManage || isDuplicating}
+            disabledReason={blockedReason}
+            onClick={() => {
+              setOpen(false);
+              const toastId = toast.loading(`Duplicando ${project.nome}...`);
+              duplicate(
+                { id: project.id, idClasse: project.idClasse, idPai: project.idPai },
+                {
+                  onSuccess: (novo) => {
+                    toast.success(`"${novo.nome}" criado`, { id: toastId });
+                  },
+                  onError: () => {
+                    // 403 já é tratado pelo interceptor global; dispensa o loading.
+                    toast.dismiss(toastId);
+                  },
+                },
+              );
+            }}
           />
 
           <div className="my-1 h-px bg-[#2a2a2f]" />
