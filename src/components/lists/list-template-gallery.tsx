@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ArrowLeft, LayoutTemplate, Loader2 } from "lucide-react";
+import { ArrowLeft, LayoutTemplate } from "lucide-react";
 
 import {
   Dialog,
@@ -13,13 +13,14 @@ import {
 import { cn } from "@/lib/utils";
 import { useListTemplates } from "@/hooks/use-templates";
 import {
+  TEMPLATE_CATEGORIES,
   getCategoryMeta,
   type CategoryMeta,
 } from "@/lib/templates/space-templates";
 import type { DProjectDto } from "@/lib/types/api";
 import { ListTemplatePreviewDialog } from "./list-template-preview";
 
-/** Chave de agrupamento para templates sem categoria. */
+/** Chave de agrupamento para templates sem categoria (ou de categoria desconhecida). */
 const SEM_CATEGORIA = "outros";
 
 interface GalleryCategory {
@@ -40,14 +41,16 @@ interface ListTemplateGalleryDialogProps {
 }
 
 /**
- * Galeria de templates de Lista em 3 níveis (catálogo REAL — ADR-V2-061):
+ * Galeria de templates de Lista em 3 níveis (ADR-V2-061):
  *
- *   1. Categorias (agrupadas por `dados.categoria` dos templates reais)
- *   2. Templates daquela categoria
- *   3. Prévia (árvore real) + criação via `POST /projects/:id/from-template`
+ *   1. Categorias — taxonomia FIXA (curada em {@link TEMPLATE_CATEGORIES}),
+ *      sempre visível; o contador mostra quantos templates reais cada uma tem.
+ *   2. Templates daquela categoria — conteúdo REAL do backend
+ *      (`GET /projects?idClasse=-401&categoria=X`); estado vazio se não houver.
+ *   3. Prévia (árvore real) + criação via `POST /projects/:id/from-template`.
  *
- * Fonte: `GET /projects?idClasse=-401` (templates da org + globais de
- * plataforma). Enquanto não houver templates cadastrados, mostra estado vazio.
+ * As categorias não dependem de haver templates: a vitrine mostra os nichos
+ * mesmo "vazios". Só o conteúdo (templates) vem do servidor.
  */
 export function ListTemplateGalleryDialog({
   open,
@@ -61,20 +64,43 @@ export function ListTemplateGalleryDialog({
   const [preview, setPreview] = useState<DProjectDto | null>(null);
 
   const categories = useMemo<GalleryCategory[]>(() => {
+    // Agrupa os templates reais por categoria (id). `null`/desconhecida → "outros".
     const byCat = new Map<string, DProjectDto[]>();
     for (const t of templates) {
       const key = t.categoria ?? SEM_CATEGORIA;
-      const arr = byCat.get(key) ?? [];
-      arr.push(t);
-      byCat.set(key, arr);
+      const arr = byCat.get(key);
+      if (arr) arr.push(t);
+      else byCat.set(key, [t]);
     }
-    return Array.from(byCat.entries())
-      .map(([id, tpls]) => ({
-        id,
-        meta: getCategoryMeta(id === SEM_CATEGORIA ? null : id),
-        templates: tpls,
-      }))
-      .sort((a, b) => a.meta.nome.localeCompare(b.meta.nome, "pt-BR"));
+
+    // Taxonomia FIXA sempre presente (mesmo sem templates).
+    const fixed: GalleryCategory[] = TEMPLATE_CATEGORIES.map((c) => ({
+      id: c.id,
+      meta: {
+        nome: c.nome,
+        descricao: c.descricao,
+        icon: c.icon,
+        color: c.color,
+      },
+      templates: byCat.get(c.id) ?? [],
+    }));
+
+    // Templates de categoria desconhecida (ou sem categoria) → bucket "Outros",
+    // anexado só quando existir algum.
+    const fixedIds = new Set(TEMPLATE_CATEGORIES.map((c) => c.id));
+    const orphans: DProjectDto[] = [];
+    for (const [key, arr] of byCat) {
+      if (!fixedIds.has(key)) orphans.push(...arr);
+    }
+    if (orphans.length > 0) {
+      fixed.push({
+        id: SEM_CATEGORIA,
+        meta: getCategoryMeta(null),
+        templates: orphans,
+      });
+    }
+
+    return fixed;
   }, [templates]);
 
   const category = categories.find((c) => c.id === categoryId) ?? null;
@@ -89,7 +115,7 @@ export function ListTemplateGalleryDialog({
 
   return (
     <>
-      {/* Nível 1: categorias */}
+      {/* Nível 1: categorias (taxonomia fixa — sempre visível) */}
       <Dialog
         open={open && !category && !preview}
         onOpenChange={(o) => !o && closeAll()}
@@ -108,30 +134,20 @@ export function ListTemplateGalleryDialog({
             </DialogHeader>
           </div>
 
-          <div className="min-h-[200px] px-7 pb-7">
-            {isLoading ? (
-              <CenteredHint>
-                <Loader2 className="mr-2 size-4 animate-spin" />
-                Carregando templates…
-              </CenteredHint>
-            ) : categories.length === 0 ? (
-              <CenteredHint>Nenhum template disponível ainda.</CenteredHint>
-            ) : (
-              <div className="grid max-h-[55vh] grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2">
-                {categories.map((cat) => (
-                  <CategoryCard
-                    key={cat.id}
-                    category={cat}
-                    onSelect={() => setCategoryId(cat.id)}
-                  />
-                ))}
-              </div>
-            )}
+          <div className="grid max-h-[55vh] grid-cols-1 gap-3 overflow-y-auto px-7 pb-7 sm:grid-cols-2">
+            {categories.map((cat) => (
+              <CategoryCard
+                key={cat.id}
+                category={cat}
+                loading={isLoading}
+                onSelect={() => setCategoryId(cat.id)}
+              />
+            ))}
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Nível 2: templates da categoria */}
+      {/* Nível 2: templates da categoria (conteúdo real; vazio se não houver) */}
       <Dialog
         open={open && !!category && !preview}
         onOpenChange={(o) => !o && closeAll()}
@@ -157,15 +173,21 @@ export function ListTemplateGalleryDialog({
                 </DialogHeader>
               </div>
 
-              <div className="grid max-h-[55vh] grid-cols-1 gap-2.5 overflow-y-auto px-7 pb-7">
-                {category.templates.map((tpl) => (
-                  <TemplateRow
-                    key={tpl.id}
-                    template={tpl}
-                    onSelect={() => setPreview(tpl)}
-                  />
-                ))}
-              </div>
+              {category.templates.length === 0 ? (
+                <div className="flex h-[160px] items-center justify-center px-7 pb-7 text-center text-sm text-muted-foreground">
+                  Nenhum template nesta categoria ainda.
+                </div>
+              ) : (
+                <div className="grid max-h-[55vh] grid-cols-1 gap-2.5 overflow-y-auto px-7 pb-7">
+                  {category.templates.map((tpl) => (
+                    <TemplateRow
+                      key={tpl.id}
+                      template={tpl}
+                      onSelect={() => setPreview(tpl)}
+                    />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </DialogContent>
@@ -187,14 +209,6 @@ export function ListTemplateGalleryDialog({
   );
 }
 
-function CenteredHint({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex h-[160px] items-center justify-center text-center text-sm text-muted-foreground">
-      {children}
-    </div>
-  );
-}
-
 function BackButton({ onClick }: { onClick: () => void }) {
   return (
     <button
@@ -210,9 +224,11 @@ function BackButton({ onClick }: { onClick: () => void }) {
 
 function CategoryCard({
   category,
+  loading,
   onSelect,
 }: {
   category: GalleryCategory;
+  loading?: boolean;
   onSelect: () => void;
 }) {
   const Icon = category.meta.icon;
@@ -236,7 +252,7 @@ function CategoryCard({
         <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
           {category.meta.nome}
           <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
-            {category.templates.length}
+            {loading ? "…" : category.templates.length}
           </span>
         </span>
         {category.meta.descricao && (
