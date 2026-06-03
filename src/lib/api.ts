@@ -30,6 +30,46 @@ function processQueue(error: unknown, token: string | null): void {
   failedQueue = [];
 }
 
+// ─── Aviso global de 403 (sem permissão) ──────────────────────────────────────
+
+/**
+ * Timestamp do último toast de 403 exibido. Throttle simples: uma rajada de
+ * 403 (ex: vários PATCH em lote) não deve empilhar N toasts idênticos.
+ */
+let last403ToastAt = 0;
+const TOAST_403_THROTTLE_MS = 4000;
+
+/**
+ * Exibe um toast explicativo quando o backend nega uma ação por falta de
+ * permissão (HTTP 403). É a rede de segurança: mesmo onde a UI não conseguiu
+ * desabilitar o botão a tempo (ou em fluxos não previstos), o usuário recebe um
+ * motivo claro em vez de um silêncio confuso.
+ *
+ * Client-only (usa `sonner`) e com import lazy para não pesar no SSR.
+ */
+async function notifyForbidden(error: AxiosError<ApiErrorResponse>): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  const now = Date.now();
+  if (now - last403ToastAt < TOAST_403_THROTTLE_MS) return;
+  last403ToastAt = now;
+
+  // Prefere a mensagem do backend (ex: "requer role MANAGER no projeto"); cai
+  // para um texto genérico amigável quando ausente.
+  const backendMsg = getApiErrorMessage(error);
+  const description =
+    backendMsg && backendMsg !== "Erro inesperado"
+      ? backendMsg
+      : "Fale com um administrador da workspace.";
+
+  try {
+    const { toast } = await import("sonner");
+    toast.error("Você não tem permissão para isso", { description });
+  } catch {
+    // sonner indisponível (ambiente sem Toaster montado) — silencioso.
+  }
+}
+
 // ─── Instância principal ──────────────────────────────────────────────────────
 
 const baseURL = process.env.NEXT_PUBLIC_API_URL ?? '';
@@ -78,6 +118,14 @@ api.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
+
+    // 403 = autenticado mas sem permissão (ex: renomear espaço sem ser MANAGER).
+    // Rede de segurança: avisa o usuário com um motivo claro. Não bloqueia o
+    // fluxo — a própria chamada ainda recebe o reject para tratar localmente.
+    if (error.response?.status === 403 && !originalRequest?.skipAuth) {
+      void notifyForbidden(error as AxiosError<ApiErrorResponse>);
+      return Promise.reject(error);
+    }
 
     if (error.response?.status !== 401) {
       return Promise.reject(error);

@@ -224,6 +224,23 @@ export interface DProjectDto {
    * costumam ter; Space/Folder retornam `null`/ausente.
    */
   tableFields?: TableFieldsDto | null;
+  /**
+   * Papel do usuário autenticado NESTE projeto (Space/Folder/List).
+   *
+   * Resolvido pelo backend já com herança ORG_ADMIN→MANAGER e acesso herdado
+   * de espaço público. `null` em casos-limite (sem usuário). Use `canManage`
+   * para decisões de UI — este campo é informativo (ex: badge de papel).
+   */
+  myRole?: "MANAGER" | "MEMBER" | "VIEWER" | null;
+  /**
+   * `true` quando o usuário pode executar operações estruturais do projeto
+   * (renomear, mover, mudar privacidade, deletar, gerir membros).
+   *
+   * Equivale a `myRole === "MANAGER"` no backend. É o campo que o front usa
+   * para habilitar/desabilitar as ações estruturais — evita o usuário tentar
+   * e tomar 403. Opcional para compat com respostas/mocks antigos.
+   */
+  canManage?: boolean;
   criadoEm: string;
   atualizadoEm: string;
 }

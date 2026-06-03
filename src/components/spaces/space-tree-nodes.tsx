@@ -31,6 +31,11 @@ function useInlineRename(project: DProjectDto) {
   }, [editing]);
 
   function startEdit() {
+    // Renomear é operação estrutural — exige MANAGER (canManage no DTO). Trava
+    // funcional que cobre tanto o menu quanto o duplo-clique no nó; o MoreMenu
+    // já desabilita visualmente o item. Default permissivo quando ausente
+    // (mock/resposta antiga) — backend continua sendo a verdade (403).
+    if (project.canManage === false) return;
     setDraft(project.nome);
     setEditing(true);
   }

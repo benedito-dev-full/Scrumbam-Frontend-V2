@@ -14,17 +14,36 @@ interface MoreMenuItemProps {
   label: string;
   onClick: () => void;
   danger?: boolean;
+  /** Quando true, o item fica acinzentado e não dispara `onClick`. */
+  disabled?: boolean;
+  /** Texto do tooltip explicando por que o item está bloqueado. */
+  disabledReason?: string;
 }
 
-function MoreMenuItem({ icon, label, onClick, danger }: MoreMenuItemProps) {
+function MoreMenuItem({
+  icon,
+  label,
+  onClick,
+  danger,
+  disabled,
+  disabledReason,
+}: MoreMenuItemProps) {
   return (
     <button
       type="button"
       role="menuitem"
-      onClick={onClick}
+      onClick={disabled ? undefined : onClick}
+      disabled={disabled}
+      title={disabled ? disabledReason : undefined}
+      aria-disabled={disabled}
       className={cn(
-        "flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] transition-colors hover:bg-[#2a2a2f]",
-        danger ? "text-red-400 hover:text-red-300" : "text-[#e4e4e7]",
+        "flex w-full items-center gap-2.5 rounded-md px-3 py-1.5 text-left text-[13px] transition-colors",
+        disabled
+          ? "cursor-not-allowed text-[#52525b]"
+          : cn(
+              "hover:bg-[#2a2a2f]",
+              danger ? "text-red-400 hover:text-red-300" : "text-[#e4e4e7]",
+            ),
       )}
     >
       <span className="shrink-0 text-[#71717a]">{icon}</span>
@@ -85,6 +104,17 @@ export function MoreMenu({
     : "list";
   const { isBookmarked, bookmark } = useIsBookmarked(project.id, targetType);
   const { toggle: toggleBookmark, isPending: isTogglingBookmark } = useToggleBookmark();
+
+  // Ações estruturais (renomear/excluir) exigem MANAGER no backend. O campo
+  // `canManage` vem resolvido do DTO. Default true quando ausente (mocks ou
+  // respostas antigas) — fail-open só na UI; o backend continua sendo a verdade
+  // e nega com 403 (o interceptor avisa). Rótulo do tipo para o tooltip.
+  const canManage = project.canManage !== false;
+  const tipoLabel =
+    targetType === "space" ? "este espaço"
+    : targetType === "folder" ? "esta pasta"
+    : "esta lista";
+  const blockedReason = `Apenas administradores podem gerenciar ${tipoLabel}`;
 
   useEffect(() => {
     if (!open) return;
@@ -149,6 +179,8 @@ export function MoreMenu({
           <MoreMenuItem
             icon={<Pencil className="size-3.5" />}
             label="Renomear"
+            disabled={!canManage}
+            disabledReason={blockedReason}
             onClick={() => { setOpen(false); onRename(); }}
           />
           <MoreMenuItem
@@ -163,6 +195,8 @@ export function MoreMenu({
             icon={<Trash2 className="size-3.5" />}
             label="Excluir"
             danger
+            disabled={!canManage}
+            disabledReason={blockedReason}
             onClick={() => {
               setOpen(false);
               archive({ id: project.id, idClasse: project.idClasse, idPai: project.idPai });
