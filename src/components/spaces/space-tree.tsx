@@ -107,7 +107,7 @@ export function SpaceTree() {
         <button
           type="button"
           aria-label="Novo espaço"
-          onClick={() => setChooserOpen(true)}
+          onClick={() => setCreateDialogOpen(true)}
           className="grid size-4 place-items-center rounded text-muted-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
         >
           <Plus className="size-3" />
@@ -138,7 +138,7 @@ export function SpaceTree() {
             {!isLoading && (
               <button
                 type="button"
-                onClick={() => setChooserOpen(true)}
+                onClick={() => setCreateDialogOpen(true)}
                 className="flex h-[34px] w-full items-center gap-2 rounded-[5px] px-3 text-[13px] text-muted-foreground/60 transition-colors hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
               >
                 <Plus className="size-3.5 shrink-0" />
@@ -163,7 +163,9 @@ export function SpaceTree() {
         </DndContext>
       )}
 
-      {/* Passo 1: escolher em branco ou template */}
+      {/* [PARADO] Chooser em branco/template — desligado temporariamente: o "+"
+          agora abre o CreateSpaceDialog direto. Mantido montado para religar
+          fácil (basta o "+" voltar a chamar setChooserOpen(true)). */}
       <CreateSpaceChooserDialog
         open={chooserOpen}
         onOpenChange={setChooserOpen}
