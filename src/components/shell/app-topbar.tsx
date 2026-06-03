@@ -20,6 +20,7 @@ import { useContentLoadingStore } from "@/lib/stores/content-loading";
 import { useLogout } from "@/hooks/use-auth";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 /* ─── Topbar global — idêntica ao ClickUp ─────────────────────────────────
  * bg: #1a1a1a  (levemente mais claro que o fundo #0d0d0f)
@@ -184,6 +185,26 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+/**
+ * Rótulo e cor do badge de papel na organização, exibido no menu do usuário.
+ * Espelha o `orgRole` do JWT (ADMIN/MEMBER/VIEWER). `null` quando ausente
+ * (ex: usuário órfão sem org) — nesse caso não renderizamos o badge.
+ */
+function orgRoleBadge(
+  role: "ADMIN" | "MEMBER" | "VIEWER" | undefined,
+): { label: string; className: string } | null {
+  switch (role) {
+    case "ADMIN":
+      return { label: "Admin", className: "bg-amber-500/15 text-amber-400" };
+    case "MEMBER":
+      return { label: "Membro", className: "bg-blue-500/15 text-blue-400" };
+    case "VIEWER":
+      return { label: "Visualizador", className: "bg-zinc-500/15 text-zinc-400" };
+    default:
+      return null;
+  }
+}
+
 function UserMenu() {
   const router = useRouter();
   const logout = useLogout();
@@ -192,6 +213,7 @@ function UserMenu() {
   const name = user?.name ?? "?";
   const email = user?.email ?? "";
   const initials = getInitials(name);
+  const roleBadge = orgRoleBadge(user?.orgRole);
 
   return (
     <DropdownMenu>
@@ -232,8 +254,20 @@ function UserMenu() {
       <DropdownMenuContent align="end" sideOffset={6} className="w-52">
         <DropdownMenuGroup>
           <DropdownMenuLabel>
-            <div className="text-[13px] font-semibold text-foreground">
-              {name}
+            <div className="flex items-center gap-2">
+              <span className="text-[13px] font-semibold text-foreground">
+                {name}
+              </span>
+              {roleBadge && (
+                <span
+                  className={cn(
+                    "rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none",
+                    roleBadge.className,
+                  )}
+                >
+                  {roleBadge.label}
+                </span>
+              )}
             </div>
             <div className="text-[11px] text-muted-foreground">{email}</div>
           </DropdownMenuLabel>

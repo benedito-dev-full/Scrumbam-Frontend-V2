@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, ChevronUp, ChevronDown, Check, Plus } from "lucide-react";
+import { X, ChevronUp, ChevronDown, Check, Plus, Lock } from "lucide-react";
 import { useInviteDialogStore } from "@/lib/stores/invite-dialog";
 import { useCreateInvite } from "@/hooks/use-org-members";
+import { useAuthStore } from "@/lib/stores/auth";
 
 function IcMember() {
   return (
@@ -44,6 +45,12 @@ const ROLES = [
 
 export function InviteDialog() {
   const { open, closeDialog } = useInviteDialogStore();
+  // Convidar pessoas para a workspace é admin-only no backend
+  // (invites.service: "Apenas ADMIN da organizacao pode enviar convites").
+  // Bloqueamos no próprio dialog — cobre todos os gatilhos (icon-rail,
+  // command-palette) de uma vez, em vez de gatear cada um.
+  const orgRole = useAuthStore((s) => s.user?.orgRole);
+  const canInvite = orgRole === "ADMIN";
   const [email, setEmail] = useState("");
   const [focused, setFocused] = useState(false);
   const [roleOpen, setRoleOpen] = useState(false);
@@ -104,6 +111,70 @@ export function InviteDialog() {
   };
 
   if (!open) return null;
+
+  // Estado sem permissão: usuário não-admin atingiu o dialog (ex: via command
+  // palette). Mostra um aviso claro em vez do formulário — ensina a regra,
+  // estilo ClickUp, em vez de deixar tentar e tomar 403.
+  if (!canInvite) {
+    return (
+      <div
+        onClick={closeDialog}
+        style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          background: "rgba(0,0,0,0.55)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            width: 420, borderRadius: 12,
+            background: "var(--accent)",
+            border: "1px solid var(--border)",
+            boxShadow: "0 24px 60px rgba(0,0,0,0.6)",
+            padding: "28px 24px 22px",
+            position: "relative",
+            textAlign: "center",
+          }}
+        >
+          <button type="button" onClick={closeDialog} style={{
+            position: "absolute", top: 14, right: 14,
+            width: 28, height: 28, borderRadius: 7,
+            border: 0, background: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "var(--muted-foreground)",
+          }}>
+            <X size={15} />
+          </button>
+
+          <div style={{
+            width: 44, height: 44, borderRadius: 12, margin: "0 auto 14px",
+            background: "var(--secondary)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "var(--muted-foreground)",
+          }}>
+            <Lock size={20} />
+          </div>
+
+          <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", marginBottom: 8 }}>
+            Convites são restritos a administradores
+          </h2>
+          <p style={{ fontSize: 13, color: "var(--muted-foreground)", lineHeight: 1.5, marginBottom: 20 }}>
+            Apenas administradores da workspace podem convidar pessoas. Fale com
+            um administrador para adicionar novos membros.
+          </p>
+
+          <button type="button" onClick={closeDialog} style={{
+            height: 36, padding: "0 20px", borderRadius: 7,
+            border: 0, background: "var(--primary)", cursor: "pointer",
+            color: "var(--primary-foreground)", fontSize: 13, fontWeight: 700,
+          }}>
+            Entendi
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
