@@ -1,15 +1,35 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-import { CreateListDialog } from "@/components/spaces/create-list-dialog";
 import { CreateListChooserDialog } from "./create-list-chooser";
-import { ListTemplateGalleryDialog } from "./list-template-gallery";
 import { useCreateListFlowStore } from "@/lib/stores/create-list-flow";
 import { useCreateFromTemplate } from "@/hooks/use-templates";
 import { getApiErrorMessage } from "@/lib/api";
 import type { DProjectDto } from "@/lib/types/api";
+
+/**
+ * Dialogs pesados carregados sob demanda (`ssr: false`): só entram no bundle —
+ * e só montam (disparando seus hooks de fetch) — quando o usuário chega no passo
+ * correspondente. Como o `CreateListFlow` vive no shell (toda rota autenticada),
+ * importá-los estaticamente inflava o First Load JS de TODA página e fazia o
+ * `CreateListDialog` rodar `useSpaces()` mesmo fechado.
+ */
+const CreateListDialog = dynamic(
+  () =>
+    import("@/components/spaces/create-list-dialog").then(
+      (m) => m.CreateListDialog,
+    ),
+  { ssr: false },
+);
+
+const ListTemplateGalleryDialog = dynamic(
+  () =>
+    import("./list-template-gallery").then((m) => m.ListTemplateGalleryDialog),
+  { ssr: false },
+);
 
 /**
  * Orquestrador único do fluxo de criação de Lista.
@@ -68,15 +88,19 @@ export function CreateListFlow() {
         onChooseTemplate={() => setStep("gallery")}
       />
 
-      {/* Passo 2a: criação em branco (fluxo real existente) */}
-      <CreateListDialog
-        parentId={parentId ?? ""}
-        parentName={parentName}
-        open={open && step === "blank"}
-        onOpenChange={(o) => {
-          if (!o) close();
-        }}
-      />
+      {/* Passo 2a: criação em branco (fluxo real existente).
+          Montado condicionalmente: enquanto não for o passo "blank", o dialog
+          nem existe — evitando o `useSpaces()` interno rodar com o modal fechado. */}
+      {open && step === "blank" && (
+        <CreateListDialog
+          parentId={parentId ?? ""}
+          parentName={parentName}
+          open
+          onOpenChange={(o) => {
+            if (!o) close();
+          }}
+        />
+      )}
 
       {/* Passo 2b: galeria de templates → cria + navega.
           Montada condicionalmente: sair da galeria a desmonta e zera a

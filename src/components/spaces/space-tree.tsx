@@ -10,6 +10,7 @@
  */
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import { ChevronRight, Plus } from "lucide-react";
 import {
   DndContext,
@@ -28,7 +29,6 @@ import { useMoveProject, useSpaces } from "@/hooks/use-projects";
 import type { DProjectDto } from "@/lib/types/api";
 import { CreateSpaceDialog } from "./create-space-dialog";
 import { CreateSpaceChooserDialog } from "./create-space-chooser";
-import { SpaceTemplateGalleryDialog } from "./space-template-gallery";
 import { canDropOn, useExpandedState } from "./space-tree-state";
 import {
   IcFolder,
@@ -36,6 +36,20 @@ import {
   SpaceNode,
   SpaceTreeSkeleton,
 } from "./space-tree-nodes";
+
+/**
+ * Galeria de templates de Space carregada sob demanda (`ssr: false`): só entra
+ * no bundle quando o usuário abre o fluxo de template. A SpaceTree vive na
+ * sidebar (toda rota), então importá-la estaticamente arrastava ~400 linhas de
+ * dialog para o First Load JS de toda página.
+ */
+const SpaceTemplateGalleryDialog = dynamic(
+  () =>
+    import("./space-template-gallery").then(
+      (m) => m.SpaceTemplateGalleryDialog,
+    ),
+  { ssr: false },
+);
 
 export function SpaceTree() {
   const [sectionOpen, setSectionOpen] = useState(true);
@@ -179,15 +193,18 @@ export function SpaceTree() {
         }}
       />
 
-      {/* Passo 2a: galeria de templates (criação real pendente) */}
-      <SpaceTemplateGalleryDialog
-        open={galleryOpen}
-        onOpenChange={setGalleryOpen}
-        onBack={() => {
-          setGalleryOpen(false);
-          setChooserOpen(true);
-        }}
-      />
+      {/* Passo 2a: galeria de templates (criação real pendente).
+          Montada só quando aberta — o dialog nem existe no DOM até então. */}
+      {galleryOpen && (
+        <SpaceTemplateGalleryDialog
+          open
+          onOpenChange={setGalleryOpen}
+          onBack={() => {
+            setGalleryOpen(false);
+            setChooserOpen(true);
+          }}
+        />
+      )}
 
       {/* Passo 2b: modal de criação de space "em branco" */}
       <CreateSpaceDialog
