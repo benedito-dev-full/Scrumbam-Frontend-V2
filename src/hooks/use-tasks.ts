@@ -7,6 +7,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
 import { useAuthStore } from "@/lib/stores/auth";
+// [MOCK TEMPLATE — REMOVER NA INTEGRAÇÃO] conteúdo em memória de listas criadas
+// a partir de template; quando presente, os hooks devolvem o mock sem ir à rede.
+import { useTemplateMockStore } from "@/lib/stores/template-mock";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { BlockDto, TaskResponseDto } from "@/lib/types/api";
@@ -39,6 +42,10 @@ interface TasksPage {
  */
 export function useTasksByProject(projectId: string | null) {
   const accessToken = useAuthStore((s) => s.accessToken);
+  // [MOCK TEMPLATE] lista criada a partir de template → devolve as tarefas mock.
+  const mockTasks = useTemplateMockStore((s) =>
+    projectId ? s.byList[projectId]?.tasks : undefined,
+  );
   return useQuery<TaskResponseDto[]>({
     queryKey: qk.tasks.byProject(projectId ?? ""),
     queryFn: async () => {
@@ -47,7 +54,8 @@ export function useTasksByProject(projectId: string | null) {
       });
       return res.data.items;
     },
-    enabled: !!accessToken && !!projectId,
+    enabled: !!accessToken && !!projectId && !mockTasks,
+    initialData: mockTasks,
     staleTime: 15_000,
   });
 }
@@ -334,6 +342,10 @@ export function useUpdateTask() {
  */
 export function useBlocks(projectId: string | null) {
   const accessToken = useAuthStore((s) => s.accessToken);
+  // [MOCK TEMPLATE] lista criada a partir de template → devolve os blocos mock.
+  const mockBlocks = useTemplateMockStore((s) =>
+    projectId ? s.byList[projectId]?.blocks : undefined,
+  );
   return useQuery<BlockDto[]>({
     queryKey: qk.tasks.blocks(projectId ?? ""),
     queryFn: async () => {
@@ -342,7 +354,8 @@ export function useBlocks(projectId: string | null) {
       });
       return res.data.items as BlockDto[];
     },
-    enabled: !!accessToken && !!projectId,
+    enabled: !!accessToken && !!projectId && !mockBlocks,
+    initialData: mockBlocks,
     staleTime: 15_000,
   });
 }

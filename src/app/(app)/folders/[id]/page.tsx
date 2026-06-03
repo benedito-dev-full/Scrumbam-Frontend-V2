@@ -23,7 +23,7 @@ import {
 } from "@/components/shell/entity-page";
 import Link from "next/link";
 import { AgentPopover } from "@/components/spaces/agent-popover";
-import { CreateListDialog } from "@/components/spaces/create-list-dialog";
+import { useCreateListFlowStore } from "@/lib/stores/create-list-flow";
 import { useProject, useLists, useArchiveProject } from "@/hooks/use-projects";
 import {
   useBookmarks,
@@ -247,7 +247,8 @@ export default function FolderPage({
 }) {
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [listDialogOpen, setListDialogOpen] = useState(false);
+  // Fluxo centralizado de criação de Lista (chooser → em branco / template).
+  const openCreateList = useCreateListFlowStore((s) => s.openCreateList);
   const [deleteTarget, setDeleteTarget] = useState<{
     id: string;
     nome: string;
@@ -904,19 +905,13 @@ export default function FolderPage({
                   </div>
                 )}
 
-                <AddListRow onClick={() => setListDialogOpen(true)} />
+                <AddListRow onClick={() => openCreateList(id, entidade?.nome ?? "")} />
               </div>
             </section>
           </>
         )}
       </div>
 
-      <CreateListDialog
-        parentId={id}
-        parentName={entidade?.nome ?? ""}
-        open={listDialogOpen}
-        onOpenChange={setListDialogOpen}
-      />
       <DeleteListDialog
         open={!!deleteTarget}
         listName={deleteTarget?.nome ?? ""}

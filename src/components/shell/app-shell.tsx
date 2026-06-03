@@ -8,6 +8,7 @@ import { NewSpaceDialog } from "./new-space-dialog";
 import { InviteDialog } from "./invite-dialog";
 import { CreateTaskModalGlobal } from "./create-task-modal-global";
 import { CreateWorkspaceDialog } from "./create-workspace-dialog";
+import { CreateListFlow } from "@/components/lists/create-list-flow";
 import { ContentLoadingOverlay } from "./content-loading-overlay";
 import { GlobalLoadingTrigger } from "./global-loading-trigger";
 
@@ -34,6 +35,7 @@ export function AppShell({ children }: AppShellProps) {
       <CommandPalette />
       <ShortcutsHelpDialog />
       <NewSpaceDialog />
+      <CreateListFlow />
       <InviteDialog />
       <CreateTaskModalGlobal />
       <CreateWorkspaceDialog />

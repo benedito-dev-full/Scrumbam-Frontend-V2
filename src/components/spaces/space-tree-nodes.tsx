@@ -12,7 +12,7 @@ import { cn } from "@/lib/utils";
 import { useFolders, useLists, useRenameProject } from "@/hooks/use-projects";
 import type { DProjectDto } from "@/lib/types/api";
 import { CreateFolderDialog } from "./create-folder-dialog";
-import { CreateListDialog } from "./create-list-dialog";
+import { useCreateListFlowStore } from "@/lib/stores/create-list-flow";
 import { canDropOn } from "./space-tree-state";
 import { MoreMenu, SpacePlusMenu } from "./space-tree-menus";
 
@@ -335,7 +335,7 @@ function FolderNode({
 
   const { data: lists, isLoading } = useLists(open ? folder.id : null);
 
-  const [createListOpen, setCreateListOpen] = useState(false);
+  const openCreateList = useCreateListFlowStore((s) => s.openCreateList);
 
   const { editing, draft, setDraft, inputRef, isPending, startEdit, handleKeyDown, commitEdit } =
     useInlineRename(folder);
@@ -427,7 +427,7 @@ function FolderNode({
             <SpacePlusMenu
               spaceName={folder.nome}
               onCreateFolder={() => {}}
-              onCreateList={() => setCreateListOpen(true)}
+              onCreateList={() => openCreateList(folder.id, folder.nome)}
               showFolder={false}
             />
           </div>
@@ -448,13 +448,6 @@ function FolderNode({
         </div>
       )}
 
-      {/* Dialog de criação de List */}
-      <CreateListDialog
-        parentId={folder.id}
-        parentName={folder.nome}
-        open={createListOpen}
-        onOpenChange={setCreateListOpen}
-      />
     </div>
   );
 }
@@ -482,7 +475,7 @@ export function SpaceNode({
   const { data: directLists, isLoading: isLoadingLists } = useLists(open ? space.id : null);
 
   const [createFolderOpen, setCreateFolderOpen] = useState(false);
-  const [createListOpen, setCreateListOpen] = useState(false);
+  const openCreateList = useCreateListFlowStore((s) => s.openCreateList);
 
   const { editing, draft, setDraft, inputRef, isPending, startEdit, handleKeyDown, commitEdit } =
     useInlineRename(space);
@@ -572,7 +565,7 @@ export function SpaceNode({
             <SpacePlusMenu
               spaceName={space.nome}
               onCreateFolder={() => setCreateFolderOpen(true)}
-              onCreateList={() => setCreateListOpen(true)}
+              onCreateList={() => openCreateList(space.id, space.nome)}
             />
           </div>
         )}
@@ -606,12 +599,6 @@ export function SpaceNode({
         spaceId={space.id}
         open={createFolderOpen}
         onOpenChange={setCreateFolderOpen}
-      />
-      <CreateListDialog
-        parentId={space.id}
-        parentName={space.nome}
-        open={createListOpen}
-        onOpenChange={setCreateListOpen}
       />
     </div>
   );

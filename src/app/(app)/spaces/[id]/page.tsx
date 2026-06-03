@@ -26,7 +26,7 @@ import { AskIAPopover } from "@/components/spaces/ask-ia-popover";
 import { ShareSpaceModal } from "@/components/spaces/share-space-modal";
 import { SpaceSwitcher } from "@/components/spaces/space-switcher";
 import { CreateFolderDialog } from "@/components/spaces/create-folder-dialog";
-import { CreateListDialog } from "@/components/spaces/create-list-dialog";
+import { useCreateListFlowStore } from "@/lib/stores/create-list-flow";
 import {
   useSpaces,
   useFolders,
@@ -87,7 +87,8 @@ export default function SpacePage({
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [folderDialogOpen, setFolderDialogOpen] = useState(false);
-  const [listDialogOpen, setListDialogOpen] = useState(false);
+  // Fluxo centralizado de criação de Lista (chooser → em branco / template).
+  const openCreateList = useCreateListFlowStore((s) => s.openCreateList);
   const [foldersExpanded, setFoldersExpanded] = useState(true);
   const [listsExpanded, setListsExpanded] = useState(true);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -896,7 +897,7 @@ export default function SpacePage({
                   </div>
                 )}
 
-                <AddListRow onClick={() => setListDialogOpen(true)} />
+                <AddListRow onClick={() => openCreateList(id, entidade?.nome ?? "")} />
                 </div>
               )}
             </section>
@@ -919,12 +920,6 @@ export default function SpacePage({
         spaceId={id}
         open={folderDialogOpen}
         onOpenChange={setFolderDialogOpen}
-      />
-      <CreateListDialog
-        parentId={id}
-        parentName={entidade?.nome ?? ""}
-        open={listDialogOpen}
-        onOpenChange={setListDialogOpen}
       />
       <DeleteListDialog
         open={!!deleteTarget}
