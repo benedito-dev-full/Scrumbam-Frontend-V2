@@ -2,8 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { ChevronRight, FolderOpen, Share2, Sparkles, Star } from "lucide-react";
+import { ChevronRight, FolderOpen, Share2, Star } from "lucide-react";
 import { AgentPopover } from "@/components/spaces/agent-popover";
+import { AskIAPopover } from "@/components/spaces/ask-ia-popover";
 import { SpaceChip } from "@/components/shell/space-chip";
 import { IcCaret, IcList } from "@/components/lists/icons";
 import { useIsBookmarked, useToggleBookmark } from "@/hooks/use-bookmarks";
@@ -273,11 +274,7 @@ export function PageHeader({ projeto }: { projeto: DProjectDto }) {
         }}
       >
         <AgentPopover projectId={id} projectName={nome} />
-        <TbBtn
-          icon={<Sparkles className="size-3.5" />}
-          label="Pergunte à IA"
-          href="https://scrumban.com.br/ia"
-        />
+        <AskIAPopover />
         <div
           style={{
             width: 1,

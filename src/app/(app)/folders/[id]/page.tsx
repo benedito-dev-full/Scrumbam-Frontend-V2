@@ -23,6 +23,7 @@ import {
 } from "@/components/shell/entity-page";
 import Link from "next/link";
 import { AgentPopover } from "@/components/spaces/agent-popover";
+import { AskIAPopover } from "@/components/spaces/ask-ia-popover";
 import { useCreateListFlowStore } from "@/lib/stores/create-list-flow";
 import { useProject, useLists, useArchiveProject } from "@/hooks/use-projects";
 import {
@@ -416,11 +417,7 @@ export default function FolderPage({
           />
           <AgentPopover projectId={id} projectName={entidade.nome} />
           <TopBtn icon={<Sparkles size={14} />} />
-          <TopBtn
-            icon={<span style={{ fontSize: 13 }}>✦</span>}
-            label="Pergunte à IA"
-            href="https://scrumban.com.br/ia"
-          />
+          <AskIAPopover />
           <div
             style={{
               width: 1,
