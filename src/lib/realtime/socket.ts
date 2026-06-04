@@ -96,14 +96,36 @@ let socket: Socket | null = null;
  * ```
  */
 export function getSocket(token: string | null): Socket | null {
+  // [DIAG] temporário — remover após confirmar a causa do socket não conectar.
+  if (typeof window !== "undefined") {
+    console.warn("[realtime] getSocket", {
+      mock: isMockMode(),
+      hasToken: !!token,
+      apiUrl: process.env.NEXT_PUBLIC_API_URL ?? "(undefined)",
+      mockAuth: process.env.NEXT_PUBLIC_MOCK_AUTH ?? "(undefined)",
+      url: realtimeUrl(),
+    });
+  }
+
   if (isMockMode() || !token) return null;
 
   if (!socket) {
     socket = io(realtimeUrl(), {
       auth: { token },
-      transports: ["websocket"],
+      // Mantém o polling como fallback: atrás de proxy (Traefik/Dokploy) o
+      // upgrade direto pra WebSocket pode falhar silenciosamente. O socket.io
+      // começa em polling e faz upgrade pra ws quando possível.
+      transports: ["polling", "websocket"],
+      withCredentials: true,
       autoConnect: true,
     });
+    // [DIAG] temporário — observabilidade da conexão.
+    socket.on("connect", () => console.warn("[realtime] connected", socket?.id));
+    socket.on("connect_error", (err) =>
+      console.error("[realtime] connect_error", err.message),
+    );
+    socket.on("joined:list", (d) => console.warn("[realtime] joined:list", d));
+    socket.on("list:event", (d) => console.warn("[realtime] list:event", d));
   } else if (socket.auth && typeof socket.auth === "object") {
     // Token pode ter sido renovado (refresh) — mantém o handshake atual.
     (socket.auth as { token?: string }).token = token;
