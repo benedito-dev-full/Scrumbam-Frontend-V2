@@ -79,6 +79,43 @@ function realtimeUrl(): string {
 let socket: Socket | null = null;
 
 /**
+ * Salas que o cliente QUER acompanhar. Fonte de verdade replayed no `connect`
+ * (e no `connect` de cada reconexão) — torna o `join` imune à corrida entre o
+ * pedido de entrada e o momento em que a conexão sobe.
+ */
+const joinedRooms = new Set<string>();
+
+/**
+ * Entra na sala `list:{listId}`. Registra a sala em {@link joinedRooms} e
+ * emite `join:list` imediatamente SE já conectado; caso contrário o emit
+ * acontece no `connect` (replay automático). Idempotente.
+ *
+ * @param token  - Access token JWT (garante o socket criado).
+ * @param listId - ID do DProject (List).
+ */
+export function joinList(token: string | null, listId: string): void {
+  joinedRooms.add(listId);
+  const s = getSocket(token);
+  if (s?.connected) {
+    console.warn("[realtime] emit join:list (já conectado)", listId);
+    s.emit("join:list", { listId });
+  }
+}
+
+/**
+ * Sai da sala `list:{listId}`. Remove de {@link joinedRooms} e emite
+ * `leave:list` se conectado.
+ *
+ * @param listId - ID do DProject (List).
+ */
+export function leaveList(listId: string): void {
+  joinedRooms.delete(listId);
+  if (socket?.connected) {
+    socket.emit("leave:list", { listId });
+  }
+}
+
+/**
  * Retorna o singleton do Socket.io conectado ao namespace `/realtime`,
  * criando-o na primeira chamada. Reusa a MESMA conexão entre todas as
  * salas/abas da aplicação.
@@ -110,7 +147,7 @@ export function getSocket(token: string | null): Socket | null {
   if (isMockMode() || !token) return null;
 
   if (!socket) {
-    socket = io(realtimeUrl(), {
+    const s = io(realtimeUrl(), {
       auth: { token },
       // Mantém o polling como fallback: atrás de proxy (Traefik/Dokploy) o
       // upgrade direto pra WebSocket pode falhar silenciosamente. O socket.io
@@ -119,13 +156,25 @@ export function getSocket(token: string | null): Socket | null {
       withCredentials: true,
       autoConnect: true,
     });
-    // [DIAG] temporário — observabilidade da conexão.
-    socket.on("connect", () => console.warn("[realtime] connected", socket?.id));
-    socket.on("connect_error", (err) =>
+
+    // Re-entra em TODAS as salas desejadas a cada (re)conexão. Centralizar isto
+    // aqui — em vez de no useEffect do hook — elimina a corrida: não importa se
+    // o `join` foi pedido antes ou depois do `connect`, o set `joinedRooms` é a
+    // fonte de verdade e é replayed sempre que a conexão sobe.
+    s.on("connect", () => {
+      console.warn("[realtime] connected", s.id);
+      for (const room of joinedRooms) {
+        console.warn("[realtime] (re)emit join:list", room);
+        s.emit("join:list", { listId: room });
+      }
+    });
+    s.on("connect_error", (err) =>
       console.error("[realtime] connect_error", err.message),
     );
-    socket.on("joined:list", (d) => console.warn("[realtime] joined:list", d));
-    socket.on("list:event", (d) => console.warn("[realtime] list:event", d));
+    s.on("joined:list", (d) => console.warn("[realtime] joined:list", d));
+    s.on("list:event", (d) => console.warn("[realtime] list:event", d));
+
+    socket = s;
   } else if (socket.auth && typeof socket.auth === "object") {
     // Token pode ter sido renovado (refresh) — mantém o handshake atual.
     (socket.auth as { token?: string }).token = token;

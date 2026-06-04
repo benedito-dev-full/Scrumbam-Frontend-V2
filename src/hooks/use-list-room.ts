@@ -4,7 +4,7 @@
 import { useEffect } from "react";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
-import { getSocket } from "@/lib/realtime/socket";
+import { joinList, leaveList } from "@/lib/realtime/socket";
 import { useAuthStore } from "@/lib/stores/auth";
 
 /**
@@ -28,24 +28,13 @@ export function useListRoom(listId: string | null): void {
   const accessToken = useAuthStore((s) => s.accessToken);
 
   useEffect(() => {
-    if (!listId) return;
-    const socket = getSocket(accessToken);
-    if (!socket) return;
+    if (!listId || !accessToken) return;
 
-    const join = () => socket.emit("join:list", { listId });
+    // joinList registra a sala como "desejada" e emite agora (se conectado) ou
+    // no próximo `connect` (replay centralizado em socket.ts) — imune à corrida
+    // entre o pedido de entrada e o momento em que a conexão sobe.
+    joinList(accessToken, listId);
 
-    // Só faz sentido emitir `join:list` quando o socket JÁ está conectado.
-    // O handshake é assíncrono: se o socket acabou de ser criado, `connected`
-    // ainda é false e um emit imediato se perde. Por isso:
-    //  - se já conectado → entra agora;
-    //  - sempre escuta `connect` → entra (e re-entra a cada reconexão, pois
-    //    a sala é perdida no servidor quando a conexão cai).
-    if (socket.connected) join();
-    socket.on("connect", join);
-
-    return () => {
-      socket.off("connect", join);
-      if (socket.connected) socket.emit("leave:list", { listId });
-    };
+    return () => leaveList(listId);
   }, [listId, accessToken]);
 }
