@@ -47,12 +47,33 @@ function isMockMode(): boolean {
 }
 
 /**
- * URL base do namespace `/realtime`. O WebSocket sobe na MESMA origem do
- * HTTP da API (Traefik/Dokploy repassa o upgrade), então reusamos
- * `NEXT_PUBLIC_API_URL`.
+ * Origem (protocolo + host) da API, SEM o caminho.
+ *
+ * `NEXT_PUBLIC_API_URL` inclui o prefixo HTTP `/api/v1` (ex.:
+ * `https://api.scrumban.com.br/api/v1`), mas o gateway WebSocket vive no
+ * namespace `/realtime` na RAIZ do servidor — o `setGlobalPrefix` do NestJS
+ * só afeta rotas HTTP, não namespaces Socket.io. Por isso extraímos apenas a
+ * origem e descartamos `/api/v1`.
+ *
+ * @example `https://api.scrumban.com.br/api/v1` → `https://api.scrumban.com.br`
+ */
+function apiOrigin(): string {
+  const raw = process.env.NEXT_PUBLIC_API_URL ?? "";
+  try {
+    return new URL(raw).origin;
+  } catch {
+    // Fallback: corta tudo a partir de `/api` se não for uma URL absoluta válida.
+    return raw.replace(/\/api(\/v\d+)?\/?$/, "");
+  }
+}
+
+/**
+ * URL de conexão do Socket.io: `{origin}/realtime`. O socket.io-client
+ * interpreta o caminho como o NAMESPACE — então conecta no host raiz e
+ * entra no namespace `/realtime`.
  */
 function realtimeUrl(): string {
-  return `${process.env.NEXT_PUBLIC_API_URL ?? ""}/realtime`;
+  return `${apiOrigin()}/realtime`;
 }
 
 let socket: Socket | null = null;
