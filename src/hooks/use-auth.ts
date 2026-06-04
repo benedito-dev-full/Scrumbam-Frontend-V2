@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { api, getApiErrorMessage } from '@/lib/api';
 import { mockLogin, mockRegister, mockMe, mockSwitchOrg } from '@/lib/mock/auth';
 import { useAuthStore } from '@/lib/stores/auth';
+import { disconnectSocket } from '@/lib/realtime/socket';
 import { qk } from '@/lib/query-keys';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -222,6 +223,7 @@ export function useLogout() {
       return api.post('/auth/logout').then((r) => r.data);
     },
     onSettled: () => {
+      disconnectSocket();
       useAuthStore.getState().clearSession();
       queryClient.clear();
       router.push('/login');

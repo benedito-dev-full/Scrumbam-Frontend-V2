@@ -20,6 +20,8 @@ import {
 } from "@/lib/filters/task-filters";
 import { useProject } from "@/hooks/use-projects";
 import { useTasksByProject } from "@/hooks/use-tasks";
+import { useListRoom } from "@/hooks/use-list-room";
+import { useSocketEvents } from "@/hooks/use-socket-events";
 import { useProjectMembers, type ProjectMemberDto } from "@/hooks/use-members";
 import { useOrgMembers } from "@/hooks/use-org-members";
 import { useTeams } from "@/hooks/use-teams";
@@ -58,6 +60,12 @@ export default function ListPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+
+  // Tempo real (ADR-V2-063): entra na sala da lista e recarrega os dados
+  // quando outro usuário muda task/bloco. No-op em modo mock. Design intocado.
+  useListRoom(id);
+  useSocketEvents(id);
+
   const { data: projeto, isLoading: loadingProjeto } = useProject(id);
   const { data: tasks = [], isLoading: loadingTasks } = useTasksByProject(id);
   const { data: membersRaw = [] } = useProjectMembers(id);
