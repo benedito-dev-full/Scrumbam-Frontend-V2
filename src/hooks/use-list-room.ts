@@ -34,13 +34,18 @@ export function useListRoom(listId: string | null): void {
 
     const join = () => socket.emit("join:list", { listId });
 
-    // Entra ao montar e re-entra em cada reconexão (a sala é perdida no drop).
-    join();
+    // Só faz sentido emitir `join:list` quando o socket JÁ está conectado.
+    // O handshake é assíncrono: se o socket acabou de ser criado, `connected`
+    // ainda é false e um emit imediato se perde. Por isso:
+    //  - se já conectado → entra agora;
+    //  - sempre escuta `connect` → entra (e re-entra a cada reconexão, pois
+    //    a sala é perdida no servidor quando a conexão cai).
+    if (socket.connected) join();
     socket.on("connect", join);
 
     return () => {
       socket.off("connect", join);
-      socket.emit("leave:list", { listId });
+      if (socket.connected) socket.emit("leave:list", { listId });
     };
   }, [listId, accessToken]);
 }
