@@ -81,6 +81,12 @@ export const qk = {
     all: ["nexus"] as const,
     /** Histórico de mensagens do chat Nexus do usuário autenticado. */
     history: ["nexus", "history"] as const,
+    /** Disponibilidade de provedores de IA da org (`GET /ai/providers`). */
+    providers: ["nexus", "providers"] as const,
+    /** Preferência default de provedor da org (`GET /ai/preference`). */
+    preference: ["nexus", "preference"] as const,
+    /** Chaves de IA mascaradas da org — ADMIN-only (`GET /ai/keys`). */
+    keys: ["nexus", "keys"] as const,
   },
   search: {
     /**

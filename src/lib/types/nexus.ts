@@ -40,6 +40,16 @@ export interface NexusMessage {
 }
 
 /**
+ * Provedores de IA suportados pelo backend multi-provider.
+ *
+ * A escolha vai como override no `POST /ai/chat`. Se ausente, o backend
+ * resolve via preferência da org → fallback global (Gemini).
+ *
+ * @see Backend `AIChatModule` (feature multi-provider).
+ */
+export type AiProviderName = "gemini" | "claude" | "openai";
+
+/**
  * Payload aceito por `POST /ai/chat`.
  *
  * O backend cuida do histórico — frontend NÃO envia array de mensagens.
@@ -47,6 +57,69 @@ export interface NexusMessage {
 export interface SendNexusMessageDto {
   /** Conteúdo da mensagem do usuário (1–10000 caracteres, validado no backend). */
   content: string;
+  /**
+   * Override do provedor SÓ desta mensagem. Se ausente, backend usa a
+   * preferência da org → senão Gemini (default).
+   */
+  provider?: AiProviderName;
+  /**
+   * Modelo específico (opcional, secundário). Mantido como hook para o
+   * futuro — a UI atual seleciona apenas `provider`, não `model`.
+   */
+  model?: string;
+}
+
+/**
+ * Disponibilidade de um provedor para a org atual (`GET /ai/providers`).
+ *
+ * `configured: true` significa que a org cadastrou chave OU (Gemini) que
+ * há fallback global no servidor. Use para popular/desabilitar o seletor.
+ */
+export interface AiProviderAvailability {
+  provider: AiProviderName;
+  /** `true` se a org pode usar este provedor agora. */
+  configured: boolean;
+}
+
+/**
+ * Resposta de `GET /ai/providers` — disponibilidade de todos os provedores.
+ *
+ * Acessível a QUALQUER membro (não exige ADMIN).
+ */
+export interface AiProvidersResponse {
+  providers: AiProviderAvailability[];
+}
+
+/**
+ * Preferência default de provedor/modelo da organização.
+ *
+ * Retornada por `GET /ai/preference` (pode ser `null` quando não há
+ * preferência ou não há org ativa) e aceita por `PUT /ai/preference`
+ * (ADMIN-only).
+ */
+export interface AiProviderPreference {
+  provider: AiProviderName;
+  /** Modelo específico opcional. */
+  model?: string;
+}
+
+/**
+ * Chave de provedor da org, SEMPRE mascarada (`GET`/`POST /ai/keys`).
+ *
+ * O backend nunca devolve a chave crua — cifrada at-rest (AES-256-GCM).
+ * Cadastrar de novo o mesmo provider = rotação (substitui, não duplica).
+ */
+export interface AiKeyMasked {
+  provider: AiProviderName;
+  /** Prefixo legível da chave (ex.: `sk-ant-`). */
+  prefix: string;
+  /** Chave mascarada para exibição (ex.: `sk-ant-…f3a9`). */
+  masked: string;
+  configured: boolean;
+  /** ISO 8601 da criação. */
+  createdAt: string;
+  /** ISO 8601 da última rotação. */
+  lastRotatedAt: string;
 }
 
 /**

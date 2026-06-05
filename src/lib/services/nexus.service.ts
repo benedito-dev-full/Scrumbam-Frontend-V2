@@ -1,5 +1,7 @@
 import { api } from "@/lib/api";
 import type {
+  AiProviderPreference,
+  AiProvidersResponse,
   NexusChatHistoryQuery,
   NexusChatHistoryResponse,
   NexusMessage,
@@ -20,21 +22,50 @@ import type {
 /**
  * Envia mensagem do usuário ao Nexus e recebe a resposta do assistant.
  *
- * Internamente o backend carrega o histórico, encaminha para o Gemini,
+ * Internamente o backend carrega o histórico, encaminha para o provedor
+ * resolvido (override do `dto.provider` → preferência da org → Gemini),
  * executa tools quando necessário, persiste user+assistant e retorna
  * APENAS a mensagem do ASSISTANT.
  *
- * @param dto Conteúdo da mensagem do usuário (1–10000 caracteres).
+ * @param dto Conteúdo + override opcional de `provider`/`model`.
  * @returns Mensagem do assistant gerada pela IA.
- * @throws {AxiosError} 400 se conteúdo inválido,
- *                     502 erro de configuração Gemini,
- *                     503 rate limit Gemini,
+ * @throws {AxiosError} 400 se conteúdo/provider inválido,
+ *                     502 erro de auth do provedor (chave inválida),
+ *                     503 rate limit/cota do provedor,
  *                     504 timeout (30s).
  */
 export async function sendMessage(
   dto: SendNexusMessageDto,
 ): Promise<NexusMessage> {
   const res = await api.post<NexusMessage>("/ai/chat", dto);
+  return res.data;
+}
+
+/**
+ * Lista a disponibilidade dos provedores de IA para a org atual.
+ *
+ * Acessível a QUALQUER membro. Use para popular o seletor de provider no
+ * chat e desabilitar/sinalizar os não-configurados.
+ *
+ * @returns `{ providers: [{ provider, configured }] }`.
+ * @throws {AxiosError} 401 se não autenticado.
+ */
+export async function fetchProviders(): Promise<AiProvidersResponse> {
+  const res = await api.get<AiProvidersResponse>("/ai/providers");
+  return res.data;
+}
+
+/**
+ * Busca a preferência default de provedor/modelo da organização.
+ *
+ * Acessível a QUALQUER membro. Retorna `null` quando não há preferência
+ * definida ou não há org ativa.
+ *
+ * @returns Preferência da org ou `null`.
+ * @throws {AxiosError} 401 se não autenticado.
+ */
+export async function fetchPreference(): Promise<AiProviderPreference | null> {
+  const res = await api.get<AiProviderPreference | null>("/ai/preference");
   return res.data;
 }
 
