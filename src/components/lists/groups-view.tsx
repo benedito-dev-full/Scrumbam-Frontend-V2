@@ -25,7 +25,7 @@ import { useProject, useUpdateProjectTableFields } from "@/hooks/use-projects";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { qk } from "@/lib/query-keys";
-import type { BlockDto, V3Intention } from "@/lib/types/api";
+import type { BlockDto, TaskResponseDto, V3Intention } from "@/lib/types/api";
 import type { ColumnOption, ColumnType, FieldValue } from "@/lib/types/table-fields";
 import {
   buildGroupsBoard,
@@ -625,6 +625,40 @@ function BackendGroupsView({
     });
   }
 
+  /**
+   * Reordena as tasks dentro de um bloco persistindo `dados.ordem` em cada uma.
+   * Mesmo molde do reorder de Blocos: atualizacao otimista no cache de tasks
+   * (o mapper reordena por `dados.ordem`) + um PATCH por task cuja ordem mudou.
+   * Recebe os ids das tasks raiz do bloco na nova ordem.
+   */
+  function handleReorderTasks(_groupId: string, orderedTaskIds: string[]) {
+    if (!projectId) return;
+    const orderMap = new Map(orderedTaskIds.map((id, i) => [id, i]));
+
+    // Otimista: grava a nova ordem no cache de tasks (array plano por projeto).
+    const key = qk.tasks.byProject(projectId);
+    const current = queryClient.getQueryData<TaskResponseDto[]>(key);
+    if (current) {
+      queryClient.setQueryData<TaskResponseDto[]>(
+        key,
+        current.map((t) =>
+          orderMap.has(t.id)
+            ? { ...t, dados: { ...(t.dados ?? {}), ordem: orderMap.get(t.id)! } }
+            : t,
+        ),
+      );
+    }
+
+    // Persiste so as tasks cuja ordem efetivamente mudou.
+    orderedTaskIds.forEach((id, index) => {
+      const task = tasks.find((t) => t.id === id);
+      const ordemAtual =
+        typeof task?.dados?.ordem === "number" ? task.dados.ordem : null;
+      if (ordemAtual === index) return;
+      updateTask.mutate({ id, projectId, dto: { dados: { ordem: index } } });
+    });
+  }
+
   if (loadingBlocks || loadingTasks || loadingProject) {
     return (
       <div
@@ -665,6 +699,7 @@ function BackendGroupsView({
         }
         onAddGroup={handleAddGroup}
         onAddTask={handleAddTask}
+        onReorderTasks={handleReorderTasks}
         onAddColumn={handleAddColumn}
         onRenameColumn={handleRenameColumn}
         onRemoveColumn={handleRemoveColumn}

@@ -286,6 +286,25 @@ function ensureTimeSpentColumn(columns: ColumnDef[]): ColumnDef[] {
  * // Resultado: tasks com idPai ausentes das linhas raiz; childCount preenchido;
  * // colunas vindas de tableFields (ordenadas por `order`).
  */
+/**
+ * Ordena tasks dentro de um bloco respeitando `dados.ordem` (reordenacao manual
+ * por drag). Tasks com `ordem` numerica vem primeiro, na ordem definida pelo
+ * usuario; tasks sem `ordem` (ex: recem-criadas num bloco ja reordenado) caem no
+ * fim, ordenadas por `chave` crescente — mesmo principio dos blocos. Sem nenhuma
+ * `ordem` definida, o resultado e identico ao comportamento anterior (por id).
+ */
+function compareTaskOrder(a: TaskResponseDto, b: TaskResponseDto): number {
+  const oa = typeof a.dados?.ordem === "number" ? a.dados.ordem : null;
+  const ob = typeof b.dados?.ordem === "number" ? b.dados.ordem : null;
+  if (oa !== null && ob !== null) return oa - ob;
+  if (oa !== null) return -1; // a tem ordem → vem antes das sem ordem
+  if (ob !== null) return 1;
+  // Nenhuma tem ordem: fallback por chave crescente (mais antiga primeiro).
+  if (BigInt(a.id) < BigInt(b.id)) return -1;
+  if (BigInt(a.id) > BigInt(b.id)) return 1;
+  return 0;
+}
+
 export function buildGroupsBoard(
   blocks: BlockDto[],
   tasks: TaskResponseDto[],
@@ -339,9 +358,10 @@ export function buildGroupsBoard(
     nome: block.nome,
     cor: block.dados?.cor ?? BLOCO_COR_FALLBACK,
     periodo: formatPeriodo(block.dados?.startDate, block.dados?.endDate),
-    tasks: (byBlock.get(block.id) ?? []).map((t) =>
-      taskToRow(t, childCountMap),
-    ),
+    tasks: (byBlock.get(block.id) ?? [])
+      .slice()
+      .sort(compareTaskOrder)
+      .map((t) => taskToRow(t, childCountMap)),
   }));
 
   // Grupo "Sem bloco" no fim — so aparece se houver tasks orfas.
@@ -350,7 +370,10 @@ export function buildGroupsBoard(
       id: SEM_BLOCO_ID,
       nome: "Sem bloco",
       cor: SEM_BLOCO_COR,
-      tasks: semBloco.map((t) => taskToRow(t, childCountMap)),
+      tasks: semBloco
+        .slice()
+        .sort(compareTaskOrder)
+        .map((t) => taskToRow(t, childCountMap)),
     });
   }
 

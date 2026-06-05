@@ -1,7 +1,18 @@
 ﻿"use client";
 
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Loader2, Lock, Maximize2, Play, Plus } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  GripVertical,
+  Loader2,
+  Lock,
+  Maximize2,
+  Play,
+  Plus,
+} from "lucide-react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   type ColumnDef,
   type FieldValue,
@@ -148,6 +159,7 @@ export function TaskRow({
   subtarefasMode,
   groupColor,
   subtaskColSpan,
+  sortable = false,
   onOpenTask,
   onEditField,
 }: {
@@ -164,11 +176,24 @@ export function TaskRow({
   groupColor?: string;
   /** colSpan total da linha de expansao (columns.length + 2). */
   subtaskColSpan?: number;
+  /** Habilita o arraste da linha para reordenar tarefas dentro do bloco. */
+  sortable?: boolean;
   /** Abre a TaskSheet compartilhada para esta task (gatilho dedicado). */
   onOpenTask?: (taskId: string) => void;
   onEditField?: (taskId: string, columnKey: string, value: FieldValue) => void;
 }) {
   const [hover, setHover] = useState(false);
+
+  // Reordenacao por drag (so dentro do bloco). Quando `sortable` e false, o
+  // hook fica desabilitado e a linha se comporta exatamente como antes.
+  const {
+    setNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id, disabled: !sortable });
   // Estado de expansao da sub-tabela — gerenciado localmente no TaskRow.
   const [expanded, setExpanded] = useState(false);
   // Selecao via checkbox (null deixa o checkbox decorativo).
@@ -208,10 +233,56 @@ export function TaskRow({
   return (
     <React.Fragment>
       <tr
+        ref={sortable ? setNodeRef : undefined}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
+        style={
+          sortable
+            ? {
+                transform: CSS.Transform.toString(transform),
+                transition,
+                opacity: isDragging ? 0.5 : 1,
+                position: isDragging ? "relative" : undefined,
+                zIndex: isDragging ? 5 : undefined,
+              }
+            : undefined
+        }
       >
-        <td style={{ ...td, padding: 0, textAlign: "center" }}>
+        <td
+          style={{ ...td, padding: 0, textAlign: "center", position: "relative" }}
+        >
+          {/* Alca de arraste — aparece no hover, a esquerda do checkbox. Carrega
+              os listeners do dnd-kit (so com `sortable`); o resto da linha
+              permanece clicavel/editavel normalmente. */}
+          {sortable && (
+            <button
+              type="button"
+              aria-label="Arrastar para reordenar tarefa"
+              {...attributes}
+              {...listeners}
+              style={{
+                position: "absolute",
+                left: 0,
+                top: "50%",
+                transform: "translateY(-50%)",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 14,
+                height: 26,
+                padding: 0,
+                border: 0,
+                background: "transparent",
+                color: "var(--muted-foreground)",
+                cursor: isDragging ? "grabbing" : "grab",
+                opacity: hover ? 0.7 : 0,
+                transition: "opacity .1s",
+                touchAction: "none",
+              }}
+            >
+              <GripVertical size={14} />
+            </button>
+          )}
           {selection ? (
             <Checkbox
               checked={selection.selectedIds.has(task.id)}

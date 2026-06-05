@@ -82,6 +82,7 @@ export function GroupsBoardView({
   onDeleteGroup,
   onAddGroup,
   onAddTask,
+  onReorderTasks,
   onAddColumn,
   onRenameColumn,
   onRemoveColumn,
@@ -112,6 +113,8 @@ export function GroupsBoardView({
   onDeleteGroup?: (groupId: string, nome: string, taskCount: number) => void;
   onAddGroup?: () => void;
   onAddTask?: (groupId: string) => void;
+  /** Reordena as tasks de um bloco. Recebe o groupId e os ids na nova ordem. */
+  onReorderTasks?: (groupId: string, orderedTaskIds: string[]) => void;
   onAddColumn?: AddColumnHandler;
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
@@ -277,6 +280,7 @@ export function GroupsBoardView({
                 onRecolorGroup={onRecolorGroup}
                 onDeleteGroup={onDeleteGroup}
                 onAddTask={onAddTask}
+                onReorderTasks={onReorderTasks}
                 onAddColumn={onAddColumn}
                 onRenameColumn={onRenameColumn}
                 onRemoveColumn={onRemoveColumn}
@@ -448,6 +452,7 @@ export function GroupBox({
   onRecolorGroup,
   onDeleteGroup,
   onAddTask,
+  onReorderTasks,
   onAddColumn,
   onRenameColumn,
   onRemoveColumn,
@@ -476,6 +481,8 @@ export function GroupBox({
   onRecolorGroup?: (groupId: string, cor: string) => void;
   onDeleteGroup?: (groupId: string, nome: string, taskCount: number) => void;
   onAddTask?: (groupId: string) => void;
+  /** Reordena as tasks do bloco. Recebe o groupId e os ids na nova ordem. */
+  onReorderTasks?: (groupId: string, orderedTaskIds: string[]) => void;
   onAddColumn?: AddColumnHandler;
   onRenameColumn?: RenameColumnHandler;
   onRemoveColumn?: RemoveColumnHandler;
@@ -511,13 +518,30 @@ export function GroupBox({
   const columnKeys = columns.map((c) => c.key);
   const reorderable = !!onReorderColumn && columnKeys.length > 1;
 
-  function handleColumnDragEnd(event: DragEndEvent) {
+  // Ids das tasks raiz do bloco — base do SortableContext vertical das linhas.
+  const taskIds = group.tasks.map((t) => t.id);
+  const rowsReorderable = !!onReorderTasks && taskIds.length > 1;
+
+  // Um unico DndContext (envolve a <table>) cuida tanto do reorder de colunas
+  // (horizontal) quanto de linhas (vertical). O handler roteia pelo id ativo:
+  // se bate com uma coluna → reordena colunas; se bate com uma task → reordena
+  // linhas. Conjuntos de ids disjuntos, entao nao ha ambiguidade.
+  function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const from = columnKeys.indexOf(active.id as string);
-    const to = columnKeys.indexOf(over.id as string);
-    if (from === -1 || to === -1) return;
-    onReorderColumn?.(arrayMove(columnKeys, from, to));
+
+    const colFrom = columnKeys.indexOf(active.id as string);
+    const colTo = columnKeys.indexOf(over.id as string);
+    if (colFrom !== -1 && colTo !== -1) {
+      onReorderColumn?.(arrayMove(columnKeys, colFrom, colTo));
+      return;
+    }
+
+    const rowFrom = taskIds.indexOf(active.id as string);
+    const rowTo = taskIds.indexOf(over.id as string);
+    if (rowFrom !== -1 && rowTo !== -1) {
+      onReorderTasks?.(group.id, arrayMove(taskIds, rowFrom, rowTo));
+    }
   }
 
   /**
@@ -733,7 +757,7 @@ export function GroupBox({
           <DndContext
             sensors={colSensors}
             collisionDetection={closestCenter}
-            onDragEnd={handleColumnDragEnd}
+            onDragEnd={handleDragEnd}
           >
             <table
               style={{
@@ -769,22 +793,30 @@ export function GroupBox({
               />
 
               <tbody>
-                {group.tasks.map((t) => (
-                  <TaskRow
-                    key={t.id}
-                    task={t}
-                    columns={columns}
-                    readOnly={readOnly}
-                    members={members}
-                    saving={savingTaskId === t.id}
-                    projectId={projectId}
-                    subtarefasMode={subtarefasMode}
-                    groupColor={group.cor}
-                    subtaskColSpan={columns.length + 2}
-                    onOpenTask={onOpenTask}
-                    onEditField={onEditField}
-                  />
-                ))}
+                {/* SortableContext e context puro (nao renderiza DOM), entao
+                    pode viver dentro do <tbody> sem criar linhas-fantasma. */}
+                <SortableContext
+                  items={taskIds}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {group.tasks.map((t) => (
+                    <TaskRow
+                      key={t.id}
+                      task={t}
+                      columns={columns}
+                      readOnly={readOnly}
+                      members={members}
+                      saving={savingTaskId === t.id}
+                      projectId={projectId}
+                      subtarefasMode={subtarefasMode}
+                      groupColor={group.cor}
+                      subtaskColSpan={columns.length + 2}
+                      sortable={rowsReorderable}
+                      onOpenTask={onOpenTask}
+                      onEditField={onEditField}
+                    />
+                  ))}
+                </SortableContext>
                 {onAddTask && (
                   <AddTaskRow
                     colSpan={columns.length + 2}
