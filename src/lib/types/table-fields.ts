@@ -85,6 +85,30 @@ export interface TaskModel {
   idPai?: string | null;
   /** Numero de filhas diretas conhecidas no momento do fetch. */
   childCount?: number;
+  /** ID do projeto da task — necessario para disparar a execucao via IA. */
+  projectId?: string;
+  /**
+   * Estado V3 cru da task (ex.: "EXECUTING", "DONE"). Usado para detectar
+   * estado terminal (DONE/FAILED) e suprimir o gatilho de execucao da IA.
+   */
+  statusV3?: string | null;
+  /**
+   * Execucao de IA em andamento (espelha `TaskResponseDto.activeExecution`).
+   * Quando presente e a task nao esta em estado terminal, a linha fica
+   * read-only e exibe o badge de lock no lugar do botao "Executar".
+   */
+  activeExecution?: TaskActiveExecution | null;
+}
+
+/**
+ * Recorte minimo da execucao de IA ativa carregado no `TaskModel` da view de
+ * Blocos. Espelha os campos de `ActiveExecutionDto` que a UI consome para
+ * decidir lock/badge. Mantido local para nao acoplar tipos de API a esta view.
+ */
+export interface TaskActiveExecution {
+  id: string;
+  status: "queued" | "running" | "awaiting_approval";
+  riskLevel: "LOW" | "MEDIUM" | "HIGH";
 }
 
 /** Grupo/bloco da visualizacao. */

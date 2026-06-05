@@ -172,6 +172,18 @@ function taskToRow(
     nome: task.nome,
     idPai: task.idPai ?? null,
     childCount: childCountMap.get(task.id) ?? 0,
+    // Campos crus necessarios para o gatilho de execucao da IA na celula Nome
+    // (paridade com a Lista): projeto p/ disparar, status V3 p/ detectar
+    // terminal, e a execucao ativa p/ travar a linha e mostrar o badge.
+    projectId: task.projectId,
+    statusV3: task.status ?? null,
+    activeExecution: task.activeExecution
+      ? {
+          id: task.activeExecution.id,
+          status: task.activeExecution.status,
+          riskLevel: task.activeExecution.riskLevel,
+        }
+      : null,
     fields: {
       ...customFields,
       status: statusColId,

@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Maximize2, Plus } from "lucide-react";
+import { ChevronDown, ChevronRight, Loader2, Lock, Maximize2, Play, Plus } from "lucide-react";
 import {
   type ColumnDef,
   type FieldValue,
@@ -11,6 +11,7 @@ import {
   type MemberLike,
 } from "@/lib/mappers/groups-from-tasks";
 import type { TaskModel } from "@/lib/types/table-fields";
+import { AI_ASSIGNEE_ID, useTaskExecution } from "@/hooks/use-task-execution";
 import {
   Checkbox,
   EditableText,
@@ -26,6 +27,114 @@ import {
   type SubtarefasMode,
 } from "./types";
 import { SubtaskTableRow } from "./rows-subtasks";
+
+/* ─── Gatilho de execucao pela IA (paridade com a Lista) ──────────────────── */
+
+/**
+ * Botao "Executar" / badge de lock exibido na celula Nome da view de Blocos
+ * quando a task tem a IA (Claude) como responsavel. Espelha a regra da Lista:
+ * so aparece se `responsavel === "ai"`, fora de estado terminal (DONE/FAILED) e
+ * sem execucao ativa. Com execucao ativa, mostra o badge de lock no lugar.
+ *
+ * Isolado em componente proprio porque usa `useTaskExecution` (hook) — nao pode
+ * ser chamado condicionalmente dentro do `.map` de colunas do `TaskRow`.
+ *
+ * @param task  - Linha da task (traz projectId, statusV3 e activeExecution).
+ * @param hover - Se a linha esta em hover (controla a visibilidade do botao).
+ */
+function ExecuteCell({ task, hover }: { task: TaskModel; hover: boolean }) {
+  const isAiAssignee = task.fields.responsavel === AI_ASSIGNEE_ID;
+  const isTerminalStatus =
+    task.statusV3 === "DONE" || task.statusV3 === "FAILED";
+  // `activeExecution` e a verdade canonica do backend; suprimido em terminal.
+  const isLocked = !isTerminalStatus && task.activeExecution != null;
+
+  // Hook sempre chamado (regras de hooks) — so dispara quando ha projectId.
+  const {
+    execution,
+    startExecution,
+    isSubmitting,
+  } = useTaskExecution(task.id, task.projectId);
+
+  if (!isAiAssignee || isTerminalStatus) return null;
+
+  if (isLocked) {
+    const awaiting = task.activeExecution?.status === "awaiting_approval";
+    const label = awaiting ? "aprovar" : "executando";
+    return (
+      <span
+        title="Em execução pela IA — aguarde a conclusão para editar"
+        aria-label="Em execução pela IA"
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+          flexShrink: 0,
+          padding: "2px 7px",
+          borderRadius: 4,
+          background: "rgba(124,92,255,0.18)",
+          color: "#cfc1ff",
+          fontSize: 10,
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.4px",
+        }}
+      >
+        <Lock size={10} />
+        {label}
+      </span>
+    );
+  }
+
+  const running = execution?.status === "running";
+
+  return (
+    <button
+      type="button"
+      aria-label="Executar com Claude"
+      title={execution ? `Status: ${execution.status}` : "Executar com Claude"}
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        startExecution();
+      }}
+      disabled={isSubmitting || !!execution}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        flexShrink: 0,
+        height: 22,
+        padding: "0 9px",
+        borderRadius: 6,
+        border: "1px solid rgba(124,92,255,0.4)",
+        background: "rgba(124,92,255,0.16)",
+        color: "#cfc1ff",
+        fontSize: 11,
+        fontWeight: 600,
+        cursor: isSubmitting || execution ? "default" : "pointer",
+        opacity: hover || running ? 1 : 0,
+        transition: "opacity .1s, background .15s, border-color .15s",
+      }}
+      onMouseEnter={(e) => {
+        if (isSubmitting || execution) return;
+        e.currentTarget.style.background = "rgba(124,92,255,0.3)";
+        e.currentTarget.style.borderColor = "rgba(124,92,255,0.6)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "rgba(124,92,255,0.16)";
+        e.currentTarget.style.borderColor = "rgba(124,92,255,0.4)";
+      }}
+    >
+      {running ? (
+        <Loader2 size={11} className="animate-spin" />
+      ) : (
+        <Play size={11} />
+      )}
+      {running ? "Executando" : "Executar"}
+    </button>
+  );
+}
 
 /* ─── Linha de tarefa ────────────────────────────────────────────────────── */
 
@@ -213,6 +322,10 @@ export function TaskRow({
                       </span>
                     ) : null}
                   </div>
+                  {/* Gatilho de execução pela IA — paridade com a Lista.
+                      Aparece (ou vira badge de lock) só quando a IA é a
+                      responsável. Cuida sozinho de quando renderizar. */}
+                  <ExecuteCell task={task} hover={hover} />
                   {/* Botão "Abrir" — gatilho DEDICADO da TaskSheet (hover).
                       `onPointerDown` com stopPropagation garante que jamais
                       inicie um drag (coluna/linha); `onClick` com stopPropagation
