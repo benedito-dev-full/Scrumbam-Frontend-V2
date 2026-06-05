@@ -59,7 +59,7 @@ function IAPageContent() {
     const q = searchParams.get("q");
     if (q && !autoSentRef.current && messages.length === 0 && !isSending) {
       autoSentRef.current = true;
-      sendMessage(q.trim());
+      sendMessage({ content: q.trim(), provider: selectedProvider });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -103,7 +103,10 @@ function IAPageContent() {
   function handleSend() {
     const content = input.trim();
     if (!content || isSending) return;
-    sendMessage(serializeMentions(content));
+    sendMessage({
+      content: serializeMentions(content),
+      provider: selectedProvider,
+    });
     setInput("");
     mentionMapRef.current.clear();
   }
@@ -184,7 +187,7 @@ function IAPageContent() {
                 marginLeft: 2,
               }}
             >
-              â„¢
+              ™
             </sup>
           </span>
         </div>
@@ -243,8 +246,8 @@ function IAPageContent() {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Apagar conversa?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Toda a conversa atual com o Nexus serÃ¡ removida do
-                    histÃ³rico. Esta aÃ§Ã£o nÃ£o pode ser desfeita.
+                    Toda a conversa atual com o Nexus será removida do
+                    histórico. Esta ação não pode ser desfeita.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
@@ -412,7 +415,7 @@ function IAPageContent() {
                           fontStyle: "italic",
                         }}
                       >
-                        Nexus estÃ¡ pensando...
+                        Nexus está pensando...
                       </div>
                     </div>
                   )}
@@ -454,7 +457,7 @@ function IAPageContent() {
                   }}
                 >
                   <NexusMiniIcon />
-                  FaÃ§a uma pergunta
+                  Faça uma pergunta
                 </button>
                 <button
                   type="button"
@@ -544,7 +547,7 @@ function IAPageContent() {
                   }}
                 >
                   <NexusMiniIcon />
-                  FaÃ§a uma pergunta
+                  Faça uma pergunta
                 </button>
                 <button
                   type="button"
@@ -602,7 +605,7 @@ function IAPageContent() {
                   onMentionAdded={(display, id) => {
                     mentionMapRef.current.set(display, id);
                   }}
-                  placeholder="Pesquise em seu espaÃ§o de trabalho e na web em segundos. Digite @ para mencionar um projeto."
+                  placeholder="Pesquise em seu espaço de trabalho e na web em segundos. Digite @ para mencionar um projeto."
                 />
               </div>
 

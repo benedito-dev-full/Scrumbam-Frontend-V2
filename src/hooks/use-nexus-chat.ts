@@ -20,7 +20,11 @@ import {
   sendMessage,
 } from "@/lib/services/nexus.service";
 import { useAuthStore } from "@/lib/stores/auth";
-import type { NexusChatHistoryResponse, NexusMessage } from "@/lib/types/nexus";
+import type {
+  AiProviderName,
+  NexusChatHistoryResponse,
+  NexusMessage,
+} from "@/lib/types/nexus";
 
 // ─── Constantes ───────────────────────────────────────────────────────────────
 
@@ -38,6 +42,15 @@ interface SendMessageMutationContext {
 }
 
 /**
+ * Argumentos do envio de mensagem. `provider` é opcional — ausente, o
+ * backend resolve via preferência da org → Gemini.
+ */
+export interface SendMessageArgs {
+  content: string;
+  provider?: AiProviderName;
+}
+
+/**
  * Retorno consolidado de {@link useNexusChat}.
  */
 export interface UseNexusChatResult {
@@ -52,7 +65,7 @@ export interface UseNexusChatResult {
   /** Erro da mutação de envio (ou `null`). */
   sendError: Error | null;
   /** Envia uma mensagem do usuário ao Nexus (fire-and-forget). */
-  sendMessage: (content: string) => void;
+  sendMessage: (args: SendMessageArgs) => void;
   /** Refetch manual do histórico. */
   refetchHistory: UseQueryResult<NexusChatHistoryResponse, Error>["refetch"];
   /** Apaga (soft-delete) toda a conversa atual do usuário. */
@@ -63,7 +76,7 @@ export interface UseNexusChatResult {
   sendMutation: UseMutationResult<
     NexusMessage,
     Error,
-    string,
+    SendMessageArgs,
     SendMessageMutationContext
   >;
 }
@@ -82,7 +95,7 @@ export interface UseNexusChatResult {
  * @example
  * ```tsx
  * const { messages, isSending, sendMessage } = useNexusChat();
- * sendMessage("Qual o status das minhas tarefas?");
+ * sendMessage({ content: "Qual o status das minhas tarefas?", provider: "claude" });
  * ```
  */
 export function useNexusChat(): UseNexusChatResult {
@@ -103,12 +116,13 @@ export function useNexusChat(): UseNexusChatResult {
   const sendMutation = useMutation<
     NexusMessage,
     Error,
-    string,
+    SendMessageArgs,
     SendMessageMutationContext
   >({
-    mutationFn: (content: string) => sendMessage({ content }),
+    mutationFn: ({ content, provider }: SendMessageArgs) =>
+      sendMessage({ content, provider }),
 
-    onMutate: async (content) => {
+    onMutate: async ({ content }) => {
       // Evita race com refetches em andamento.
       await queryClient.cancelQueries({ queryKey });
 
@@ -139,7 +153,7 @@ export function useNexusChat(): UseNexusChatResult {
       void queryClient.invalidateQueries({ queryKey });
     },
 
-    onError: (error, _content, context) => {
+    onError: (error, _args, context) => {
       const axiosError = error as AxiosError;
       const status = axiosError?.response?.status;
       const code = axiosError?.code;
