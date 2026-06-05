@@ -83,6 +83,12 @@ export function ModelDropdown({ value, onChange }: ModelDropdownProps) {
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
   const btnRef = useRef<HTMLButtonElement>(null);
+
+  /**
+   * Altura estimada do menu: título (~30px) + 3 itens × 36px + padding (~26px).
+   * Usada para decidir se o menu abre para baixo ou para cima.
+   */
+  const MENU_HEIGHT = 30 + PROVIDERS.length * 36 + 26;
   const ref = useRef<HTMLDivElement>(null);
 
   const { data: providersData } = useAiProviders();
@@ -131,7 +137,12 @@ export function ModelDropdown({ value, onChange }: ModelDropdownProps) {
   function handleOpen() {
     if (btnRef.current) {
       const r = btnRef.current.getBoundingClientRect();
-      setPos({ top: r.bottom + 6, left: r.left });
+      // O seletor vive no rodapé do chat: na prática não há espaço abaixo.
+      // Abre para baixo só se couber; caso contrário, ancora acima do botão.
+      const spaceBelow = window.innerHeight - r.bottom;
+      const openUp = spaceBelow < MENU_HEIGHT + 6;
+      const top = openUp ? r.top - MENU_HEIGHT - 6 : r.bottom + 6;
+      setPos({ top, left: r.left });
     }
     setOpen((v) => !v);
   }
