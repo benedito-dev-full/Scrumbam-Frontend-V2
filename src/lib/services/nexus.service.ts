@@ -1,5 +1,7 @@
 import { api } from "@/lib/api";
 import type {
+  AiKeyMasked,
+  AiProviderName,
   AiProviderPreference,
   AiProvidersResponse,
   NexusChatHistoryQuery,
@@ -66,6 +68,69 @@ export async function fetchProviders(): Promise<AiProvidersResponse> {
  */
 export async function fetchPreference(): Promise<AiProviderPreference | null> {
   const res = await api.get<AiProviderPreference | null>("/ai/preference");
+  return res.data;
+}
+
+/**
+ * Define a preferência default de provedor da organização (ADMIN-only).
+ *
+ * @param pref Provider + modelo opcional.
+ * @returns A preferência persistida.
+ * @throws {AxiosError} 400 provider inválido, 403 se não for ADMIN da org.
+ */
+export async function setPreference(
+  pref: AiProviderPreference,
+): Promise<AiProviderPreference> {
+  const res = await api.put<AiProviderPreference>("/ai/preference", pref);
+  return res.data;
+}
+
+/**
+ * Lista as chaves de IA da org, sempre mascaradas (ADMIN-only).
+ *
+ * Uma entrada por provider configurado — nunca contém plaintext.
+ *
+ * @returns Array de chaves mascaradas.
+ * @throws {AxiosError} 403 se não for ADMIN da org.
+ */
+export async function fetchKeys(): Promise<AiKeyMasked[]> {
+  const res = await api.get<AiKeyMasked[]>("/ai/keys");
+  return res.data;
+}
+
+/**
+ * Cadastra ou rotaciona a chave de um provider (ADMIN-only).
+ *
+ * Cadastrar de novo o mesmo provider = rotação (substitui, não duplica).
+ * O backend devolve SEMPRE mascarada — a chave crua nunca volta.
+ *
+ * @param input Provider + chave crua (10–500 chars).
+ * @returns A chave mascarada persistida.
+ * @throws {AxiosError} 400 body inválido, 403 se não for ADMIN da org,
+ *                     502 se o provedor recusar a chave.
+ */
+export async function upsertKey(input: {
+  provider: AiProviderName;
+  key: string;
+}): Promise<AiKeyMasked> {
+  const res = await api.post<AiKeyMasked>("/ai/keys", input);
+  return res.data;
+}
+
+/**
+ * Remove a chave de um provider da org (ADMIN-only).
+ *
+ * @param provider Provider cuja chave será removida.
+ * @returns `{ deleted, provider }`.
+ * @throws {AxiosError} 403 se não for ADMIN da org,
+ *                     404 se a org não tinha chave desse provider.
+ */
+export async function deleteKey(
+  provider: AiProviderName,
+): Promise<{ deleted: boolean; provider: AiProviderName }> {
+  const res = await api.delete<{ deleted: boolean; provider: AiProviderName }>(
+    `/ai/keys/${provider}`,
+  );
   return res.data;
 }
 

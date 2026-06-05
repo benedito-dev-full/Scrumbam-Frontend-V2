@@ -17,6 +17,7 @@ import {
 import { useShortcutsHelpStore } from "@/lib/stores/shortcuts-help";
 import { useUserPreferences } from "@/hooks/use-user-preferences";
 import { cn } from "@/lib/utils";
+import { IntegracoesIACard } from "./_components/integracoes-ia-card";
 
 const APP_VERSION = "0.1.0";
 
@@ -72,6 +73,9 @@ export default function SettingsPage() {
               />
             </div>
           </Card>
+
+          {/* Integrações de IA — admin-only (o card renderiza null se não for) */}
+          <IntegracoesIACard />
 
           {/* Sobre */}
           <Card title="Sobre">
