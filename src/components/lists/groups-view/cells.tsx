@@ -17,6 +17,8 @@ import {
 import type { ColumnDef, ColumnOption, FieldValue } from "@/lib/types/table-fields";
 import type { MemberLike } from "@/lib/mappers/groups-from-tasks";
 import { V3_TERMINAL_VALIDATED } from "@/lib/mappers/groups-from-tasks";
+import { AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
+import { ClaudeAvatar } from "@/app/(app)/lists/[id]/_components/claude-avatar";
 
 /* ─── inputStyle (compartilhado entre células) ───────────────────────────── */
 
@@ -526,6 +528,35 @@ export function PersonList({
           </button>
         ))
       )}
+
+      {/* Claude (IA) — paridade com a Lista: divisor + opcao destacada em
+          laranja. Atribuir aqui habilita o botao "Executar" na celula Nome. */}
+      <div style={{ borderTop: "1px solid var(--border)", margin: "6px 4px" }} />
+      <button
+        type="button"
+        onClick={() => onPick(AI_ASSIGNEE_ID)}
+        style={{
+          ...row,
+          background:
+            currentId === AI_ASSIGNEE_ID ? "rgba(217,119,87,0.14)" : "none",
+        }}
+        onMouseEnter={(e) => {
+          if (currentId !== AI_ASSIGNEE_ID)
+            e.currentTarget.style.background = "var(--accent)";
+        }}
+        onMouseLeave={(e) => {
+          if (currentId !== AI_ASSIGNEE_ID)
+            e.currentTarget.style.background = "none";
+        }}
+      >
+        <ClaudeAvatar size={22} />
+        <span style={{ flex: 1, color: "#d97757", fontWeight: 600 }}>
+          Claude
+        </span>
+        {currentId === AI_ASSIGNEE_ID && (
+          <Check size={14} color="#d97757" style={{ marginLeft: "auto" }} />
+        )}
+      </button>
     </div>
   );
 }
@@ -616,9 +647,12 @@ export function FieldCell({
   if (column.type === "person") {
     // O valor guardado e o userId (string). Resolve para nome via members.
     const userId = typeof value === "string" && value ? value : null;
-    const nome = userId
-      ? (members?.find((m) => m.userId === userId)?.nome ?? userId)
-      : null;
+    const isAi = userId === AI_ASSIGNEE_ID;
+    const nome = isAi
+      ? "Claude"
+      : userId
+        ? (members?.find((m) => m.userId === userId)?.nome ?? userId)
+        : null;
     return (
       <td
         ref={ref}
@@ -639,28 +673,33 @@ export function FieldCell({
               maxWidth: "100%",
             }}
           >
-            <span
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 22,
-                height: 22,
-                borderRadius: "50%",
-                background: "#7c5cff",
-                color: "#fff",
-                fontSize: 11,
-                fontWeight: 600,
-                flexShrink: 0,
-              }}
-            >
-              {nome.charAt(0).toUpperCase()}
-            </span>
+            {isAi ? (
+              <ClaudeAvatar size={22} />
+            ) : (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 22,
+                  height: 22,
+                  borderRadius: "50%",
+                  background: "#7c5cff",
+                  color: "#fff",
+                  fontSize: 11,
+                  fontWeight: 600,
+                  flexShrink: 0,
+                }}
+              >
+                {nome.charAt(0).toUpperCase()}
+              </span>
+            )}
             <span
               style={{
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 whiteSpace: "nowrap",
+                ...(isAi ? { color: "#d97757", fontWeight: 600 } : {}),
               }}
               title={nome}
             >
