@@ -119,6 +119,20 @@ export function ModelDropdown({ value, onChange }: ModelDropdownProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preference, providersData, configuredMap]);
 
+  // Guarda contra provider travado: se o selecionado deixou de estar
+  // configurado (ex.: admin removeu a chave em outra aba), volta para a
+  // preferência da org → senão Gemini. Evita enviar e tomar 502.
+  useEffect(() => {
+    // Só age depois que a disponibilidade carregou.
+    if (!providersData) return;
+    if (configuredMap.get(value)) return;
+    const pref = preference?.provider;
+    const fallback =
+      pref && configuredMap.get(pref) ? pref : DEFAULT_PROVIDER;
+    if (fallback !== value) onChange(fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configuredMap, providersData, value]);
+
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (
