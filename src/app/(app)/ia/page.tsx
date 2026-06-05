@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useNexusChat } from "@/hooks/use-nexus-chat";
 import { useSpaces } from "@/hooks/use-projects";
+import type { AiProviderName } from "@/lib/types/nexus";
 import { ModelDropdown } from "./_components/model-dropdown";
 import { QUICK_ACTIONS } from "./_components/quick-actions";
 
@@ -27,6 +28,11 @@ type Tab = "pergunta" | "agentes";
 function IAPageContent() {
   const [tab, setTab] = useState<Tab>("pergunta");
   const [input, setInput] = useState("");
+  // Provider selecionado para a conversa. Default Gemini; o ModelDropdown
+  // ajusta para a preferência da org assim que ela carrega. O roteamento real
+  // no envio entra na F3 — aqui apenas seguramos o estado.
+  const [selectedProvider, setSelectedProvider] =
+    useState<AiProviderName>("gemini");
   const { messages, isSending, sendMessage, clearChat, isClearing } =
     useNexusChat();
   const [clearOpen, setClearOpen] = useState(false);
@@ -635,7 +641,10 @@ function IAPageContent() {
                   >
                     <Plus size={14} strokeWidth={2} />
                   </button>
-                  <ModelDropdown />
+                  <ModelDropdown
+                    value={selectedProvider}
+                    onChange={setSelectedProvider}
+                  />
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
