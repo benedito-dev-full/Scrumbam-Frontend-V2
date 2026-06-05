@@ -12,6 +12,7 @@ import {
   GitBranch,
   Link2,
   Lock,
+  Pencil,
   User,
 } from "lucide-react";
 import type { ColumnDef, ColumnOption, FieldValue } from "@/lib/types/table-fields";
@@ -585,6 +586,8 @@ export function FieldCell({
 }) {
   const ref = useRef<HTMLTableCellElement>(null);
   const [open, setOpen] = useState(false);
+  // Hover da celula — usado pela coluna `link` para revelar o botao de editar.
+  const [hovered, setHovered] = useState(false);
 
   // Status em VALIDATED e terminal: backend recusa mudar → travamos a pilula.
   const statusLocked =
@@ -758,22 +761,57 @@ export function FieldCell({
 
   // ── link ──
   if (column.type === "link") {
+    const hasLink = typeof value === "string" && !!value;
     return (
       <td
         ref={ref}
         style={{ ...tdStyle, textAlign: "center", cursor: editCursor }}
-        onClick={openCell}
+        // Com link, o clique no <a> navega (stopPropagation) e a edicao fica
+        // no botao de lapis. Sem link, clicar a celula abre o editor direto.
+        onClick={hasLink ? undefined : openCell}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
       >
-        {typeof value === "string" && value ? (
-          <a
-            href={value}
-            target="_blank"
-            rel="noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            style={{ display: "inline-flex", color: "#7c5cff" }}
+        {hasLink ? (
+          <span
+            style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
           >
-            <GitBranch size={14} />
-          </a>
+            <a
+              href={value as string}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              title={value as string}
+              style={{ display: "inline-flex", color: "#7c5cff" }}
+            >
+              <GitBranch size={14} />
+            </a>
+            {!locked && (
+              <button
+                type="button"
+                aria-label="Editar link"
+                title="Editar link"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpen(true);
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 2,
+                  border: "none",
+                  background: "transparent",
+                  color: "var(--muted-foreground)",
+                  cursor: "pointer",
+                  opacity: hovered ? 1 : 0.4,
+                  transition: "opacity .12s",
+                }}
+              >
+                <Pencil size={12} />
+              </button>
+            )}
+          </span>
         ) : (
           <span style={{ color: "var(--muted-foreground)", opacity: 0.5 }}>
             <Link2 size={14} />
