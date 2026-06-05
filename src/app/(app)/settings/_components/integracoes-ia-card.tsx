@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Eye, EyeOff } from "lucide-react";
 import { useAiKeys, useUpsertAiKey } from "@/hooks/use-ai-keys";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { AiKeyMasked, AiProviderName } from "@/lib/types/nexus";
@@ -139,6 +139,7 @@ function ProviderRow({
   loading: boolean;
 }) {
   const [value, setValue] = useState("");
+  const [reveal, setReveal] = useState(false);
   const upsert = useUpsertAiKey();
   const configured = !!current?.configured;
 
@@ -147,6 +148,7 @@ function ProviderRow({
     if (key.length < 10) return;
     await upsert.mutateAsync({ provider: meta.id, key });
     setValue(""); // chave crua nunca permanece na UI
+    setReveal(false);
   };
 
   return (
@@ -189,23 +191,39 @@ function ProviderRow({
       </div>
 
       <div className="mt-3 flex items-center gap-2">
-        <input
-          type="password"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder={
-            configured
-              ? `Cole uma nova chave para rotacionar (${meta.placeholder})`
-              : meta.placeholder
-          }
-          autoComplete="off"
-          disabled={loading || upsert.isPending}
-          className={cn(
-            "h-8 flex-1 rounded border border-border/70 bg-background/40 px-2.5 text-[12px] text-foreground",
-            "placeholder:text-muted-foreground/70 outline-none focus:border-border",
-            "disabled:cursor-not-allowed disabled:opacity-50",
-          )}
-        />
+        <div className="relative flex-1">
+          <input
+            type={reveal ? "text" : "password"}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder={
+              configured
+                ? `Cole uma nova chave para rotacionar (${meta.placeholder})`
+                : meta.placeholder
+            }
+            autoComplete="off"
+            disabled={loading || upsert.isPending}
+            className={cn(
+              "h-8 w-full rounded border border-border/70 bg-background/40 pl-2.5 pr-9 text-[12px] text-foreground",
+              "placeholder:text-muted-foreground/70 outline-none focus:border-border",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+            )}
+          />
+          <button
+            type="button"
+            onClick={() => setReveal((v) => !v)}
+            disabled={!value}
+            aria-label={reveal ? "Ocultar chave" : "Mostrar chave"}
+            title={reveal ? "Ocultar chave" : "Mostrar chave"}
+            className={cn(
+              "absolute right-1 top-1/2 grid size-6 -translate-y-1/2 place-items-center rounded",
+              "text-muted-foreground transition-colors hover:text-foreground",
+              "disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground",
+            )}
+          >
+            {reveal ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+          </button>
+        </div>
         <button
           type="button"
           onClick={handleSave}
