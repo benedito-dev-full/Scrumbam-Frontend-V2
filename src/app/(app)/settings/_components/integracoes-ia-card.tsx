@@ -1,8 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Eye, EyeOff } from "lucide-react";
-import { useAiKeys, useUpsertAiKey } from "@/hooks/use-ai-keys";
+import { Sparkles, Eye, EyeOff, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  useAiKeys,
+  useDeleteAiKey,
+  useSetAiPreference,
+  useUpsertAiKey,
+} from "@/hooks/use-ai-keys";
+import { useAiPreference } from "@/hooks/use-ai-providers";
 import { useAuthStore } from "@/lib/stores/auth";
 import type { AiKeyMasked, AiProviderName } from "@/lib/types/nexus";
 import { cn } from "@/lib/utils";
@@ -102,6 +118,11 @@ export function IntegracoesIACard() {
     keys.map((k) => [k.provider, k]),
   );
 
+  /** Providers que a org pode definir como padrão (precisam ter chave). */
+  const configuredProviders = PROVIDERS.filter((p) =>
+    keyByProvider.get(p.id)?.configured,
+  );
+
   return (
     <section className="rounded-[10px] border border-border bg-card p-5">
       <h2 className="mb-1 flex items-center gap-2 text-[15px] font-medium text-foreground">
@@ -112,6 +133,8 @@ export function IntegracoesIACard() {
         Cadastre as chaves de API da sua organização para habilitar Claude e
         OpenAI no Nexus. As chaves são cifradas e nunca exibidas após o cadastro.
       </p>
+
+      <DefaultProviderRow configured={configuredProviders} />
 
       <div className="space-y-3">
         {PROVIDERS.map((provider) => (
@@ -124,6 +147,48 @@ export function IntegracoesIACard() {
         ))}
       </div>
     </section>
+  );
+}
+
+/* ─── Seletor de provider padrão da org ──────────────────────────────────── */
+
+function DefaultProviderRow({ configured }: { configured: ProviderMeta[] }) {
+  const { data: preference } = useAiPreference();
+  const setPreference = useSetAiPreference();
+
+  // Gemini tem fallback global, então quase sempre é uma opção válida mesmo
+  // sem chave da org cadastrada. Garantimos que ele apareça na lista.
+  const options = configured.some((p) => p.id === "gemini")
+    ? configured
+    : [PROVIDERS.find((p) => p.id === "gemini")!, ...configured];
+
+  const current = preference?.provider ?? "gemini";
+
+  return (
+    <div className="mb-4 flex items-center justify-between gap-4 rounded-md border border-border/70 bg-background/30 px-3 py-2.5">
+      <div>
+        <p className="text-[13px] font-medium text-foreground">
+          Provedor padrão da organização
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          Novos chats abrem com este provedor.
+        </p>
+      </div>
+      <select
+        value={current}
+        disabled={setPreference.isPending}
+        onChange={(e) =>
+          setPreference.mutate({ provider: e.target.value as AiProviderName })
+        }
+        className="h-8 min-w-[140px] rounded border border-border/70 bg-background/40 px-2 text-[12px] text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {options.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.label}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }
 
@@ -140,7 +205,9 @@ function ProviderRow({
 }) {
   const [value, setValue] = useState("");
   const [reveal, setReveal] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const upsert = useUpsertAiKey();
+  const remove = useDeleteAiKey();
   const configured = !!current?.configured;
 
   const handleSave = async () => {
@@ -149,6 +216,11 @@ function ProviderRow({
     await upsert.mutateAsync({ provider: meta.id, key });
     setValue(""); // chave crua nunca permanece na UI
     setReveal(false);
+  };
+
+  const handleRemove = async () => {
+    await remove.mutateAsync(meta.id);
+    setConfirmOpen(false);
   };
 
   return (
@@ -241,7 +313,57 @@ function ProviderRow({
               ? "Rotacionar"
               : "Salvar"}
         </button>
+
+        {configured && (
+          <button
+            type="button"
+            onClick={() => setConfirmOpen(true)}
+            disabled={remove.isPending}
+            aria-label={`Remover chave do ${meta.label}`}
+            title={`Remover chave do ${meta.label}`}
+            className={cn(
+              "grid size-8 shrink-0 place-items-center rounded border border-border/70",
+              "text-muted-foreground transition-colors hover:border-destructive/60 hover:text-destructive",
+              "disabled:cursor-not-allowed disabled:opacity-50",
+            )}
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        )}
       </div>
+
+      <AlertDialog
+        open={confirmOpen}
+        onOpenChange={(v) => !remove.isPending && setConfirmOpen(v)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover chave do {meta.label}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A organização inteira perderá acesso ao {meta.label} no Nexus até
+              uma nova chave ser cadastrada. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={remove.isPending}
+              onClick={() => setConfirmOpen(false)}
+            >
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={remove.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleRemove();
+              }}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {remove.isPending ? "Removendo…" : "Remover"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
