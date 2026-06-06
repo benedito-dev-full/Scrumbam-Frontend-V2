@@ -19,7 +19,7 @@ import {
   type TaskFilters,
 } from "@/lib/filters/task-filters";
 import { useProject } from "@/hooks/use-projects";
-import { useTasksByProject } from "@/hooks/use-tasks";
+import { useTasksByProject, useUpdateTask } from "@/hooks/use-tasks";
 import { useListRoom } from "@/hooks/use-list-room";
 import { useSocketEvents } from "@/hooks/use-socket-events";
 import { useProjectMembers, type ProjectMemberDto } from "@/hooks/use-members";
@@ -90,11 +90,17 @@ export default function ListPage({
   const [modalDefaultStatus, setModalDefaultStatus] = useState<
     StatusVisual | undefined
   >(undefined);
+  const [modalDefaultDueDate, setModalDefaultDueDate] = useState<
+    string | undefined
+  >(undefined);
   const [selectedTask, setSelectedTask] = useState<TaskResponseDto | null>(
     null,
   );
   // Filtros compartilhados entre TODAS as views (client-side, em memória).
   const [filters, setFilters] = useState<TaskFilters>(emptyTaskFilters);
+
+  // Remarcar task ao arrastá-la entre dias no calendário (otimista via hook).
+  const updateTask = useUpdateTask();
 
   if (loadingProjeto) {
     return (
@@ -120,7 +126,25 @@ export default function ListPage({
 
   function openModal(defaultStatus?: StatusVisual) {
     setModalDefaultStatus(defaultStatus);
+    setModalDefaultDueDate(undefined);
     setModalOpen(true);
+  }
+
+  // Calendário: clicar num dia vazio abre o criador já com a data preenchida.
+  function openModalForDate(isoDate: string) {
+    setModalDefaultStatus(undefined);
+    setModalDefaultDueDate(isoDate);
+    setModalOpen(true);
+  }
+
+  // Calendário: arrastar uma task para outro dia atualiza o dueDate.
+  function handleMoveTask(task: TaskResponseDto, isoDate: string) {
+    if (task.dueDate?.slice(0, 10) === isoDate) return;
+    updateTask.mutate({
+      id: task.id,
+      projectId: id,
+      dto: { dueDate: isoDate },
+    });
   }
 
   // Blocos (idClasse=-200) têm aba dedicada "Blocos" — não devem aparecer
@@ -174,7 +198,12 @@ export default function ListPage({
           onOpenTask={setSelectedTask}
         />
       ) : view === "calendar" ? (
-        <CalendarView tasks={filteredTasks} onOpenTask={setSelectedTask} />
+        <CalendarView
+          tasks={filteredTasks}
+          onOpenTask={setSelectedTask}
+          onCreateOnDate={openModalForDate}
+          onMoveTask={handleMoveTask}
+        />
       ) : view === "gantt" ? (
         <GanttView tasks={filteredTasks} onOpenTask={setSelectedTask} />
       ) : (
@@ -200,6 +229,7 @@ export default function ListPage({
         onClose={() => setModalOpen(false)}
         listId={id}
         defaultStatus={modalDefaultStatus}
+        defaultDueDate={modalDefaultDueDate}
       />
     </div>
   );

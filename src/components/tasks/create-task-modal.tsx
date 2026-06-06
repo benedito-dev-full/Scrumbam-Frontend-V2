@@ -50,6 +50,11 @@ interface CreateTaskModalProps {
    */
   listId?: string;
   defaultStatus?: StatusVisual;
+  /**
+   * Data de vencimento pre-preenchida (formato "YYYY-MM-DD"). Usada quando o
+   * modal e aberto a partir de uma celula de dia no calendario.
+   */
+  defaultDueDate?: string;
 }
 
 /* ─── Componente principal ───────────────────────────────────────────────── */
@@ -59,6 +64,7 @@ export function CreateTaskModal({
   onClose,
   listId,
   defaultStatus,
+  defaultDueDate,
 }: CreateTaskModalProps) {
   const createTask = useCreateTask();
 
@@ -75,7 +81,9 @@ export function CreateTaskModal({
     listId ?? null,
   );
   const [listQuery, setListQuery] = useState("");
-  const [dataVencimento, setDataVencimento] = useState<string>("");
+  const [dataVencimento, setDataVencimento] = useState<string>(
+    defaultDueDate ?? "",
+  );
   const [abaAtiva, setAbaAtiva] = useState<"tarefa" | "documento">("tarefa");
   const [openDropdown, setOpenDropdown] = useState<
     "status" | "prioridade" | "data" | "tipo" | "lista" | null
@@ -112,13 +120,13 @@ export function CreateTaskModal({
     setTipo(null);
     setSelectedListId(listId ?? null);
     setListQuery("");
-    setDataVencimento("");
+    setDataVencimento(defaultDueDate ?? "");
     setOpenDropdown(null);
     setDescAberta(false);
     setDocNome("");
     setDocPrivado(false);
     setTimeout(() => nomeRef.current?.focus(), 50);
-  }, [open, defaultStatus, listId]);
+  }, [open, defaultStatus, listId, defaultDueDate]);
 
   useEffect(() => {
     if (!open) return;
