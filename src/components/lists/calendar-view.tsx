@@ -4,9 +4,10 @@
  * Calendar view para tarefas de uma Lista.
  *
  * Renderiza um calendário mensal (grid 7x6) onde cada célula mostra as tasks
- * cuja `dueDate` cai naquele dia, como barras sólidas coloridas (estilo ClickUp).
- * A cor mapeia o status do fluxo; tasks atrasadas (dueDate no passado e não
- * concluídas) ganham destaque vermelho independente do status.
+ * cuja `dueDate` cai naquele dia, como pills tonais (fundo da cor com baixa
+ * opacidade + dot sólido + texto na cor). A cor mapeia o status do fluxo; tasks
+ * atrasadas (dueDate no passado e não concluídas) ganham destaque vermelho
+ * independente do status.
  *
  * Interações:
  *  - Clicar numa célula vazia → cria task já com a data preenchida (`onCreateOnDate`)
@@ -338,11 +339,21 @@ export function CalendarView({
         )}
       </div>
 
-      {/* Overlay arrastado — barra sólida que segue o cursor */}
+      {/* Overlay arrastado — pill que segue o cursor (fundo sólido p/ destacar) */}
       <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
         {activeTask ? (
-          <div style={{ ...taskBarStyle(taskColor(activeTask).color), boxShadow: "0 8px 20px rgba(0,0,0,.45)", cursor: "grabbing" }}>
-            <span style={taskBarTextStyle}>{activeTask.nome}</span>
+          <div
+            style={{
+              ...taskBarStyle(taskColor(activeTask).color),
+              background: "var(--card)",
+              boxShadow: "0 8px 20px rgba(0,0,0,.45)",
+              cursor: "grabbing",
+            }}
+          >
+            <span style={dotStyle(taskColor(activeTask).color)} />
+            <span style={taskTextStyle(taskColor(activeTask).color)}>
+              {activeTask.nome}
+            </span>
           </div>
         ) : null}
       </DragOverlay>
@@ -517,11 +528,12 @@ function DraggableTaskBar({
       style={{
         ...taskBarStyle(color),
         opacity: isDragging ? 0.35 : 1,
-        boxShadow: overdue ? `0 0 0 1px ${color}aa inset` : undefined,
+        boxShadow: overdue ? `0 0 0 1px ${color}66 inset` : undefined,
         cursor: "grab",
       }}
     >
-      <span style={taskBarTextStyle}>{task.nome}</span>
+      <span style={dotStyle(color)} />
+      <span style={taskTextStyle(color)}>{task.nome}</span>
     </button>
   );
 }
@@ -587,7 +599,8 @@ function DayPopover({
                 title={t.nome}
                 style={{ ...taskBarStyle(color), cursor: "pointer" }}
               >
-                <span style={taskBarTextStyle}>{t.nome}</span>
+                <span style={dotStyle(color)} />
+                <span style={taskTextStyle(color)}>{t.nome}</span>
               </button>
             );
           })}
@@ -599,17 +612,20 @@ function DayPopover({
 
 /* ─── Estilos compartilhados ────────────────────────────────────────────────── */
 
-/** Barra sólida estilo ClickUp: fundo da cor cheia, texto claro, 1 linha. */
+/**
+ * Pill tonal: fundo da cor com baixa opacidade (~13%), borda sutil, dot sólido
+ * e texto na cor. A cor vira acento de status, não um bloco chapado — fica
+ * legível mesmo com títulos longos e não pesa visualmente na grade.
+ */
 function taskBarStyle(color: string): React.CSSProperties {
   return {
     display: "flex",
     alignItems: "center",
-    gap: 5,
-    padding: "3px 7px",
-    borderRadius: 4,
-    background: color,
-    border: "none",
-    color: "#fff",
+    gap: 6,
+    padding: "3px 8px",
+    borderRadius: 6,
+    background: color + "22",
+    border: `1px solid ${color}33`,
     fontSize: 11,
     fontWeight: 500,
     lineHeight: "16px",
@@ -619,12 +635,27 @@ function taskBarStyle(color: string): React.CSSProperties {
   };
 }
 
-const taskBarTextStyle: React.CSSProperties = {
-  overflow: "hidden",
-  textOverflow: "ellipsis",
-  whiteSpace: "nowrap",
-  textShadow: "0 1px 1px rgba(0,0,0,.25)",
-};
+/** Dot sólido da cor, alinhado à esquerda da pill. */
+function dotStyle(color: string): React.CSSProperties {
+  return {
+    width: 6,
+    height: 6,
+    borderRadius: "50%",
+    background: color,
+    flexShrink: 0,
+  };
+}
+
+/** Texto truncado em 1 linha, na cor da task (clareada p/ legibilidade dark). */
+function taskTextStyle(color: string): React.CSSProperties {
+  return {
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    color,
+    filter: "brightness(1.35)",
+  };
+}
 
 const navBtnStyle: React.CSSProperties = {
   width: 30,
