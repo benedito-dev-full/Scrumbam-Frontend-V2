@@ -13,7 +13,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
+import Link from "next/link";
 import { WorkspaceSwitcher } from "@/components/shell/workspace-switcher";
+import { ScrumbanLogo } from "@/components/shell/scrumban-logo";
 import { NotificationsPopover } from "@/components/shell/notifications-popover";
 import { useCommandPaletteStore } from "@/lib/stores/command-palette";
 import { useContentLoadingStore } from "@/lib/stores/content-loading";
@@ -76,10 +78,24 @@ export function AppTopbar() {
         zIndex: 10,
       }}
     >
-      {/* ── Esquerda: workspace switcher ── */}
+      {/* ── Esquerda: logo do produto + workspace switcher ── */}
       <div
-        style={{ display: "flex", alignItems: "center", gap: 2, flexShrink: 0 }}
+        style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}
       >
+        <Link
+          href="/"
+          aria-label="Início — Scrumban"
+          style={{
+            display: "grid",
+            placeItems: "center",
+            width: 30,
+            height: 30,
+            borderRadius: 6,
+            flexShrink: 0,
+          }}
+        >
+          <ScrumbanLogo size={22} />
+        </Link>
         <WorkspaceSwitcher />
       </div>
 

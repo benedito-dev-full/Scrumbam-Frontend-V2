@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Scrumbam",
-    template: "%s · Scrumbam",
+    default: "Scrumban",
+    template: "%s · Scrumban",
   },
   description: "Gestao Scrumban para times de produto.",
 };

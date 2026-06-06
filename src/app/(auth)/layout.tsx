@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { ScrumbanLogo } from '@/components/shell/scrumban-logo';
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
   return (
@@ -47,19 +48,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
         {/* Logo */}
         <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-            background: 'linear-gradient(135deg, #00d2c8 0%, #00a89e 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 0 20px rgba(0,210,200,0.3)',
-          }}>
-            <svg width="16" height="16" viewBox="0 0 14 14" fill="none">
-              <rect x="1" y="1" width="5" height="5" rx="1" fill="white" opacity="0.95" />
-              <rect x="8" y="1" width="5" height="5" rx="1" fill="white" opacity="0.55" />
-              <rect x="1" y="8" width="5" height="5" rx="1" fill="white" opacity="0.55" />
-              <rect x="8" y="8" width="5" height="5" rx="1" fill="white" opacity="0.22" />
-            </svg>
-          </div>
+          <ScrumbanLogo size={34} />
           <span style={{ fontSize: 16, fontWeight: 700, color: '#e0f7f6', letterSpacing: '-0.3px' }}>
             Scrumban
           </span>
@@ -158,18 +147,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 400 }}>
           {/* Logo mobile (só aparece em telas pequenas) */}
           <div className="lg:hidden" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 36 }}>
-            <div style={{
-              width: 30, height: 30, borderRadius: 8,
-              background: 'linear-gradient(135deg, #00d2c8, #00a89e)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <rect x="1" y="1" width="5" height="5" rx="1" fill="white" opacity="0.95" />
-                <rect x="8" y="1" width="5" height="5" rx="1" fill="white" opacity="0.55" />
-                <rect x="1" y="8" width="5" height="5" rx="1" fill="white" opacity="0.55" />
-                <rect x="8" y="8" width="5" height="5" rx="1" fill="white" opacity="0.22" />
-              </svg>
-            </div>
+            <ScrumbanLogo size={30} />
             <span style={{ fontSize: 15, fontWeight: 700, color: '#e0f7f6' }}>Scrumban</span>
           </div>
 

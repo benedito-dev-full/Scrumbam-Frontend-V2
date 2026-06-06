@@ -80,7 +80,7 @@ export default function SettingsPage() {
           {/* Sobre */}
           <Card title="Sobre">
             <dl className="grid grid-cols-[140px_1fr] gap-y-3 text-[13px]">
-              <Row label="Versão" value={`Scrumbam · ${APP_VERSION}`} />
+              <Row label="Versão" value={`Scrumban · ${APP_VERSION}`} />
               <Row
                 label="Ambiente"
                 value={
