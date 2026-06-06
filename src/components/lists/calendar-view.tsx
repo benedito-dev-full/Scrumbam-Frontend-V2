@@ -78,7 +78,10 @@ export function CalendarView({
   function tasksForDay(day: Date): TaskResponseDto[] {
     return tasks.filter((t) => {
       if (!t.dueDate) return false;
-      const td = new Date(t.dueDate + "T12:00:00");
+      // `dueDate` pode vir como date-only ("2026-06-17") ou ISO completo
+      // ("2026-06-17T00:00:00.000Z"); normaliza pegando só a parte da data
+      // antes de fixar o horário ao meio-dia (evita Invalid Date e drift de TZ).
+      const td = new Date(t.dueDate.slice(0, 10) + "T12:00:00");
       return isSameDay(td, day);
     });
   }

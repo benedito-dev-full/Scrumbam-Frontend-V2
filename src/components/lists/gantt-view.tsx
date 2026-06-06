@@ -120,7 +120,7 @@ export function GanttView({
     visible: boolean;
   } {
     const start = startOfDay(new Date(task.criadoEm));
-    const end = startOfDay(new Date(task.dueDate! + "T12:00:00"));
+    const end = startOfDay(new Date(task.dueDate!.slice(0, 10) + "T12:00:00"));
 
     // Clamp ao range visível
     const visStart = start < rangeStart ? rangeStart : start;
@@ -434,7 +434,7 @@ export function GanttView({
                 STATUS_LABEL[task.status as V3Intention] ?? task.status;
               const isLate =
                 task.dueDate &&
-                new Date(task.dueDate + "T12:00:00") < new Date() &&
+                new Date(task.dueDate.slice(0, 10) + "T12:00:00") < new Date() &&
                 !["DONE", "VALIDATED", "CANCELLED"].includes(task.status);
               const isDone = ["DONE", "VALIDATED"].includes(task.status);
 
