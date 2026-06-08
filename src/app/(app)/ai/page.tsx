@@ -29,6 +29,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { useCreateMcpKey, useMcpKeys, useRevokeMcpKey } from "@/hooks/use-mcp";
@@ -90,6 +98,60 @@ const TOOL_COUNT = TOOL_GROUPS.reduce((n, g) => n + g.tools.length, 0);
 const API_BASE = (api.defaults.baseURL ?? "").replace(/\/$/, "");
 const MCP_ENDPOINT = `${API_BASE || "https://seu-backend"}/mcp`;
 
+/** Nome do servidor MCP registrado nos clientes de IA. */
+const SERVER_NAME = "scrumban";
+
+/** Placeholder usado quando ainda não há uma chave recém-gerada em mãos. */
+const KEY_PLACEHOLDER = "SUA_CHAVE_MCP";
+
+type AiProviderId = "claude" | "openai" | "gemini";
+
+/* ─── Provedores de IA suportados ────────────────────────────────────────────
+ * Cada provedor sabe montar o comando/config exato para registrar este servidor
+ * MCP, já com a chave embutida — o usuário só copia e cola. A sintaxe foi
+ * verificada nas CLIs reais (jun/2026):
+ *   • Claude Code e Gemini CLI aceitam header via flag `--header`.
+ *   • Codex (OpenAI) NÃO aceita header customizado por flag — só via
+ *     ~/.codex/config.toml (github.com/openai/codex/issues/5180). */
+interface AiProvider {
+  id: AiProviderId;
+  /** Rótulo exibido no seletor. */
+  label: string;
+  /** Legenda da caixa de código (terminal vs. arquivo de config). */
+  boxLabel: string;
+  /** Dica curta de onde aplicar. */
+  hint: string;
+  /** Monta o comando/config final dado o endpoint e a chave. */
+  build: (endpoint: string, key: string) => string;
+}
+
+const AI_PROVIDERS: AiProvider[] = [
+  {
+    id: "claude",
+    label: "Claude Code",
+    boxLabel: "Comando do terminal",
+    hint: "Cole no terminal — registra o servidor MCP no Claude Code.",
+    build: (endpoint, key) =>
+      `claude mcp add --transport http --header "X-MCP-Key: ${key}" ${SERVER_NAME} ${endpoint}`,
+  },
+  {
+    id: "openai",
+    label: "Codex (OpenAI)",
+    boxLabel: "~/.codex/config.toml",
+    hint: "O Codex não aceita header por flag — cole este bloco em ~/.codex/config.toml.",
+    build: (endpoint, key) =>
+      `[mcp_servers.${SERVER_NAME}]\nurl = "${endpoint}"\nhttp_headers = { "X-MCP-Key" = "${key}" }`,
+  },
+  {
+    id: "gemini",
+    label: "Gemini CLI",
+    boxLabel: "Comando do terminal",
+    hint: "Cole no terminal — registra o servidor MCP no Gemini CLI.",
+    build: (endpoint, key) =>
+      `gemini mcp add --transport http --header "X-MCP-Key: ${key}" ${SERVER_NAME} ${endpoint}`,
+  },
+];
+
 export default function AiHubPage() {
   const keysQuery = useMcpKeys();
   const createKey = useCreateMcpKey();
@@ -125,11 +187,6 @@ export default function AiHubPage() {
       onSettled: () => setRevokeTarget(null),
     });
   }
-
-  const configSnippet = buildConfigSnippet(
-    MCP_ENDPOINT,
-    revealed?.plaintext ?? "SUA_CHAVE_MCP",
-  );
 
   return (
     <div className="flex h-full flex-col bg-background">
@@ -199,21 +256,11 @@ export default function AiHubPage() {
             </div>
           </section>
 
-          {/* REVELAÇÃO ÚNICA */}
-          {revealed && (
-            <RevealPanel
-              value={revealed.plaintext}
-              copied={copiedId === "reveal"}
-              onCopy={() => copy(revealed.plaintext, "reveal")}
-              onDismiss={() => setRevealed(null)}
-            />
-          )}
-
           {/* CONEXÃO */}
           <Section
             icon={<Link2 className="size-4" />}
             title="Conexão"
-            description="Aponte seu cliente MCP para este endpoint e autentique com a chave no header."
+            description="Escolha sua IA e copie o comando pronto. Use a chave que você guardou ao gerar."
           >
             <div className="space-y-3">
               <CopyRow
@@ -231,29 +278,13 @@ export default function AiHubPage() {
                 onCopy={() => copy("X-MCP-Key", "header")}
               />
 
-              <div className="overflow-hidden rounded-lg border border-border bg-muted/40">
-                <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
-                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                    <Terminal className="size-3.5" />
-                    Configuração do cliente
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => copy(configSnippet, "config")}
-                    className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    {copiedId === "config" ? (
-                      <Check className="size-3" />
-                    ) : (
-                      <Copy className="size-3" />
-                    )}
-                    Copiar
-                  </button>
-                </div>
-                <pre className="overflow-x-auto px-3 py-3 text-[12px] leading-relaxed text-foreground">
-                  <code>{configSnippet}</code>
-                </pre>
-              </div>
+              <ProviderPicker
+                endpoint={MCP_ENDPOINT}
+                apiKey={KEY_PLACEHOLDER}
+                copy={copy}
+                copiedId={copiedId}
+                idPrefix="conexao"
+              />
             </div>
           </Section>
 
@@ -331,6 +362,15 @@ export default function AiHubPage() {
           </Section>
         </div>
       </div>
+
+      {/* Revelação da nova chave + comando por IA */}
+      <KeyRevealDialog
+        revealed={revealed}
+        endpoint={MCP_ENDPOINT}
+        copy={copy}
+        copiedId={copiedId}
+        onClose={() => setRevealed(null)}
+      />
 
       {/* Confirmação de revogação */}
       <AlertDialog
@@ -427,55 +467,173 @@ function Section({
   );
 }
 
-function RevealPanel({
-  value,
-  copied,
-  onCopy,
-  onDismiss,
+/**
+ * Modal exibido logo após gerar uma chave MCP.
+ *
+ * Mostra o token em claro (UMA ÚNICA VEZ) e um seletor das 3 IAs principais
+ * (Claude, OpenAI, Gemini); ao escolher, exibe o comando/config exato já com a
+ * chave embutida, pronto para copiar e colar no terminal. Renderiza nada quando
+ * `revealed` é `null`.
+ */
+function KeyRevealDialog({
+  revealed,
+  endpoint,
+  copy,
+  copiedId,
+  onClose,
 }: {
-  value: string;
-  copied: boolean;
-  onCopy: () => void;
-  onDismiss: () => void;
+  revealed: McpKeyCreatedDto | null;
+  endpoint: string;
+  copy: (text: string, id: string) => void;
+  copiedId: string | null;
+  onClose: () => void;
 }) {
+  const value = revealed?.plaintext ?? "";
+
   return (
-    <section className="rounded-2xl border border-primary/40 bg-primary/[0.06] p-5">
-      <div className="mb-3 flex items-center gap-2 text-primary">
-        <ShieldCheck className="size-4" />
-        <h2 className="text-[14px] font-semibold">Sua nova chave MCP</h2>
+    <Dialog
+      open={!!revealed}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="size-4 text-primary" />
+            Sua nova chave MCP
+          </DialogTitle>
+          <DialogDescription>
+            Copie a chave e conecte sua IA com o comando pronto abaixo. Por
+            segurança, ela não será exibida novamente.
+          </DialogDescription>
+        </DialogHeader>
+
+        {/* Chave em claro */}
+        <div>
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
+            <code className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">
+              {value}
+            </code>
+            <Button
+              size="xs"
+              variant="secondary"
+              className="gap-1.5"
+              onClick={() => copy(value, "reveal-key")}
+            >
+              {copiedId === "reveal-key" ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              {copiedId === "reveal-key" ? "Copiado" : "Copiar"}
+            </Button>
+          </div>
+          <p className="mt-2 flex items-center gap-1.5 text-[12px] text-amber-600 dark:text-amber-500">
+            <AlertTriangle className="size-3.5 shrink-0" />
+            Guarde agora — esta chave não será exibida novamente.
+          </p>
+        </div>
+
+        {/* Comando por IA */}
+        <div>
+          <h3 className="mb-2.5 text-[13px] font-medium text-foreground">
+            Conecte sua IA
+          </h3>
+          <ProviderPicker
+            endpoint={endpoint}
+            apiKey={value || KEY_PLACEHOLDER}
+            copy={copy}
+            copiedId={copiedId}
+            idPrefix="reveal"
+          />
+        </div>
+
+        <DialogFooter>
+          <Button onClick={onClose}>Já guardei</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Seletor de IA + caixa de comando.
+ *
+ * Renderiza um controle segmentado (Claude / OpenAI / Gemini) e, abaixo, o
+ * comando ou bloco de configuração correspondente — montado por
+ * {@link AI_PROVIDERS} com `endpoint` e `apiKey` embutidos. Reutilizado no modal
+ * de revelação (com a chave real) e na seção de Conexão (com placeholder).
+ *
+ * @param idPrefix - Prefixo único do id de cópia, para isolar o feedback de
+ *   "copiado" entre instâncias distintas (ex.: `"reveal"` vs. `"conexao"`).
+ */
+function ProviderPicker({
+  endpoint,
+  apiKey,
+  copy,
+  copiedId,
+  idPrefix,
+}: {
+  endpoint: string;
+  apiKey: string;
+  copy: (text: string, id: string) => void;
+  copiedId: string | null;
+  idPrefix: string;
+}) {
+  const [providerId, setProviderId] = useState<AiProviderId>("claude");
+  const provider =
+    AI_PROVIDERS.find((p) => p.id === providerId) ?? AI_PROVIDERS[0];
+  const command = provider.build(endpoint, apiKey);
+  const copyId = `${idPrefix}-cmd`;
+
+  return (
+    <div className="space-y-2.5">
+      <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
+        {AI_PROVIDERS.map((p) => (
+          <button
+            key={p.id}
+            type="button"
+            onClick={() => setProviderId(p.id)}
+            aria-pressed={p.id === providerId}
+            className={cn(
+              "rounded-md px-3 py-1 text-[12px] font-medium transition-colors",
+              p.id === providerId
+                ? "bg-card text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {p.label}
+          </button>
+        ))}
       </div>
-      <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
-        <code className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">
-          {value}
-        </code>
-        <Button
-          size="xs"
-          variant="secondary"
-          className="gap-1.5"
-          onClick={onCopy}
-        >
-          {copied ? (
-            <Check className="size-3.5" />
-          ) : (
-            <Copy className="size-3.5" />
-          )}
-          {copied ? "Copiado" : "Copiar"}
-        </Button>
+
+      <div className="overflow-hidden rounded-lg border border-border bg-muted/40">
+        <div className="flex items-center justify-between border-b border-border/60 px-3 py-1.5">
+          <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
+            <Terminal className="size-3.5" />
+            {provider.boxLabel}
+          </span>
+          <button
+            type="button"
+            onClick={() => copy(command, copyId)}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            {copiedId === copyId ? (
+              <Check className="size-3" />
+            ) : (
+              <Copy className="size-3" />
+            )}
+            Copiar
+          </button>
+        </div>
+        <pre className="overflow-x-auto px-3 py-3 text-[12px] leading-relaxed text-foreground">
+          <code>{command}</code>
+        </pre>
       </div>
-      <div className="mt-3 flex items-start justify-between gap-4">
-        <p className="flex items-center gap-1.5 text-[12px] text-amber-600 dark:text-amber-500">
-          <AlertTriangle className="size-3.5 shrink-0" />
-          Guarde agora — esta chave não será exibida novamente.
-        </p>
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="shrink-0 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Já guardei
-        </button>
-      </div>
-    </section>
+
+      <p className="text-[11px] text-muted-foreground">{provider.hint}</p>
+    </div>
   );
 }
 
@@ -629,19 +787,6 @@ function StateBox({
 
 function maskKey(prefix: string): string {
   return `${prefix}_••••••••`;
-}
-
-function buildConfigSnippet(endpoint: string, key: string): string {
-  return `{
-  "mcpServers": {
-    "scrumban": {
-      "url": "${endpoint}",
-      "headers": {
-        "X-MCP-Key": "${key}"
-      }
-    }
-  }
-}`;
 }
 
 function formatDate(iso: string): string {
