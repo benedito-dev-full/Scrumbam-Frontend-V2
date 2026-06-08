@@ -110,7 +110,9 @@ type AiProviderId = "claude" | "openai" | "gemini";
  * Cada provedor sabe montar o comando/config exato para registrar este servidor
  * MCP, já com a chave embutida — o usuário só copia e cola. A sintaxe foi
  * verificada nas CLIs reais (jun/2026):
- *   • Claude Code e Gemini CLI aceitam header via flag `--header`.
+ *   • Claude Code e Gemini CLI aceitam header via flag `--header`. O `--header`
+ *     é variádico, então nome e URL vêm ANTES das flags — senão a flag "engole"
+ *     os positionais e a CLI reclama de `missing required argument 'name'`.
  *   • Codex (OpenAI) NÃO aceita header customizado por flag — só via
  *     ~/.codex/config.toml (github.com/openai/codex/issues/5180). */
 interface AiProvider {
@@ -132,7 +134,7 @@ const AI_PROVIDERS: AiProvider[] = [
     boxLabel: "Comando do terminal",
     hint: "Cole no terminal — registra o servidor MCP no Claude Code.",
     build: (endpoint, key) =>
-      `claude mcp add --transport http --header "X-MCP-Key: ${key}" ${SERVER_NAME} ${endpoint}`,
+      `claude mcp add ${SERVER_NAME} ${endpoint} --transport http --header "X-MCP-Key: ${key}"`,
   },
   {
     id: "openai",
@@ -148,7 +150,7 @@ const AI_PROVIDERS: AiProvider[] = [
     boxLabel: "Comando do terminal",
     hint: "Cole no terminal — registra o servidor MCP no Gemini CLI.",
     build: (endpoint, key) =>
-      `gemini mcp add --transport http --header "X-MCP-Key: ${key}" ${SERVER_NAME} ${endpoint}`,
+      `gemini mcp add ${SERVER_NAME} ${endpoint} --transport http --header "X-MCP-Key: ${key}"`,
   },
 ];
 
