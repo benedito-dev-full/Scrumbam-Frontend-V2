@@ -31,11 +31,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import {
-  useCreateMcpKey,
-  useMcpKeys,
-  useRevokeMcpKey,
-} from "@/hooks/use-mcp";
+import { useCreateMcpKey, useMcpKeys, useRevokeMcpKey } from "@/hooks/use-mcp";
 import { toast } from "sonner";
 import type { McpKeyCreatedDto, McpKeyListItemDto } from "@/lib/types/api";
 
@@ -73,8 +69,8 @@ const TOOL_GROUPS: {
     label: "Fases & Blocks",
     color: "#22c55e",
     tools: [
-      { name: "list_phases", desc: "Fases (blocks)" },
-      { name: "get_phase_tree", desc: "Árvore completa de fases" },
+      { name: "list_blocks", desc: "Fases (blocks)" },
+      { name: "get_block_tree", desc: "Árvore completa de fases" },
     ],
   },
   {
@@ -178,8 +174,9 @@ export default function AiHubPage() {
                   Conecte qualquer IA ao seu workspace
                 </h2>
                 <p className="mt-1.5 max-w-xl text-[13px] leading-relaxed text-muted-foreground">
-                  Gere uma chave <strong className="font-medium text-foreground">MCP</strong>{" "}
-                  e plugue Claude, Cursor ou qualquer cliente compatível. A IA
+                  Gere uma chave{" "}
+                  <strong className="font-medium text-foreground">MCP</strong> e
+                  plugue Claude, Cursor ou qualquer cliente compatível. A IA
                   passa a enxergar suas tarefas, projetos e fases — com{" "}
                   <strong className="font-medium text-foreground">
                     {TOOL_COUNT} ferramentas
@@ -348,9 +345,11 @@ export default function AiHubPage() {
             <AlertDialogTitle>Revogar chave MCP</AlertDialogTitle>
             <AlertDialogDescription>
               A chave{" "}
-              <strong>{revokeTarget ? maskKey(revokeTarget.prefix) : ""}</strong>{" "}
-              deixará de autenticar imediatamente. Clientes que a usam perderão o
-              acesso. Essa ação não pode ser desfeita.
+              <strong>
+                {revokeTarget ? maskKey(revokeTarget.prefix) : ""}
+              </strong>{" "}
+              deixará de autenticar imediatamente. Clientes que a usam perderão
+              o acesso. Essa ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -449,8 +448,17 @@ function RevealPanel({
         <code className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">
           {value}
         </code>
-        <Button size="xs" variant="secondary" className="gap-1.5" onClick={onCopy}>
-          {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+        <Button
+          size="xs"
+          variant="secondary"
+          className="gap-1.5"
+          onClick={onCopy}
+        >
+          {copied ? (
+            <Check className="size-3.5" />
+          ) : (
+            <Copy className="size-3.5" />
+          )}
           {copied ? "Copiado" : "Copiar"}
         </Button>
       </div>
@@ -503,7 +511,11 @@ function CopyRow({
         aria-label={`Copiar ${label.toLowerCase()}`}
         className="grid size-6 shrink-0 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
-        {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+        {copied ? (
+          <Check className="size-3.5" />
+        ) : (
+          <Copy className="size-3.5" />
+        )}
       </button>
     </div>
   );
