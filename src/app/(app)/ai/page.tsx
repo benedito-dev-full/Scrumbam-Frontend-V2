@@ -510,7 +510,7 @@ function KeyRevealDialog({
         </DialogHeader>
 
         {/* Chave em claro */}
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
             <code className="min-w-0 flex-1 truncate font-mono text-[13px] text-foreground">
               {value}
@@ -536,7 +536,7 @@ function KeyRevealDialog({
         </div>
 
         {/* Comando por IA */}
-        <div>
+        <div className="min-w-0">
           <h3 className="mb-2.5 text-[13px] font-medium text-foreground">
             Conecte sua IA
           </h3>
@@ -588,7 +588,7 @@ function ProviderPicker({
   const copyId = `${idPrefix}-cmd`;
 
   return (
-    <div className="space-y-2.5">
+    <div className="min-w-0 space-y-2.5">
       <div className="inline-flex rounded-lg border border-border bg-muted/40 p-0.5">
         {AI_PROVIDERS.map((p) => (
           <button
@@ -627,7 +627,7 @@ function ProviderPicker({
             Copiar
           </button>
         </div>
-        <pre className="overflow-x-auto px-3 py-3 text-[12px] leading-relaxed text-foreground">
+        <pre className="px-3 py-3 text-[12px] leading-relaxed whitespace-pre-wrap break-all text-foreground">
           <code>{command}</code>
         </pre>
       </div>
