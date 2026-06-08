@@ -30,6 +30,7 @@ import {
   SegmentBar,
 } from "./cells";
 import { colWidth } from "./columns";
+import { TimeSpentCell } from "./time-spent-cell";
 import { useSelection } from "./selection";
 import {
   BACKEND_EDITABLE_KEYS,
@@ -533,6 +534,23 @@ export function TaskRow({
                   </button>
                 ) : null}
               </td>
+            );
+          }
+          // Coluna "Tempo" (timeSpent): no modo backend a celula abre um popover
+          // de timer inline (Iniciar/Pausar/Retomar/Parar) — evita abrir o
+          // drawer so para bater ponto. Sem projectId (prototipo) cai no
+          // FieldCell read-only normal.
+          const resolvedProjectId = task.projectId ?? projectId;
+          if (c.key === "timeSpent" && resolvedProjectId) {
+            const tv = task.fields[c.key];
+            return (
+              <TimeSpentCell
+                key={c.key}
+                tdStyle={td}
+                label={typeof tv === "string" ? tv : ""}
+                taskId={task.id}
+                projectId={resolvedProjectId}
+              />
             );
           }
           // No modo backend, as colunas-alvo viram editaveis via onEditField

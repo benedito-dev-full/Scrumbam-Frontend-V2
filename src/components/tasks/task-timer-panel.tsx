@@ -1,12 +1,13 @@
 "use client";
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
-import { Clock, Play, Pause, Square, Loader2, User } from "lucide-react";
+import { Clock, User } from "lucide-react";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { useTaskTimer, formatDuration } from "@/hooks/use-task-timer";
 import { useTask } from "@/hooks/use-tasks";
 import { useProjectMembers } from "@/hooks/use-members";
+import { TimerControls } from "@/components/tasks/timer-controls";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -49,20 +50,15 @@ export function TaskTimerPanel({
   const { data: liveTask } = useTask(taskId);
   const liveTimer = liveTask?.timer ?? timer;
 
+  const timerApi = useTaskTimer(taskId, projectId, liveTimer);
   const {
-    start,
-    pause,
-    resume,
-    stop,
-    isPending,
-    running,
     runningUserId,
     runningStartedAt,
     totalsByUser,
     isRunningMine,
     isRunningOther,
     displayMs,
-  } = useTaskTimer(taskId, projectId, liveTimer);
+  } = timerApi;
 
   const { data: members = [] } = useProjectMembers(projectId);
 
@@ -116,85 +112,8 @@ export function TaskTimerPanel({
         </div>
       )}
 
-      {/* Controles */}
-      <div className="flex items-center gap-2">
-        {/* "Iniciar" só quando não há tempo acumulado — caso contrário o botão
-            "Retomar" (abaixo) cobre o caso e os dois seriam redundantes (M2). */}
-        {!running && displayMs === 0 && (
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={start}
-            className="timer-start-btn flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-semibold text-white disabled:cursor-not-allowed"
-          >
-            {isPending ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <Play className="size-3.5" />
-            )}
-            Iniciar
-          </button>
-        )}
-
-        {isRunningMine && (
-          <>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={pause}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg border border-sky-500/30 px-3 py-2.5 text-[13px] font-semibold text-sky-300 transition-colors hover:bg-sky-500/10 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isPending ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Pause className="size-3.5" />
-              )}
-              Pausar
-            </button>
-            <button
-              type="button"
-              disabled={isPending}
-              onClick={stop}
-              className="timer-stop-btn flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-semibold text-white disabled:cursor-not-allowed"
-            >
-              <Square className="size-3.5" />
-              Parar
-            </button>
-          </>
-        )}
-
-        {/* Sessão aberta por outro usuário: só "Retomar" (alias do start) fica
-            indisponível — o backend retornaria 409. Mantemos um botão Retomar
-            desabilitado para deixar claro que o timer está ocupado. */}
-        {isRunningOther && (
-          <button
-            type="button"
-            disabled
-            title="Timer em andamento por outro usuário"
-            className="flex flex-1 cursor-not-allowed items-center justify-center gap-2 rounded-lg border border-border px-3 py-2.5 text-[13px] font-semibold text-muted-foreground opacity-60"
-          >
-            <Play className="size-3.5" />
-            Retomar
-          </button>
-        )}
-      </div>
-
-      {/* Botão Retomar quando NÃO há sessão aberta mas já tenho tempo acumulado */}
-      {!running && displayMs > 0 && (
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={resume}
-          className="timer-start-btn flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-semibold text-white disabled:cursor-not-allowed"
-        >
-          {isPending ? (
-            <Loader2 className="size-3.5 animate-spin" />
-          ) : (
-            <Play className="size-3.5" />
-          )}
-          Retomar
-        </button>
-      )}
+      {/* Controles (máquina de botões compartilhada com a célula de Blocos) */}
+      <TimerControls timer={timerApi} />
 
       {/* Totais por usuário (gestor vê todos) */}
       {totalsByUser.length > 0 && (
