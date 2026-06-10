@@ -78,7 +78,7 @@ const TOOL_GROUPS: {
     color: "#22c55e",
     tools: [
       { name: "list_blocks", desc: "Fases (blocks)" },
-      { name: "get_block_tree", desc: "Árvore completa de fases" },
+      { name: "list_block_tasks", desc: "Tarefas de um block" },
     ],
   },
   {
