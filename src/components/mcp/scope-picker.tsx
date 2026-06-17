@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import { Check, Lock } from "lucide-react";
 
 import {
@@ -53,8 +55,18 @@ export function ScopePicker({
   loadingAllowed = false,
 }: ScopePickerProps) {
   const allowed = new Set(allowedScopes);
-  const activePreset = presetForScopes(value);
   const coveredTools = toolsForScopes(value);
+
+  // Modo "Personalizado" precisa de estado próprio: derivá-lo só de
+  // `presetForScopes(value)` faria o clique em "Personalizado" ser ignorado
+  // sempre que os scopes atuais coincidissem com um preset (ex: vindo de
+  // Acesso Total) — o picker voltaria a resolver para aquele preset.
+  // Quando o usuário NÃO está em modo manual, `presetForScopes` já resolve
+  // para "custom" se a seleção não bater nenhum preset — não precisa de effect.
+  const [customMode, setCustomMode] = useState(false);
+  const activePreset: McpPresetId = customMode
+    ? "custom"
+    : presetForScopes(value);
 
   /** Um preset só é selecionável se TODOS os seus scopes forem permitidos. */
   function presetAllowed(scopes: McpScope[]): boolean {
@@ -63,12 +75,13 @@ export function ScopePicker({
 
   function selectPreset(id: McpPresetId) {
     if (id === "custom") {
-      // Entra em modo manual mantendo a seleção atual.
-      onChange([...value]);
+      // Entra em modo manual mantendo a seleção atual (sem mexer nos scopes).
+      setCustomMode(true);
       return;
     }
     const preset = MCP_PRESETS.find((p) => p.id === id);
     if (preset && presetAllowed(preset.scopes)) {
+      setCustomMode(false);
       onChange([...preset.scopes]);
     }
   }
