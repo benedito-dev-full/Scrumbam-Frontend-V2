@@ -39,9 +39,20 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
-import { useCreateMcpKey, useMcpKeys, useRevokeMcpKey } from "@/hooks/use-mcp";
+import {
+  useAllowedMcpScopes,
+  useCreateMcpKey,
+  useMcpKeys,
+  useRevokeMcpKey,
+} from "@/hooks/use-mcp";
 import { toast } from "sonner";
+import { ScopePicker } from "@/components/mcp/scope-picker";
+import { MCP_PRESETS, type McpScope } from "@/lib/mcp-scopes";
 import type { McpKeyCreatedDto, McpKeyListItemDto } from "@/lib/types/api";
+
+/** Seleção inicial do modal: preset "Somente Leitura" (sempre permitido). */
+const DEFAULT_PICKER_SCOPES: McpScope[] =
+  MCP_PRESETS.find((p) => p.id === "read_only")?.scopes ?? [];
 
 /* ─── Catálogo das ferramentas expostas pelo servidor MCP ────────────────────
  * Espelha as tools reais do backend (src/mcp/tools). Informativo — mostra ao
@@ -164,6 +175,10 @@ export default function AiHubPage() {
     null,
   );
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [genOpen, setGenOpen] = useState(false);
+  const [pickerScopes, setPickerScopes] = useState<McpScope[]>(
+    DEFAULT_PICKER_SCOPES,
+  );
 
   const keys = keysQuery.data ?? [];
   const serverAvailable = !keysQuery.isError;
@@ -179,8 +194,22 @@ export default function AiHubPage() {
     }
   }
 
+  function openGenerator() {
+    setPickerScopes(DEFAULT_PICKER_SCOPES);
+    setGenOpen(true);
+  }
+
   function handleGenerate() {
-    createKey.mutate(undefined, { onSuccess: (k) => setRevealed(k) });
+    if (pickerScopes.length === 0) return;
+    createKey.mutate(
+      { scopes: pickerScopes },
+      {
+        onSuccess: (k) => {
+          setGenOpen(false);
+          setRevealed(k);
+        },
+      },
+    );
   }
 
   function handleConfirmRevoke() {
@@ -244,7 +273,7 @@ export default function AiHubPage() {
                 </p>
               </div>
               <Button
-                onClick={handleGenerate}
+                onClick={openGenerator}
                 disabled={createKey.isPending || !serverAvailable}
                 className="shrink-0 gap-1.5"
               >
@@ -365,6 +394,19 @@ export default function AiHubPage() {
         </div>
       </div>
 
+      {/* Seleção de escopos + geração da chave */}
+      <GenerateKeyDialog
+        open={genOpen}
+        onOpenChange={(v) => {
+          if (createKey.isPending) return;
+          setGenOpen(v);
+        }}
+        scopes={pickerScopes}
+        onScopesChange={setPickerScopes}
+        onConfirm={handleGenerate}
+        pending={createKey.isPending}
+      />
+
       {/* Revelação da nova chave + comando por IA */}
       <KeyRevealDialog
         revealed={revealed}
@@ -477,6 +519,85 @@ function Section({
  * chave embutida, pronto para copiar e colar no terminal. Renderiza nada quando
  * `revealed` é `null`.
  */
+/**
+ * Modal de seleção de escopos + geração da chave MCP (ADR-V2-068, Fase 4).
+ *
+ * Carrega os scopes que o usuário pode conceder ao abrir (`allowed-scopes`) e
+ * delega a seleção ao `ScopePicker`. Confirmar dispara a geração (o parent
+ * fecha este modal e abre o de revelação no sucesso).
+ */
+function GenerateKeyDialog({
+  open,
+  onOpenChange,
+  scopes,
+  onScopesChange,
+  onConfirm,
+  pending,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  scopes: McpScope[];
+  onScopesChange: (scopes: McpScope[]) => void;
+  onConfirm: () => void;
+  pending: boolean;
+}) {
+  // Só busca os scopes permitidos enquanto o modal está aberto.
+  const allowedQuery = useAllowedMcpScopes(open);
+  const allowedScopes = allowedQuery.data ?? [];
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="size-4 text-primary" />
+            Gerar chave MCP
+          </DialogTitle>
+          <DialogDescription>
+            Escolha o que esta chave poderá fazer. Você só pode conceder
+            permissões compatíveis com o seu nível de acesso.
+          </DialogDescription>
+        </DialogHeader>
+
+        {allowedQuery.isError ? (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 text-[13px] text-destructive">
+            Não foi possível carregar suas permissões. Tente novamente.
+          </div>
+        ) : (
+          <ScopePicker
+            value={scopes}
+            onChange={onScopesChange}
+            allowedScopes={allowedScopes}
+            loadingAllowed={allowedQuery.isLoading}
+          />
+        )}
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={pending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={onConfirm}
+            disabled={pending || scopes.length === 0 || allowedQuery.isLoading}
+            className="gap-1.5"
+          >
+            {pending ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Plus className="size-4" />
+            )}
+            Gerar chave
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function KeyRevealDialog({
   revealed,
   endpoint,

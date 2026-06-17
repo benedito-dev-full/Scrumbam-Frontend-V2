@@ -1,3 +1,5 @@
+import type { McpScope } from "@/lib/mcp-scopes";
+
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
 /**
@@ -770,10 +772,38 @@ export interface CreateExecutionDto {
 
 // ─── MCP (Model Context Protocol) ─────────────────────────────────────────────
 
-/** Corpo para gerar uma nova chave MCP (`POST /mcp/keys`). */
+/**
+ * Corpo para gerar uma nova chave MCP (`POST /mcp/keys`).
+ *
+ * `scopes` é obrigatório e deve conter ≥1 scope do catálogo canônico
+ * (ADR-V2-068). O backend rejeita lista vazia (400), scope desconhecido (400)
+ * e scope acima do nível de acesso (403 — ver {@link McpScopeForbiddenError}).
+ */
 export interface CreateMcpKeyDto {
-  /** Escopos concedidos (ex.: `tools:read`, `tools:call`). */
-  scopes?: string[];
+  /** Escopos concedidos (catálogo canônico — ex.: `tasks:read`, `tasks:write`). */
+  scopes: McpScope[];
+}
+
+/**
+ * Resposta de `GET /mcp/keys/allowed-scopes`.
+ *
+ * Lista os scopes que o usuário autenticado PODE conceder a uma nova chave,
+ * derivada do seu role (RBAC duplo — ADR-V2-003). A UI usa para desabilitar
+ * presets/scopes fora do alcance do usuário.
+ */
+export interface AllowedMcpScopesDto {
+  allowedScopes: McpScope[];
+}
+
+/**
+ * Corpo do erro 403 ao pedir scope acima do nível de acesso (`POST /mcp/keys`).
+ *
+ * `deniedScopes` são os scopes negados; `allowedScopes` é o teto do usuário.
+ */
+export interface McpScopeForbiddenError {
+  message: string;
+  deniedScopes: McpScope[];
+  allowedScopes: McpScope[];
 }
 
 /**

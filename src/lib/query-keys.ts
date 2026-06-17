@@ -112,5 +112,7 @@ export const qk = {
   mcp: {
     /** Lista de chaves MCP do usuário autenticado (`GET /mcp/keys`). */
     keys: ["mcp", "keys"] as const,
+    /** Scopes que o usuário pode conceder (`GET /mcp/keys/allowed-scopes`). */
+    allowedScopes: ["mcp", "allowed-scopes"] as const,
   },
 } as const;
