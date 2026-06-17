@@ -73,6 +73,8 @@ const TOOL_GROUPS: {
       { name: "update_task", desc: "Atualiza atributos" },
       { name: "update_status", desc: "Move de status (workflow)" },
       { name: "delete_task", desc: "Deleta uma tarefa (soft-delete)" },
+      { name: "get_task_tree", desc: "Árvore fase → task → subtask" },
+      { name: "list_my_tasks", desc: "Minhas tarefas (assignee = caller)" },
     ],
   },
   {
@@ -91,6 +93,16 @@ const TOOL_GROUPS: {
     tools: [
       { name: "list_blocks", desc: "Fases (blocks)" },
       { name: "list_block_tasks", desc: "Tarefas de um block" },
+    ],
+  },
+  {
+    label: "Métricas",
+    color: "#ec4899",
+    tools: [
+      {
+        name: "get_project_metrics",
+        desc: "Flow metrics + forecast Monte Carlo",
+      },
     ],
   },
   {

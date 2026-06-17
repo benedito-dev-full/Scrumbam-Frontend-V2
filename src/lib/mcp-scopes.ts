@@ -66,6 +66,9 @@ export const MCP_SCOPE_META: Record<McpScope, McpScopeMeta> = {
       "list_blocks",
       "list_block_tasks",
       "list_members",
+      "get_task_tree",
+      "get_project_metrics",
+      "list_my_tasks",
     ],
   },
   [MCP_SCOPES.TASKS_WRITE]: {
