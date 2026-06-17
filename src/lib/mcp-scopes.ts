@@ -71,7 +71,13 @@ export const MCP_SCOPE_META: Record<McpScope, McpScopeMeta> = {
   [MCP_SCOPES.TASKS_WRITE]: {
     label: "Escrever tarefas",
     description: "Criar, atualizar, mover de status e cronometrar tarefas.",
-    tools: ["create_task", "update_task", "update_status", "update_timer"],
+    tools: [
+      "create_task",
+      "update_task",
+      "update_status",
+      "update_timer",
+      "delete_task",
+    ],
   },
   [MCP_SCOPES.NOTIFICATIONS_READ]: {
     label: "Ler notificações",

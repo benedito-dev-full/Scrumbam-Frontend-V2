@@ -72,6 +72,7 @@ const TOOL_GROUPS: {
       { name: "create_task", desc: "Cria uma nova tarefa" },
       { name: "update_task", desc: "Atualiza atributos" },
       { name: "update_status", desc: "Move de status (workflow)" },
+      { name: "delete_task", desc: "Deleta uma tarefa (soft-delete)" },
     ],
   },
   {
