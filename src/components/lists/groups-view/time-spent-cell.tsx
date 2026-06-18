@@ -27,17 +27,21 @@ import { Popover } from "./cells";
  * @param label     - Total agregado já formatado (ex.: "2h 30min") ou "" / "—".
  * @param taskId    - ID da DTask.
  * @param projectId - ID do DProject (List) — invalidação e nomes de membros.
+ * @param isRollup  - Quando `true`, o `label` é a SOMA do tempo das filhas
+ *                    (task mãe); exibe um badge "Σ" sinalizando o rollup.
  */
 export function TimeSpentCell({
   tdStyle,
   label,
   taskId,
   projectId,
+  isRollup = false,
 }: {
   tdStyle: React.CSSProperties;
   label: string;
   taskId: string;
   projectId: string;
+  isRollup?: boolean;
 }) {
   const ref = useRef<HTMLTableCellElement>(null);
   const [open, setOpen] = useState(false);
@@ -48,14 +52,40 @@ export function TimeSpentCell({
       ref={ref}
       style={{ ...tdStyle, textAlign: "center", cursor: "pointer" }}
       onClick={() => setOpen(true)}
-      title="Registrar tempo"
+      title={isRollup ? "Soma do tempo das subtarefas" : "Registrar tempo"}
     >
       <span
         style={{
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 4,
           color: hasValue ? "var(--foreground)" : "var(--muted-foreground)",
         }}
       >
         {label || "—"}
+        {isRollup && (
+          <span
+            aria-hidden
+            title="Soma das subtarefas"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minWidth: 14,
+              height: 14,
+              padding: "0 3px",
+              borderRadius: 3,
+              background: "rgba(124, 92, 255, 0.18)",
+              color: "#7c5cff",
+              fontSize: 9,
+              fontWeight: 700,
+              lineHeight: 1,
+            }}
+          >
+            Σ
+          </span>
+        )}
       </span>
       {open && (
         <Popover anchorRef={ref} onClose={() => setOpen(false)} align="right">

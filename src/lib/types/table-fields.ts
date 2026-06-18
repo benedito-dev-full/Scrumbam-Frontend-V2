@@ -85,6 +85,12 @@ export interface TaskModel {
   idPai?: string | null;
   /** Numero de filhas diretas conhecidas no momento do fetch. */
   childCount?: number;
+  /**
+   * `true` quando o `timeSpent` exibido e a SOMA do tempo das filhas diretas
+   * (rollup server-side), e nao o tempo proprio da task. Alimenta o badge de
+   * "soma das subtarefas" na celula de Tempo.
+   */
+  timeSpentIsRollup?: boolean;
   /** ID do projeto da task — necessario para disparar a execucao via IA. */
   projectId?: string;
   /**

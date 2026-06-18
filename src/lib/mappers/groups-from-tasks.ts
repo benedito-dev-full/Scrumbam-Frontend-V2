@@ -172,6 +172,9 @@ function taskToRow(
     nome: task.nome,
     idPai: task.idPai ?? null,
     childCount: childCountMap.get(task.id) ?? 0,
+    // `true` quando o backend entregou em timeSpentLabel a SOMA das filhas
+    // (rollup on-read). Alimenta o badge "soma das subtarefas" na celula Tempo.
+    timeSpentIsRollup: task.timeSpentIsRollup ?? false,
     // Campos crus necessarios para o gatilho de execucao da IA na celula Nome
     // (paridade com a Lista): projeto p/ disparar, status V3 p/ detectar
     // terminal, e a execucao ativa p/ travar a linha e mostrar o badge.

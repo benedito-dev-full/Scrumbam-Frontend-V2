@@ -13,22 +13,14 @@ import {
 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  type ColumnDef,
-  type FieldValue,
-} from "@/lib/types/table-fields";
+import { type ColumnDef, type FieldValue } from "@/lib/types/table-fields";
 import {
   STATUS_V3_KEY,
   type MemberLike,
 } from "@/lib/mappers/groups-from-tasks";
 import type { TaskModel } from "@/lib/types/table-fields";
 import { AI_ASSIGNEE_ID, useTaskExecution } from "@/hooks/use-task-execution";
-import {
-  Checkbox,
-  EditableText,
-  FieldCell,
-  SegmentBar,
-} from "./cells";
+import { Checkbox, EditableText, FieldCell, SegmentBar } from "./cells";
 import { colWidth } from "./columns";
 import { TimeSpentCell } from "./time-spent-cell";
 import { useSelection } from "./selection";
@@ -62,11 +54,10 @@ function ExecuteCell({ task, hover }: { task: TaskModel; hover: boolean }) {
   const isLocked = !isTerminalStatus && task.activeExecution != null;
 
   // Hook sempre chamado (regras de hooks) — so dispara quando ha projectId.
-  const {
-    execution,
-    startExecution,
-    isSubmitting,
-  } = useTaskExecution(task.id, task.projectId);
+  const { execution, startExecution, isSubmitting } = useTaskExecution(
+    task.id,
+    task.projectId,
+  );
 
   if (!isAiAssignee || isTerminalStatus) return null;
 
@@ -250,7 +241,12 @@ export function TaskRow({
         }
       >
         <td
-          style={{ ...td, padding: 0, textAlign: "center", position: "relative" }}
+          style={{
+            ...td,
+            padding: 0,
+            textAlign: "center",
+            position: "relative",
+          }}
         >
           {/* Alca de arraste — aparece no hover, a esquerda do checkbox. Carrega
               os listeners do dnd-kit (so com `sortable`); o resto da linha
@@ -550,6 +546,7 @@ export function TaskRow({
                 label={typeof tv === "string" ? tv : ""}
                 taskId={task.id}
                 projectId={resolvedProjectId}
+                isRollup={task.timeSpentIsRollup ?? false}
               />
             );
           }

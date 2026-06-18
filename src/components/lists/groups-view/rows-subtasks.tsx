@@ -4,19 +4,27 @@ import React, { useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useSubtasks, useUpdateTask, useUpdateTaskStatus, useCreateTask } from "@/hooks/use-tasks";
+import {
+  useSubtasks,
+  useUpdateTask,
+  useUpdateTaskStatus,
+  useCreateTask,
+} from "@/hooks/use-tasks";
 import { intentionToColumn } from "@/lib/mappers/task-status.mapper";
 import { qk } from "@/lib/query-keys";
 import { PILL_TO_V3, type MemberLike } from "@/lib/mappers/groups-from-tasks";
 import type { FieldValue } from "@/lib/types/table-fields";
 import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
 import { Checkbox, EditableText, FieldCell, inputStyle } from "./cells";
+import { TimeSpentCell } from "./time-spent-cell";
 import {
   W_CHECK,
   W_SUBTASK_DATE,
   W_SUBTASK_NOME,
+  W_SUBTASK_PRIORITY,
   W_SUBTASK_RESP,
   W_SUBTASK_STATUS,
+  W_SUBTASK_TIME,
 } from "./columns";
 import { useSelection } from "./selection";
 import { SUBTASK_COLUMNS } from "./types";
@@ -30,8 +38,8 @@ import { fieldErrorDescription } from "./errors";
  * Renderizada imediatamente após o `<tr>` do pai no `<tbody>` do grupo.
  * Quando `expanded` é `false`, retorna `null` sem altura residual.
  * O `<td>` com `colSpan` cobre toda a largura da tabela pai; dentro dele
- * renderiza uma sub-tabela independente com 4 colunas fixas (Subelemento |
- * Resp. | Status | Data), seguindo o padrão Monday.com.
+ * renderiza uma sub-tabela independente com 6 colunas fixas (Subelemento |
+ * Resp. | Status | Data | Prioridade | Tempo), seguindo o padrão Monday.com.
  *
  * @param parentId   - ID da task pai.
  * @param groupColor - Cor do grupo (usada na borda esquerda da sub-tabela visual).
@@ -111,14 +119,15 @@ export function SubtaskTableRow({
  * **Lazy fetch:** Usa `useSubtasks(parentId, expanded)` — a query só dispara
  * quando `expanded=true`. Enquanto carrega, exibe 3 linhas skeleton cinzas.
  *
- * **Layout:** Tabela `<table>` com colgroup próprio de 4 colunas fixas:
- * Subelemento (280px) | Resp. (130px) | Status (140px) | Data (110px).
+ * **Layout:** Tabela `<table>` com colgroup próprio de 6 colunas fixas:
+ * Subelemento (280px) | Resp. (130px) | Status (140px) | Data (110px) |
+ * Prioridade (120px) | Tempo (110px).
  * Margem esquerda de 36px com borda colorida do grupo (conexão visual ao pai).
  *
  * **Conteúdo:** Renderiza cada subtarefa com `SubtaskTaskRow` (editável inline),
  * seguido de `AddSubtaskRow` para criar nova subtarefa.
  *
- * Sem scroll próprio — as 4 colunas (~660px total) cabem na largura mínima
+ * Sem scroll próprio — as 6 colunas cabem na largura mínima
  * do GroupBox sem necessidade de scroll horizontal.
  *
  * @param parentId   - ID da task pai.
@@ -185,6 +194,8 @@ export function SubtaskTable({
           <col style={{ width: W_SUBTASK_RESP }} />
           <col style={{ width: W_SUBTASK_STATUS }} />
           <col style={{ width: W_SUBTASK_DATE }} />
+          <col style={{ width: W_SUBTASK_PRIORITY }} />
+          <col style={{ width: W_SUBTASK_TIME }} />
           {/* Coluna "+" com largura `auto` — absorve todo o espaco restante,
               fazendo o grid se estender ate o fim da tabela pai (estilo Monday). */}
           <col />
@@ -197,7 +208,7 @@ export function SubtaskTable({
             ? /* Skeleton de carregamento — 3 linhas cinza enquanto fetch */
               Array.from({ length: 3 }).map((_, i) => (
                 <tr key={`sk-${i}`}>
-                  <td colSpan={6} style={{ height: 34, padding: "4px 8px" }}>
+                  <td colSpan={8} style={{ height: 34, padding: "4px 8px" }}>
                     <div
                       style={{
                         height: 18,
@@ -229,7 +240,7 @@ export function SubtaskTable({
 }
 
 /**
- * Cabeçalho da sub-tabela de subtarefas — 4 colunas fixas reduzidas.
+ * Cabeçalho da sub-tabela de subtarefas — 6 colunas fixas reduzidas.
  *
  * Diferencia-se do cabeçalho pai por:
  * - Sem checkbox na primeira coluna (apenas espaço reservado)
@@ -263,6 +274,8 @@ export function SubtaskHeadRow() {
         <th style={th}>Resp.</th>
         <th style={th}>Status</th>
         <th style={th}>Data limite</th>
+        <th style={th}>Prioridade</th>
+        <th style={th}>Tempo</th>
         {/* Coluna "+" decorativa — espelha o "adicionar coluna" do Monday.
             Largura `auto`: estende o grid ate o fim. O "+" fica alinhado a
             esquerda (logo apos Data), nao centralizado no vazio.
@@ -284,15 +297,17 @@ export function SubtaskHeadRow() {
 }
 
 /**
- * Linha de uma subtarefa na sub-tabela — renderiza e edita 4 colunas
- * (Nome | Resp. | Status | Data) com feedback conservador (spinner até
- * o backend confirmar).
+ * Linha de uma subtarefa na sub-tabela — renderiza e edita 6 colunas
+ * (Nome | Resp. | Status | Data | Prioridade | Tempo) com feedback
+ * conservador (spinner até o backend confirmar).
  *
  * **Edição inline:**
  * - Nome: `EditableText` com `useUpdateTask` (DTO.titulo)
  * - Responsável: `FieldCell` com menu de membros
  * - Status: `FieldCell` com pills coloridas; VALIDATED trava a edição
  * - Data: `FieldCell` com date picker
+ * - Prioridade: `FieldCell` dropdown (LOW/MEDIUM/HIGH/URGENT)
+ * - Tempo: `TimeSpentCell` com timer inline (start/stop) próprio da subtarefa
  *
  * **Invalidação:** Mutations invalidam `qk.tasks.children(parentId)` no
  * `onSuccess`, além das invalidações padrão já feitas pelos hooks
@@ -378,6 +393,7 @@ export function SubtaskTaskRow({
       titulo?: string;
       assigneeId?: string | null;
       dueDate?: string | null;
+      priority?: string;
     } = {};
 
     if (columnKey === "__nome") {
@@ -387,6 +403,10 @@ export function SubtaskTaskRow({
       dto.assigneeId = typeof value === "string" && value ? value : null;
     } else if (columnKey === "dueDate") {
       dto.dueDate = typeof value === "string" && value ? value : null;
+    } else if (columnKey === "prioridade") {
+      // FieldCell dropdown emite o id da opcao (= TaskPriority: LOW/MEDIUM/...).
+      if (typeof value !== "string" || !value) return;
+      dto.priority = value;
     } else {
       return;
     }
@@ -422,6 +442,7 @@ export function SubtaskTaskRow({
   const statusCol = SUBTASK_COLUMNS.find((c) => c.key === "status")!;
   const respCol = SUBTASK_COLUMNS.find((c) => c.key === "responsavel")!;
   const dateCol = SUBTASK_COLUMNS.find((c) => c.key === "dueDate")!;
+  const priorityCol = SUBTASK_COLUMNS.find((c) => c.key === "prioridade")!;
 
   return (
     <tr
@@ -504,6 +525,27 @@ export function SubtaskTaskRow({
         readOnly={false}
         members={members}
         saving={saving}
+      />
+
+      {/* Prioridade — dropdown com as mesmas opcoes/cores do bloco pai */}
+      <FieldCell
+        tdStyle={td}
+        column={priorityCol}
+        value={subtask.priority ?? null}
+        onChange={(v) => handleEdit("prioridade", v)}
+        readOnly={false}
+        members={members}
+        saving={saving}
+      />
+
+      {/* Tempo gasto — timer inline (start/stop) por subtarefa. Quando a
+          subtarefa tem netos, o backend ja entrega aqui a soma deles (rollup). */}
+      <TimeSpentCell
+        tdStyle={td}
+        label={subtask.timeSpentLabel ?? "—"}
+        taskId={subtask.id}
+        projectId={projectId}
+        isRollup={subtask.timeSpentIsRollup ?? false}
       />
 
       {/* Celula vazia sob a coluna "+" decorativa do cabecalho */}
@@ -596,7 +638,7 @@ export function AddSubtaskRow({
       onMouseLeave={() => setHover(false)}
     >
       <td
-        colSpan={6}
+        colSpan={8}
         style={{
           height: 32,
           padding: 0,

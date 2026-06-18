@@ -459,8 +459,22 @@ export interface TaskResponseDto {
    * como rótulo humano ("2h 45min", "45min", "—" quando zero). Fonte da coluna
    * builtin read-only "Tempo gasto" (`timeSpent`) da grade Blocos — Fase 3 /
    * ADR-V2-057. O frontend NUNCA recalcula: apenas exibe esta string.
+   *
+   * Para tasks MÃE (com filhas diretas), o backend já entrega aqui a SOMA do
+   * tempo das filhas (rollup on-read, 1 nível) — ver `timeSpentIsRollup`.
    */
   timeSpentLabel?: string;
+  /**
+   * `true` quando a task tem ≥1 filha direta. Calculado server-side a partir
+   * de DTask.idPai (rollup de tempo).
+   */
+  hasChildren?: boolean;
+  /**
+   * `true` quando `timeSpentLabel` representa a SOMA do tempo das filhas
+   * diretas (task mãe), em vez do tempo próprio. Permite à UI sinalizar que o
+   * número exibido é um rollup das subtarefas.
+   */
+  timeSpentIsRollup?: boolean;
   /**
    * Dados livres armazenados em DTask.dados (JSON).
    * Usado por Blocks para `startDate`, `endDate` e `cor`.

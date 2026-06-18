@@ -1,5 +1,13 @@
-import type { ColumnDef, ColumnOption, ColumnType, FieldValue } from "@/lib/types/table-fields";
-import { STATUS_OPTIONS } from "@/lib/mappers/groups-from-tasks";
+import type {
+  ColumnDef,
+  ColumnOption,
+  ColumnType,
+  FieldValue,
+} from "@/lib/types/table-fields";
+import {
+  PRIORITY_OPTIONS,
+  STATUS_OPTIONS,
+} from "@/lib/mappers/groups-from-tasks";
 
 /** Coluna sintetica do titulo da tarefa (builtin). Editavel no backend. */
 export const NOME_KEY = "__nome";
@@ -11,7 +19,10 @@ export type AddColumnHandler = (type: ColumnType, label: string) => void;
 export type RenameColumnHandler = (key: string, label: string) => void;
 export type RemoveColumnHandler = (key: string) => void;
 /** Substitui as opcoes de uma coluna status/dropdown (lista completa). */
-export type UpdateColumnOptionsHandler = (key: string, options: ColumnOption[]) => void;
+export type UpdateColumnOptionsHandler = (
+  key: string,
+  options: ColumnOption[],
+) => void;
 /** Arquiva ou restaura uma coluna pelo seu key. */
 export type ArchiveColumnHandler = (key: string) => void;
 /** Recebe as keys custom (`f_*`) na nova ordem desejada. */
@@ -54,4 +65,21 @@ export const SUBTASK_COLUMNS: ColumnDef[] = [
     config: { options: STATUS_OPTIONS },
   },
   { key: "dueDate", type: "date", label: "Data limite", order: 3 },
+  {
+    key: "prioridade",
+    type: "dropdown",
+    label: "Prioridade",
+    order: 4,
+    config: { options: PRIORITY_OPTIONS },
+  },
+  {
+    // Tempo gasto da subtarefa com timer inline (start/stop) — render dedicada
+    // via TimeSpentCell (nao passa pelo FieldCell). read-only no schema porque
+    // o valor vem pronto do backend (timeSpentLabel); a edicao e o timer.
+    key: "timeSpent",
+    type: "text",
+    label: "Tempo",
+    order: 5,
+    readOnly: true,
+  },
 ];

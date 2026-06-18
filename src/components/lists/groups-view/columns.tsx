@@ -41,7 +41,10 @@ import type {
 
 /* ─── Icone por tipo de coluna ───────────────────────────────────────────── */
 
-export const TYPE_ICON: Record<ColumnType, React.ComponentType<{ size?: number }>> = {
+export const TYPE_ICON: Record<
+  ColumnType,
+  React.ComponentType<{ size?: number }>
+> = {
   text: Type,
   number: Hash,
   date: CalendarIcon,
@@ -88,6 +91,10 @@ export const W_SUBTASK_RESP = 130;
 export const W_SUBTASK_STATUS = 140;
 /** Largura da coluna de data da subtarefa. */
 export const W_SUBTASK_DATE = 110;
+/** Largura da coluna de prioridade da subtarefa. */
+export const W_SUBTASK_PRIORITY = 120;
+/** Largura da coluna de tempo gasto da subtarefa (timer inline). */
+export const W_SUBTASK_TIME = 110;
 // Nota: a coluna "+" da sub-tabela usa largura `auto` (absorve o espaco
 // restante para o grid ir ate o fim), por isso nao ha constante de largura
 // fixa para ela nem largura total — a tabela ocupa 100% do container.
@@ -523,7 +530,9 @@ export function ColumnOptionsEditor({
   // Espelha as props num estado local para edição fluida; ressincroniza
   // durante a render quando a lista vinda do servidor muda (ex.: após salvar)
   // — padrão "ajustar estado ao mudar prop" (sem useEffect, sem cascata).
-  const optionsKey = options.map((o) => `${o.id}:${o.label}:${o.color}`).join("|");
+  const optionsKey = options
+    .map((o) => `${o.id}:${o.label}:${o.color}`)
+    .join("|");
   const [draft, setDraft] = useState<ColumnOption[]>(options);
   const [syncedKey, setSyncedKey] = useState(optionsKey);
   const [colorFor, setColorFor] = useState<string | null>(null);
@@ -555,7 +564,9 @@ export function ColumnOptionsEditor({
     if (!trimmed) {
       const saved = options.find((o) => o.id === id);
       setDraft((d) =>
-        d.map((o) => (o.id === id ? { ...o, label: saved?.label ?? o.label } : o)),
+        d.map((o) =>
+          o.id === id ? { ...o, label: saved?.label ?? o.label } : o,
+        ),
       );
       return;
     }
@@ -595,12 +606,19 @@ export function ColumnOptionsEditor({
         {draft.map((opt) => (
           <div
             key={opt.id}
-            style={{ display: "flex", alignItems: "center", gap: 6, position: "relative" }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              position: "relative",
+            }}
           >
             {/* Swatch de cor — clique abre a paleta. */}
             <button
               type="button"
-              onClick={() => setColorFor((cur) => (cur === opt.id ? null : opt.id))}
+              onClick={() =>
+                setColorFor((cur) => (cur === opt.id ? null : opt.id))
+              }
               aria-label="Mudar cor da opção"
               title="Mudar cor"
               style={{
@@ -618,7 +636,10 @@ export function ColumnOptionsEditor({
               onChange={(e) => renameOption(opt.id, e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter")
-                  commitRenameOption(opt.id, (e.target as HTMLInputElement).value);
+                  commitRenameOption(
+                    opt.id,
+                    (e.target as HTMLInputElement).value,
+                  );
               }}
               onBlur={(e) => commitRenameOption(opt.id, e.target.value)}
               style={{ ...inputStyle, height: 28, flex: 1 }}
@@ -668,7 +689,8 @@ export function ColumnOptionsEditor({
                 }}
               >
                 {BLOCK_COLORS.map((c) => {
-                  const selected = (opt.color ?? "").toLowerCase() === c.toLowerCase();
+                  const selected =
+                    (opt.color ?? "").toLowerCase() === c.toLowerCase();
                   return (
                     <button
                       key={c}
@@ -690,8 +712,19 @@ export function ColumnOptionsEditor({
                       }}
                     >
                       {selected && (
-                        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                          <path d="M2 5.5L4.5 8L9 3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        <svg
+                          width="11"
+                          height="11"
+                          viewBox="0 0 11 11"
+                          fill="none"
+                        >
+                          <path
+                            d="M2 5.5L4.5 8L9 3"
+                            stroke="#fff"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
                         </svg>
                       )}
                     </button>
