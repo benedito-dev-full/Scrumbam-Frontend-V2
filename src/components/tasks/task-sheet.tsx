@@ -64,7 +64,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
         setStatusVisual(INTENTION_TO_VISUAL[task.status] ?? "backlog");
         setPrioridade((task.priority as TaskPriority) ?? null);
         setDataVencimento(task.dueDate ?? null);
-        setDescricao(task.description ?? "");
+        setDescricao(task.descricao ?? "");
         setNovaSubtarefa("");
         setEditandoNome(false);
         setEditandoData(false);

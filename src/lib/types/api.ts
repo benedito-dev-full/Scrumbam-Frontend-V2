@@ -423,7 +423,8 @@ export interface TaskResponseDto {
   identifier: string;
   /** Título da task (campo retornado pelo backend como `nome`). */
   nome: string;
-  description?: string;
+  /** Descrição da task (campo retornado pelo backend como `descricao`). */
+  descricao?: string | null;
   /** V3 Intention atual (estado do workflow). */
   status: V3Intention;
   statusId: string;

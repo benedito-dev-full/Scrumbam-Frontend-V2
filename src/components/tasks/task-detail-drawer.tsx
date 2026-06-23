@@ -185,7 +185,7 @@ export function TaskDetailDrawer({
         {/* DescriÃ§Ã£o */}
         <Field label="DescriÃ§Ã£o">
           <EditableTextarea
-            value={task.description ?? ""}
+            value={task.descricao ?? ""}
             placeholder="Adicionar descriÃ§Ã£o..."
             onSave={(descricao) =>
               updateTask({ id: taskId, projectId, dto: { descricao } })
