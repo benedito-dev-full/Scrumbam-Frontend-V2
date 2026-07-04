@@ -6,6 +6,7 @@ import { PanelLeftClose, PanelLeftOpen, Settings2 } from "lucide-react";
 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/lib/stores/auth";
 import { SpaceTree } from "@/components/spaces/space-tree";
 import { FormsPanel } from "./forms-panel";
 import { DocsPanel } from "./docs-panel";
@@ -22,6 +23,9 @@ export function WorkspacePanel() {
   const pathname = usePathname();
   const [homeOpen, setHomeOpen] = useState(true);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Admin enxerga tarefas de qualquer pessoa/time → o item /assigned deixa de
+  // ser "Minhas tarefas" e vira "Painel de tarefas". Usuário comum mantém.
+  const isAdmin = useAuthStore((s) => s.user?.orgRole === "ADMIN");
 
   const sections = buildSections();
 
@@ -125,7 +129,11 @@ export function WorkspacePanel() {
               {homeItems.map((item) => (
                 <ExpandableItem
                   key={item.href}
-                  item={item}
+                  item={
+                    isAdmin && item.href === "/assigned"
+                      ? { ...item, label: "Painel de tarefas" }
+                      : item
+                  }
                   active={pathname === item.href}
                   activeHref={pathname}
                 />

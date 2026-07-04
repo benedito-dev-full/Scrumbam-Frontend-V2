@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { useAuthStore } from "@/lib/stores/auth";
 import {
   Home,
   Inbox,
@@ -50,6 +51,8 @@ type Entry = {
 
 export function CommandPalette() {
   const router = useRouter();
+  // Admin vê tarefas de todos → rótulo "Painel de tarefas"; comum → "Minhas tarefas".
+  const isAdmin = useAuthStore((s) => s.user?.orgRole === "ADMIN");
   const { setTheme, resolvedTheme } = useTheme();
   const open = useCommandPaletteStore((s) => s.open);
   const setOpen = useCommandPaletteStore((s) => s.setOpen);
@@ -163,11 +166,11 @@ export function CommandPalette() {
     },
     {
       id: "r:tasks",
-      label: "Minhas tarefas",
-      sublabel: "Tarefas atribuidas a voce",
+      label: isAdmin ? "Painel de tarefas" : "Minhas tarefas",
+      sublabel: isAdmin ? "Desempenho por pessoa e time" : "Tarefas atribuidas a voce",
       icon: ListTodo,
       iconColor: "#34d399",
-      keywords: ["tarefas", "tasks", "board", "atribuidas", "assigned"],
+      keywords: ["tarefas", "tasks", "board", "atribuidas", "assigned", "painel", "desempenho"],
       onSelect: run(() => router.push("/assigned")),
     },
     {

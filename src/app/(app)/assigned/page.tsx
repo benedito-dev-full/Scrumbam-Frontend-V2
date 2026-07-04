@@ -199,6 +199,9 @@ export default function MinhasTarefasPage() {
   const user = useAuthStore((s) => s.user);
   const userName = user?.name ?? "você";
   const isAdmin = user?.orgRole === "ADMIN";
+  // Admin enxerga tarefas de qualquer pessoa/time → "Minhas tarefas" não descreve
+  // mais a tela; vira "Painel de tarefas". Usuário comum mantém "Minhas tarefas".
+  const pageTitle = isAdmin ? "Painel de tarefas" : "Minhas tarefas";
 
   const [period, setPeriod] = useState<Period>("week");
   const [filter, setFilter] = useState<"all" | "active" | "due" | "done">("all");
@@ -409,7 +412,7 @@ export default function MinhasTarefasPage() {
         }}
       >
         <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>
-          Minhas tarefas
+          {pageTitle}
         </span>
         <button type="button" style={iconBtnStyle}>
           <Settings size={14} />
@@ -440,7 +443,7 @@ export default function MinhasTarefasPage() {
                 marginBottom: 6,
               }}
             >
-              Minhas tarefas
+              {pageTitle}
             </div>
             <h1
               style={{

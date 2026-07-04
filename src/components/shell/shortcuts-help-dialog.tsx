@@ -25,7 +25,7 @@ const groups: ShortcutGroup[] = [
     items: [
       { keys: ["G", "H"], description: "Ir para Início" },
       { keys: ["G", "I"], description: "Ir para Caixa de entrada" },
-      { keys: ["G", "T"], description: "Ir para Minhas tarefas" },
+      { keys: ["G", "T"], description: "Ir para Tarefas" },
     ],
   },
   {
