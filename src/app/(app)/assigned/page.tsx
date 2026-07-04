@@ -78,6 +78,30 @@ const KPI = {
 
 const WARN = "#e0a94a";
 
+/* ─── Cores de avatar por usuário (determinísticas pelo nome) ────────────────
+ * Paleta suave alinhada ao design system — cor cheia no texto/inicial sobre
+ * fundo da mesma cor em baixa opacidade. Mesmo nome → sempre a mesma cor,
+ * pra o olho reconhecer a pessoa. */
+const AVATAR_COLORS: { c: string; soft: string }[] = [
+  { c: "#8b7bf7", soft: "rgba(139,123,247,0.18)" }, // violeta
+  { c: "#56b6e6", soft: "rgba(86,182,230,0.18)" }, // azul
+  { c: "#34b87a", soft: "rgba(52,184,122,0.18)" }, // verde
+  { c: "#e0a94a", soft: "rgba(224,169,74,0.18)" }, // âmbar
+  { c: "#ef7fa6", soft: "rgba(239,127,166,0.18)" }, // rosa
+  { c: "#e0715f", soft: "rgba(224,113,95,0.18)" }, // coral
+  { c: "#5fc0b0", soft: "rgba(95,192,176,0.18)" }, // teal
+  { c: "#a98bde", soft: "rgba(169,139,222,0.18)" }, // lavanda
+];
+
+/** Escolhe uma cor de avatar estável a partir de uma string (id ou nome). */
+function avatarColor(seed: string): { c: string; soft: string } {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) | 0;
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
+
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 function saudacao() {
   const h = new Date().getHours();
@@ -994,9 +1018,29 @@ function UserScopeButton({
         onClick={() => setOpen((o) => !o)}
         style={scopeBtnStyle(!!selected)}
       >
-        <span style={{ color: selected ? "#a9a0e0" : "var(--muted-foreground)" }}>
-          <UserIcon size={14} />
-        </span>
+        {selected ? (
+          <span
+            style={{
+              width: 16,
+              height: 16,
+              borderRadius: "50%",
+              flex: "none",
+              display: "grid",
+              placeItems: "center",
+              fontSize: 8,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              background: avatarColor(selected.userId).soft,
+              color: avatarColor(selected.userId).c,
+            }}
+          >
+            {selected.nome.trim().charAt(0) || "?"}
+          </span>
+        ) : (
+          <span style={{ color: "var(--muted-foreground)" }}>
+            <UserIcon size={14} />
+          </span>
+        )}
         <span style={{ color: selected ? "var(--foreground)" : "var(--muted-foreground)" }}>
           {selected ? selected.nome : "Usuário"}
         </span>
@@ -1039,6 +1083,7 @@ function UserScopeButton({
               ) : (
                 filtered.map((m) => {
                   const active = m.userId === selectedUserId;
+                  const av = avatarColor(m.userId);
                   return (
                     <button
                       key={m.userId}
@@ -1058,10 +1103,10 @@ function UserScopeButton({
                           display: "grid",
                           placeItems: "center",
                           fontSize: 9,
-                          fontWeight: 600,
+                          fontWeight: 700,
                           textTransform: "uppercase",
-                          background: "var(--accent)",
-                          color: "var(--muted-foreground)",
+                          background: av.soft,
+                          color: av.c,
                         }}
                       >
                         {m.nome.trim().charAt(0) || "?"}
