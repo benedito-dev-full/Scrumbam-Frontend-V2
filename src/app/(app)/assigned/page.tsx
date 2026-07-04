@@ -18,13 +18,15 @@ import {
   ChevronUp,
   Minus,
 } from "lucide-react";
-import { useMyTasks, useTeamTasks } from "@/hooks/use-tasks";
+import { useMyTasks, useTeamTasks, useUserTasks } from "@/hooks/use-tasks";
 import { useAllLists } from "@/hooks/use-projects";
 import { useTeams } from "@/hooks/use-teams";
+import { useOrgMembers } from "@/hooks/use-org-members";
 import { useAuthStore } from "@/lib/stores/auth";
 import type {
   TaskResponseDto,
   TeamResponseDto,
+  OrgMemberDto,
   V3Intention,
   TaskPriority,
 } from "@/lib/types/api";
@@ -130,24 +132,52 @@ export default function MinhasTarefasPage() {
 
   const [period, setPeriod] = useState<"today" | "week" | "month">("week");
   const [filter, setFilter] = useState<"all" | "active" | "due" | "done">("all");
-  // Escopo ativo: null = minhas tarefas (default); string = tasks de um time.
+  // Escopos ativos (mutuamente exclusivos): null/null = minhas tarefas (default);
+  // um deles setado = tasks de um time OU de um usuário.
   const [scopeTeamId, setScopeTeamId] = useState<string | null>(null);
+  const [scopeUserId, setScopeUserId] = useState<string | null>(null);
 
   const { data: teams = [] } = useTeams();
+  const { data: members = [] } = useOrgMembers();
   const scopeTeam = useMemo(
     () => teams.find((t) => t.id === scopeTeamId) ?? null,
     [teams, scopeTeamId],
   );
+  const scopeUser = useMemo(
+    () => members.find((m) => m.userId === scopeUserId) ?? null,
+    [members, scopeUserId],
+  );
 
-  // Fonte de tasks conforme o escopo: sempre chamamos os dois hooks (regras
+  // Seletores mutuamente exclusivos: escolher um time limpa o usuário e vice-versa.
+  const selectTeam = (id: string | null) => {
+    setScopeTeamId(id);
+    if (id !== null) setScopeUserId(null);
+  };
+  const selectUser = (id: string | null) => {
+    setScopeUserId(id);
+    if (id !== null) setScopeTeamId(null);
+  };
+
+  // Fonte de tasks conforme o escopo: sempre chamamos os três hooks (regras
   // dos hooks), mas cada um se auto-desabilita quando não é o escopo ativo.
   const my = useMyTasks();
   const team = useTeamTasks(scopeTeamId);
+  const userScope = useUserTasks(scopeUserId);
   const isTeamScope = scopeTeamId !== null;
-  const isLoading = isTeamScope ? team.isLoading : my.isLoading;
+  const isUserScope = scopeUserId !== null;
+  const isLoading = isUserScope
+    ? userScope.isLoading
+    : isTeamScope
+      ? team.isLoading
+      : my.isLoading;
   const tasks: TaskResponseDto[] = useMemo(
-    () => (isTeamScope ? team.data ?? [] : my.data ?? []),
-    [isTeamScope, team.data, my.data],
+    () =>
+      isUserScope
+        ? userScope.data ?? []
+        : isTeamScope
+          ? team.data ?? []
+          : my.data ?? [],
+    [isUserScope, isTeamScope, userScope.data, team.data, my.data],
   );
 
   const { lists } = useAllLists();
@@ -272,7 +302,14 @@ export default function MinhasTarefasPage() {
             <div
               style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 5 }}
             >
-              {scopeTeam ? (
+              {scopeUser ? (
+                <>
+                  Usuário:{" "}
+                  <span style={{ color: "var(--foreground)", fontWeight: 500 }}>
+                    {scopeUser.nome}
+                  </span>
+                </>
+              ) : scopeTeam ? (
                 <>
                   Time:{" "}
                   <span style={{ color: "var(--foreground)", fontWeight: 500 }}>
@@ -295,8 +332,11 @@ export default function MinhasTarefasPage() {
             {isAdmin && (
               <ScopePicker
                 teams={teams}
+                members={members}
                 selectedTeamId={scopeTeamId}
-                onSelectTeam={setScopeTeamId}
+                selectedUserId={scopeUserId}
+                onSelectTeam={selectTeam}
+                onSelectUser={selectUser}
               />
             )}
             <PeriodToggle value={period} onChange={setPeriod} />
@@ -876,12 +916,18 @@ function PanelTabela({
 
 function ScopePicker({
   teams,
+  members,
   selectedTeamId,
+  selectedUserId,
   onSelectTeam,
+  onSelectUser,
 }: {
   teams: TeamResponseDto[];
+  members: OrgMemberDto[];
   selectedTeamId: string | null;
+  selectedUserId: string | null;
   onSelectTeam: (id: string | null) => void;
+  onSelectUser: (id: string | null) => void;
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -902,8 +948,11 @@ function ScopePicker({
         </span>
         ver
       </span>
-      {/* Dropdown de Usuário permanece placeholder (aguarda backend de métricas). */}
-      <ScopeButton icon={<UserIcon size={14} />} label="Usuário" />
+      <UserScopeButton
+        members={members}
+        selectedUserId={selectedUserId}
+        onSelectUser={onSelectUser}
+      />
       <TeamScopeButton
         teams={teams}
         selectedTeamId={selectedTeamId}
@@ -913,26 +962,118 @@ function ScopePicker({
   );
 }
 
-/** Botão de escopo placeholder (usado apenas pelo dropdown de Usuário). */
-function ScopeButton({ icon, label }: { icon: React.ReactNode; label: string }) {
+/** Botão de escopo de Usuário — funcional: troca o escopo do dashboard. */
+function UserScopeButton({
+  members,
+  selectedUserId,
+  onSelectUser,
+}: {
+  members: OrgMemberDto[];
+  selectedUserId: string | null;
+  onSelectUser: (id: string | null) => void;
+}) {
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const selected = members.find((m) => m.userId === selectedUserId) ?? null;
+
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return members;
+    return members.filter((m) => m.nome.toLowerCase().includes(term));
+  }, [members, q]);
+
+  const close = () => {
+    setOpen(false);
+    setQ("");
+  };
+
   return (
     <div style={{ position: "relative" }}>
-      <button type="button" onClick={() => setOpen((o) => !o)} style={scopeBtnStyle(false)}>
-        <span style={{ color: "var(--muted-foreground)" }}>{icon}</span>
-        <span style={{ color: "var(--muted-foreground)" }}>{label}</span>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={scopeBtnStyle(!!selected)}
+      >
+        <span style={{ color: selected ? "#a9a0e0" : "var(--muted-foreground)" }}>
+          <UserIcon size={14} />
+        </span>
+        <span style={{ color: selected ? "var(--foreground)" : "var(--muted-foreground)" }}>
+          {selected ? selected.nome : "Usuário"}
+        </span>
         <ChevronDown size={14} style={{ color: "var(--muted-foreground)" }} />
       </button>
       {open && (
         <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 30 }} onClick={() => setOpen(false)} />
+          <div style={{ position: "fixed", inset: 0, zIndex: 30 }} onClick={close} />
           <div style={scopeMenuStyle}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 9px", marginBottom: 4, borderBottom: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
               <Search size={13} />
-              <input placeholder={`Buscar ${label.toLowerCase()}…`} style={{ flex: 1, background: "transparent", border: 0, outline: 0, color: "var(--foreground)", fontSize: 13 }} />
+              <input
+                autoFocus
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Buscar usuário…"
+                style={{ flex: 1, background: "transparent", border: 0, outline: 0, color: "var(--foreground)", fontSize: 13 }}
+              />
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 9px", fontSize: 12, color: "var(--muted-foreground)" }}>
-              <X size={13} /> Seleção de {label.toLowerCase()} chega com o backend de métricas.
+
+            {/* Opção de limpar seleção → volta para "minhas tarefas". */}
+            <button
+              type="button"
+              onClick={() => {
+                onSelectUser(null);
+                close();
+              }}
+              style={scopeItemStyle(selectedUserId === null)}
+            >
+              <X size={13} style={{ color: "var(--muted-foreground)" }} />
+              <span style={{ flex: 1, textAlign: "left" }}>Minhas tarefas</span>
+              {selectedUserId === null && <Check size={13} style={{ color: "#a9a0e0" }} />}
+            </button>
+
+            <div style={{ maxHeight: 220, overflowY: "auto" }}>
+              {filtered.length === 0 ? (
+                <div style={{ padding: "10px 9px", fontSize: 12, color: "var(--muted-foreground)" }}>
+                  Nenhum usuário encontrado.
+                </div>
+              ) : (
+                filtered.map((m) => {
+                  const active = m.userId === selectedUserId;
+                  return (
+                    <button
+                      key={m.userId}
+                      type="button"
+                      onClick={() => {
+                        onSelectUser(m.userId);
+                        close();
+                      }}
+                      style={scopeItemStyle(active)}
+                    >
+                      <span
+                        style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: "50%",
+                          flex: "none",
+                          display: "grid",
+                          placeItems: "center",
+                          fontSize: 9,
+                          fontWeight: 600,
+                          textTransform: "uppercase",
+                          background: "var(--accent)",
+                          color: "var(--muted-foreground)",
+                        }}
+                      >
+                        {m.nome.trim().charAt(0) || "?"}
+                      </span>
+                      <span style={{ flex: 1, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {m.nome}
+                      </span>
+                      {active && <Check size={13} style={{ color: "#a9a0e0" }} />}
+                    </button>
+                  );
+                })
+              )}
             </div>
           </div>
         </>
