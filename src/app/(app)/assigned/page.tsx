@@ -18,9 +18,16 @@ import {
   ChevronUp,
   Minus,
 } from "lucide-react";
-import { useMyTasks } from "@/hooks/use-tasks";
+import { useMyTasks, useTeamTasks } from "@/hooks/use-tasks";
+import { useAllLists } from "@/hooks/use-projects";
+import { useTeams } from "@/hooks/use-teams";
 import { useAuthStore } from "@/lib/stores/auth";
-import type { TaskResponseDto, V3Intention, TaskPriority } from "@/lib/types/api";
+import type {
+  TaskResponseDto,
+  TeamResponseDto,
+  V3Intention,
+  TaskPriority,
+} from "@/lib/types/api";
 
 /* ─── Constantes de domínio ──────────────────────────────────────────────── */
 
@@ -119,19 +126,46 @@ const PRIORITY_META: Record<
 export default function MinhasTarefasPage() {
   const user = useAuthStore((s) => s.user);
   const userName = user?.name ?? "você";
-  // Placeholder de RBAC: em produção viria do papel do usuário.
-  const isAdmin = true;
+  const isAdmin = user?.orgRole === "ADMIN";
 
   const [period, setPeriod] = useState<"today" | "week" | "month">("week");
   const [filter, setFilter] = useState<"all" | "active" | "due" | "done">("all");
+  // Escopo ativo: null = minhas tarefas (default); string = tasks de um time.
+  const [scopeTeamId, setScopeTeamId] = useState<string | null>(null);
 
-  const { data: myTasks = [], isLoading } = useMyTasks();
+  const { data: teams = [] } = useTeams();
+  const scopeTeam = useMemo(
+    () => teams.find((t) => t.id === scopeTeamId) ?? null,
+    [teams, scopeTeamId],
+  );
+
+  // Fonte de tasks conforme o escopo: sempre chamamos os dois hooks (regras
+  // dos hooks), mas cada um se auto-desabilita quando não é o escopo ativo.
+  const my = useMyTasks();
+  const team = useTeamTasks(scopeTeamId);
+  const isTeamScope = scopeTeamId !== null;
+  const isLoading = isTeamScope ? team.isLoading : my.isLoading;
+  const tasks: TaskResponseDto[] = useMemo(
+    () => (isTeamScope ? team.data ?? [] : my.data ?? []),
+    [isTeamScope, team.data, my.data],
+  );
+
+  const { lists } = useAllLists();
+
+  /* ── Mapa projectId → nome da lista (+ espaço) para a coluna "Projeto" ── */
+  const projectMap = useMemo(() => {
+    const m = new Map<string, { nome: string; spaceName: string }>();
+    for (const l of lists) {
+      m.set(l.id, { nome: l.nome, spaceName: l.spaceName });
+    }
+    return m;
+  }, [lists]);
 
   /* ── Métricas derivadas dos dados reais ── */
   const metrics = useMemo(() => {
-    const total = myTasks.length;
-    const done = myTasks.filter((t) => DONE_STATUSES.includes(t.status)).length;
-    const open = myTasks.filter((t) => !TERMINAL_STATUSES.includes(t.status));
+    const total = tasks.length;
+    const done = tasks.filter((t) => DONE_STATUSES.includes(t.status)).length;
+    const open = tasks.filter((t) => !TERMINAL_STATUSES.includes(t.status));
     const overdue = open.filter((t) => dueBucket(t.dueDate) === "overdue");
     const dueToday = open.filter((t) => dueBucket(t.dueDate) === "today");
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
@@ -144,10 +178,10 @@ export default function MinhasTarefasPage() {
       dueToday,
       atRisk: [...overdue, ...dueToday],
     };
-  }, [myTasks]);
+  }, [tasks]);
 
   const visibleTasks = useMemo(() => {
-    const rows = [...myTasks].sort((a, b) => {
+    const rows = [...tasks].sort((a, b) => {
       // ordena por prazo mais urgente primeiro
       const rank = (t: TaskResponseDto) => {
         const b2 = dueBucket(t.dueDate);
@@ -165,7 +199,7 @@ export default function MinhasTarefasPage() {
     if (filter === "done")
       return rows.filter((t) => DONE_STATUSES.includes(t.status));
     return rows;
-  }, [myTasks, filter]);
+  }, [tasks, filter]);
 
   return (
     <div
@@ -238,7 +272,17 @@ export default function MinhasTarefasPage() {
             <div
               style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 5 }}
             >
-              Todos os espaços ·{" "}
+              {scopeTeam ? (
+                <>
+                  Time:{" "}
+                  <span style={{ color: "var(--foreground)", fontWeight: 500 }}>
+                    {scopeTeam.nome}
+                  </span>
+                </>
+              ) : (
+                "Todos os espaços"
+              )}{" "}
+              ·{" "}
               {new Date().toLocaleDateString("pt-BR", {
                 weekday: "long",
                 day: "numeric",
@@ -248,7 +292,13 @@ export default function MinhasTarefasPage() {
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
-            {isAdmin && <ScopePicker />}
+            {isAdmin && (
+              <ScopePicker
+                teams={teams}
+                selectedTeamId={scopeTeamId}
+                onSelectTeam={setScopeTeamId}
+              />
+            )}
             <PeriodToggle value={period} onChange={setPeriod} />
           </div>
         </div>
@@ -263,7 +313,7 @@ export default function MinhasTarefasPage() {
           }}
         >
           <KpiConcluidas pct={metrics.pct} done={metrics.done} total={metrics.total} loading={isLoading} />
-          <KpiTempoFocado tasks={myTasks} />
+          <KpiTempoFocado tasks={tasks} />
           <KpiEmAtraso overdue={metrics.overdue.length} today={metrics.dueToday.length} />
           <KpiRitmo />
         </div>
@@ -288,6 +338,7 @@ export default function MinhasTarefasPage() {
           filter={filter}
           onFilter={setFilter}
           loading={isLoading}
+          projectMap={projectMap}
         />
       </div>
     </div>
@@ -699,12 +750,14 @@ function PanelTabela({
   filter,
   onFilter,
   loading,
+  projectMap,
 }: {
   tasks: TaskResponseDto[];
   totalOpen: number;
   filter: "all" | "active" | "due" | "done";
   onFilter: (f: "all" | "active" | "due" | "done") => void;
   loading: boolean;
+  projectMap: Map<string, { nome: string; spaceName: string }>;
 }) {
   const filters: { id: typeof filter; label: string }[] = [
     { id: "all", label: "Todas" },
@@ -789,7 +842,9 @@ function PanelTabela({
                         <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 380 }}>{t.nome}</span>
                       </Link>
                     </td>
-                    <td style={{ ...tdStyle, color: "var(--muted-foreground)" }}>—</td>
+                    <td style={{ ...tdStyle, color: "var(--muted-foreground)" }}>
+                      <ProjectCell project={projectMap.get(t.projectId)} />
+                    </td>
                     <td style={tdStyle}>
                       <StatusBadge status={t.status} />
                     </td>
@@ -819,9 +874,15 @@ function PanelTabela({
  * Controles: escopo (admin) + período
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-function ScopePicker() {
-  // Placeholder visual: dropdowns de Usuário/Time. A troca real de escopo
-  // depende do endpoint de métricas-por-pessoa (ainda não disponível).
+function ScopePicker({
+  teams,
+  selectedTeamId,
+  onSelectTeam,
+}: {
+  teams: TeamResponseDto[];
+  selectedTeamId: string | null;
+  onSelectTeam: (id: string | null) => void;
+}) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <span
@@ -841,33 +902,23 @@ function ScopePicker() {
         </span>
         ver
       </span>
+      {/* Dropdown de Usuário permanece placeholder (aguarda backend de métricas). */}
       <ScopeButton icon={<UserIcon size={14} />} label="Usuário" />
-      <ScopeButton icon={<Users size={14} />} label="Time" />
+      <TeamScopeButton
+        teams={teams}
+        selectedTeamId={selectedTeamId}
+        onSelectTeam={onSelectTeam}
+      />
     </div>
   );
 }
 
+/** Botão de escopo placeholder (usado apenas pelo dropdown de Usuário). */
 function ScopeButton({ icon, label }: { icon: React.ReactNode; label: string }) {
   const [open, setOpen] = useState(false);
   return (
     <div style={{ position: "relative" }}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          background: "var(--card)",
-          border: "1px solid var(--border)",
-          borderRadius: 8,
-          padding: "5px 9px 5px 10px",
-          color: "var(--foreground)",
-          fontSize: 13,
-          fontWeight: 500,
-          cursor: "pointer",
-        }}
-      >
+      <button type="button" onClick={() => setOpen((o) => !o)} style={scopeBtnStyle(false)}>
         <span style={{ color: "var(--muted-foreground)" }}>{icon}</span>
         <span style={{ color: "var(--muted-foreground)" }}>{label}</span>
         <ChevronDown size={14} style={{ color: "var(--muted-foreground)" }} />
@@ -875,20 +926,7 @@ function ScopeButton({ icon, label }: { icon: React.ReactNode; label: string }) 
       {open && (
         <>
           <div style={{ position: "fixed", inset: 0, zIndex: 30 }} onClick={() => setOpen(false)} />
-          <div
-            style={{
-              position: "absolute",
-              top: "calc(100% + 6px)",
-              right: 0,
-              minWidth: 230,
-              background: "var(--card)",
-              border: "1px solid var(--border)",
-              borderRadius: 10,
-              padding: 5,
-              zIndex: 40,
-              boxShadow: "0 12px 32px -8px rgba(0,0,0,0.6)",
-            }}
-          >
+          <div style={scopeMenuStyle}>
             <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 9px", marginBottom: 4, borderBottom: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
               <Search size={13} />
               <input placeholder={`Buscar ${label.toLowerCase()}…`} style={{ flex: 1, background: "transparent", border: 0, outline: 0, color: "var(--foreground)", fontSize: 13 }} />
@@ -901,6 +939,164 @@ function ScopeButton({ icon, label }: { icon: React.ReactNode; label: string }) 
       )}
     </div>
   );
+}
+
+/** Botão de escopo de Time — funcional: troca o escopo do dashboard. */
+function TeamScopeButton({
+  teams,
+  selectedTeamId,
+  onSelectTeam,
+}: {
+  teams: TeamResponseDto[];
+  selectedTeamId: string | null;
+  onSelectTeam: (id: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const selected = teams.find((t) => t.id === selectedTeamId) ?? null;
+
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    if (!term) return teams;
+    return teams.filter((t) => t.nome.toLowerCase().includes(term));
+  }, [teams, q]);
+
+  const close = () => {
+    setOpen(false);
+    setQ("");
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={scopeBtnStyle(!!selected)}
+      >
+        <span style={{ color: selected ? "#a9a0e0" : "var(--muted-foreground)" }}>
+          <Users size={14} />
+        </span>
+        <span style={{ color: selected ? "var(--foreground)" : "var(--muted-foreground)" }}>
+          {selected ? selected.nome : "Time"}
+        </span>
+        <ChevronDown size={14} style={{ color: "var(--muted-foreground)" }} />
+      </button>
+      {open && (
+        <>
+          <div style={{ position: "fixed", inset: 0, zIndex: 30 }} onClick={close} />
+          <div style={scopeMenuStyle}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 9px", marginBottom: 4, borderBottom: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+              <Search size={13} />
+              <input
+                autoFocus
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Buscar time…"
+                style={{ flex: 1, background: "transparent", border: 0, outline: 0, color: "var(--foreground)", fontSize: 13 }}
+              />
+            </div>
+
+            {/* Opção de limpar seleção → volta para "minhas tarefas". */}
+            <button
+              type="button"
+              onClick={() => {
+                onSelectTeam(null);
+                close();
+              }}
+              style={scopeItemStyle(selectedTeamId === null)}
+            >
+              <X size={13} style={{ color: "var(--muted-foreground)" }} />
+              <span style={{ flex: 1, textAlign: "left" }}>Minhas tarefas</span>
+              {selectedTeamId === null && <Check size={13} style={{ color: "#a9a0e0" }} />}
+            </button>
+
+            <div style={{ maxHeight: 220, overflowY: "auto" }}>
+              {filtered.length === 0 ? (
+                <div style={{ padding: "10px 9px", fontSize: 12, color: "var(--muted-foreground)" }}>
+                  Nenhum time encontrado.
+                </div>
+              ) : (
+                filtered.map((t) => {
+                  const active = t.id === selectedTeamId;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectTeam(t.id);
+                        close();
+                      }}
+                      style={scopeItemStyle(active)}
+                    >
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          flex: "none",
+                          background: t.color ?? "var(--muted-foreground)",
+                        }}
+                      />
+                      <span style={{ flex: 1, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {t.nome}
+                      </span>
+                      {active && <Check size={13} style={{ color: "#a9a0e0" }} />}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function scopeBtnStyle(active: boolean): React.CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    background: active ? "var(--accent)" : "var(--card)",
+    border: `1px solid ${active ? "rgba(139,123,247,0.35)" : "var(--border)"}`,
+    borderRadius: 8,
+    padding: "5px 9px 5px 10px",
+    color: "var(--foreground)",
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: "pointer",
+    maxWidth: 200,
+  };
+}
+
+const scopeMenuStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "calc(100% + 6px)",
+  right: 0,
+  minWidth: 230,
+  background: "var(--card)",
+  border: "1px solid var(--border)",
+  borderRadius: 10,
+  padding: 5,
+  zIndex: 40,
+  boxShadow: "0 12px 32px -8px rgba(0,0,0,0.6)",
+};
+
+function scopeItemStyle(active: boolean): React.CSSProperties {
+  return {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+    padding: "8px 9px",
+    fontSize: 13,
+    color: "var(--foreground)",
+    background: active ? "var(--accent)" : "transparent",
+    border: 0,
+    borderRadius: 7,
+    cursor: "pointer",
+  };
 }
 
 function PeriodToggle({
@@ -971,6 +1167,29 @@ function PriorityTag({ priority }: { priority?: TaskPriority }) {
     <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--foreground)" }}>
       <Icon size={12} style={{ color: meta.color }} />
       {meta.label}
+    </span>
+  );
+}
+
+function ProjectCell({ project }: { project?: { nome: string; spaceName: string } }) {
+  if (!project) return <span style={{ color: "var(--muted-foreground)" }}>—</span>;
+  const title = project.spaceName ? `${project.spaceName} · ${project.nome}` : project.nome;
+  return (
+    <span
+      title={title}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        maxWidth: 200,
+        fontSize: 12,
+        color: "var(--foreground)",
+      }}
+    >
+      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--muted-foreground)", flex: "none" }} />
+      <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        {project.nome}
+      </span>
     </span>
   );
 }

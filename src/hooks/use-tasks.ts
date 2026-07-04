@@ -111,6 +111,37 @@ export function useMyTasks(status?: string) {
 }
 
 /**
+ * Lista tasks atribuídas a um time (via assigneeTeamId).
+ *
+ * Mapeia para `GET /tasks?assigneeTeamId={teamId}&limit=100`.
+ * Desabilitado automaticamente quando `teamId` é null — mesmo shape e
+ * staleTime de `useMyTasks`, para permitir troca de escopo transparente
+ * no dashboard de performance.
+ *
+ * @param teamId - ID do DEntidade (Time). Quando null, a query fica desabilitada.
+ * @returns Resultado do useQuery com `data: TaskResponseDto[]`
+ *
+ * @example
+ * ```tsx
+ * const { data: tasks = [] } = useTeamTasks(teamId);
+ * ```
+ */
+export function useTeamTasks(teamId: string | null) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  return useQuery<TaskResponseDto[]>({
+    queryKey: [...qk.tasks.all, "team", teamId],
+    queryFn: async () => {
+      const res = await api.get<TasksPage>("/tasks", {
+        params: { assigneeTeamId: teamId, limit: 100 },
+      });
+      return res.data.items;
+    },
+    enabled: !!accessToken && !!teamId,
+    staleTime: 15_000,
+  });
+}
+
+/**
  * Lista subtarefas diretas de uma task (filhas via idPai).
  *
  * Lazy: só dispara quando `enabled=true` (usuário expandiu a row).
