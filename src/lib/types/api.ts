@@ -476,6 +476,8 @@ export interface TaskResponseDto {
    * número exibido é um rollup das subtarefas.
    */
   timeSpentIsRollup?: boolean;
+  /** Data/hora ISO em que a task foi concluída (entrou em DONE); null se nunca concluída. */
+  completedAt?: string | null;
   /**
    * Dados livres armazenados em DTask.dados (JSON).
    * Usado por Blocks para `startDate`, `endDate` e `cor`.

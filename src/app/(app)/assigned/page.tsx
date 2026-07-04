@@ -138,6 +138,52 @@ function dueLabel(dueDate?: string | null): { text: string; tone: "bad" | "warn"
   return { text: "—", tone: "muted" };
 }
 
+type Period = "today" | "week" | "month";
+
+/**
+ * Janela de CALENDÁRIO (timezone local do browser) para o período selecionado.
+ * - Hoje: 00:00:00 → 23:59:59.999 do dia atual.
+ * - Semana: segunda-feira 00:00 → domingo 23:59 da semana atual (semana começa na SEGUNDA).
+ * - Mês: dia 1 00:00 → último dia 23:59 do mês atual.
+ * Puro e testável.
+ */
+function periodRange(period: Period): { start: Date; end: Date } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const mo = now.getMonth();
+  const d = now.getDate();
+
+  if (period === "today") {
+    return {
+      start: new Date(y, mo, d, 0, 0, 0, 0),
+      end: new Date(y, mo, d, 23, 59, 59, 999),
+    };
+  }
+
+  if (period === "week") {
+    // getDay(): 0=domingo … 6=sábado. Semana começa na SEGUNDA.
+    // Deslocamento até a segunda: domingo(0) → -6; segunda(1) → 0; … sábado(6) → -5.
+    const dow = now.getDay();
+    const offsetToMonday = dow === 0 ? -6 : 1 - dow;
+    const start = new Date(y, mo, d + offsetToMonday, 0, 0, 0, 0);
+    const end = new Date(y, mo, d + offsetToMonday + 6, 23, 59, 59, 999);
+    return { start, end };
+  }
+
+  // month
+  return {
+    start: new Date(y, mo, 1, 0, 0, 0, 0),
+    end: new Date(y, mo + 1, 0, 23, 59, 59, 999),
+  };
+}
+
+/** Parse defensivo de `completedAt` — retorna Date válida ou null. */
+function parseCompletedAt(iso?: string | null): Date | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 const PRIORITY_META: Record<
   TaskPriority,
   { label: string; icon: typeof Flame; color: string }
@@ -154,7 +200,7 @@ export default function MinhasTarefasPage() {
   const userName = user?.name ?? "você";
   const isAdmin = user?.orgRole === "ADMIN";
 
-  const [period, setPeriod] = useState<"today" | "week" | "month">("week");
+  const [period, setPeriod] = useState<Period>("week");
   const [filter, setFilter] = useState<"all" | "active" | "due" | "done">("all");
   // Escopos ativos (mutuamente exclusivos): null/null = minhas tarefas (default);
   // um deles setado = tasks de um time OU de um usuário.
@@ -215,24 +261,83 @@ export default function MinhasTarefasPage() {
     return m;
   }, [lists]);
 
-  /* ── Métricas derivadas dos dados reais ── */
+  /* ── Métricas de ESTADO ATUAL (independem do período) ──
+   * "Em atraso", "Tempo focado" e a tabela usam estes números como sempre. */
   const metrics = useMemo(() => {
     const total = tasks.length;
-    const done = tasks.filter((t) => DONE_STATUSES.includes(t.status)).length;
     const open = tasks.filter((t) => !TERMINAL_STATUSES.includes(t.status));
     const overdue = open.filter((t) => dueBucket(t.dueDate) === "overdue");
     const dueToday = open.filter((t) => dueBucket(t.dueDate) === "today");
-    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
     return {
       total,
-      done,
-      pct,
       openCount: open.length,
       overdue,
       dueToday,
       atRisk: [...overdue, ...dueToday],
     };
   }, [tasks]);
+
+  /* ── Métricas de PERÍODO (afetam SÓ "Concluídas" e "Ritmo") ──
+   * Concluídas: fórmula período÷período.
+   *   doneNoPeriodo  = tasks DONE/VALIDATED com completedAt dentro de [start,end].
+   *   emJogoNoPeriodo = doneNoPeriodo + abertas com dueDate <= end (era pra estar
+   *                     feita até o fim do período e ainda não está).
+   * Ritmo: série de conclusões por dia dentro da janela (via completedAt). */
+  const periodMetrics = useMemo(() => {
+    const { start, end } = periodRange(period);
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+
+    let doneNoPeriodo = 0;
+    // Buckets por DIA (chave = timestamp do início do dia local) → contagem de conclusões.
+    const perDay = new Map<number, number>();
+
+    for (const t of tasks) {
+      if (!DONE_STATUSES.includes(t.status)) continue;
+      const c = parseCompletedAt(t.completedAt);
+      // DONE sem completedAt (tasks antigas) não têm data para situar: ignoradas.
+      if (!c) continue;
+      const cm = c.getTime();
+      if (cm < startMs || cm > endMs) continue;
+      doneNoPeriodo++;
+      const dayKey = new Date(c.getFullYear(), c.getMonth(), c.getDate()).getTime();
+      perDay.set(dayKey, (perDay.get(dayKey) ?? 0) + 1);
+    }
+
+    // Denominador: done no período + abertas cujo dueDate <= fim do período.
+    // dueDate null numa aberta NÃO entra (não dá pra dizer que era "do período").
+    let abertasDoPeriodo = 0;
+    for (const t of tasks) {
+      if (TERMINAL_STATUSES.includes(t.status)) continue;
+      if (!t.dueDate) continue;
+      const due = new Date(t.dueDate);
+      if (Number.isNaN(due.getTime())) continue;
+      if (due.getTime() <= endMs) abertasDoPeriodo++;
+    }
+
+    const emJogoNoPeriodo = doneNoPeriodo + abertasDoPeriodo;
+    const pct =
+      emJogoNoPeriodo > 0
+        ? Math.round((doneNoPeriodo / emJogoNoPeriodo) * 100)
+        : 0;
+
+    /* Série diária: um bucket por dia da janela.
+     * Hoje → 1 barra; Semana → 7 (seg→dom); Mês → dias do mês. */
+    const series: { key: number; label: string; count: number }[] = [];
+    const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+    const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+    while (cursor.getTime() <= lastDay) {
+      const key = cursor.getTime();
+      const label =
+        period === "month"
+          ? String(cursor.getDate())
+          : cursor.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+      series.push({ key, label, count: perDay.get(key) ?? 0 });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+
+    return { doneNoPeriodo, emJogoNoPeriodo, pct, series };
+  }, [tasks, period]);
 
   const visibleTasks = useMemo(() => {
     const rows = [...tasks].sort((a, b) => {
@@ -376,10 +481,15 @@ export default function MinhasTarefasPage() {
             marginBottom: 22,
           }}
         >
-          <KpiConcluidas pct={metrics.pct} done={metrics.done} total={metrics.total} loading={isLoading} />
+          <KpiConcluidas
+            pct={periodMetrics.pct}
+            done={periodMetrics.doneNoPeriodo}
+            total={periodMetrics.emJogoNoPeriodo}
+            loading={isLoading}
+          />
           <KpiTempoFocado tasks={tasks} />
           <KpiEmAtraso overdue={metrics.overdue.length} today={metrics.dueToday.length} />
-          <KpiRitmo />
+          <KpiRitmo total={periodMetrics.doneNoPeriodo} period={period} />
         </div>
 
         {/* ── Duas colunas: Em atraso + Ritmo ── */}
@@ -392,7 +502,7 @@ export default function MinhasTarefasPage() {
           }}
         >
           <PanelEmAtraso tasks={metrics.atRisk} loading={isLoading} />
-          <PanelRitmo />
+          <PanelRitmo series={periodMetrics.series} period={period} loading={isLoading} />
         </div>
 
         {/* ── Tabela de tarefas ── */}
@@ -516,7 +626,7 @@ function KpiConcluidas({
       soft={soft}
       icon={<Check size={13} />}
       label="Concluídas"
-      footer="tarefas do período concluídas"
+      footer="concluídas no período"
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <div style={{ position: "relative", width: 52, height: 52 }}>
@@ -624,7 +734,13 @@ function KpiEmAtraso({ overdue, today }: { overdue: number; today: number }) {
   );
 }
 
-function KpiRitmo() {
+const PERIOD_WORD: Record<Period, string> = {
+  today: "hoje",
+  week: "na semana",
+  month: "no mês",
+};
+
+function KpiRitmo({ total, period }: { total: number; period: Period }) {
   const { c, soft } = KPI.sky;
   return (
     <KpiShell
@@ -632,11 +748,11 @@ function KpiRitmo() {
       soft={soft}
       icon={<Activity size={13} />}
       label="Ritmo"
-      footer={<SoonTag>histórico por dia — em breve</SoonTag>}
+      footer={`concluídas ${PERIOD_WORD[period]}`}
     >
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}>
-        <div style={{ fontSize: 28, fontWeight: 650, letterSpacing: "-0.02em", color: c, lineHeight: 1, opacity: 0.55 }}>
-          —
+        <div style={{ fontSize: 28, fontWeight: 650, letterSpacing: "-0.02em", color: c, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+          {total}
         </div>
         <Sparkline color={c} points="0,10 11,12 22,9 33,11 44,10 55,11 64,9" dim />
       </div>
@@ -771,7 +887,24 @@ function PanelEmAtraso({ tasks, loading }: { tasks: TaskResponseDto[]; loading: 
   );
 }
 
-function PanelRitmo() {
+function PanelRitmo({
+  series,
+  period,
+  loading,
+}: {
+  series: { key: number; label: string; count: number }[];
+  period: Period;
+  loading: boolean;
+}) {
+  const totalDone = series.reduce((acc, s) => acc + s.count, 0);
+  const max = Math.max(1, ...series.map((s) => s.count));
+  const todayKey = (() => {
+    const n = new Date();
+    return new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
+  })();
+  // Em "Mês" pode haver muitas barras: rótulos ficam finos e só a cada ~5 dias.
+  const denseLabels = period === "month";
+
   return (
     <PanelShell
       icon={<Activity size={14} />}
@@ -780,30 +913,58 @@ function PanelRitmo() {
       title="Ritmo de entrega"
       meta="concluídas / dia"
     >
-      <div style={{ position: "relative", padding: "24px 8px 8px" }}>
-        {/* barras mock desabilitadas — aguardando endpoint de throughput por pessoa */}
-        <div style={{ display: "flex", alignItems: "flex-end", gap: 9, height: 130, opacity: 0.4 }}>
-          {[40, 20, 60, 82, 40, 60, 40].map((hgt, i) => (
-            <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 9, height: "100%", justifyContent: "flex-end" }}>
-              <div
-                style={{
-                  width: "100%",
-                  maxWidth: 30,
-                  height: `${hgt}%`,
-                  borderRadius: "4px 4px 0 0",
-                  background: i === 6 ? KPI.violet.c : "rgba(139,123,247,0.32)",
-                }}
-              />
-              <span style={{ fontSize: 10, color: "var(--muted-foreground)", textTransform: "uppercase" }}>
-                {["sáb", "dom", "seg", "ter", "qua", "qui", "hoje"][i]}
-              </span>
-            </div>
-          ))}
+      {loading ? (
+        <div style={{ padding: "24px 8px 8px" }}>
+          <Muted>Carregando…</Muted>
         </div>
-        <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
-          <SoonTag large>gráfico de ritmo — em breve</SoonTag>
+      ) : totalDone === 0 ? (
+        <EmptyArea
+          icon={<Activity size={20} />}
+          text="Sem conclusões no período"
+          hint="Nenhuma tarefa foi concluída na janela selecionada."
+        />
+      ) : (
+        <div style={{ padding: "24px 8px 8px" }}>
+          <div style={{ display: "flex", alignItems: "flex-end", gap: denseLabels ? 3 : 9, height: 130 }}>
+            {series.map((s) => {
+              const isToday = s.key === todayKey;
+              const hgtPct = s.count === 0 ? 0 : Math.max(6, (s.count / max) * 100);
+              return (
+                <div
+                  key={s.key}
+                  title={`${s.count} concluída${s.count !== 1 ? "s" : ""}`}
+                  style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 9, height: "100%", justifyContent: "flex-end" }}
+                >
+                  <div
+                    style={{
+                      width: "100%",
+                      maxWidth: denseLabels ? 16 : 30,
+                      height: `${hgtPct}%`,
+                      borderRadius: "4px 4px 0 0",
+                      background: isToday ? KPI.violet.c : "rgba(139,123,247,0.32)",
+                    }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "var(--muted-foreground)",
+                      textTransform: "uppercase",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {denseLabels
+                      ? Number(s.label) % 5 === 0 || isToday
+                        ? s.label
+                        : ""
+                      : s.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </PanelShell>
   );
 }
@@ -1289,8 +1450,8 @@ function PeriodToggle({
   value,
   onChange,
 }: {
-  value: "today" | "week" | "month";
-  onChange: (v: "today" | "week" | "month") => void;
+  value: Period;
+  onChange: (v: Period) => void;
 }) {
   const opts: { id: typeof value; label: string }[] = [
     { id: "today", label: "Hoje" },
@@ -1388,26 +1549,6 @@ function DueBadge({ label }: { label: { text: string; tone: "bad" | "warn" | "mu
   return (
     <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, whiteSpace: "nowrap", fontWeight: 550, background: soft, color: c, border: `1px solid ${bd}` }}>
       {label.text}
-    </span>
-  );
-}
-
-function SoonTag({ children, large }: { children: React.ReactNode; large?: boolean }) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 5,
-        fontSize: large ? 12 : 11,
-        color: "var(--muted-foreground)",
-        background: "var(--accent)",
-        border: "1px solid var(--border)",
-        borderRadius: 20,
-        padding: large ? "5px 12px" : "1px 8px",
-      }}
-    >
-      {children}
     </span>
   );
 }
