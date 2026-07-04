@@ -409,6 +409,17 @@ export interface TaskTimerState {
 }
 
 /**
+ * Sessão manual individual de timer (com data), usada para somar tempo focado
+ * por período. `durationMs` é null enquanto a sessão está aberta (sem `endedAt`).
+ */
+export interface TaskTimerSessionDto {
+  userId: string;
+  startedAt: string;
+  endedAt: string | null;
+  durationMs: number | null;
+}
+
+/**
  * Representação canônica de uma DTask V2.
  *
  * Campo `status` contém a V3 Intention (ex: 'INBOX', 'EXECUTING').
@@ -455,6 +466,8 @@ export interface TaskResponseDto {
    * de execução (sessão aberta) e os totais por usuário (server-side).
    */
   timer?: TaskTimerState | null;
+  /** Sessões manuais individuais (com data) para somar tempo focado por período. */
+  timerSessions?: TaskTimerSessionDto[];
   /**
    * Total de tempo manual gasto na task, agregado server-side e JÁ FORMATADO
    * como rótulo humano ("2h 45min", "45min", "—" quando zero). Fonte da coluna

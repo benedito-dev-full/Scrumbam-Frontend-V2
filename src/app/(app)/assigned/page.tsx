@@ -339,6 +339,31 @@ export default function MinhasTarefasPage() {
     return { doneNoPeriodo, emJogoNoPeriodo, pct, series };
   }, [tasks, period]);
 
+  /* ── Tempo focado do PERÍODO ──
+   * Soma `durationMs` das sessões manuais cujo `startedAt` cai na janela do
+   * período ativo. Borda: a sessão conta pelo `startedAt` — se cai em
+   * [start,end], soma o `durationMs` INTEIRO. Sessão aberta (durationMs null) e
+   * `timerSessions` undefined são ignoradas defensivamente. Deriva de `tasks`,
+   * que já respeita o escopo Usuário/Time. */
+  const focoNoPeriodoMin = useMemo(() => {
+    const { start, end } = periodRange(period);
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+    let totalMs = 0;
+    for (const t of tasks) {
+      const sessions = t.timerSessions ?? [];
+      for (const s of sessions) {
+        if (s.durationMs == null) continue;
+        const started = parseCompletedAt(s.startedAt);
+        if (!started) continue;
+        const sm = started.getTime();
+        if (sm < startMs || sm > endMs) continue;
+        totalMs += s.durationMs;
+      }
+    }
+    return Math.floor(totalMs / 60000);
+  }, [tasks, period]);
+
   const visibleTasks = useMemo(() => {
     const rows = [...tasks].sort((a, b) => {
       // ordena por prazo mais urgente primeiro
@@ -487,7 +512,7 @@ export default function MinhasTarefasPage() {
             total={periodMetrics.emJogoNoPeriodo}
             loading={isLoading}
           />
-          <KpiTempoFocado tasks={tasks} />
+          <KpiTempoFocado totalMin={focoNoPeriodoMin} period={period} />
           <KpiEmAtraso overdue={metrics.overdue.length} today={metrics.dueToday.length} />
           <KpiRitmo total={periodMetrics.doneNoPeriodo} period={period} />
         </div>
@@ -670,20 +695,8 @@ function KpiConcluidas({
   );
 }
 
-function KpiTempoFocado({ tasks }: { tasks: TaskResponseDto[] }) {
+function KpiTempoFocado({ totalMin, period }: { totalMin: number; period: Period }) {
   const { c, soft } = KPI.violet;
-  // Aproximação: soma dos rótulos "Xh Ymin" que vierem do backend (own-time).
-  const totalMin = useMemo(() => {
-    let min = 0;
-    for (const t of tasks) {
-      const lbl = t.timeSpentLabel;
-      if (!lbl || lbl === "—") continue;
-      const h = /(\d+)\s*h/.exec(lbl);
-      const m = /(\d+)\s*min/.exec(lbl);
-      min += (h ? +h[1] : 0) * 60 + (m ? +m[1] : 0);
-    }
-    return min;
-  }, [tasks]);
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
   return (
@@ -692,7 +705,7 @@ function KpiTempoFocado({ tasks }: { tasks: TaskResponseDto[] }) {
       soft={soft}
       icon={<Clock size={13} />}
       label="Tempo focado"
-      footer="soma do tempo registrado (aprox.)"
+      footer={`registrado ${PERIOD_WORD[period]}`}
     >
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}>
         <div style={{ fontSize: 28, fontWeight: 650, letterSpacing: "-0.02em", color: c, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
