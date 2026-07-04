@@ -39,8 +39,8 @@ import {
   BLOCK_COLORS,
   W_CHECK,
   W_PLUS,
-  colWidth,
 } from "./columns";
+import { useColumnWidths, type ColumnWidthsApi } from "./use-column-widths";
 import { AddTaskRow, FooterRow, TaskRow } from "./rows";
 import type {
   AddColumnHandler,
@@ -125,6 +125,11 @@ export function GroupsBoardView({
   archivedColumns?: ArchivedColumn[];
 }) {
   const cols = [...board.columns].sort((a, b) => a.order - b.order);
+
+  // Larguras redimensionaveis das colunas da tabela principal, persistidas em
+  // localStorage por lista (projectId). Fonte unica de largura efetiva partilhada
+  // por TODOS os blocos desta lista — resize num bloco reflete em todos.
+  const columnWidths = useColumnWidths(projectId);
 
   // Conjunto de containers scrollaveis dos grupos — para sincronizar o
   // scroll horizontal entre todos (rolar um rola todos, igual Monday).
@@ -266,6 +271,7 @@ export function GroupsBoardView({
               <GroupBox
                 group={g}
                 columns={cols}
+                columnWidths={columnWidths}
                 register={register}
                 onSyncScroll={syncScroll}
                 readOnly={readOnly}
@@ -438,6 +444,7 @@ export function SortableGroup({
 export function GroupBox({
   group,
   columns,
+  columnWidths,
   register,
   onSyncScroll,
   readOnly,
@@ -464,6 +471,8 @@ export function GroupBox({
 }: {
   group: GroupModel;
   columns: ColumnDef[];
+  /** Larguras efetivas + setter (resize). Partilhado por todos os blocos da lista. */
+  columnWidths: ColumnWidthsApi;
   register: (el: HTMLDivElement | null, prev?: HTMLDivElement | null) => void;
   onSyncScroll: (source: HTMLDivElement) => void;
   readOnly: boolean;
@@ -592,7 +601,9 @@ export function GroupBox({
   // W_PLUS em vez de colapsar para 0px. Com espaco sobrando, a coluna "+"
   // continua esticando normalmente (Monday) — o minWidth so atua no aperto.
   const tableMinWidth =
-    W_CHECK + columns.reduce((s, c) => s + colWidth(c), 0) + W_PLUS;
+    W_CHECK +
+    columns.reduce((s, c) => s + columnWidths.effectiveWidth(c), 0) +
+    W_PLUS;
 
   return (
     <section>
@@ -770,7 +781,10 @@ export function GroupBox({
               <colgroup>
                 <col style={{ width: W_CHECK }} />
                 {columns.map((c) => (
-                  <col key={c.key} style={{ width: colWidth(c) }} />
+                  <col
+                    key={c.key}
+                    style={{ width: columnWidths.effectiveWidth(c) }}
+                  />
                 ))}
                 {/* coluna do "+" SEM largura (auto puro, igual a sub-tabela):
                   absorve TODO o espaco restante ate a borda direita, fazendo o
@@ -790,6 +804,8 @@ export function GroupBox({
                 onArchiveColumn={onArchiveColumn}
                 onRestoreColumn={onRestoreColumn}
                 archivedColumns={archivedColumns}
+                effectiveWidth={columnWidths.effectiveWidth}
+                onResizeColumn={columnWidths.setColumnWidth}
               />
 
               <tbody>

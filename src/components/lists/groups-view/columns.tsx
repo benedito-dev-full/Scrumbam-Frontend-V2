@@ -108,6 +108,99 @@ export function colWidth(c: ColumnDef): number {
   return W_DEFAULT;
 }
 
+/* ─── Handle de redimensionamento de coluna ──────────────────────────────── */
+
+/**
+ * Largura minima que uma coluna pode assumir no resize (nunca colapsa). Mantida
+ * em sincronia com `MIN_COL_W` do hook `use-column-widths` (fonte da regra).
+ */
+const RESIZE_MIN_W = 60;
+
+/**
+ * Alca fina na borda DIREITA do `<th>` que redimensiona a coluna por drag
+ * (estilo planilha). Vive posicionada em absolute dentro do `<th>` (que e
+ * `position: relative`), por isso NAO participa do fluxo do titulo nem do
+ * punho de reorder — e `stopPropagation` no mousedown impede que o gesto de
+ * arraste vire reorder ou abra o menu da coluna.
+ *
+ * @param columnKey    - Key da coluna alvo do resize.
+ * @param currentWidth - Largura efetiva atual (base do calculo do arraste).
+ * @param onResize     - Persiste a nova largura (px) da coluna.
+ */
+function ColumnResizeHandle({
+  columnKey,
+  currentWidth,
+  onResize,
+}: {
+  columnKey: string;
+  currentWidth: number;
+  onResize: (key: string, width: number) => void;
+}) {
+  const [active, setActive] = useState(false);
+
+  function handleMouseDown(e: React.MouseEvent) {
+    // Impede que o mousedown dispare o drag de reorder (dnd-kit) ou o menu.
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startW = currentWidth;
+    setActive(true);
+
+    // Evita selecao de texto e mantem o cursor de resize durante o arraste.
+    const prevUserSelect = document.body.style.userSelect;
+    const prevCursor = document.body.style.cursor;
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    const onMove = (ev: MouseEvent) => {
+      const next = Math.max(RESIZE_MIN_W, startW + (ev.clientX - startX));
+      onResize(columnKey, next);
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      document.body.style.userSelect = prevUserSelect;
+      document.body.style.cursor = prevCursor;
+      setActive(false);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  }
+
+  return (
+    <span
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Redimensionar coluna"
+      onMouseDown={handleMouseDown}
+      // Nao propaga o clique para o botao do titulo (evita abrir/fechar menu).
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: "absolute",
+        top: 0,
+        right: -2,
+        width: 6,
+        height: "100%",
+        cursor: "col-resize",
+        // Discreto: linha sutil so no hover/arraste, transparente em repouso.
+        background: active
+          ? "var(--primary, #7c5cff)"
+          : "transparent",
+        transition: "background .12s",
+        zIndex: 3,
+        touchAction: "none",
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.background = "var(--border)";
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = "transparent";
+      }}
+    />
+  );
+}
+
 /* ─── Cabecalho de colunas ───────────────────────────────────────────────── */
 
 export function HeadRow({
@@ -121,6 +214,8 @@ export function HeadRow({
   onArchiveColumn,
   onRestoreColumn,
   archivedColumns,
+  effectiveWidth,
+  onResizeColumn,
 }: {
   columns: ColumnDef[];
   /** IDs das tasks raiz do grupo — alimenta o "selecionar tudo" do header. */
@@ -140,6 +235,14 @@ export function HeadRow({
   onRestoreColumn?: ArchiveColumnHandler;
   /** Colunas arquivadas (hidden) — alimentam o menu de restauração. */
   archivedColumns?: ArchivedColumn[];
+  /**
+   * Largura efetiva de uma coluna (override custom ou default). Quando presente
+   * junto de `onResizeColumn`, habilita a alca de resize no header. Usada para
+   * calcular a base do arraste, mantendo o colgroup como fonte unica.
+   */
+  effectiveWidth?: (c: ColumnDef) => number;
+  /** Persiste a nova largura (px) de uma coluna. Habilita o resize por drag. */
+  onResizeColumn?: (key: string, width: number) => void;
 }) {
   const selection = useSelection();
   const th: React.CSSProperties = {
@@ -161,9 +264,18 @@ export function HeadRow({
 
   const reorderable = !!reorderableKeys && reorderableKeys.length > 1;
 
+  // Resize so ativa com ambos os inputs (largura efetiva + handler de persistir).
+  const resizable = !!effectiveWidth && !!onResizeColumn;
+
   const headerCells = (
     <>
       {columns.map((c) => {
+        const resize = resizable
+          ? {
+              currentWidth: effectiveWidth!(c),
+              onResize: onResizeColumn!,
+            }
+          : undefined;
         // Com handler de rename: TODA coluna ganha o header editável.
         // - Custom (builtin === false): renomear + arquivar + remover.
         // - Builtin: renomear + arquivar (NUNCA remover — campo de sistema).
@@ -181,6 +293,7 @@ export function HeadRow({
               archivable={!!onArchiveColumn}
               onArchiveColumn={onArchiveColumn}
               sortable={reorderable}
+              resize={resize}
             />
           );
         }
@@ -192,6 +305,7 @@ export function HeadRow({
             column={c}
             thStyle={th}
             sortable={reorderable}
+            resize={resize}
           />
         );
       })}
@@ -247,10 +361,16 @@ export function PlainColumnHeader({
   column,
   thStyle,
   sortable,
+  resize,
 }: {
   column: ColumnDef;
   thStyle: React.CSSProperties;
   sortable?: boolean;
+  /** Quando presente, renderiza a alca de resize na borda direita do `<th>`. */
+  resize?: {
+    currentWidth: number;
+    onResize: (key: string, width: number) => void;
+  };
 }) {
   const {
     setNodeRef,
@@ -277,6 +397,10 @@ export function PlainColumnHeader({
       style={{
         ...thStyle,
         ...dragStyle,
+        // `relative` e necessario para ancorar a alca de resize (absolute).
+        // O dragStyle ja aplica `relative` quando sortable; garantimos aqui
+        // para o caso nao-sortable tambem.
+        position: "relative",
         textAlign: column.builtin ? "left" : "center",
         paddingLeft: column.builtin ? 4 : 8,
       }}
@@ -291,6 +415,13 @@ export function PlainColumnHeader({
       >
         {column.label}
       </span>
+      {resize && (
+        <ColumnResizeHandle
+          columnKey={column.key}
+          currentWidth={resize.currentWidth}
+          onResize={resize.onResize}
+        />
+      )}
     </th>
   );
 }
@@ -306,6 +437,7 @@ export function ColumnHeader({
   removable = true,
   archivable = false,
   sortable,
+  resize,
 }: {
   column: ColumnDef;
   thStyle: React.CSSProperties;
@@ -322,6 +454,11 @@ export function ColumnHeader({
   archivable?: boolean;
   /** Quando true, o header pode ser arrastado para reordenar a coluna. */
   sortable?: boolean;
+  /** Quando presente, renderiza a alca de resize na borda direita do `<th>`. */
+  resize?: {
+    currentWidth: number;
+    onResize: (key: string, width: number) => void;
+  };
 }) {
   const [menu, setMenu] = useState(false);
   const ref = useRef<HTMLButtonElement>(null);
@@ -379,6 +516,9 @@ export function ColumnHeader({
       style={{
         ...thStyle,
         ...dragStyle,
+        // `relative` ancora a alca de resize (absolute). O dragStyle ja aplica
+        // quando sortable; garantimos para o caso nao-sortable tambem.
+        position: "relative",
         // Preserva o alinhamento à esquerda do título (__nome), como no
         // PlainColumnHeader anterior; demais colunas permanecem centradas.
         textAlign: column.builtin ? "left" : thStyle.textAlign,
@@ -508,6 +648,13 @@ export function ColumnHeader({
             )}
           </div>
         </Popover>
+      )}
+      {resize && (
+        <ColumnResizeHandle
+          columnKey={column.key}
+          currentWidth={resize.currentWidth}
+          onResize={resize.onResize}
+        />
       )}
     </th>
   );
