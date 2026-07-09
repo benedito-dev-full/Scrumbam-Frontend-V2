@@ -2203,6 +2203,7 @@ function EditableDueCell({
         : "var(--muted-foreground)";
   return (
     <EditTrigger
+      align="right"
       render={(close) => (
         <MiniCalendar
           value={current}
