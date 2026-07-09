@@ -1387,29 +1387,23 @@ function PanelEmAtraso({
             label="Margem de atraso"
           />
         </div>
-        {tab === "atraso" && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {pendingCount > 0 && (
-              <span
-                title="Atrasos seus sem justificativa"
-                style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  padding: "2px 8px",
-                  borderRadius: 20,
-                  whiteSpace: "nowrap",
-                  background: "rgba(224,169,74,0.14)",
-                  color: WARN,
-                  border: "1px solid rgba(224,169,74,0.26)",
-                }}
-              >
-                {pendingCount} sem justificativa
-              </span>
-            )}
-            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-              precisa de ação
-            </span>
-          </div>
+        {tab === "atraso" && pendingCount > 0 && (
+          <span
+            title="Atrasos seus sem justificativa"
+            style={{
+              flexShrink: 0,
+              fontSize: 10,
+              fontWeight: 600,
+              padding: "2px 7px",
+              borderRadius: 20,
+              whiteSpace: "nowrap",
+              background: "rgba(224,169,74,0.12)",
+              color: WARN,
+              border: "1px solid rgba(224,169,74,0.22)",
+            }}
+          >
+            {pendingCount} sem justificativa
+          </span>
         )}
       </div>
 
@@ -1586,6 +1580,8 @@ function PanelTabButton({
         borderRadius: 7,
         padding: "5px 9px 5px 7px",
         cursor: "pointer",
+        whiteSpace: "nowrap",
+        flexShrink: 0,
         transition: "background .12s, color .12s",
       }}
     >
