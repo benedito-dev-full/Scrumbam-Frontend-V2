@@ -454,6 +454,7 @@ export default function MinhasTarefasPage() {
       return rows.filter((t) => !TERMINAL_STATUSES.includes(t.status));
     if (filter === "due")
       return rows.filter((t) => {
+        if (TERMINAL_STATUSES.includes(t.status)) return false;
         const b = dueBucket(t.dueDate);
         return b === "overdue" || b === "today";
       });
