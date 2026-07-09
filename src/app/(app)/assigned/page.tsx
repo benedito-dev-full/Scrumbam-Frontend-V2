@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Settings,
   CheckCheck,
@@ -18,7 +19,28 @@ import {
   ChevronUp,
   Minus,
 } from "lucide-react";
-import { useMyTasks, useTeamTasks, useUserTasks } from "@/hooks/use-tasks";
+import {
+  useMyTasks,
+  useTeamTasks,
+  useUserTasks,
+  useUpdateTask,
+  useUpdateTaskStatus,
+} from "@/hooks/use-tasks";
+import { qk } from "@/lib/query-keys";
+import {
+  Popover,
+  OptionList,
+  PersonList,
+  inputStyle,
+} from "@/components/lists/groups-view/cells";
+import {
+  STATUS_OPTIONS,
+  PRIORITY_OPTIONS,
+  PILL_TO_V3,
+  V3_TERMINAL_VALIDATED,
+  type MemberLike,
+} from "@/lib/mappers/groups-from-tasks";
+import { intentionToColumn } from "@/lib/mappers/task-status.mapper";
 import { useAllLists } from "@/hooks/use-projects";
 import { useTeams } from "@/hooks/use-teams";
 import { useOrgMembers } from "@/hooks/use-org-members";
@@ -111,7 +133,9 @@ function saudacao() {
 }
 
 /** Retorna 'overdue' | 'today' | 'future' | null a partir do dueDate. */
-function dueBucket(dueDate?: string | null): "overdue" | "today" | "future" | null {
+function dueBucket(
+  dueDate?: string | null,
+): "overdue" | "today" | "future" | null {
   if (!dueDate) return null;
   const d = new Date(dueDate);
   if (Number.isNaN(d.getTime())) return null;
@@ -124,7 +148,10 @@ function dueBucket(dueDate?: string | null): "overdue" | "today" | "future" | nu
 }
 
 /** Rótulo humano do prazo relativo. */
-function dueLabel(dueDate?: string | null): { text: string; tone: "bad" | "warn" | "muted" } {
+function dueLabel(dueDate?: string | null): {
+  text: string;
+  tone: "bad" | "warn" | "muted";
+} {
   const b = dueBucket(dueDate);
   if (b === "overdue") return { text: "atrasada", tone: "bad" };
   if (b === "today") return { text: "vence hoje", tone: "warn" };
@@ -190,8 +217,16 @@ function parseCompletedAt(iso?: string | null): Date | null {
  * Puro e testável.
  */
 function countBusinessDays(start: Date, end: Date): number {
-  const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-  const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+  const cursor = new Date(
+    start.getFullYear(),
+    start.getMonth(),
+    start.getDate(),
+  );
+  const lastDay = new Date(
+    end.getFullYear(),
+    end.getMonth(),
+    end.getDate(),
+  ).getTime();
   let count = 0;
   while (cursor.getTime() <= lastDay) {
     const dow = cursor.getDay(); // 0=domingo … 6=sábado
@@ -219,7 +254,10 @@ function countBusinessDaysInMonth(year: number, month: number): number {
  * 27 dias antes (28 dias corridos ao todo, incluindo hoje).
  * Puro e testável.
  */
-function last4WeeksRange(referenceDate: Date = new Date()): { start: Date; end: Date } {
+function last4WeeksRange(referenceDate: Date = new Date()): {
+  start: Date;
+  end: Date;
+} {
   const y = referenceDate.getFullYear();
   const mo = referenceDate.getMonth();
   const d = referenceDate.getDate();
@@ -248,7 +286,9 @@ export default function MinhasTarefasPage() {
   const pageTitle = isAdmin ? "Painel de tarefas" : "Minhas tarefas";
 
   const [period, setPeriod] = useState<Period>("week");
-  const [filter, setFilter] = useState<"all" | "active" | "due" | "done">("all");
+  const [filter, setFilter] = useState<"all" | "active" | "due" | "done">(
+    "all",
+  );
   // Escopos ativos (mutuamente exclusivos): null/null = minhas tarefas (default);
   // um deles setado = tasks de um time OU de um usuário.
   const [scopeTeamId, setScopeTeamId] = useState<string | null>(null);
@@ -290,10 +330,10 @@ export default function MinhasTarefasPage() {
   const tasks: TaskResponseDto[] = useMemo(
     () =>
       isUserScope
-        ? userScope.data ?? []
+        ? (userScope.data ?? [])
         : isTeamScope
-          ? team.data ?? []
-          : my.data ?? [],
+          ? (team.data ?? [])
+          : (my.data ?? []),
     [isUserScope, isTeamScope, userScope.data, team.data, my.data],
   );
 
@@ -347,7 +387,11 @@ export default function MinhasTarefasPage() {
       const cm = c.getTime();
       if (cm < startMs || cm > endMs) continue;
       doneNoPeriodo++;
-      const dayKey = new Date(c.getFullYear(), c.getMonth(), c.getDate()).getTime();
+      const dayKey = new Date(
+        c.getFullYear(),
+        c.getMonth(),
+        c.getDate(),
+      ).getTime();
       perDay.set(dayKey, (perDay.get(dayKey) ?? 0) + 1);
     }
 
@@ -371,14 +415,24 @@ export default function MinhasTarefasPage() {
     /* Série diária: um bucket por dia da janela.
      * Hoje → 1 barra; Semana → 7 (seg→dom); Mês → dias do mês. */
     const series: { key: number; label: string; count: number }[] = [];
-    const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-    const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+    const cursor = new Date(
+      start.getFullYear(),
+      start.getMonth(),
+      start.getDate(),
+    );
+    const lastDay = new Date(
+      end.getFullYear(),
+      end.getMonth(),
+      end.getDate(),
+    ).getTime();
     while (cursor.getTime() <= lastDay) {
       const key = cursor.getTime();
       const label =
         period === "month"
           ? String(cursor.getDate())
-          : cursor.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "");
+          : cursor
+              .toLocaleDateString("pt-BR", { weekday: "short" })
+              .replace(".", "");
       series.push({ key, label, count: perDay.get(key) ?? 0 });
       cursor.setDate(cursor.getDate() + 1);
     }
@@ -412,7 +466,8 @@ export default function MinhasTarefasPage() {
     }
 
     const diasUteisJanela = countBusinessDays(start, end);
-    const mediaDiaria = diasUteisJanela > 0 ? doneUltimas4Semanas / diasUteisJanela : 0;
+    const mediaDiaria =
+      diasUteisJanela > 0 ? doneUltimas4Semanas / diasUteisJanela : 0;
     return { mediaDiaria, doneUltimas4Semanas, diasUteisJanela, weekBuckets };
   }, [tasks]);
 
@@ -505,7 +560,13 @@ export default function MinhasTarefasPage() {
       // ordena por prazo mais urgente primeiro
       const rank = (t: TaskResponseDto) => {
         const b2 = dueBucket(t.dueDate);
-        return b2 === "overdue" ? 0 : b2 === "today" ? 1 : b2 === "future" ? 2 : 3;
+        return b2 === "overdue"
+          ? 0
+          : b2 === "today"
+            ? 1
+            : b2 === "future"
+              ? 2
+              : 3;
       };
       return rank(a) - rank(b);
     });
@@ -545,7 +606,9 @@ export default function MinhasTarefasPage() {
           background: "var(--background)",
         }}
       >
-        <span style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>
+        <span
+          style={{ fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}
+        >
           {pageTitle}
         </span>
         <button type="button" style={iconBtnStyle}>
@@ -591,7 +654,11 @@ export default function MinhasTarefasPage() {
               {saudacao()}, {userName}
             </h1>
             <div
-              style={{ fontSize: 13, color: "var(--muted-foreground)", marginTop: 5 }}
+              style={{
+                fontSize: 13,
+                color: "var(--muted-foreground)",
+                marginTop: 5,
+              }}
             >
               {scopeUser ? (
                 <>
@@ -619,7 +686,14 @@ export default function MinhasTarefasPage() {
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, alignItems: "flex-end" }}>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+              alignItems: "flex-end",
+            }}
+          >
             {isAdmin && (
               <ScopePicker
                 teams={teams}
@@ -650,7 +724,10 @@ export default function MinhasTarefasPage() {
             loading={isLoading}
           />
           <KpiTempoFocado totalMin={focoNoPeriodoMin} period={period} />
-          <KpiEmAtraso overdue={metrics.overdue.length} today={metrics.dueToday.length} />
+          <KpiEmAtraso
+            overdue={metrics.overdue.length}
+            today={metrics.dueToday.length}
+          />
           <KpiRitmo mediaDiaria={ritmoMetrics.mediaDiaria} period={period} />
         </div>
 
@@ -669,7 +746,10 @@ export default function MinhasTarefasPage() {
             pontualidade={pontualidadeMetrics}
             margemAtraso={margemAtrasoMetrics}
           />
-          <PanelRitmo weekBuckets={ritmoMetrics.weekBuckets} loading={isLoading} />
+          <PanelRitmo
+            weekBuckets={ritmoMetrics.weekBuckets}
+            loading={isLoading}
+          />
         </div>
 
         {/* ── Tabela de tarefas ── */}
@@ -680,6 +760,7 @@ export default function MinhasTarefasPage() {
           onFilter={setFilter}
           loading={isLoading}
           projectMap={projectMap}
+          members={members}
         />
       </div>
     </div>
@@ -795,10 +876,29 @@ function KpiConcluidas({
       label="Concluídas"
       footer="concluídas no período"
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+        }}
+      >
         <div style={{ position: "relative", width: 52, height: 52 }}>
-          <svg width={52} height={52} viewBox="0 0 52 52" style={{ transform: "rotate(-90deg)" }}>
-            <circle cx={26} cy={26} r={R} fill="none" strokeWidth={5} stroke="rgba(255,255,255,0.08)" />
+          <svg
+            width={52}
+            height={52}
+            viewBox="0 0 52 52"
+            style={{ transform: "rotate(-90deg)" }}
+          >
+            <circle
+              cx={26}
+              cy={26}
+              r={R}
+              fill="none"
+              strokeWidth={5}
+              stroke="rgba(255,255,255,0.08)"
+            />
             <circle
               cx={26}
               cy={26}
@@ -827,8 +927,21 @@ function KpiConcluidas({
             {loading ? "—" : `${pct}%`}
           </div>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
-          <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontVariantNumeric: "tabular-nums" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 6,
+            alignItems: "flex-end",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 11,
+              color: "var(--muted-foreground)",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
             {loading ? "" : `${done} / ${total}`}
           </span>
         </div>
@@ -837,7 +950,13 @@ function KpiConcluidas({
   );
 }
 
-function KpiTempoFocado({ totalMin, period }: { totalMin: number; period: Period }) {
+function KpiTempoFocado({
+  totalMin,
+  period,
+}: {
+  totalMin: number;
+  period: Period;
+}) {
   const { c, soft } = KPI.violet;
   const h = Math.floor(totalMin / 60);
   const m = totalMin % 60;
@@ -849,11 +968,44 @@ function KpiTempoFocado({ totalMin, period }: { totalMin: number; period: Period
       label="Tempo focado"
       footer={`registrado ${PERIOD_WORD[period]}`}
     >
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}>
-        <div style={{ fontSize: 28, fontWeight: 650, letterSpacing: "-0.02em", color: c, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: 10,
+        }}
+      >
+        <div
+          style={{
+            fontSize: 28,
+            fontWeight: 650,
+            letterSpacing: "-0.02em",
+            color: c,
+            lineHeight: 1,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
           {h}
-          <small style={{ fontSize: 14, fontWeight: 500, color: "var(--muted-foreground)" }}>h</small> {m}
-          <small style={{ fontSize: 14, fontWeight: 500, color: "var(--muted-foreground)" }}>m</small>
+          <small
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: "var(--muted-foreground)",
+            }}
+          >
+            h
+          </small>{" "}
+          {m}
+          <small
+            style={{
+              fontSize: 14,
+              fontWeight: 500,
+              color: "var(--muted-foreground)",
+            }}
+          >
+            m
+          </small>
         </div>
         <Sparkline color={c} points="0,16 11,14 22,15 33,9 44,11 55,6 64,7" />
       </div>
@@ -873,7 +1025,8 @@ function KpiEmAtraso({ overdue, today }: { overdue: number; today: number }) {
       footer={
         count > 0 ? (
           <span style={{ color: c }}>
-            {overdue} atrasada{overdue !== 1 ? "s" : ""} · {today} vence{today !== 1 ? "m" : ""} hoje
+            {overdue} atrasada{overdue !== 1 ? "s" : ""} · {today} vence
+            {today !== 1 ? "m" : ""} hoje
           </span>
         ) : (
           "nada em atraso"
@@ -881,7 +1034,16 @@ function KpiEmAtraso({ overdue, today }: { overdue: number; today: number }) {
       }
     >
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
-        <div style={{ fontSize: 28, fontWeight: 650, letterSpacing: "-0.02em", color: c, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+        <div
+          style={{
+            fontSize: 28,
+            fontWeight: 650,
+            letterSpacing: "-0.02em",
+            color: c,
+            lineHeight: 1,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
           {count}
         </div>
       </div>
@@ -904,7 +1066,13 @@ const PERIOD_WORD: Record<Period, string> = {
  * - Semana → mediaDiaria × 5 (dias úteis de uma semana)
  * - Mês   → mediaDiaria × dias úteis reais do mês corrente
  */
-function KpiRitmo({ mediaDiaria, period }: { mediaDiaria: number; period: Period }) {
+function KpiRitmo({
+  mediaDiaria,
+  period,
+}: {
+  mediaDiaria: number;
+  period: Period;
+}) {
   const { c, soft } = KPI.sky;
   const now = new Date();
   const fator =
@@ -924,22 +1092,60 @@ function KpiRitmo({ mediaDiaria, period }: { mediaDiaria: number; period: Period
       footer={`ritmo médio (${PERIOD_WORD[period]}) · base: últimas 4 semanas`}
     >
       <div
-        style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: 10,
+        }}
         title={`${displayValue.toFixed(2)}/${PERIOD_WORD[period]} (média diária: ${mediaDiaria.toFixed(2)})`}
       >
-        <div style={{ fontSize: 28, fontWeight: 650, letterSpacing: "-0.02em", color: c, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+        <div
+          style={{
+            fontSize: 28,
+            fontWeight: 650,
+            letterSpacing: "-0.02em",
+            color: c,
+            lineHeight: 1,
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
           {rounded}
         </div>
-        <Sparkline color={c} points="0,10 11,12 22,9 33,11 44,10 55,11 64,9" dim />
+        <Sparkline
+          color={c}
+          points="0,10 11,12 22,9 33,11 44,10 55,11 64,9"
+          dim
+        />
       </div>
     </KpiShell>
   );
 }
 
-function Sparkline({ color, points, dim }: { color: string; points: string; dim?: boolean }) {
+function Sparkline({
+  color,
+  points,
+  dim,
+}: {
+  color: string;
+  points: string;
+  dim?: boolean;
+}) {
   return (
-    <svg width={64} height={22} viewBox="0 0 64 22" style={{ opacity: dim ? 0.4 : 0.95 }}>
-      <polyline points={points} fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      width={64}
+      height={22}
+      viewBox="0 0 64 22"
+      style={{ opacity: dim ? 0.4 : 0.95 }}
+    >
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
@@ -974,9 +1180,37 @@ function PanelShell({
         padding: "16px 18px",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <h2 style={{ margin: 0, fontSize: 13, fontWeight: 600, letterSpacing: "-0.01em", color: "var(--foreground)", display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ width: 22, height: 22, borderRadius: 6, display: "grid", placeItems: "center", background: iconSoft, color: iconColor }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 14,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontSize: 13,
+            fontWeight: 600,
+            letterSpacing: "-0.01em",
+            color: "var(--foreground)",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 6,
+              display: "grid",
+              placeItems: "center",
+              background: iconSoft,
+              color: iconColor,
+            }}
+          >
             {icon}
           </span>
           {title}
@@ -997,7 +1231,11 @@ function PanelShell({
             </span>
           )}
         </h2>
-        {meta && <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>{meta}</span>}
+        {meta && (
+          <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+            {meta}
+          </span>
+        )}
       </div>
       {children}
     </section>
@@ -1051,7 +1289,14 @@ function PanelEmAtraso({
         padding: "16px 18px",
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 14,
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
           <PanelTabButton
             active={tab === "atraso"}
@@ -1080,7 +1325,9 @@ function PanelEmAtraso({
           />
         </div>
         {tab === "atraso" && (
-          <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>precisa de ação</span>
+          <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+            precisa de ação
+          </span>
         )}
       </div>
 
@@ -1088,7 +1335,11 @@ function PanelEmAtraso({
         loading ? (
           <Muted>Carregando…</Muted>
         ) : tasks.length === 0 ? (
-          <EmptyArea icon={<CheckCheck size={20} />} text="Nada em atraso" hint="Você está em dia com seus prazos." />
+          <EmptyArea
+            icon={<CheckCheck size={20} />}
+            text="Nada em atraso"
+            hint="Você está em dia com seus prazos."
+          />
         ) : (
           <div style={{ display: "flex", flexDirection: "column" }}>
             {tasks.map((t) => {
@@ -1109,21 +1360,62 @@ function PanelEmAtraso({
                     textDecoration: "none",
                     transition: "background .12s",
                   }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent)")}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                  onMouseEnter={(e) =>
+                    ((e.currentTarget as HTMLElement).style.background =
+                      "var(--accent)")
+                  }
+                  onMouseLeave={(e) =>
+                    ((e.currentTarget as HTMLElement).style.background =
+                      "transparent")
+                  }
                 >
-                  <span style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 2.5, borderRadius: 3, background: sev }} />
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: 0,
+                      top: 8,
+                      bottom: 8,
+                      width: 2.5,
+                      borderRadius: 3,
+                      background: sev,
+                    }}
+                  />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, color: "var(--foreground)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "var(--foreground)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
                       {t.nome}
                     </div>
-                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 3, display: "flex", gap: 7, alignItems: "center" }}>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: "var(--muted-foreground)",
+                        marginTop: 3,
+                        display: "flex",
+                        gap: 7,
+                        alignItems: "center",
+                      }}
+                    >
                       <PriorityTag priority={t.priority} />
                     </div>
                   </div>
                   <DueBadge label={dl} />
                   {t.identifier && (
-                    <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontVariantNumeric: "tabular-nums" }}>{t.identifier}</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "var(--muted-foreground)",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {t.identifier}
+                    </span>
                   )}
                 </Link>
               );
@@ -1140,7 +1432,10 @@ function PanelEmAtraso({
             hint="Nenhuma tarefa concluída com prazo definido ainda."
           />
         ) : (
-          <PontualidadeReadout mediaDias={pontualidade.mediaDias} amostras={pontualidade.amostras} />
+          <PontualidadeReadout
+            mediaDias={pontualidade.mediaDias}
+            amostras={pontualidade.amostras}
+          />
         )
       ) : loading ? (
         <Muted>Carregando…</Muted>
@@ -1199,7 +1494,17 @@ function PanelTabButton({
         transition: "background .12s, color .12s",
       }}
     >
-      <span style={{ width: 22, height: 22, borderRadius: 6, display: "grid", placeItems: "center", background: iconSoft, color: iconColor }}>
+      <span
+        style={{
+          width: 22,
+          height: 22,
+          borderRadius: 6,
+          display: "grid",
+          placeItems: "center",
+          background: iconSoft,
+          color: iconColor,
+        }}
+      >
         {icon}
       </span>
       {label}
@@ -1264,15 +1569,36 @@ function PontualidadeReadout({
       : `${abs.toFixed(1)} dia${abs >= 2 ? "s" : ""}`;
   const legenda =
     legendaOverride ??
-    (pontual ? "em média, no prazo" : atrasou ? "de atraso médio" : "de adiantamento médio");
+    (pontual
+      ? "em média, no prazo"
+      : atrasou
+        ? "de atraso médio"
+        : "de adiantamento médio");
 
   return (
-    <div style={{ padding: "20px 8px 8px", display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ fontSize: 28, fontWeight: 650, letterSpacing: "-0.02em", color: c, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+    <div
+      style={{
+        padding: "20px 8px 8px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 28,
+          fontWeight: 650,
+          letterSpacing: "-0.02em",
+          color: c,
+          lineHeight: 1,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
         {label}
       </div>
       <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>
-        {legenda} · baseado em {amostras} tarefa{amostras !== 1 ? "s" : ""} concluída
+        {legenda} · baseado em {amostras} tarefa{amostras !== 1 ? "s" : ""}{" "}
+        concluída
         {amostras !== 1 ? "s" : ""} com prazo
       </p>
     </div>
@@ -1280,7 +1606,12 @@ function PontualidadeReadout({
 }
 
 /** Rótulos curtos das 4 barras semanais — index 0 = semana mais recente (contém hoje). */
-const WEEK_BUCKET_LABELS = ["Esta sem.", "-1 sem.", "-2 sem.", "-3 sem."] as const;
+const WEEK_BUCKET_LABELS = [
+  "Esta sem.",
+  "-1 sem.",
+  "-2 sem.",
+  "-3 sem.",
+] as const;
 
 /**
  * Painel "Ritmo de entrega": 4 barras semanais fixas (últimas 4 semanas
@@ -1319,7 +1650,14 @@ function PanelRitmo({
         />
       ) : (
         <div style={{ padding: "24px 8px 8px" }}>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 9, height: 130 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-end",
+              gap: 9,
+              height: 130,
+            }}
+          >
             {weekBuckets.map((count, i) => {
               const isCurrentWeek = i === 0;
               const hgtPct = count === 0 ? 0 : Math.max(6, (count / max) * 100);
@@ -1327,7 +1665,16 @@ function PanelRitmo({
                 <div
                   key={i}
                   title={`${count} concluída${count !== 1 ? "s" : ""}`}
-                  style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 9, height: "100%", justifyContent: "flex-end" }}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: 9,
+                    height: "100%",
+                    justifyContent: "flex-end",
+                  }}
                 >
                   <div
                     style={{
@@ -1335,7 +1682,9 @@ function PanelRitmo({
                       maxWidth: 30,
                       height: `${hgtPct}%`,
                       borderRadius: "4px 4px 0 0",
-                      background: isCurrentWeek ? KPI.violet.c : "rgba(139,123,247,0.32)",
+                      background: isCurrentWeek
+                        ? KPI.violet.c
+                        : "rgba(139,123,247,0.32)",
                     }}
                   />
                   <span
@@ -1366,6 +1715,7 @@ function PanelTabela({
   onFilter,
   loading,
   projectMap,
+  members,
 }: {
   tasks: TaskResponseDto[];
   totalOpen: number;
@@ -1373,6 +1723,7 @@ function PanelTabela({
   onFilter: (f: "all" | "active" | "due" | "done") => void;
   loading: boolean;
   projectMap: Map<string, { nome: string; spaceName: string }>;
+  members: OrgMemberDto[];
 }) {
   const filters: { id: typeof filter; label: string }[] = [
     { id: "all", label: "Todas" },
@@ -1380,12 +1731,54 @@ function PanelTabela({
     { id: "due", label: "Vencendo" },
     { id: "done", label: "Concluídas" },
   ];
+
+  // Edição inline (reaproveita mutations e controles dos Blocos). As mutations
+  // invalidam byProject/byId; como esta tela lê de listas "my/user/team",
+  // invalidamos a raiz `tasks` para refazer o fetch após cada alteração.
+  const updateTask = useUpdateTask();
+  const updateStatus = useUpdateTaskStatus();
+  const queryClient = useQueryClient();
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: qk.tasks.all });
+  };
+  const memberLikes: MemberLike[] = useMemo(
+    () => members.map((m) => ({ userId: m.userId, nome: m.nome })),
+    [members],
+  );
   return (
-    <section style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 12, padding: "16px 18px" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--foreground)" }}>
+    <section
+      style={{
+        background: "var(--card)",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+        padding: "16px 18px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          marginBottom: 8,
+        }}
+      >
+        <h2
+          style={{
+            margin: 0,
+            fontSize: 13,
+            fontWeight: 600,
+            color: "var(--foreground)",
+          }}
+        >
           Atribuídas a mim{" "}
-          <span style={{ fontWeight: 400, color: "var(--muted-foreground)", marginLeft: 2, fontSize: 12 }}>
+          <span
+            style={{
+              fontWeight: 400,
+              color: "var(--muted-foreground)",
+              marginLeft: 2,
+              fontSize: 12,
+            }}
+          >
             {totalOpen} abertas
           </span>
         </h2>
@@ -1400,7 +1793,9 @@ function PanelTabela({
                 style={{
                   fontSize: 12,
                   fontWeight: 500,
-                  color: active ? "var(--foreground)" : "var(--muted-foreground)",
+                  color: active
+                    ? "var(--foreground)"
+                    : "var(--muted-foreground)",
                   border: `1px solid ${active ? "var(--border)" : "transparent"}`,
                   background: active ? "var(--accent)" : "transparent",
                   borderRadius: 6,
@@ -1418,17 +1813,29 @@ function PanelTabela({
       {loading ? (
         <Muted>Carregando…</Muted>
       ) : tasks.length === 0 ? (
-        <EmptyArea icon={<CheckCheck size={20} />} text="Nada aqui" hint="Nenhuma tarefa neste filtro." />
+        <EmptyArea
+          icon={<CheckCheck size={20} />}
+          text="Nada aqui"
+          hint="Nenhuma tarefa neste filtro."
+        />
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr>
-                {["Tarefa", "Projeto", "Status", "Prioridade", "Prazo", "Tempo"].map((h, i) => (
+                {[
+                  "Tarefa",
+                  "Projeto",
+                  "Status",
+                  "Prioridade",
+                  "Responsável",
+                  "Prazo",
+                  "Tempo",
+                ].map((h, i) => (
                   <th
                     key={h}
                     style={{
-                      textAlign: i === 5 ? "right" : "left",
+                      textAlign: i === 6 ? "right" : "left",
                       fontSize: 10,
                       textTransform: "uppercase",
                       letterSpacing: "0.06em",
@@ -1445,33 +1852,87 @@ function PanelTabela({
             </thead>
             <tbody>
               {tasks.map((t) => {
-                const dl = dueLabel(t.dueDate);
                 return (
                   <tr key={t.id}>
                     <td style={tdStyle}>
                       <Link
                         href={`/lists/${t.projectId}`}
-                        style={{ display: "flex", gap: 9, alignItems: "center", color: "var(--foreground)", textDecoration: "none" }}
+                        style={{
+                          display: "flex",
+                          gap: 9,
+                          alignItems: "center",
+                          color: "var(--foreground)",
+                          textDecoration: "none",
+                        }}
                       >
-                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: STATUS_DOT[t.status] ?? "var(--muted-foreground)", flex: "none" }} />
-                        <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 380 }}>{t.nome}</span>
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background:
+                              STATUS_DOT[t.status] ?? "var(--muted-foreground)",
+                            flex: "none",
+                          }}
+                        />
+                        <span
+                          style={{
+                            whiteSpace: "nowrap",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            maxWidth: 380,
+                          }}
+                        >
+                          {t.nome}
+                        </span>
                       </Link>
                     </td>
-                    <td style={{ ...tdStyle, color: "var(--muted-foreground)" }}>
+                    <td
+                      style={{ ...tdStyle, color: "var(--muted-foreground)" }}
+                    >
                       <ProjectCell project={projectMap.get(t.projectId)} />
                     </td>
                     <td style={tdStyle}>
-                      <StatusBadge status={t.status} />
+                      <EditableStatusCell
+                        task={t}
+                        updateStatus={updateStatus}
+                        refresh={refresh}
+                      />
                     </td>
                     <td style={tdStyle}>
-                      <PriorityTag priority={t.priority} />
+                      <EditablePriorityCell
+                        task={t}
+                        updateTask={updateTask}
+                        refresh={refresh}
+                      />
                     </td>
-                    <td style={{ ...tdStyle, fontVariantNumeric: "tabular-nums", fontSize: 12, color: dl.tone === "bad" ? KPI.red.c : dl.tone === "warn" ? WARN : "var(--muted-foreground)" }}>
-                      {dl.text}
+                    <td style={tdStyle}>
+                      <EditablePersonCell
+                        task={t}
+                        members={memberLikes}
+                        updateTask={updateTask}
+                        refresh={refresh}
+                      />
+                    </td>
+                    <td style={tdStyle}>
+                      <EditableDueCell
+                        task={t}
+                        updateTask={updateTask}
+                        refresh={refresh}
+                      />
                     </td>
                     <td style={{ ...tdStyle, textAlign: "right" }}>
-                      <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--muted-foreground)", fontSize: 12, fontFamily: "var(--font-mono, monospace)" }}>
-                        {t.timeSpentLabel && t.timeSpentLabel !== "" ? t.timeSpentLabel : "—"}
+                      <span
+                        style={{
+                          fontVariantNumeric: "tabular-nums",
+                          color: "var(--muted-foreground)",
+                          fontSize: 12,
+                          fontFamily: "var(--font-mono, monospace)",
+                        }}
+                      >
+                        {t.timeSpentLabel && t.timeSpentLabel !== ""
+                          ? t.timeSpentLabel
+                          : "—"}
                       </span>
                     </td>
                   </tr>
@@ -1482,6 +1943,284 @@ function PanelTabela({
         </div>
       )}
     </section>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Células editáveis inline — reaproveitam os controles dos Blocos
+ * (Popover + OptionList/PersonList de groups-view/cells) e as mutations
+ * useUpdateTask/useUpdateTaskStatus. Gerir a tarefa sem entrar no projeto.
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+type UpdateTaskMutation = ReturnType<typeof useUpdateTask>;
+type UpdateStatusMutation = ReturnType<typeof useUpdateTaskStatus>;
+
+/** Gatilho clicável que abre um popover ancorado (via portal, escapa do overflow da tabela). */
+function EditTrigger({
+  disabled,
+  align = "left",
+  render,
+  children,
+}: {
+  disabled?: boolean;
+  align?: "left" | "right";
+  render: (close: () => void) => React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <span
+        ref={ref}
+        role={disabled ? undefined : "button"}
+        tabIndex={disabled ? undefined : 0}
+        onClick={disabled ? undefined : () => setOpen((o) => !o)}
+        onKeyDown={
+          disabled
+            ? undefined
+            : (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setOpen(true);
+                }
+              }
+        }
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          cursor: disabled ? "default" : "pointer",
+          borderRadius: 6,
+          padding: "1px 3px",
+          margin: "-1px -3px",
+        }}
+        title={disabled ? "Validado — estado final" : "Clique para editar"}
+      >
+        {children}
+      </span>
+      {open && !disabled && (
+        <Popover anchorRef={ref} align={align} onClose={() => setOpen(false)}>
+          {render(() => setOpen(false))}
+        </Popover>
+      )}
+    </>
+  );
+}
+
+/** Status — pílula clicável → popover com as 5 opções Kanban (achata V3). */
+function EditableStatusCell({
+  task,
+  updateStatus,
+  refresh,
+}: {
+  task: TaskResponseDto;
+  updateStatus: UpdateStatusMutation;
+  refresh: () => void;
+}) {
+  // VALIDATED é terminal: o backend recusa mudar → travamos a pílula (igual Blocos).
+  const locked = task.status === V3_TERMINAL_VALIDATED;
+  const currentPill = intentionToColumn(task.status);
+  return (
+    <EditTrigger
+      disabled={locked}
+      render={(close) => (
+        <OptionList
+          options={STATUS_OPTIONS}
+          currentId={currentPill}
+          onPick={(pill) => {
+            close();
+            // Só dispara quando TROCA de pílula (preserva estados V3 finos).
+            if (pill === currentPill) return;
+            updateStatus.mutate(
+              {
+                id: task.id,
+                status: PILL_TO_V3[pill],
+                projectId: task.projectId,
+              },
+              { onSuccess: refresh },
+            );
+          }}
+        />
+      )}
+    >
+      <StatusBadge status={task.status} />
+    </EditTrigger>
+  );
+}
+
+/** Prioridade — tag clicável → popover com LOW/MEDIUM/HIGH/URGENT. */
+function EditablePriorityCell({
+  task,
+  updateTask,
+  refresh,
+}: {
+  task: TaskResponseDto;
+  updateTask: UpdateTaskMutation;
+  refresh: () => void;
+}) {
+  return (
+    <EditTrigger
+      render={(close) => (
+        <OptionList
+          options={PRIORITY_OPTIONS}
+          currentId={task.priority ?? null}
+          onPick={(id) => {
+            close();
+            if (id === task.priority) return;
+            updateTask.mutate(
+              { id: task.id, projectId: task.projectId, dto: { priority: id } },
+              { onSuccess: refresh },
+            );
+          }}
+        />
+      )}
+    >
+      <PriorityTag priority={task.priority} />
+    </EditTrigger>
+  );
+}
+
+/** Responsável — avatar/nome clicável → popover com membros (+ Claude/Sem resp.). */
+function EditablePersonCell({
+  task,
+  members,
+  updateTask,
+  refresh,
+}: {
+  task: TaskResponseDto;
+  members: MemberLike[];
+  updateTask: UpdateTaskMutation;
+  refresh: () => void;
+}) {
+  const current = task.assigneeId ?? null;
+  const nome = current
+    ? (members.find((m) => m.userId === current)?.nome ?? null)
+    : null;
+  return (
+    <EditTrigger
+      render={(close) => (
+        <PersonList
+          members={members}
+          currentId={current}
+          onPick={(id) => {
+            close();
+            const next = id || null;
+            if (next === current) return;
+            updateTask.mutate(
+              {
+                id: task.id,
+                projectId: task.projectId,
+                dto: { assigneeId: next, assigneeTeamId: null },
+              },
+              { onSuccess: refresh },
+            );
+          }}
+        />
+      )}
+    >
+      {nome ? (
+        <>
+          <span
+            style={{
+              width: 20,
+              height: 20,
+              borderRadius: "50%",
+              flex: "none",
+              display: "grid",
+              placeItems: "center",
+              fontSize: 9,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              background: avatarColor(current ?? "").soft,
+              color: avatarColor(current ?? "").c,
+            }}
+          >
+            {nome.trim().charAt(0) || "?"}
+          </span>
+          <span
+            style={{
+              fontSize: 12,
+              color: "var(--foreground)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: 130,
+            }}
+          >
+            {nome}
+          </span>
+        </>
+      ) : (
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 22,
+            height: 22,
+            borderRadius: "50%",
+            border: "1.5px dashed var(--border)",
+            color: "var(--muted-foreground)",
+          }}
+          title="Sem responsável"
+        >
+          <UserIcon size={12} />
+        </span>
+      )}
+    </EditTrigger>
+  );
+}
+
+/** Prazo — texto clicável → popover com input de data (limpar = remover prazo). */
+function EditableDueCell({
+  task,
+  updateTask,
+  refresh,
+}: {
+  task: TaskResponseDto;
+  updateTask: UpdateTaskMutation;
+  refresh: () => void;
+}) {
+  const dl = dueLabel(task.dueDate);
+  const current =
+    typeof task.dueDate === "string" && task.dueDate
+      ? task.dueDate.slice(0, 10)
+      : "";
+  const color =
+    dl.tone === "bad"
+      ? KPI.red.c
+      : dl.tone === "warn"
+        ? WARN
+        : "var(--muted-foreground)";
+  return (
+    <EditTrigger
+      render={(close) => (
+        <div style={{ padding: 8 }}>
+          <input
+            autoFocus
+            type="date"
+            defaultValue={current}
+            onChange={(e) => {
+              updateTask.mutate(
+                {
+                  id: task.id,
+                  projectId: task.projectId,
+                  dto: { dueDate: e.target.value || null },
+                },
+                { onSuccess: refresh },
+              );
+              close();
+            }}
+            style={{ ...inputStyle, colorScheme: "dark" }}
+          />
+        </div>
+      )}
+    >
+      <span style={{ fontVariantNumeric: "tabular-nums", fontSize: 12, color }}>
+        {dl.text || "—"}
+      </span>
+    </EditTrigger>
   );
 }
 
@@ -1518,7 +2257,18 @@ function ScopePicker({
           gap: 5,
         }}
       >
-        <span style={{ fontSize: 9, letterSpacing: "0.07em", textTransform: "uppercase", fontWeight: 600, color: "#a9a0e0", background: "rgba(139,123,247,0.16)", padding: "2px 6px", borderRadius: 4 }}>
+        <span
+          style={{
+            fontSize: 9,
+            letterSpacing: "0.07em",
+            textTransform: "uppercase",
+            fontWeight: 600,
+            color: "#a9a0e0",
+            background: "rgba(139,123,247,0.16)",
+            padding: "2px 6px",
+            borderRadius: 4,
+          }}
+        >
           admin
         </span>
         ver
@@ -1592,23 +2342,47 @@ function UserScopeButton({
             <UserIcon size={14} />
           </span>
         )}
-        <span style={{ color: selected ? "var(--foreground)" : "var(--muted-foreground)" }}>
+        <span
+          style={{
+            color: selected ? "var(--foreground)" : "var(--muted-foreground)",
+          }}
+        >
           {selected ? selected.nome : "Usuário"}
         </span>
         <ChevronDown size={14} style={{ color: "var(--muted-foreground)" }} />
       </button>
       {open && (
         <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 30 }} onClick={close} />
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 30 }}
+            onClick={close}
+          />
           <div style={scopeMenuStyle}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 9px", marginBottom: 4, borderBottom: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "6px 9px",
+                marginBottom: 4,
+                borderBottom: "1px solid var(--border)",
+                color: "var(--muted-foreground)",
+              }}
+            >
               <Search size={13} />
               <input
                 autoFocus
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscar usuário…"
-                style={{ flex: 1, background: "transparent", border: 0, outline: 0, color: "var(--foreground)", fontSize: 13 }}
+                style={{
+                  flex: 1,
+                  background: "transparent",
+                  border: 0,
+                  outline: 0,
+                  color: "var(--foreground)",
+                  fontSize: 13,
+                }}
               />
             </div>
 
@@ -1623,12 +2397,20 @@ function UserScopeButton({
             >
               <X size={13} style={{ color: "var(--muted-foreground)" }} />
               <span style={{ flex: 1, textAlign: "left" }}>Minhas tarefas</span>
-              {selectedUserId === null && <Check size={13} style={{ color: "#a9a0e0" }} />}
+              {selectedUserId === null && (
+                <Check size={13} style={{ color: "#a9a0e0" }} />
+              )}
             </button>
 
             <div style={{ maxHeight: 220, overflowY: "auto" }}>
               {filtered.length === 0 ? (
-                <div style={{ padding: "10px 9px", fontSize: 12, color: "var(--muted-foreground)" }}>
+                <div
+                  style={{
+                    padding: "10px 9px",
+                    fontSize: 12,
+                    color: "var(--muted-foreground)",
+                  }}
+                >
                   Nenhum usuário encontrado.
                 </div>
               ) : (
@@ -1662,10 +2444,20 @@ function UserScopeButton({
                       >
                         {m.nome.trim().charAt(0) || "?"}
                       </span>
-                      <span style={{ flex: 1, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <span
+                        style={{
+                          flex: 1,
+                          textAlign: "left",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
                         {m.nome}
                       </span>
-                      {active && <Check size={13} style={{ color: "#a9a0e0" }} />}
+                      {active && (
+                        <Check size={13} style={{ color: "#a9a0e0" }} />
+                      )}
                     </button>
                   );
                 })
@@ -1710,26 +2502,52 @@ function TeamScopeButton({
         onClick={() => setOpen((o) => !o)}
         style={scopeBtnStyle(!!selected)}
       >
-        <span style={{ color: selected ? "#a9a0e0" : "var(--muted-foreground)" }}>
+        <span
+          style={{ color: selected ? "#a9a0e0" : "var(--muted-foreground)" }}
+        >
           <Users size={14} />
         </span>
-        <span style={{ color: selected ? "var(--foreground)" : "var(--muted-foreground)" }}>
+        <span
+          style={{
+            color: selected ? "var(--foreground)" : "var(--muted-foreground)",
+          }}
+        >
           {selected ? selected.nome : "Time"}
         </span>
         <ChevronDown size={14} style={{ color: "var(--muted-foreground)" }} />
       </button>
       {open && (
         <>
-          <div style={{ position: "fixed", inset: 0, zIndex: 30 }} onClick={close} />
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 30 }}
+            onClick={close}
+          />
           <div style={scopeMenuStyle}>
-            <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 9px", marginBottom: 4, borderBottom: "1px solid var(--border)", color: "var(--muted-foreground)" }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 7,
+                padding: "6px 9px",
+                marginBottom: 4,
+                borderBottom: "1px solid var(--border)",
+                color: "var(--muted-foreground)",
+              }}
+            >
               <Search size={13} />
               <input
                 autoFocus
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscar time…"
-                style={{ flex: 1, background: "transparent", border: 0, outline: 0, color: "var(--foreground)", fontSize: 13 }}
+                style={{
+                  flex: 1,
+                  background: "transparent",
+                  border: 0,
+                  outline: 0,
+                  color: "var(--foreground)",
+                  fontSize: 13,
+                }}
               />
             </div>
 
@@ -1744,12 +2562,20 @@ function TeamScopeButton({
             >
               <X size={13} style={{ color: "var(--muted-foreground)" }} />
               <span style={{ flex: 1, textAlign: "left" }}>Minhas tarefas</span>
-              {selectedTeamId === null && <Check size={13} style={{ color: "#a9a0e0" }} />}
+              {selectedTeamId === null && (
+                <Check size={13} style={{ color: "#a9a0e0" }} />
+              )}
             </button>
 
             <div style={{ maxHeight: 220, overflowY: "auto" }}>
               {filtered.length === 0 ? (
-                <div style={{ padding: "10px 9px", fontSize: 12, color: "var(--muted-foreground)" }}>
+                <div
+                  style={{
+                    padding: "10px 9px",
+                    fontSize: 12,
+                    color: "var(--muted-foreground)",
+                  }}
+                >
                   Nenhum time encontrado.
                 </div>
               ) : (
@@ -1774,10 +2600,20 @@ function TeamScopeButton({
                           background: t.color ?? "var(--muted-foreground)",
                         }}
                       />
-                      <span style={{ flex: 1, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      <span
+                        style={{
+                          flex: 1,
+                          textAlign: "left",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
                         {t.nome}
                       </span>
-                      {active && <Check size={13} style={{ color: "#a9a0e0" }} />}
+                      {active && (
+                        <Check size={13} style={{ color: "#a9a0e0" }} />
+                      )}
                     </button>
                   );
                 })
@@ -1849,7 +2685,16 @@ function PeriodToggle({
     { id: "month", label: "Mês" },
   ];
   return (
-    <div style={{ display: "inline-flex", background: "var(--card)", border: "1px solid var(--border)", borderRadius: 8, padding: 3, gap: 2 }}>
+    <div
+      style={{
+        display: "inline-flex",
+        background: "var(--card)",
+        border: "1px solid var(--border)",
+        borderRadius: 8,
+        padding: 3,
+        gap: 2,
+      }}
+    >
       {opts.map((o) => {
         const active = value === o.id;
         return (
@@ -1882,35 +2727,88 @@ function PeriodToggle({
 
 function StatusBadge({ status }: { status: V3Intention }) {
   const map: Record<string, { bg: string; fg: string; bd: string }> = {
-    EXECUTING: { bg: "rgba(139,123,247,0.16)", fg: "#a9a0e0", bd: "rgba(139,123,247,0.2)" },
-    READY: { bg: "rgba(120,160,200,0.12)", fg: "#9fb8d4", bd: "rgba(120,160,200,0.2)" },
-    VALIDATING: { bg: "rgba(139,123,247,0.16)", fg: "#a9a0e0", bd: "rgba(139,123,247,0.2)" },
-    DONE: { bg: "rgba(52,184,122,0.12)", fg: "#34b87a", bd: "rgba(52,184,122,0.2)" },
-    VALIDATED: { bg: "rgba(52,184,122,0.12)", fg: "#34b87a", bd: "rgba(52,184,122,0.2)" },
+    EXECUTING: {
+      bg: "rgba(139,123,247,0.16)",
+      fg: "#a9a0e0",
+      bd: "rgba(139,123,247,0.2)",
+    },
+    READY: {
+      bg: "rgba(120,160,200,0.12)",
+      fg: "#9fb8d4",
+      bd: "rgba(120,160,200,0.2)",
+    },
+    VALIDATING: {
+      bg: "rgba(139,123,247,0.16)",
+      fg: "#a9a0e0",
+      bd: "rgba(139,123,247,0.2)",
+    },
+    DONE: {
+      bg: "rgba(52,184,122,0.12)",
+      fg: "#34b87a",
+      bd: "rgba(52,184,122,0.2)",
+    },
+    VALIDATED: {
+      bg: "rgba(52,184,122,0.12)",
+      fg: "#34b87a",
+      bd: "rgba(52,184,122,0.2)",
+    },
   };
-  const s = map[status] ?? { bg: "rgba(255,255,255,0.05)", fg: "var(--muted-foreground)", bd: "var(--border)" };
+  const s = map[status] ?? {
+    bg: "rgba(255,255,255,0.05)",
+    fg: "var(--muted-foreground)",
+    bd: "var(--border)",
+  };
   return (
-    <span style={{ fontSize: 11, fontWeight: 550, padding: "2px 9px", borderRadius: 20, whiteSpace: "nowrap", background: s.bg, color: s.fg, border: `1px solid ${s.bd}` }}>
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 550,
+        padding: "2px 9px",
+        borderRadius: 20,
+        whiteSpace: "nowrap",
+        background: s.bg,
+        color: s.fg,
+        border: `1px solid ${s.bd}`,
+      }}
+    >
       {STATUS_LABEL[status] ?? status}
     </span>
   );
 }
 
 function PriorityTag({ priority }: { priority?: TaskPriority }) {
-  if (!priority) return <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>—</span>;
+  if (!priority)
+    return (
+      <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>—</span>
+    );
   const meta = PRIORITY_META[priority];
   const Icon = meta.icon;
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--foreground)" }}>
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        fontSize: 12,
+        color: "var(--foreground)",
+      }}
+    >
       <Icon size={12} style={{ color: meta.color }} />
       {meta.label}
     </span>
   );
 }
 
-function ProjectCell({ project }: { project?: { nome: string; spaceName: string } }) {
-  if (!project) return <span style={{ color: "var(--muted-foreground)" }}>—</span>;
-  const title = project.spaceName ? `${project.spaceName} · ${project.nome}` : project.nome;
+function ProjectCell({
+  project,
+}: {
+  project?: { nome: string; spaceName: string };
+}) {
+  if (!project)
+    return <span style={{ color: "var(--muted-foreground)" }}>—</span>;
+  const title = project.spaceName
+    ? `${project.spaceName} · ${project.nome}`
+    : project.nome;
   return (
     <span
       title={title}
@@ -1923,34 +2821,103 @@ function ProjectCell({ project }: { project?: { nome: string; spaceName: string 
         color: "var(--foreground)",
       }}
     >
-      <span style={{ width: 5, height: 5, borderRadius: "50%", background: "var(--muted-foreground)", flex: "none" }} />
-      <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+      <span
+        style={{
+          width: 5,
+          height: 5,
+          borderRadius: "50%",
+          background: "var(--muted-foreground)",
+          flex: "none",
+        }}
+      />
+      <span
+        style={{
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
         {project.nome}
       </span>
     </span>
   );
 }
 
-function DueBadge({ label }: { label: { text: string; tone: "bad" | "warn" | "muted" } }) {
+function DueBadge({
+  label,
+}: {
+  label: { text: string; tone: "bad" | "warn" | "muted" };
+}) {
   if (label.tone === "muted") return null;
   const c = label.tone === "bad" ? KPI.red.c : WARN;
   const soft = label.tone === "bad" ? KPI.red.soft : "rgba(224,169,74,0.14)";
-  const bd = label.tone === "bad" ? "rgba(239,95,95,0.28)" : "rgba(224,169,74,0.26)";
+  const bd =
+    label.tone === "bad" ? "rgba(239,95,95,0.28)" : "rgba(224,169,74,0.26)";
   return (
-    <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 5, whiteSpace: "nowrap", fontWeight: 550, background: soft, color: c, border: `1px solid ${bd}` }}>
+    <span
+      style={{
+        fontSize: 11,
+        padding: "2px 8px",
+        borderRadius: 5,
+        whiteSpace: "nowrap",
+        fontWeight: 550,
+        background: soft,
+        color: c,
+        border: `1px solid ${bd}`,
+      }}
+    >
       {label.text}
     </span>
   );
 }
 
 function Muted({ children }: { children: React.ReactNode }) {
-  return <div style={{ color: "var(--muted-foreground)", fontSize: 12, padding: "8px 0" }}>{children}</div>;
+  return (
+    <div
+      style={{
+        color: "var(--muted-foreground)",
+        fontSize: 12,
+        padding: "8px 0",
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
-function EmptyArea({ icon, text, hint }: { icon: React.ReactNode; text: string; hint: string }) {
+function EmptyArea({
+  icon,
+  text,
+  hint,
+}: {
+  icon: React.ReactNode;
+  text: string;
+  hint: string;
+}) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, padding: "28px 16px", color: "var(--muted-foreground)" }}>
-      <div style={{ width: 36, height: 36, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--accent)" }}>{icon}</div>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 6,
+        padding: "28px 16px",
+        color: "var(--muted-foreground)",
+      }}
+    >
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: "50%",
+          display: "grid",
+          placeItems: "center",
+          background: "var(--accent)",
+        }}
+      >
+        {icon}
+      </div>
       <p style={{ fontSize: 13, fontWeight: 500, margin: 0 }}>{text}</p>
       <p style={{ fontSize: 11, margin: 0, textAlign: "center" }}>{hint}</p>
     </div>
