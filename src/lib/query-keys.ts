@@ -134,5 +134,13 @@ export const qk = {
      */
     pendingCount: (projectId: string | null) =>
       ["delay-justifications", "pending-count", projectId ?? "all"] as const,
+    /**
+     * Agregação do painel admin de motivos (GET /reports/delay-reasons).
+     *
+     * @param groupBy - Dimensão (motivo | usuario | projeto).
+     * @param filters - Filtros aplicados (userId/projectId/motivoClasse/from/to).
+     */
+    report: (groupBy: string, filters: object) =>
+      ["delay-justifications", "report", groupBy, filters] as const,
   },
 } as const;

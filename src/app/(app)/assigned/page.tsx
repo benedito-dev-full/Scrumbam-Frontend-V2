@@ -18,6 +18,7 @@ import {
   Flame,
   ChevronUp,
   Minus,
+  BarChart3,
 } from "lucide-react";
 import {
   useMyTasks,
@@ -35,6 +36,7 @@ import {
 import { TimeSpentCell } from "@/components/lists/groups-view/time-spent-cell";
 import { format } from "date-fns";
 import { MiniCalendar } from "@/components/ui/mini-calendar";
+import { DelayReasonsDrawer } from "@/components/tasks/delay-reasons-drawer";
 import {
   STATUS_OPTIONS,
   PRIORITY_OPTIONS,
@@ -801,6 +803,7 @@ export default function MinhasTarefasPage() {
             loading={isLoading}
             pontualidade={pontualidadeMetrics}
             margemAtraso={margemAtrasoMetrics}
+            isAdmin={isAdmin}
           />
           <PanelRitmo
             weekBuckets={ritmoMetrics.weekBuckets}
@@ -1328,13 +1331,16 @@ function PanelEmAtraso({
   loading,
   pontualidade,
   margemAtraso,
+  isAdmin,
 }: {
   tasks: TaskResponseDto[];
   loading: boolean;
   pontualidade: PontualidadeStats;
   margemAtraso: MargemAtrasoStats;
+  isAdmin: boolean;
 }) {
   const [tab, setTab] = useState<EmAtrasoTab>("atraso");
+  const [reportOpen, setReportOpen] = useState(false);
   // Tarefa cujo modal de justificativa de atraso está aberto (null = fechado).
   const [justifyTask, setJustifyTask] = useState<{
     id: string;
@@ -1387,25 +1393,58 @@ function PanelEmAtraso({
             label="Margem de atraso"
           />
         </div>
-        {tab === "atraso" && pendingCount > 0 && (
-          <span
-            title="Atrasos seus sem justificativa"
-            style={{
-              flexShrink: 0,
-              fontSize: 10,
-              fontWeight: 600,
-              padding: "2px 7px",
-              borderRadius: 20,
-              whiteSpace: "nowrap",
-              background: "rgba(224,169,74,0.12)",
-              color: WARN,
-              border: "1px solid rgba(224,169,74,0.22)",
-            }}
-          >
-            {pendingCount} sem justificativa
-          </span>
-        )}
+        {tab === "atraso" &&
+          pendingCount > 0 &&
+          (isAdmin ? (
+            <button
+              type="button"
+              onClick={() => setReportOpen(true)}
+              title="Ver painel de motivos de atraso"
+              style={{
+                flexShrink: 0,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                fontSize: 10,
+                fontWeight: 600,
+                padding: "2px 8px",
+                borderRadius: 20,
+                whiteSpace: "nowrap",
+                cursor: "pointer",
+                background: "rgba(224,169,74,0.12)",
+                color: WARN,
+                border: "1px solid rgba(224,169,74,0.22)",
+              }}
+            >
+              {pendingCount} sem justificativa
+              <BarChart3 size={11} />
+            </button>
+          ) : (
+            <span
+              title="Atrasos seus sem justificativa"
+              style={{
+                flexShrink: 0,
+                fontSize: 10,
+                fontWeight: 600,
+                padding: "2px 7px",
+                borderRadius: 20,
+                whiteSpace: "nowrap",
+                background: "rgba(224,169,74,0.12)",
+                color: WARN,
+                border: "1px solid rgba(224,169,74,0.22)",
+              }}
+            >
+              {pendingCount} sem justificativa
+            </span>
+          ))}
       </div>
+
+      {isAdmin && (
+        <DelayReasonsDrawer
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
 
       {tab === "atraso" ? (
         loading ? (

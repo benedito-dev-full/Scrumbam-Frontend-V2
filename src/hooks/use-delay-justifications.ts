@@ -147,6 +147,80 @@ export function usePendingDelayCount(projectId: string | null = null) {
   });
 }
 
+// ─── Painel admin de motivos (Fase 2) ─────────────────────────────────────────
+
+/** Dimensão de agrupamento do painel admin de motivos de atraso. */
+export type DelayReasonsGroupBy = "motivo" | "usuario" | "projeto";
+
+/** Filtros compartilhados do painel (todos opcionais). */
+export interface DelayReasonsFilters {
+  userId?: string | null;
+  projectId?: string | null;
+  motivoClasse?: string | null;
+  from?: string | null;
+  to?: string | null;
+}
+
+/** Uma linha do ranking (semântica de key/label varia por groupBy). */
+export interface DelayReasonGroup {
+  key: string;
+  label: string | null;
+  count: number;
+  avgDelayDays: number | null;
+}
+
+/** Resposta de `GET /reports/delay-reasons`. */
+export interface DelayReasonsReport {
+  groupBy: DelayReasonsGroupBy;
+  orgId: string;
+  total: number;
+  groups: DelayReasonGroup[];
+  filters: {
+    userId: string | null;
+    projectId: string | null;
+    motivoClasse: string | null;
+    from: string | null;
+    to: string | null;
+  };
+}
+
+/**
+ * Agregação do painel admin de motivos de atraso (org ADMIN only no backend).
+ *
+ * Mapeia para `GET /reports/delay-reasons` com `groupBy` + filtros. A gaveta
+ * pede um `groupBy` por vez (motivo/usuario/projeto) com os mesmos filtros —
+ * 3 chamadas paralelas. `enabled` mantém a query desligada até a gaveta abrir.
+ *
+ * @param groupBy - Dimensão do ranking.
+ * @param filters - Filtros compartilhados.
+ * @param enabled - Liga a query (ex: só quando a gaveta abre e é admin).
+ * @returns Resultado do useQuery com `data: DelayReasonsReport`
+ */
+export function useDelayReasonsReport(
+  groupBy: DelayReasonsGroupBy,
+  filters: DelayReasonsFilters,
+  enabled = true,
+) {
+  const accessToken = useAuthStore((s) => s.accessToken);
+  return useQuery<DelayReasonsReport>({
+    queryKey: qk.delayJustifications.report(groupBy, filters),
+    queryFn: async () => {
+      const params: Record<string, string> = { groupBy };
+      if (filters.userId) params.userId = filters.userId;
+      if (filters.projectId) params.projectId = filters.projectId;
+      if (filters.motivoClasse) params.motivoClasse = filters.motivoClasse;
+      if (filters.from) params.from = filters.from;
+      if (filters.to) params.to = filters.to;
+      const res = await api.get<DelayReasonsReport>("/reports/delay-reasons", {
+        params,
+      });
+      return res.data;
+    },
+    enabled: !!accessToken && enabled,
+    staleTime: 30_000,
+  });
+}
+
 // ─── Mutation ─────────────────────────────────────────────────────────────────
 
 /**
