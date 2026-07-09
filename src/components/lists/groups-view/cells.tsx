@@ -1,25 +1,18 @@
 "use client";
 
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import {
-  Check,
-  GitBranch,
-  Link2,
-  Lock,
-  Pencil,
-  User,
-} from "lucide-react";
-import type { ColumnDef, ColumnOption, FieldValue } from "@/lib/types/table-fields";
+import { Check, GitBranch, Link2, Lock, Pencil, User } from "lucide-react";
+import type {
+  ColumnDef,
+  ColumnOption,
+  FieldValue,
+} from "@/lib/types/table-fields";
 import type { MemberLike } from "@/lib/mappers/groups-from-tasks";
 import { V3_TERMINAL_VALIDATED } from "@/lib/mappers/groups-from-tasks";
 import { AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
 import { ClaudeAvatar } from "@/app/(app)/lists/[id]/_components/claude-avatar";
+import { MiniCalendar } from "@/components/ui/mini-calendar";
 
 /* ─── inputStyle (compartilhado entre células) ───────────────────────────── */
 
@@ -532,7 +525,9 @@ export function PersonList({
 
       {/* Claude (IA) — paridade com a Lista: divisor + opcao destacada em
           laranja. Atribuir aqui habilita o botao "Executar" na celula Nome. */}
-      <div style={{ borderTop: "1px solid var(--border)", margin: "6px 4px" }} />
+      <div
+        style={{ borderTop: "1px solid var(--border)", margin: "6px 4px" }}
+      />
       <button
         type="button"
         onClick={() => onPick(AI_ASSIGNEE_ID)}
@@ -869,17 +864,14 @@ export function FieldCell({
       >
         {dateText || "—"}
         {open && (
-          <Popover anchorRef={ref} onClose={() => setOpen(false)}>
-            <div style={{ padding: 8 }}>
-              <input
-                autoFocus
-                type="date"
-                defaultValue={typeof value === "string" ? value : ""}
-                onChange={(e) => onChange(e.target.value || null)}
-                onBlur={() => setOpen(false)}
-                style={{ ...inputStyle, colorScheme: "dark" }}
-              />
-            </div>
+          <Popover anchorRef={ref} onClose={() => setOpen(false)} align="right">
+            <MiniCalendar
+              value={typeof value === "string" ? value.slice(0, 10) : ""}
+              onSelect={(v) => {
+                onChange(v);
+                setOpen(false);
+              }}
+            />
           </Popover>
         )}
       </td>

@@ -18,6 +18,8 @@ import type {
 } from "@/lib/types/api";
 import type { StatusVisualKey } from "../_lib/list-view-types";
 import { ClaudeAvatar } from "./claude-avatar";
+import { Popover } from "@/components/lists/groups-view/cells";
+import { MiniCalendar } from "@/components/ui/mini-calendar";
 
 export function IcCalendarInline({
   size = 13,
@@ -173,9 +175,7 @@ const ALL_STATUS_VISUAL_ROW: StatusVisualKey[] = [
   "falhou",
 ];
 
-const ALL_PRIO_VISUAL_ROW = Object.keys(
-  PRIO_CONFIG_MAP,
-) as PriorityVisualKey[];
+const ALL_PRIO_VISUAL_ROW = Object.keys(PRIO_CONFIG_MAP) as PriorityVisualKey[];
 
 interface BaseCellProps {
   tdStyle: React.CSSProperties;
@@ -326,7 +326,9 @@ export function TaskAssigneeCell({
               }}
             >
               <IcUserInline size={14} color="var(--muted-foreground)" />
-              <span style={{ color: "var(--foreground)" }}>Sem responsável</span>
+              <span style={{ color: "var(--foreground)" }}>
+                Sem responsável
+              </span>
               {!task.assigneeId && <IcCheck size={12} />}
             </button>
             {members.map((member) => {
@@ -345,9 +347,7 @@ export function TaskAssigneeCell({
                   style={{
                     ...assigneeItemStyle("var(--foreground)"),
                     gap: 8,
-                    background: isSelected
-                      ? "rgba(124,92,255,0.14)"
-                      : "none",
+                    background: isSelected ? "rgba(124,92,255,0.14)" : "none",
                   }}
                 >
                   <span
@@ -372,7 +372,9 @@ export function TaskAssigneeCell({
                 </button>
               );
             })}
-            <div style={{ borderTop: "1px solid #2e2e38", margin: "6px 4px" }} />
+            <div
+              style={{ borderTop: "1px solid #2e2e38", margin: "6px 4px" }}
+            />
             <button
               type="button"
               onClick={() => onAssigneeChange(AI_ASSIGNEE_ID)}
@@ -474,67 +476,64 @@ export function TaskDueDateCell({
   onStopEdit,
   onDateChange,
 }: TaskDueDateCellProps) {
+  const anchorRef = React.useRef<HTMLTableCellElement>(null);
   const dateLabel = dueDate
-    ? new Date(dueDate.slice(0, 10) + "T12:00:00").toLocaleDateString(
-        "pt-BR",
-        { day: "2-digit", month: "short" },
-      )
+    ? new Date(dueDate.slice(0, 10) + "T12:00:00").toLocaleDateString("pt-BR", {
+        day: "2-digit",
+        month: "short",
+      })
     : null;
 
   return (
-    <td style={{ ...tdStyle, padding: "0 10px", position: "relative" }}>
-      {editing ? (
-        <input
-          type="date"
-          autoFocus
-          defaultValue={dueDate?.slice(0, 10) ?? ""}
-          onChange={(e) => onDateChange(e.target.value || null)}
-          onBlur={onStopEdit}
-          style={{
-            background: "var(--card)",
-            border: "1px solid #7c5cff",
-            borderRadius: 5,
-            color: "var(--foreground)",
-            fontSize: 12,
-            padding: "2px 6px",
-            outline: "none",
-            colorScheme: "dark",
-          }}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={onStartEdit}
-          style={{
-            background: "none",
-            border: 0,
-            cursor: "pointer",
-            padding: 0,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 5,
-          }}
-          title="Alterar data"
-        >
-          {dateLabel ? (
-            <span
-              style={{
-                fontSize: 12,
-                color: overdue ? "#fbbf24" : "var(--muted-foreground)",
-              }}
-            >
-              {overdue && "⚠ "}
-              {dateLabel}
+    <td
+      ref={anchorRef}
+      style={{ ...tdStyle, padding: "0 10px", position: "relative" }}
+    >
+      <button
+        type="button"
+        onClick={onStartEdit}
+        style={{
+          background: "none",
+          border: 0,
+          cursor: "pointer",
+          padding: 0,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+        }}
+        title="Alterar data"
+      >
+        {dateLabel ? (
+          <span
+            style={{
+              fontSize: 12,
+              color: overdue ? "#fbbf24" : "var(--muted-foreground)",
+            }}
+          >
+            {overdue && "⚠ "}
+            {dateLabel}
+          </span>
+        ) : (
+          <span
+            style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+          >
+            <IcCalendarInline size={13} color="var(--muted-foreground)" />
+            <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
+              Definir data
             </span>
-          ) : (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <IcCalendarInline size={13} color="var(--muted-foreground)" />
-              <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-                Definir data
-              </span>
-            </span>
-          )}
-        </button>
+          </span>
+        )}
+      </button>
+      {editing && (
+        <Popover anchorRef={anchorRef} onClose={onStopEdit} align="right">
+          <MiniCalendar
+            value={dueDate?.slice(0, 10) ?? ""}
+            onSelect={(v) => {
+              onDateChange(v);
+              onStopEdit();
+            }}
+          />
+        </Popover>
       )}
     </td>
   );
@@ -587,7 +586,9 @@ export function TaskPriorityCell({
             <span style={{ fontSize: 12, color: prioColor }}>{prioLabel}</span>
           </>
         ) : (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <span
+            style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+          >
             <IcFlagInline size={12} color="var(--muted-foreground)" />
             <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
               Definir
@@ -634,7 +635,9 @@ export function TaskPriorityCell({
                   style={dropItemStyle(cfg.color)}
                 >
                   <IcFlagInline size={12} color={cfg.color} />
-                  <span style={{ color: "var(--foreground)" }}>{cfg.label}</span>
+                  <span style={{ color: "var(--foreground)" }}>
+                    {cfg.label}
+                  </span>
                   {currentPrioVisual === priorityKey && <IcCheck size={11} />}
                 </button>
               );
@@ -726,9 +729,7 @@ export function TaskStatusCell({
                     width: "100%",
                     padding: "7px 10px",
                     borderRadius: 5,
-                    background: isSelected
-                      ? "rgba(124,92,255,0.12)"
-                      : "none",
+                    background: isSelected ? "rgba(124,92,255,0.12)" : "none",
                     border: 0,
                     cursor: "pointer",
                     textAlign: "left" as const,
@@ -737,7 +738,9 @@ export function TaskStatusCell({
                   }}
                 >
                   <Icon size={12} />
-                  <span style={{ color: "var(--foreground)" }}>{cfg.label}</span>
+                  <span style={{ color: "var(--foreground)" }}>
+                    {cfg.label}
+                  </span>
                   {isSelected && <IcCheck size={11} />}
                 </button>
               );
