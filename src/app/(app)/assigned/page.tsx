@@ -502,6 +502,11 @@ export default function MinhasTarefasPage() {
   const pontualidadeMetrics = useMemo(() => {
     let somaDias = 0;
     let amostras = 0;
+    let adiantadas = 0;
+    let noDia = 0;
+    let atrasadas = 0;
+    let maisAdiantada: { nome: string; dias: number } | null = null;
+    let maisAtrasada: { nome: string; dias: number } | null = null;
     for (const t of tasks) {
       if (!DONE_STATUSES.includes(t.status)) continue;
       if (!t.dueDate) continue;
@@ -512,9 +517,28 @@ export default function MinhasTarefasPage() {
       const diffDays = (completed.getTime() - due.getTime()) / 86_400_000;
       somaDias += diffDays;
       amostras++;
+      // Classificação por DIA de calendário: concluir no mesmo dia do prazo
+      // conta como "no dia"; antes = adiantada; depois = atrasada.
+      const dueDay = t.dueDate.slice(0, 10);
+      const compDay = format(completed, "yyyy-MM-dd");
+      if (compDay < dueDay) adiantadas++;
+      else if (compDay > dueDay) atrasadas++;
+      else noDia++;
+      if (diffDays < 0 && (!maisAdiantada || diffDays < maisAdiantada.dias))
+        maisAdiantada = { nome: t.nome, dias: diffDays };
+      if (diffDays > 0 && (!maisAtrasada || diffDays > maisAtrasada.dias))
+        maisAtrasada = { nome: t.nome, dias: diffDays };
     }
     const mediaDias = amostras > 0 ? somaDias / amostras : null;
-    return { mediaDias, amostras };
+    return {
+      mediaDias,
+      amostras,
+      adiantadas,
+      noDia,
+      atrasadas,
+      maisAdiantada,
+      maisAtrasada,
+    };
   }, [tasks]);
 
   /* ── Margem de atraso (recorte "por usuário logado") — irmã da Pontualidade ──
@@ -1291,7 +1315,7 @@ function PanelEmAtraso({
 }: {
   tasks: TaskResponseDto[];
   loading: boolean;
-  pontualidade: { mediaDias: number | null; amostras: number };
+  pontualidade: PontualidadeStats;
   margemAtraso: { mediaDias: number | null; amostras: number };
 }) {
   const [tab, setTab] = useState<EmAtrasoTab>("atraso");
@@ -1448,10 +1472,7 @@ function PanelEmAtraso({
             hint="Nenhuma tarefa concluída com prazo definido ainda."
           />
         ) : (
-          <PontualidadeReadout
-            mediaDias={pontualidade.mediaDias}
-            amostras={pontualidade.amostras}
-          />
+          <PontualidadePanel stats={pontualidade} />
         )
       ) : loading ? (
         <Muted>Carregando…</Muted>
@@ -1565,6 +1586,290 @@ function PanelTabButton({
  * `amostras > 0` — o empty state (`amostras === 0`) já foi tratado ali antes
  * de chegar aqui, então `mediaDias` é garantidamente `number` neste ponto.
  */
+type PontualidadeStats = {
+  mediaDias: number | null;
+  amostras: number;
+  adiantadas: number;
+  noDia: number;
+  atrasadas: number;
+  maisAdiantada: { nome: string; dias: number } | null;
+  maisAtrasada: { nome: string; dias: number } | null;
+};
+
+/** Desvio em dias → rótulo curto ("4d", "6h"). */
+function desvioLabel(dias: number): string {
+  const abs = Math.abs(dias);
+  if (abs < 1) return `${Math.max(1, Math.round(abs * 24))}h`;
+  return `${Math.round(abs)}d`;
+}
+
+function ExtremoRow({
+  icon,
+  label,
+  nome,
+  desvio,
+  color,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  nome: string;
+  desvio: string;
+  color: string;
+}) {
+  return (
+    <div
+      style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12 }}
+    >
+      <span style={{ display: "inline-flex", flex: "none" }}>{icon}</span>
+      <span style={{ color: "var(--muted-foreground)", flex: "none" }}>
+        {label}
+      </span>
+      <span
+        style={{
+          color: "var(--foreground)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          flex: 1,
+          minWidth: 0,
+        }}
+        title={nome}
+      >
+        {nome}
+      </span>
+      <span
+        style={{
+          color,
+          fontWeight: 600,
+          fontVariantNumeric: "tabular-nums",
+          flex: "none",
+        }}
+      >
+        {desvio}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Painel rico da aba "Pontualidade": manchete (desvio médio) + taxa dentro do
+ * prazo + distribuição (adiantadas/no dia/atrasadas) + extremos (mais adiantada
+ * e mais atrasada). Tudo derivado no client de `completedAt` vs `dueDate`.
+ */
+function PontualidadePanel({ stats }: { stats: PontualidadeStats }) {
+  const {
+    amostras,
+    adiantadas,
+    noDia,
+    atrasadas,
+    maisAdiantada,
+    maisAtrasada,
+  } = stats;
+  const media = stats.mediaDias ?? 0;
+  const pontual = Math.abs(media) <= 0.05;
+  const atrasou = media > 0.05;
+  const headColor = pontual ? KPI.violet.c : atrasou ? KPI.red.c : KPI.sky.c;
+  const abs = Math.abs(media);
+  const headNum = pontual
+    ? "0h"
+    : abs < 1
+      ? `${Math.round(abs * 24)}h`
+      : `${abs.toFixed(1)} dia${abs >= 2 ? "s" : ""}`;
+  const headLegend = pontual
+    ? "em média, no prazo"
+    : atrasou
+      ? "de atraso médio"
+      : "de adiantamento médio";
+
+  const dentroPrazo = adiantadas + noDia;
+  const pct = amostras > 0 ? Math.round((dentroPrazo / amostras) * 100) : 0;
+  const pctColor = pct >= 70 ? KPI.green.c : pct >= 40 ? WARN : KPI.red.c;
+
+  const segs = [
+    { n: adiantadas, c: KPI.sky.c, label: "Adiantadas" },
+    { n: noDia, c: KPI.violet.c, label: "No dia" },
+    { n: atrasadas, c: KPI.red.c, label: "Atrasadas" },
+  ];
+
+  return (
+    <div
+      style={{
+        padding: "16px 8px 8px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 18,
+      }}
+    >
+      {/* Manchete + taxa dentro do prazo */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontSize: 30,
+              fontWeight: 650,
+              letterSpacing: "-0.02em",
+              color: headColor,
+              lineHeight: 1,
+            }}
+          >
+            {headNum}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+              marginTop: 6,
+            }}
+          >
+            {headLegend} · {amostras} tarefa{amostras !== 1 ? "s" : ""} com
+            prazo
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            padding: "8px 14px",
+            borderRadius: 10,
+            background: "var(--accent)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 650,
+              color: pctColor,
+              lineHeight: 1,
+            }}
+          >
+            {pct}%
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--muted-foreground)",
+              marginTop: 4,
+            }}
+          >
+            dentro do prazo · {dentroPrazo}/{amostras}
+          </div>
+        </div>
+      </div>
+
+      {/* Distribuição */}
+      <div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            color: "var(--muted-foreground)",
+            marginBottom: 8,
+          }}
+        >
+          Distribuição
+        </div>
+        <div
+          style={{
+            display: "flex",
+            height: 10,
+            borderRadius: 5,
+            overflow: "hidden",
+            background: "var(--accent)",
+          }}
+        >
+          {segs.map((s, i) =>
+            s.n > 0 ? (
+              <div
+                key={i}
+                title={`${s.label}: ${s.n}`}
+                style={{ width: `${(s.n / amostras) * 100}%`, background: s.c }}
+              />
+            ) : null,
+          )}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 16,
+            flexWrap: "wrap",
+            marginTop: 10,
+          }}
+        >
+          {segs.map((s, i) => (
+            <span
+              key={i}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                color: "var(--muted-foreground)",
+              }}
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: s.c,
+                }}
+              />
+              {s.label}{" "}
+              <span style={{ color: "var(--foreground)", fontWeight: 600 }}>
+                {s.n}
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Extremos */}
+      {(maisAdiantada || maisAtrasada) && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            borderTop: "1px solid var(--border)",
+            paddingTop: 14,
+          }}
+        >
+          {maisAdiantada && (
+            <ExtremoRow
+              icon={<ChevronUp size={13} style={{ color: KPI.sky.c }} />}
+              label="Mais adiantada"
+              nome={maisAdiantada.nome}
+              desvio={`−${desvioLabel(maisAdiantada.dias)}`}
+              color={KPI.sky.c}
+            />
+          )}
+          {maisAtrasada && (
+            <ExtremoRow
+              icon={<ChevronDown size={13} style={{ color: KPI.red.c }} />}
+              label="Mais atrasada"
+              nome={maisAtrasada.nome}
+              desvio={`+${desvioLabel(maisAtrasada.dias)}`}
+              color={KPI.red.c}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PontualidadeReadout({
   mediaDias,
   amostras,
