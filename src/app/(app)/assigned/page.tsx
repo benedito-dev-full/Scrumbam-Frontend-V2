@@ -554,6 +554,12 @@ export default function MinhasTarefasPage() {
   const margemAtrasoMetrics = useMemo(() => {
     let somaDias = 0;
     let amostras = 0;
+    let totalComPrazo = 0;
+    let ate1 = 0;
+    let de2a3 = 0;
+    let de4a7 = 0;
+    let mais7 = 0;
+    let pior: { nome: string; dias: number } | null = null;
     for (const t of tasks) {
       if (!DONE_STATUSES.includes(t.status)) continue;
       if (!t.dueDate) continue;
@@ -561,13 +567,35 @@ export default function MinhasTarefasPage() {
       if (!completed) continue;
       const due = new Date(t.dueDate);
       if (Number.isNaN(due.getTime())) continue;
+      totalComPrazo++;
+      // Atraso por DIA de calendário (consistente com a aba Pontualidade):
+      // só conta quem concluiu DEPOIS do dia do prazo. Mesmo-dia à tarde
+      // (diffDays > 0 mas mesmo compDay) NÃO é atraso.
+      const dueDay = t.dueDate.slice(0, 10);
+      const compDay = format(completed, "yyyy-MM-dd");
+      if (compDay <= dueDay) continue;
       const diffDays = (completed.getTime() - due.getTime()) / 86_400_000;
-      if (diffDays <= 0) continue; // exclui pontuais (=0) e adiantadas (<0)
       somaDias += diffDays;
       amostras++;
+      const dias = Math.max(1, Math.round(diffDays));
+      if (dias <= 1) ate1++;
+      else if (dias <= 3) de2a3++;
+      else if (dias <= 7) de4a7++;
+      else mais7++;
+      if (!pior || diffDays > pior.dias)
+        pior = { nome: t.nome, dias: diffDays };
     }
     const mediaDias = amostras > 0 ? somaDias / amostras : null;
-    return { mediaDias, amostras };
+    return {
+      mediaDias,
+      amostras,
+      totalComPrazo,
+      ate1,
+      de2a3,
+      de4a7,
+      mais7,
+      pior,
+    };
   }, [tasks]);
 
   /* ── Tempo focado do PERÍODO ──
@@ -1316,7 +1344,7 @@ function PanelEmAtraso({
   tasks: TaskResponseDto[];
   loading: boolean;
   pontualidade: PontualidadeStats;
-  margemAtraso: { mediaDias: number | null; amostras: number };
+  margemAtraso: MargemAtrasoStats;
 }) {
   const [tab, setTab] = useState<EmAtrasoTab>("atraso");
 
@@ -1483,11 +1511,7 @@ function PanelEmAtraso({
           hint="Nenhuma tarefa atrasada concluída com prazo definido ainda."
         />
       ) : (
-        <PontualidadeReadout
-          mediaDias={margemAtraso.mediaDias}
-          amostras={margemAtraso.amostras}
-          legendaOverride="de atraso médio, quando atrasa"
-        />
+        <MargemAtrasoPanel stats={margemAtraso} />
       )}
     </section>
   );
@@ -1870,58 +1894,199 @@ function PontualidadePanel({ stats }: { stats: PontualidadeStats }) {
   );
 }
 
-function PontualidadeReadout({
-  mediaDias,
-  amostras,
-  legendaOverride,
-}: {
-  mediaDias: number;
+type MargemAtrasoStats = {
+  mediaDias: number | null;
   amostras: number;
-  legendaOverride?: string;
-}) {
-  const atrasou = mediaDias > 0;
-  const pontual = Math.abs(mediaDias) < 0.05;
-  const c = pontual ? KPI.violet.c : atrasou ? KPI.red.c : KPI.sky.c;
-  const abs = Math.abs(mediaDias);
-  const label = pontual
-    ? "0h"
-    : abs < 1
-      ? `${Math.round(abs * 24)}h`
-      : `${abs.toFixed(1)} dia${abs >= 2 ? "s" : ""}`;
-  const legenda =
-    legendaOverride ??
-    (pontual
-      ? "em média, no prazo"
-      : atrasou
-        ? "de atraso médio"
-        : "de adiantamento médio");
+  totalComPrazo: number;
+  ate1: number;
+  de2a3: number;
+  de4a7: number;
+  mais7: number;
+  pior: { nome: string; dias: number } | null;
+};
+
+/**
+ * Painel rico da aba "Margem de atraso": só sobre tarefas que ATRASARAM.
+ * Manchete (atraso médio) + quanto do total atrasou + severidade em faixas
+ * + a pior tarefa. Derivado no client de `completedAt` vs `dueDate`.
+ */
+function MargemAtrasoPanel({ stats }: { stats: MargemAtrasoStats }) {
+  const { amostras, totalComPrazo, ate1, de2a3, de4a7, mais7, pior } = stats;
+  const media = stats.mediaDias ?? 0;
+  const headNum =
+    media < 1
+      ? `${Math.round(media * 24)}h`
+      : `${media.toFixed(1)} dia${media >= 2 ? "s" : ""}`;
+
+  const pct =
+    totalComPrazo > 0 ? Math.round((amostras / totalComPrazo) * 100) : 0;
+  // Menos atraso = melhor → verde; muito atraso = vermelho.
+  const pctColor = pct <= 20 ? KPI.green.c : pct <= 40 ? WARN : KPI.red.c;
+
+  const segs = [
+    { n: ate1, c: "#e0a94a", label: "1 dia" },
+    { n: de2a3, c: "#e08a4a", label: "2–3 dias" },
+    { n: de4a7, c: "#e0715f", label: "4–7 dias" },
+    { n: mais7, c: KPI.red.c, label: "+1 sem" },
+  ];
 
   return (
     <div
       style={{
-        padding: "20px 8px 8px",
+        padding: "16px 8px 8px",
         display: "flex",
         flexDirection: "column",
-        gap: 8,
+        gap: 18,
       }}
     >
+      {/* Manchete + quanto do total atrasou */}
       <div
         style={{
-          fontSize: 28,
-          fontWeight: 650,
-          letterSpacing: "-0.02em",
-          color: c,
-          lineHeight: 1,
-          fontVariantNumeric: "tabular-nums",
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          gap: 16,
+          flexWrap: "wrap",
         }}
       >
-        {label}
+        <div>
+          <div
+            style={{
+              fontSize: 30,
+              fontWeight: 650,
+              letterSpacing: "-0.02em",
+              color: KPI.red.c,
+              lineHeight: 1,
+              fontVariantNumeric: "tabular-nums",
+            }}
+          >
+            {headNum}
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+              marginTop: 6,
+            }}
+          >
+            de atraso médio, quando atrasa · {amostras} atrasada
+            {amostras !== 1 ? "s" : ""}
+          </div>
+        </div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            padding: "8px 14px",
+            borderRadius: 10,
+            background: "var(--accent)",
+            border: "1px solid var(--border)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 650,
+              color: pctColor,
+              lineHeight: 1,
+            }}
+          >
+            {pct}%
+          </div>
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--muted-foreground)",
+              marginTop: 4,
+            }}
+          >
+            do total atrasou · {amostras}/{totalComPrazo}
+          </div>
+        </div>
       </div>
-      <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>
-        {legenda} · baseado em {amostras} tarefa{amostras !== 1 ? "s" : ""}{" "}
-        concluída
-        {amostras !== 1 ? "s" : ""} com prazo
-      </p>
+
+      {/* Severidade do atraso */}
+      <div>
+        <div
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            color: "var(--muted-foreground)",
+            marginBottom: 8,
+          }}
+        >
+          Severidade do atraso
+        </div>
+        <div
+          style={{
+            display: "flex",
+            height: 10,
+            borderRadius: 5,
+            overflow: "hidden",
+            background: "var(--accent)",
+          }}
+        >
+          {segs.map((s, i) =>
+            s.n > 0 ? (
+              <div
+                key={i}
+                title={`${s.label}: ${s.n}`}
+                style={{ width: `${(s.n / amostras) * 100}%`, background: s.c }}
+              />
+            ) : null,
+          )}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: 16,
+            flexWrap: "wrap",
+            marginTop: 10,
+          }}
+        >
+          {segs.map((s, i) => (
+            <span
+              key={i}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 12,
+                color: "var(--muted-foreground)",
+              }}
+            >
+              <span
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: s.c,
+                }}
+              />
+              {s.label}{" "}
+              <span style={{ color: "var(--foreground)", fontWeight: 600 }}>
+                {s.n}
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Pior atraso */}
+      {pior && (
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+          <ExtremoRow
+            icon={<AlertTriangle size={13} style={{ color: KPI.red.c }} />}
+            label="Pior atraso"
+            nome={pior.nome}
+            desvio={`+${desvioLabel(pior.dias)}`}
+            color={KPI.red.c}
+          />
+        </div>
+      )}
     </div>
   );
 }
