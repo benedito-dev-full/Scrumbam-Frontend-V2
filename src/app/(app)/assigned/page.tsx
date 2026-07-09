@@ -446,6 +446,35 @@ export default function MinhasTarefasPage() {
     return { mediaDias, amostras };
   }, [tasks]);
 
+  /* ── Margem de atraso (recorte "por usuário logado") — irmã da Pontualidade ──
+   * Mesma base de `pontualidadeMetrics` (`completedAt - dueDate` das tarefas
+   * concluídas DONE/VALIDATED com `dueDate`), mas agrega SÓ o subconjunto que
+   * atrasou de fato (`diffDays > 0`, atraso ESTRITO). Tarefas entregues
+   * exatamente no prazo (`diffDays === 0`) e tarefas adiantadas (`diffDays < 0`)
+   * são EXCLUÍDAS — não entram nem como 0. Responde "quando atraso, de quanto
+   * costuma ser esse atraso?" (diferente de Pontualidade, que responde "no
+   * saldo geral, estou adiantado ou atrasado?"). DEV-132.
+   *
+   * Consumido pela aba "Margem de atraso" do painel `PanelEmAtraso` (3ª aba). */
+  const margemAtrasoMetrics = useMemo(() => {
+    let somaDias = 0;
+    let amostras = 0;
+    for (const t of tasks) {
+      if (!DONE_STATUSES.includes(t.status)) continue;
+      if (!t.dueDate) continue;
+      const completed = parseCompletedAt(t.completedAt);
+      if (!completed) continue;
+      const due = new Date(t.dueDate);
+      if (Number.isNaN(due.getTime())) continue;
+      const diffDays = (completed.getTime() - due.getTime()) / 86_400_000;
+      if (diffDays <= 0) continue; // exclui pontuais (=0) e adiantadas (<0)
+      somaDias += diffDays;
+      amostras++;
+    }
+    const mediaDias = amostras > 0 ? somaDias / amostras : null;
+    return { mediaDias, amostras };
+  }, [tasks]);
+
   /* ── Tempo focado do PERÍODO ──
    * Soma `durationMs` das sessões manuais cujo `startedAt` cai na janela do
    * período ativo. Borda: a sessão conta pelo `startedAt` — se cai em
@@ -638,6 +667,7 @@ export default function MinhasTarefasPage() {
             tasks={metrics.atRisk}
             loading={isLoading}
             pontualidade={pontualidadeMetrics}
+            margemAtraso={margemAtrasoMetrics}
           />
           <PanelRitmo weekBuckets={ritmoMetrics.weekBuckets} loading={isLoading} />
         </div>
@@ -974,19 +1004,26 @@ function PanelShell({
   );
 }
 
-type EmAtrasoTab = "atraso" | "pontualidade";
+type EmAtrasoTab = "atraso" | "pontualidade" | "margem-atraso";
 
 /**
- * Painel "Em atraso" / "Pontualidade" — mesmo card, 2 abas (Task 8, Fase 4).
+ * Painel "Em atraso" / "Pontualidade" / "Margem de atraso" — mesmo card, 3
+ * abas (Task 8, Fase 4 + DEV-132).
  *
- * Substitui o título estático do `PanelShell` por um seletor de 2 abas no
- * canto superior esquerdo do próprio card (não é navegação de página):
+ * Substitui o título estático do `PanelShell` por um seletor de abas no canto
+ * superior esquerdo do próprio card (não é navegação de página):
  * - "Em atraso": comportamento ORIGINAL, sem nenhuma mudança (lista de tarefas
  *   atrasadas, badge de contagem, `EmptyArea` quando vazio).
- * - "Pontualidade" (nova): substitui a lista pelo número grande de
+ * - "Pontualidade": substitui a lista pelo número grande de
  *   `pontualidadeMetrics.mediaDias` (sinal explícito +/-, mesma tipografia dos
  *   demais números grandes da tela — `fontSize:28, fontWeight:650`) + legenda
  *   de amostras. `EmptyArea` quando `amostras === 0` (sem dados suficientes).
+ * - "Margem de atraso" (nova, DEV-132): mesmo leiaute de "Pontualidade",
+ *   reaproveitando `PontualidadeReadout` — mas o valor vem de
+ *   `margemAtraso.mediaDias`, que agrega SÓ tarefas com atraso ESTRITO
+ *   (`diffDays > 0`). Na prática o valor exibido é sempre positivo (nunca
+ *   "adiantou"), então a legenda "de adiantamento médio" do readout nunca
+ *   aparece aqui — não precisou mudar o componente, só o dado.
  *
  * Header montado manualmente (não via `PanelShell`) para acomodar os botões de
  * aba no lugar do `<h2>` fixo — mantém exatamente o mesmo shell visual (card,
@@ -996,10 +1033,12 @@ function PanelEmAtraso({
   tasks,
   loading,
   pontualidade,
+  margemAtraso,
 }: {
   tasks: TaskResponseDto[];
   loading: boolean;
   pontualidade: { mediaDias: number | null; amostras: number };
+  margemAtraso: { mediaDias: number | null; amostras: number };
 }) {
   const [tab, setTab] = useState<EmAtrasoTab>("atraso");
 
@@ -1030,6 +1069,14 @@ function PanelEmAtraso({
             iconColor={KPI.sky.c}
             iconSoft={KPI.sky.soft}
             label="Pontualidade"
+          />
+          <PanelTabButton
+            active={tab === "margem-atraso"}
+            onClick={() => setTab("margem-atraso")}
+            icon={<AlertTriangle size={14} />}
+            iconColor={KPI.red.c}
+            iconSoft={KPI.red.soft}
+            label="Margem de atraso"
           />
         </div>
         {tab === "atraso" && (
@@ -1083,16 +1130,32 @@ function PanelEmAtraso({
             })}
           </div>
         )
+      ) : tab === "pontualidade" ? (
+        loading ? (
+          <Muted>Carregando…</Muted>
+        ) : pontualidade.mediaDias === null || pontualidade.amostras === 0 ? (
+          <EmptyArea
+            icon={<Clock size={20} />}
+            text="Sem dados suficientes"
+            hint="Nenhuma tarefa concluída com prazo definido ainda."
+          />
+        ) : (
+          <PontualidadeReadout mediaDias={pontualidade.mediaDias} amostras={pontualidade.amostras} />
+        )
       ) : loading ? (
         <Muted>Carregando…</Muted>
-      ) : pontualidade.mediaDias === null || pontualidade.amostras === 0 ? (
+      ) : margemAtraso.mediaDias === null || margemAtraso.amostras === 0 ? (
         <EmptyArea
-          icon={<Clock size={20} />}
+          icon={<AlertTriangle size={20} />}
           text="Sem dados suficientes"
-          hint="Nenhuma tarefa concluída com prazo definido ainda."
+          hint="Nenhuma tarefa atrasada concluída com prazo definido ainda."
         />
       ) : (
-        <PontualidadeReadout mediaDias={pontualidade.mediaDias} amostras={pontualidade.amostras} />
+        <PontualidadeReadout
+          mediaDias={margemAtraso.mediaDias}
+          amostras={margemAtraso.amostras}
+          legendaOverride="de atraso médio, quando atrasa"
+        />
       )}
     </section>
   );
@@ -1161,20 +1224,35 @@ function PanelTabButton({
 }
 
 /**
- * Exibição da aba "Pontualidade": número grande com sinal explícito (mesma
- * tipografia dos KPIs do topo — `fontSize:28, fontWeight:650`) + legenda de
- * amostras. Positivo = atraso médio (vermelho); negativo = adiantou em média
- * (verde/sky); segue a mesma paleta `KPI` do resto da tela.
+ * Exibição da aba "Pontualidade" / "Margem de atraso": número grande com sinal
+ * explícito (mesma tipografia dos KPIs do topo — `fontSize:28, fontWeight:650`)
+ * + legenda de amostras. Positivo = atraso médio (vermelho); negativo = adiantou
+ * em média (verde/sky); segue a mesma paleta `KPI` do resto da tela.
  *
  * Unidade adaptativa: quando `|mediaDias| < 1`, exibe em HORAS (ex: "7h") em
  * vez de uma fração de dia abstrata ("-0.3 dia") — mais concreto para quem
  * não conhece a métrica. `|mediaDias| >= 1` continua em dias.
  *
+ * `legendaOverride` (opcional): reaproveitado pela aba "Margem de atraso"
+ * (DEV-132), cujo valor é sempre `> 0` (só atraso estrito entra na média) — a
+ * legenda padrão "de atraso médio" fica ambígua nesse contexto (poderia soar
+ * como "sempre atrasa"), então o caller pode passar um texto mais preciso
+ * (ex.: "de atraso médio, quando atrasa"). Quando omitido, mantém o texto
+ * original ("de atraso médio" / "de adiantamento médio" / "em média, no prazo").
+ *
  * Pré-condição: só é renderizado pelo caller (`PanelEmAtraso`) quando
  * `amostras > 0` — o empty state (`amostras === 0`) já foi tratado ali antes
  * de chegar aqui, então `mediaDias` é garantidamente `number` neste ponto.
  */
-function PontualidadeReadout({ mediaDias, amostras }: { mediaDias: number; amostras: number }) {
+function PontualidadeReadout({
+  mediaDias,
+  amostras,
+  legendaOverride,
+}: {
+  mediaDias: number;
+  amostras: number;
+  legendaOverride?: string;
+}) {
   const atrasou = mediaDias > 0;
   const pontual = Math.abs(mediaDias) < 0.05;
   const c = pontual ? KPI.violet.c : atrasou ? KPI.red.c : KPI.sky.c;
@@ -1184,6 +1262,9 @@ function PontualidadeReadout({ mediaDias, amostras }: { mediaDias: number; amost
     : abs < 1
       ? `${Math.round(abs * 24)}h`
       : `${abs.toFixed(1)} dia${abs >= 2 ? "s" : ""}`;
+  const legenda =
+    legendaOverride ??
+    (pontual ? "em média, no prazo" : atrasou ? "de atraso médio" : "de adiantamento médio");
 
   return (
     <div style={{ padding: "20px 8px 8px", display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1191,12 +1272,8 @@ function PontualidadeReadout({ mediaDias, amostras }: { mediaDias: number; amost
         {label}
       </div>
       <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>
-        {pontual
-          ? "em média, no prazo"
-          : atrasou
-            ? "de atraso médio"
-            : "de adiantamento médio"}{" "}
-        · baseado em {amostras} tarefa{amostras !== 1 ? "s" : ""} concluída{amostras !== 1 ? "s" : ""} com prazo
+        {legenda} · baseado em {amostras} tarefa{amostras !== 1 ? "s" : ""} concluída
+        {amostras !== 1 ? "s" : ""} com prazo
       </p>
     </div>
   );
