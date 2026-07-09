@@ -1166,6 +1166,10 @@ function PanelTabButton({
  * amostras. Positivo = atraso médio (vermelho); negativo = adiantou em média
  * (verde/sky); segue a mesma paleta `KPI` do resto da tela.
  *
+ * Unidade adaptativa: quando `|mediaDias| < 1`, exibe em HORAS (ex: "7h") em
+ * vez de uma fração de dia abstrata ("-0.3 dia") — mais concreto para quem
+ * não conhece a métrica. `|mediaDias| >= 1` continua em dias.
+ *
  * Pré-condição: só é renderizado pelo caller (`PanelEmAtraso`) quando
  * `amostras > 0` — o empty state (`amostras === 0`) já foi tratado ali antes
  * de chegar aqui, então `mediaDias` é garantidamente `number` neste ponto.
@@ -1174,10 +1178,12 @@ function PontualidadeReadout({ mediaDias, amostras }: { mediaDias: number; amost
   const atrasou = mediaDias > 0;
   const pontual = Math.abs(mediaDias) < 0.05;
   const c = pontual ? KPI.violet.c : atrasou ? KPI.red.c : KPI.sky.c;
-  const sinal = mediaDias > 0 ? "+" : mediaDias < 0 ? "" : "";
+  const abs = Math.abs(mediaDias);
   const label = pontual
-    ? "0 dias"
-    : `${sinal}${mediaDias.toFixed(1)} dia${Math.abs(mediaDias) >= 2 ? "s" : ""}`;
+    ? "0h"
+    : abs < 1
+      ? `${Math.round(abs * 24)}h`
+      : `${abs.toFixed(1)} dia${abs >= 2 ? "s" : ""}`;
 
   return (
     <div style={{ padding: "20px 8px 8px", display: "flex", flexDirection: "column", gap: 8 }}>
