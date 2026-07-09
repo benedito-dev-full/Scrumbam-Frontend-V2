@@ -184,6 +184,50 @@ function parseCompletedAt(iso?: string | null): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+/**
+ * Conta dias úteis (segunda a sexta, inclusive) entre `start` e `end`.
+ * Ambas as datas são tratadas por dia de calendário local (hora ignorada).
+ * Puro e testável.
+ */
+function countBusinessDays(start: Date, end: Date): number {
+  const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const lastDay = new Date(end.getFullYear(), end.getMonth(), end.getDate()).getTime();
+  let count = 0;
+  while (cursor.getTime() <= lastDay) {
+    const dow = cursor.getDay(); // 0=domingo … 6=sábado
+    if (dow !== 0 && dow !== 6) count++;
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return count;
+}
+
+/**
+ * Conta dias úteis (segunda a sexta) do mês informado (0-indexado, igual a
+ * `Date.getMonth()`). Usado pelo multiplicador de exibição "Mês" do KPI Ritmo.
+ * Puro e testável.
+ */
+function countBusinessDaysInMonth(year: number, month: number): number {
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 0);
+  return countBusinessDays(start, end);
+}
+
+/**
+ * Janela FIXA de 28 dias corridos (últimas 4 semanas) terminando em `referenceDate`
+ * (default: agora), independente do filtro Hoje/Semana/Mês da tela.
+ * `end` fecha em 23:59:59.999 do dia de referência; `start` abre em 00:00:00.000
+ * 27 dias antes (28 dias corridos ao todo, incluindo hoje).
+ * Puro e testável.
+ */
+function last4WeeksRange(referenceDate: Date = new Date()): { start: Date; end: Date } {
+  const y = referenceDate.getFullYear();
+  const mo = referenceDate.getMonth();
+  const d = referenceDate.getDate();
+  const end = new Date(y, mo, d, 23, 59, 59, 999);
+  const start = new Date(y, mo, d - 27, 0, 0, 0, 0);
+  return { start, end };
+}
+
 const PRIORITY_META: Record<
   TaskPriority,
   { label: string; icon: typeof Flame; color: string }
@@ -341,6 +385,36 @@ export default function MinhasTarefasPage() {
 
     return { doneNoPeriodo, emJogoNoPeriodo, pct, series };
   }, [tasks, period]);
+
+  /* ── Ritmo: média móvel de 4 semanas (28 dias corridos, janela FIXA) ──
+   * Independe do filtro Hoje/Semana/Mês da tela — ao contrário de
+   * `periodMetrics`, a janela de COLETA nunca muda. `mediaDiaria` é
+   * concluídas-na-janela ÷ dias-úteis-na-janela; quem multiplica pelo fator
+   * de exibição (1 / 5 / dias úteis do mês corrente) é `KpiRitmo`.
+   * `weekBuckets[0]` = semana mais recente (contém hoje) … `[3]` = mais antiga. */
+  const ritmoMetrics = useMemo(() => {
+    const { start, end } = last4WeeksRange();
+    const startMs = start.getTime();
+    const endMs = end.getTime();
+    let doneUltimas4Semanas = 0;
+    const weekBuckets = [0, 0, 0, 0];
+
+    for (const t of tasks) {
+      if (!DONE_STATUSES.includes(t.status)) continue;
+      const c = parseCompletedAt(t.completedAt);
+      if (!c) continue;
+      const cm = c.getTime();
+      if (cm < startMs || cm > endMs) continue;
+      doneUltimas4Semanas++;
+      const daysAgo = Math.floor((endMs - cm) / 86_400_000);
+      const weekIndex = Math.min(3, Math.floor(daysAgo / 7));
+      weekBuckets[weekIndex]++;
+    }
+
+    const diasUteisJanela = countBusinessDays(start, end);
+    const mediaDiaria = diasUteisJanela > 0 ? doneUltimas4Semanas / diasUteisJanela : 0;
+    return { mediaDiaria, doneUltimas4Semanas, diasUteisJanela, weekBuckets };
+  }, [tasks]);
 
   /* ── Tempo focado do PERÍODO ──
    * Soma `durationMs` das sessões manuais cujo `startedAt` cai na janela do
@@ -517,7 +591,7 @@ export default function MinhasTarefasPage() {
           />
           <KpiTempoFocado totalMin={focoNoPeriodoMin} period={period} />
           <KpiEmAtraso overdue={metrics.overdue.length} today={metrics.dueToday.length} />
-          <KpiRitmo total={periodMetrics.doneNoPeriodo} period={period} />
+          <KpiRitmo mediaDiaria={ritmoMetrics.mediaDiaria} period={period} />
         </div>
 
         {/* ── Duas colunas: Em atraso + Ritmo ── */}
@@ -530,7 +604,7 @@ export default function MinhasTarefasPage() {
           }}
         >
           <PanelEmAtraso tasks={metrics.atRisk} loading={isLoading} />
-          <PanelRitmo series={periodMetrics.series} period={period} loading={isLoading} />
+          <PanelRitmo weekBuckets={ritmoMetrics.weekBuckets} loading={isLoading} />
         </div>
 
         {/* ── Tabela de tarefas ── */}
@@ -756,19 +830,40 @@ const PERIOD_WORD: Record<Period, string> = {
   month: "no mês",
 };
 
-function KpiRitmo({ total, period }: { total: number; period: Period }) {
+/**
+ * KPI "Ritmo": média móvel de entregas, derivada da janela FIXA de 28 dias
+ * corridos (`ritmoMetrics.mediaDiaria`, calculada 1x independente do filtro
+ * da tela). O fator de exibição por período é o único lugar sensível a
+ * `period`:
+ * - Hoje  → mediaDiaria
+ * - Semana → mediaDiaria × 5 (dias úteis de uma semana)
+ * - Mês   → mediaDiaria × dias úteis reais do mês corrente
+ */
+function KpiRitmo({ mediaDiaria, period }: { mediaDiaria: number; period: Period }) {
   const { c, soft } = KPI.sky;
+  const now = new Date();
+  const fator =
+    period === "today"
+      ? 1
+      : period === "week"
+        ? 5
+        : countBusinessDaysInMonth(now.getFullYear(), now.getMonth());
+  const displayValue = mediaDiaria * fator;
+  const rounded = Math.round(displayValue);
   return (
     <KpiShell
       color={c}
       soft={soft}
       icon={<Activity size={13} />}
       label="Ritmo"
-      footer={`concluídas ${PERIOD_WORD[period]}`}
+      footer={`ritmo médio (${PERIOD_WORD[period]}) · base: últimas 4 semanas`}
     >
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}>
+      <div
+        style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 10 }}
+        title={`${displayValue.toFixed(2)}/${PERIOD_WORD[period]} (média diária: ${mediaDiaria.toFixed(2)})`}
+      >
         <div style={{ fontSize: 28, fontWeight: 650, letterSpacing: "-0.02em", color: c, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
-          {total}
+          {rounded}
         </div>
         <Sparkline color={c} points="0,10 11,12 22,9 33,11 44,10 55,11 64,9" dim />
       </div>
@@ -903,23 +998,25 @@ function PanelEmAtraso({ tasks, loading }: { tasks: TaskResponseDto[]; loading: 
   );
 }
 
+/** Rótulos curtos das 4 barras semanais — index 0 = semana mais recente (contém hoje). */
+const WEEK_BUCKET_LABELS = ["Esta sem.", "-1 sem.", "-2 sem.", "-3 sem."] as const;
+
+/**
+ * Painel "Ritmo de entrega": 4 barras semanais fixas (últimas 4 semanas
+ * corridas, `ritmoMetrics.weekBuckets` — index 0 = semana mais recente).
+ * Independe do filtro Hoje/Semana/Mês da tela (Fase 5, aval CEO 2026-07-09) —
+ * ao contrário da série diária anterior, o painel sempre mostra a mesma
+ * janela fixa; só o KPI "Ritmo" ao lado muda de número por filtro.
+ */
 function PanelRitmo({
-  series,
-  period,
+  weekBuckets,
   loading,
 }: {
-  series: { key: number; label: string; count: number }[];
-  period: Period;
+  weekBuckets: number[];
   loading: boolean;
 }) {
-  const totalDone = series.reduce((acc, s) => acc + s.count, 0);
-  const max = Math.max(1, ...series.map((s) => s.count));
-  const todayKey = (() => {
-    const n = new Date();
-    return new Date(n.getFullYear(), n.getMonth(), n.getDate()).getTime();
-  })();
-  // Em "Mês" pode haver muitas barras: rótulos ficam finos e só a cada ~5 dias.
-  const denseLabels = period === "month";
+  const totalDone = weekBuckets.reduce((acc, c) => acc + c, 0);
+  const max = Math.max(1, ...weekBuckets);
 
   return (
     <PanelShell
@@ -927,7 +1024,7 @@ function PanelRitmo({
       iconColor={KPI.violet.c}
       iconSoft={KPI.violet.soft}
       title="Ritmo de entrega"
-      meta="concluídas / dia"
+      meta="últimas 4 semanas"
     >
       {loading ? (
         <div style={{ padding: "24px 8px 8px" }}>
@@ -936,28 +1033,28 @@ function PanelRitmo({
       ) : totalDone === 0 ? (
         <EmptyArea
           icon={<Activity size={20} />}
-          text="Sem conclusões no período"
-          hint="Nenhuma tarefa foi concluída na janela selecionada."
+          text="Sem conclusões nas últimas 4 semanas"
+          hint="Nenhuma tarefa foi concluída na janela."
         />
       ) : (
         <div style={{ padding: "24px 8px 8px" }}>
-          <div style={{ display: "flex", alignItems: "flex-end", gap: denseLabels ? 3 : 9, height: 130 }}>
-            {series.map((s) => {
-              const isToday = s.key === todayKey;
-              const hgtPct = s.count === 0 ? 0 : Math.max(6, (s.count / max) * 100);
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 9, height: 130 }}>
+            {weekBuckets.map((count, i) => {
+              const isCurrentWeek = i === 0;
+              const hgtPct = count === 0 ? 0 : Math.max(6, (count / max) * 100);
               return (
                 <div
-                  key={s.key}
-                  title={`${s.count} concluída${s.count !== 1 ? "s" : ""}`}
+                  key={i}
+                  title={`${count} concluída${count !== 1 ? "s" : ""}`}
                   style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 9, height: "100%", justifyContent: "flex-end" }}
                 >
                   <div
                     style={{
                       width: "100%",
-                      maxWidth: denseLabels ? 16 : 30,
+                      maxWidth: 30,
                       height: `${hgtPct}%`,
                       borderRadius: "4px 4px 0 0",
-                      background: isToday ? KPI.violet.c : "rgba(139,123,247,0.32)",
+                      background: isCurrentWeek ? KPI.violet.c : "rgba(139,123,247,0.32)",
                     }}
                   />
                   <span
@@ -969,11 +1066,7 @@ function PanelRitmo({
                       overflow: "hidden",
                     }}
                   >
-                    {denseLabels
-                      ? Number(s.label) % 5 === 0 || isToday
-                        ? s.label
-                        : ""
-                      : s.label}
+                    {WEEK_BUCKET_LABELS[i]}
                   </span>
                 </div>
               );
