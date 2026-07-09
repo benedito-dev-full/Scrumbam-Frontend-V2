@@ -82,17 +82,14 @@ export function useTask(id: string | null) {
 /**
  * Lista tasks atribuídas ao usuário logado.
  *
- * Mapeia para `GET /tasks?assigneeId={entidadeId}&status={status}&limit=250`.
+ * Mapeia para `GET /tasks?assigneeId={entidadeId}&status={status}&limit=100`.
  * Quando `status` é omitido, retorna tasks em todos os estados.
  *
- * `limit=250` (elevado de 100 — Task 6 "Ritmo"): o KPI "Ritmo" calcula uma
- * média móvel sobre uma janela fixa de 28 dias corridos via `completedAt`,
- * mas a paginação do backend ordena por `chave desc` (ordem de CRIAÇÃO, não
- * de conclusão). Usuários com 100+ tasks totais podiam ter conclusões dentro
- * da janela de 28 dias que ficavam fora da 1ª página, sub-contando o Ritmo
- * silenciosamente. 250 é uma mitigação frontend-only generosa; não resolve
- * o caso extremo (accountes com 250+ tasks) — cursor pagination real é fora
- * do escopo desta task (ver `docs/plano` / plan-ritmo-media-movel-task6.md §7).
+ * `limit=100` — teto máximo aceito pelo backend (`ListTasksQueryDto.limit`
+ * tem `@Max(100)`; valores acima retornam 400). Uma tentativa de elevar
+ * para 250 como mitigação de paginação do KPI "Ritmo" quebrou a listagem
+ * em produção — revertido. Sub-contagem por paginação em contas com 100+
+ * tasks é um risco aceito, não bloqueante (ver plan-ritmo-media-movel-task6.md §7).
  *
  * @param status - Filtro opcional de V3 Intention (ex: 'INBOX', 'EXECUTING').
  * @returns Resultado do useQuery com `data: TaskResponseDto[]`
@@ -110,7 +107,7 @@ export function useMyTasks(status?: string) {
     queryKey: [...qk.tasks.all, "my", entidadeId, status],
     queryFn: async () => {
       const res = await api.get<TasksPage>("/tasks", {
-        params: { assigneeId: entidadeId, status, limit: 250 },
+        params: { assigneeId: entidadeId, status, limit: 100 },
       });
       return res.data.items;
     },
@@ -122,12 +119,10 @@ export function useMyTasks(status?: string) {
 /**
  * Lista tasks atribuídas a um time (via assigneeTeamId).
  *
- * Mapeia para `GET /tasks?assigneeTeamId={teamId}&limit=250`.
+ * Mapeia para `GET /tasks?assigneeTeamId={teamId}&limit=100`.
  * Desabilitado automaticamente quando `teamId` é null — mesmo shape e
  * staleTime de `useMyTasks`, para permitir troca de escopo transparente
  * no dashboard de performance.
- *
- * `limit=250` — mesma mitigação de paginação descrita em `useMyTasks`.
  *
  * @param teamId - ID do DEntidade (Time). Quando null, a query fica desabilitada.
  * @returns Resultado do useQuery com `data: TaskResponseDto[]`
@@ -143,7 +138,7 @@ export function useTeamTasks(teamId: string | null) {
     queryKey: [...qk.tasks.all, "team", teamId],
     queryFn: async () => {
       const res = await api.get<TasksPage>("/tasks", {
-        params: { assigneeTeamId: teamId, limit: 250 },
+        params: { assigneeTeamId: teamId, limit: 100 },
       });
       return res.data.items;
     },
@@ -155,15 +150,13 @@ export function useTeamTasks(teamId: string | null) {
 /**
  * Lista tasks atribuídas a um usuário específico (via assigneeId).
  *
- * Mapeia para `GET /tasks?assigneeId={entidadeId}&limit=250`.
+ * Mapeia para `GET /tasks?assigneeId={entidadeId}&limit=100`.
  * Desabilitado automaticamente quando `assigneeId` é null — mesmo shape e
  * staleTime de `useTeamTasks`, para permitir troca de escopo transparente
  * no dashboard de performance (admin visualizando tasks de outro usuário).
  *
  * `assigneeId` é o entidadeId da DEntidade do usuário — idêntico ao
  * `member.userId` retornado por `useOrgMembers` (sem conversão).
- *
- * `limit=250` — mesma mitigação de paginação descrita em `useMyTasks`.
  *
  * @param assigneeId - entidadeId do usuário. Quando null, a query fica desabilitada.
  * @returns Resultado do useQuery com `data: TaskResponseDto[]`
@@ -179,7 +172,7 @@ export function useUserTasks(assigneeId: string | null) {
     queryKey: [...qk.tasks.all, "user", assigneeId],
     queryFn: async () => {
       const res = await api.get<TasksPage>("/tasks", {
-        params: { assigneeId, limit: 250 },
+        params: { assigneeId, limit: 100 },
       });
       return res.data.items;
     },
