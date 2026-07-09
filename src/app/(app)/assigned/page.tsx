@@ -416,6 +416,36 @@ export default function MinhasTarefasPage() {
     return { mediaDiaria, doneUltimas4Semanas, diasUteisJanela, weekBuckets };
   }, [tasks]);
 
+  /* ── Pontualidade / Margem de atraso (recorte "por usuário logado") ──
+   * Média (em dias corridos) de `completedAt - dueDate` das tarefas concluídas
+   * (DONE/VALIDATED) do escopo ativo (`tasks`) que possuem AMBOS os campos.
+   * Convenção de sinal: positivo = atrasou (concluiu depois do prazo); negativo
+   * = adiantou. Regras de negócio (fechadas): valores negativos contam
+   * normalmente (não são clampados); tarefas sem `dueDate` são EXCLUÍDAS (nem
+   * como 0); só status terminal DONE/VALIDATED entra. `mediaDias` é null quando
+   * não há amostras (distinto de 0 = "pontual em média"). Client-side, mesma
+   * fonte de dados de `periodMetrics`/`ritmoMetrics` (mesmo teto de 100 tasks;
+   * risco residual idêntico ao do Ritmo, aceito como não-bloqueante).
+   *
+   * Consumido pela aba "Pontualidade" do painel `PanelEmAtraso` (Fase 4). */
+  const pontualidadeMetrics = useMemo(() => {
+    let somaDias = 0;
+    let amostras = 0;
+    for (const t of tasks) {
+      if (!DONE_STATUSES.includes(t.status)) continue;
+      if (!t.dueDate) continue;
+      const completed = parseCompletedAt(t.completedAt);
+      if (!completed) continue;
+      const due = new Date(t.dueDate);
+      if (Number.isNaN(due.getTime())) continue;
+      const diffDays = (completed.getTime() - due.getTime()) / 86_400_000;
+      somaDias += diffDays;
+      amostras++;
+    }
+    const mediaDias = amostras > 0 ? somaDias / amostras : null;
+    return { mediaDias, amostras };
+  }, [tasks]);
+
   /* ── Tempo focado do PERÍODO ──
    * Soma `durationMs` das sessões manuais cujo `startedAt` cai na janela do
    * período ativo. Borda: a sessão conta pelo `startedAt` — se cai em
@@ -604,7 +634,11 @@ export default function MinhasTarefasPage() {
             marginBottom: 12,
           }}
         >
-          <PanelEmAtraso tasks={metrics.atRisk} loading={isLoading} />
+          <PanelEmAtraso
+            tasks={metrics.atRisk}
+            loading={isLoading}
+            pontualidade={pontualidadeMetrics}
+          />
           <PanelRitmo weekBuckets={ritmoMetrics.weekBuckets} loading={isLoading} />
         </div>
 
@@ -940,62 +974,225 @@ function PanelShell({
   );
 }
 
-function PanelEmAtraso({ tasks, loading }: { tasks: TaskResponseDto[]; loading: boolean }) {
+type EmAtrasoTab = "atraso" | "pontualidade";
+
+/**
+ * Painel "Em atraso" / "Pontualidade" — mesmo card, 2 abas (Task 8, Fase 4).
+ *
+ * Substitui o título estático do `PanelShell` por um seletor de 2 abas no
+ * canto superior esquerdo do próprio card (não é navegação de página):
+ * - "Em atraso": comportamento ORIGINAL, sem nenhuma mudança (lista de tarefas
+ *   atrasadas, badge de contagem, `EmptyArea` quando vazio).
+ * - "Pontualidade" (nova): substitui a lista pelo número grande de
+ *   `pontualidadeMetrics.mediaDias` (sinal explícito +/-, mesma tipografia dos
+ *   demais números grandes da tela — `fontSize:28, fontWeight:650`) + legenda
+ *   de amostras. `EmptyArea` quando `amostras === 0` (sem dados suficientes).
+ *
+ * Header montado manualmente (não via `PanelShell`) para acomodar os botões de
+ * aba no lugar do `<h2>` fixo — mantém exatamente o mesmo shell visual (card,
+ * borda, padding) do restante da tela.
+ */
+function PanelEmAtraso({
+  tasks,
+  loading,
+  pontualidade,
+}: {
+  tasks: TaskResponseDto[];
+  loading: boolean;
+  pontualidade: { mediaDias: number | null; amostras: number };
+}) {
+  const [tab, setTab] = useState<EmAtrasoTab>("atraso");
+
   return (
-    <PanelShell
-      icon={<AlertTriangle size={14} />}
-      iconColor={KPI.red.c}
-      iconSoft={KPI.red.soft}
-      title="Em atraso"
-      count={loading ? undefined : tasks.length}
-      meta="precisa de ação"
+    <section
+      style={{
+        background: "var(--card)",
+        border: "1px solid var(--border)",
+        borderRadius: 12,
+        padding: "16px 18px",
+      }}
     >
-      {loading ? (
-        <Muted>Carregando…</Muted>
-      ) : tasks.length === 0 ? (
-        <EmptyArea icon={<CheckCheck size={20} />} text="Nada em atraso" hint="Você está em dia com seus prazos." />
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          {tasks.map((t) => {
-            const dl = dueLabel(t.dueDate);
-            const sev = dl.tone === "bad" ? KPI.red.c : WARN;
-            return (
-              <Link
-                key={t.id}
-                href={`/lists/${t.projectId}`}
-                style={{
-                  position: "relative",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 11,
-                  padding: "9px 8px 9px 12px",
-                  borderRadius: 8,
-                  borderBottom: "1px solid var(--border)",
-                  textDecoration: "none",
-                  transition: "background .12s",
-                }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent)")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
-              >
-                <span style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 2.5, borderRadius: 3, background: sev }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, color: "var(--foreground)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {t.nome}
-                  </div>
-                  <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 3, display: "flex", gap: 7, alignItems: "center" }}>
-                    <PriorityTag priority={t.priority} />
-                  </div>
-                </div>
-                <DueBadge label={dl} />
-                {t.identifier && (
-                  <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontVariantNumeric: "tabular-nums" }}>{t.identifier}</span>
-                )}
-              </Link>
-            );
-          })}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <PanelTabButton
+            active={tab === "atraso"}
+            onClick={() => setTab("atraso")}
+            icon={<AlertTriangle size={14} />}
+            iconColor={KPI.red.c}
+            iconSoft={KPI.red.soft}
+            label="Em atraso"
+            count={!loading && tab === "atraso" ? tasks.length : undefined}
+          />
+          <PanelTabButton
+            active={tab === "pontualidade"}
+            onClick={() => setTab("pontualidade")}
+            icon={<Clock size={14} />}
+            iconColor={KPI.sky.c}
+            iconSoft={KPI.sky.soft}
+            label="Pontualidade"
+          />
         </div>
+        {tab === "atraso" && (
+          <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>precisa de ação</span>
+        )}
+      </div>
+
+      {tab === "atraso" ? (
+        loading ? (
+          <Muted>Carregando…</Muted>
+        ) : tasks.length === 0 ? (
+          <EmptyArea icon={<CheckCheck size={20} />} text="Nada em atraso" hint="Você está em dia com seus prazos." />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {tasks.map((t) => {
+              const dl = dueLabel(t.dueDate);
+              const sev = dl.tone === "bad" ? KPI.red.c : WARN;
+              return (
+                <Link
+                  key={t.id}
+                  href={`/lists/${t.projectId}`}
+                  style={{
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 11,
+                    padding: "9px 8px 9px 12px",
+                    borderRadius: 8,
+                    borderBottom: "1px solid var(--border)",
+                    textDecoration: "none",
+                    transition: "background .12s",
+                  }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.background = "var(--accent)")}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.background = "transparent")}
+                >
+                  <span style={{ position: "absolute", left: 0, top: 8, bottom: 8, width: 2.5, borderRadius: 3, background: sev }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, color: "var(--foreground)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {t.nome}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--muted-foreground)", marginTop: 3, display: "flex", gap: 7, alignItems: "center" }}>
+                      <PriorityTag priority={t.priority} />
+                    </div>
+                  </div>
+                  <DueBadge label={dl} />
+                  {t.identifier && (
+                    <span style={{ fontSize: 11, color: "var(--muted-foreground)", fontVariantNumeric: "tabular-nums" }}>{t.identifier}</span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        )
+      ) : loading ? (
+        <Muted>Carregando…</Muted>
+      ) : pontualidade.mediaDias === null || pontualidade.amostras === 0 ? (
+        <EmptyArea
+          icon={<Clock size={20} />}
+          text="Sem dados suficientes"
+          hint="Nenhuma tarefa concluída com prazo definido ainda."
+        />
+      ) : (
+        <PontualidadeReadout mediaDias={pontualidade.mediaDias} amostras={pontualidade.amostras} />
       )}
-    </PanelShell>
+    </section>
+  );
+}
+
+/** Botão de aba do painel "Em atraso" / "Pontualidade" — mesmo estilo do título do `PanelShell`. */
+function PanelTabButton({
+  active,
+  onClick,
+  icon,
+  iconColor,
+  iconSoft,
+  label,
+  count,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon: React.ReactNode;
+  iconColor: string;
+  iconSoft: string;
+  label: string;
+  count?: number;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        fontSize: 13,
+        fontWeight: 600,
+        letterSpacing: "-0.01em",
+        color: active ? "var(--foreground)" : "var(--muted-foreground)",
+        background: active ? "var(--accent)" : "transparent",
+        border: 0,
+        borderRadius: 7,
+        padding: "5px 9px 5px 7px",
+        cursor: "pointer",
+        transition: "background .12s, color .12s",
+      }}
+    >
+      <span style={{ width: 22, height: 22, borderRadius: 6, display: "grid", placeItems: "center", background: iconSoft, color: iconColor }}>
+        {icon}
+      </span>
+      {label}
+      {count !== undefined && (
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            padding: "1px 7px",
+            borderRadius: 20,
+            fontVariantNumeric: "tabular-nums",
+            background: KPI.red.soft,
+            color: KPI.red.c,
+            border: `1px solid rgba(239,95,95,0.28)`,
+          }}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+/**
+ * Exibição da aba "Pontualidade": número grande com sinal explícito (mesma
+ * tipografia dos KPIs do topo — `fontSize:28, fontWeight:650`) + legenda de
+ * amostras. Positivo = atraso médio (vermelho); negativo = adiantou em média
+ * (verde/sky); segue a mesma paleta `KPI` do resto da tela.
+ *
+ * Pré-condição: só é renderizado pelo caller (`PanelEmAtraso`) quando
+ * `amostras > 0` — o empty state (`amostras === 0`) já foi tratado ali antes
+ * de chegar aqui, então `mediaDias` é garantidamente `number` neste ponto.
+ */
+function PontualidadeReadout({ mediaDias, amostras }: { mediaDias: number; amostras: number }) {
+  const atrasou = mediaDias > 0;
+  const pontual = Math.abs(mediaDias) < 0.05;
+  const c = pontual ? KPI.violet.c : atrasou ? KPI.red.c : KPI.sky.c;
+  const sinal = mediaDias > 0 ? "+" : mediaDias < 0 ? "" : "";
+  const label = pontual
+    ? "0 dias"
+    : `${sinal}${mediaDias.toFixed(1)} dia${Math.abs(mediaDias) >= 2 ? "s" : ""}`;
+
+  return (
+    <div style={{ padding: "20px 8px 8px", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ fontSize: 28, fontWeight: 650, letterSpacing: "-0.02em", color: c, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>
+        {label}
+      </div>
+      <p style={{ fontSize: 12, color: "var(--muted-foreground)", margin: 0 }}>
+        {pontual
+          ? "em média, no prazo"
+          : atrasou
+            ? "de atraso médio"
+            : "de adiantamento médio"}{" "}
+        · baseado em {amostras} tarefa{amostras !== 1 ? "s" : ""} concluída{amostras !== 1 ? "s" : ""} com prazo
+      </p>
+    </div>
   );
 }
 
