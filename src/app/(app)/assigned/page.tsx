@@ -57,6 +57,8 @@ import {
   type MemberLike,
 } from "@/lib/mappers/groups-from-tasks";
 import { intentionToColumn } from "@/lib/mappers/task-status.mapper";
+import { usePendingDelayCount } from "@/hooks/use-delay-justifications";
+import { DelayJustificationModal } from "@/components/tasks/delay-justification-modal";
 import { useAllLists } from "@/hooks/use-projects";
 import { useTeams } from "@/hooks/use-teams";
 import { useOrgMembers } from "@/hooks/use-org-members";
@@ -1347,6 +1349,13 @@ function PanelEmAtraso({
   margemAtraso: MargemAtrasoStats;
 }) {
   const [tab, setTab] = useState<EmAtrasoTab>("atraso");
+  // Tarefa cujo modal de justificativa de atraso está aberto (null = fechado).
+  const [justifyTask, setJustifyTask] = useState<{
+    id: string;
+    nome: string;
+  } | null>(null);
+  const { data: pending } = usePendingDelayCount();
+  const pendingCount = pending?.pendingCount ?? 0;
 
   return (
     <section
@@ -1393,9 +1402,28 @@ function PanelEmAtraso({
           />
         </div>
         {tab === "atraso" && (
-          <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
-            precisa de ação
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {pendingCount > 0 && (
+              <span
+                title="Atrasos seus sem justificativa"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "2px 8px",
+                  borderRadius: 20,
+                  whiteSpace: "nowrap",
+                  background: "rgba(224,169,74,0.14)",
+                  color: WARN,
+                  border: "1px solid rgba(224,169,74,0.26)",
+                }}
+              >
+                {pendingCount} sem justificativa
+              </span>
+            )}
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
+              precisa de ação
+            </span>
+          </div>
         )}
       </div>
 
@@ -1414,9 +1442,18 @@ function PanelEmAtraso({
               const dl = dueLabel(t.dueDate);
               const sev = dl.tone === "bad" ? KPI.red.c : WARN;
               return (
-                <Link
+                <div
                   key={t.id}
-                  href={`/lists/${t.projectId}`}
+                  role="button"
+                  tabIndex={0}
+                  title="Justificar atraso"
+                  onClick={() => setJustifyTask({ id: t.id, nome: t.nome })}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      setJustifyTask({ id: t.id, nome: t.nome });
+                    }
+                  }}
                   style={{
                     position: "relative",
                     display: "flex",
@@ -1425,7 +1462,7 @@ function PanelEmAtraso({
                     padding: "9px 8px 9px 12px",
                     borderRadius: 8,
                     borderBottom: "1px solid var(--border)",
-                    textDecoration: "none",
+                    cursor: "pointer",
                     transition: "background .12s",
                   }}
                   onMouseEnter={(e) =>
@@ -1475,17 +1512,21 @@ function PanelEmAtraso({
                   </div>
                   <DueBadge label={dl} />
                   {t.identifier && (
-                    <span
+                    <Link
+                      href={`/lists/${t.projectId}`}
+                      onClick={(e) => e.stopPropagation()}
+                      title="Abrir no projeto"
                       style={{
                         fontSize: 11,
                         color: "var(--muted-foreground)",
                         fontVariantNumeric: "tabular-nums",
+                        textDecoration: "none",
                       }}
                     >
                       {t.identifier}
-                    </span>
+                    </Link>
                   )}
-                </Link>
+                </div>
               );
             })}
           </div>
@@ -1513,6 +1554,13 @@ function PanelEmAtraso({
       ) : (
         <MargemAtrasoPanel stats={margemAtraso} />
       )}
+
+      <DelayJustificationModal
+        taskId={justifyTask?.id ?? null}
+        taskNome={justifyTask?.nome}
+        open={!!justifyTask}
+        onClose={() => setJustifyTask(null)}
+      />
     </section>
   );
 }

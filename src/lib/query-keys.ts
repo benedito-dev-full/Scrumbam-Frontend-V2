@@ -115,4 +115,24 @@ export const qk = {
     /** Scopes que o usuário pode conceder (`GET /mcp/keys/allowed-scopes`). */
     allowedScopes: ["mcp", "allowed-scopes"] as const,
   },
+  delayJustifications: {
+    /** Raiz — usar para invalidação ampla. */
+    all: ["delay-justifications"] as const,
+    /** Motivos de atraso (DClasses -531..-537 via GET /classes?idPai=-530). */
+    reasons: ["delay-justifications", "reasons"] as const,
+    /**
+     * Justificativa vigente de uma task.
+     *
+     * @param taskId - ID da DTask (BigInt serializado).
+     */
+    byTask: (taskId: string) =>
+      ["delay-justifications", "task", taskId] as const,
+    /**
+     * Contagem de atrasos sem justificativa do próprio usuário.
+     *
+     * @param projectId - Recorte por projeto, ou null = global.
+     */
+    pendingCount: (projectId: string | null) =>
+      ["delay-justifications", "pending-count", projectId ?? "all"] as const,
+  },
 } as const;
