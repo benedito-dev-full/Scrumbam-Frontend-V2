@@ -194,3 +194,93 @@ A feature segue o padrão Monday.com com expansão inline, mas usa `<table>` ani
 **Agent:** strategist
 **Status:** Concluido
 
+
+---
+
+<!-- dedup:documenter:6 -->
+### Agent Concluido: documenter
+
+**Task:** #6
+**Timestamp:** 18/06/2026 11:43:01
+**Agent:** documenter
+**Status:** Concluido
+
+
+---
+
+<!-- dedup:implementer:6 -->
+### Agent Concluido: implementer
+
+**Task:** #6
+**Timestamp:** 18/06/2026 11:43:01
+**Agent:** implementer
+**Status:** Concluido
+
+
+---
+
+<!-- dedup:strategist:6 -->
+### Agent Concluido: strategist
+
+**Task:** #6
+**Timestamp:** 18/06/2026 11:43:01
+**Agent:** strategist
+**Status:** Concluido
+
+
+---
+
+<!-- dedup:reviewer:6 -->
+### Agent Concluido: reviewer
+
+**Task:** #6
+**Timestamp:** 18/06/2026 11:43:01
+**Agent:** reviewer
+**Status:** Concluido
+
+---
+
+<!-- dedup:documenter:793 -->
+## Task 793 (DEV-122) — COMPLETE
+
+**Module:** tasks (TaskSheet)
+**Task:** Fix: Descrição de task não salvava no frontend
+**Status:** COMPLETA
+**Date:** 2026-07-10
+**Duration:** ~15min (apenas fix pequeno)
+**Quality Score:** N/A (gate rápido de sanidade — sem Reviewer formal)
+
+### Deliverables
+
+- [x] Bug fix no TaskSheet: textarea de descrição agora persiste ao blur
+- [x] Documentação: CHANGELOG.md atualizado
+- [x] Build/TSC/ESLint: todos PASS
+
+### Metrics
+
+- Build: `npm run build` PASS
+- TypeScript: 0 errors
+- ESLint: 0 errors
+- No console errors
+
+### Alterações Técnicas
+
+**Arquivo modificado:**
+1. `src/components/tasks/task-sheet.tsx` — Adicionado `confirmarDescricao()` (linhas 143–155) chamado no `onBlur` do textarea (linha 598)
+
+**Mudança:**
+- Antes: `onBlur` só resetava borda (`borderColor = "var(--accent)"`)
+- Depois: `onBlur` resetava borda E chamava `confirmarDescricao()` que valida mudança e persiste via `updateTask.mutate({ id, projectId, dto: { descricao } })`
+
+**Padrão:** Reutiliza o mesmo mecanismo de persistência otimista usado por título, prioridade e dueDate — só persiste se realmente mudou.
+
+### Decisões de Implementação
+
+- **Sem JSDoc:** Mudança é localizadíssima (1 função + 1 call), não precisa.
+- **Gate rápido:** Pulou Reviewer (decisão do Roberio p/ bug fix simples), passou sanidade (build/lint/TS).
+- **Sem ADR:** Nenhuma decisão arquitetural; é correção.
+
+### Issues Pendentes
+
+Nenhum.
+

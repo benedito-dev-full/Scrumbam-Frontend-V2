@@ -140,6 +140,20 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
     [task, updateStatus, run],
   );
 
+  const confirmarDescricao = useCallback(() => {
+    if (!task) return;
+    const original = task.descricao ?? "";
+    // Só persiste se realmente mudou — mesmo mecanismo (updateTask.mutate)
+    // usado por título, prioridade, dueDate e assignee.
+    if (descricao !== original) {
+      updateTask.mutate({
+        id: task.id,
+        projectId: task.projectId,
+        dto: { descricao },
+      });
+    }
+  }, [descricao, task, updateTask]);
+
   const handlePrioridadeChange = useCallback(
     (v: TaskPriority | null) => {
       if (!task) return;
@@ -581,6 +595,7 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = "var(--accent)";
+                confirmarDescricao();
               }}
             />
           </section>
