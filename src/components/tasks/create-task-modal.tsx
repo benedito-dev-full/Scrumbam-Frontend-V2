@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   Sparkles,
@@ -18,7 +19,9 @@ import {
 } from "@/components/lists/config";
 import { useAllLists } from "@/hooks/use-projects";
 import { useCreateTask } from "@/hooks/use-tasks";
+import { useCheckDuplicates } from "@/hooks/use-check-duplicates";
 import { CreateTaskDocumentTab } from "@/components/tasks/create-task-document-tab";
+import { DuplicateWarningStep } from "@/components/tasks/duplicate-warning-step";
 import { CreateTaskModalFooter } from "@/components/tasks/create-task-modal-footer";
 import { CreateTaskListSelector } from "@/components/tasks/create-task-list-selector";
 import { CreateTaskModalTabs } from "@/components/tasks/create-task-modal-tabs";
@@ -35,7 +38,7 @@ import {
   propChipStyle,
   type StatusVisual,
 } from "@/components/tasks/create-task-modal-parts";
-import type { TaskType } from "@/lib/types/api";
+import type { TaskType, TaskDuplicateResult } from "@/lib/types/api";
 
 export type { StatusVisual } from "@/components/tasks/create-task-modal-parts";
 
@@ -67,6 +70,13 @@ export function CreateTaskModal({
   defaultDueDate,
 }: CreateTaskModalProps) {
   const createTask = useCreateTask();
+  const { checkDuplicates } = useCheckDuplicates();
+  const router = useRouter();
+
+  // Detecção de duplicata (task #799): passo intermediário informativo.
+  const [checking, setChecking] = useState(false);
+  const [dupStep, setDupStep] = useState(false);
+  const [dupCandidates, setDupCandidates] = useState<TaskDuplicateResult[]>([]);
 
   const [nome, setNome] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -125,6 +135,9 @@ export function CreateTaskModal({
     setDescAberta(false);
     setDocNome("");
     setDocPrivado(false);
+    setChecking(false);
+    setDupStep(false);
+    setDupCandidates([]);
     setTimeout(() => nomeRef.current?.focus(), 50);
   }, [open, defaultStatus, listId, defaultDueDate]);
 
@@ -158,16 +171,9 @@ export function CreateTaskModal({
 
   if (!open) return null;
 
-  function handleCriar() {
-    if (!nome.trim()) {
-      nomeRef.current?.focus();
-      return;
-    }
-    if (!selectedListId) {
-      toast.error("Selecione uma lista antes de criar a tarefa.");
-      setOpenDropdown("lista");
-      return;
-    }
+  /** Persiste a task de fato (chamado direto ou após "criar mesmo assim"). */
+  function doCreate() {
+    if (!selectedListId) return;
     const intention = VISUAL_TO_INTENTION[status];
     const backendPrio = prioridade
       ? VISUAL_TO_BACKEND_PRIO[prioridade]
@@ -192,6 +198,54 @@ export function CreateTaskModal({
     );
     /* Fecha otimisticamente — o invalidateQueries no hook atualiza a lista */
     void intention;
+  }
+
+  /**
+   * Submissão: valida, checa duplicatas na mesma lista (task #799) e ramifica.
+   *
+   * - Se já está no passo de duplicatas → cria direto (bypass consciente).
+   * - Se a checagem retorna candidatas → mostra o passo intermediário.
+   * - Se não há candidatas → cria direto (zero atrito).
+   *
+   * A checagem é uma cortesia — nunca bloqueia: qualquer erro resolve `[]` no
+   * hook e o fluxo segue para a criação normal.
+   */
+  async function handleCriar() {
+    if (!nome.trim()) {
+      nomeRef.current?.focus();
+      return;
+    }
+    if (!selectedListId) {
+      toast.error("Selecione uma lista antes de criar a tarefa.");
+      setOpenDropdown("lista");
+      return;
+    }
+
+    // Já passou pelo passo de duplicatas → "criar mesmo assim".
+    if (dupStep) {
+      doCreate();
+      return;
+    }
+
+    setChecking(true);
+    const candidates = await checkDuplicates(nome, selectedListId);
+    setChecking(false);
+
+    if (candidates.length > 0) {
+      setDupCandidates(candidates);
+      setDupStep(true);
+      return;
+    }
+
+    doCreate();
+  }
+
+  /** Abre a task existente (navega para a List que a contém) e fecha o modal. */
+  function handleOpenExisting(candidate: TaskDuplicateResult) {
+    if (candidate.idProject) {
+      router.push(`/lists/${candidate.idProject}`);
+    }
+    onClose();
   }
 
   const statusCfg = STATUS_CONFIG[status];
@@ -683,12 +737,24 @@ export function CreateTaskModal({
         )}
         <CreateTaskModalFooter
           activeTab={abaAtiva}
-          isCreating={createTask.isPending}
+          isCreating={createTask.isPending || checking}
           docPrivado={docPrivado}
           onDocPrivadoChange={setDocPrivado}
           onCreateTask={handleCriar}
           onClose={onClose}
         />
+
+        {/* Passo intermediário de duplicatas (task #799) — overlay sobre o modal.
+            Renderiza SÓ quando a checagem achou candidatas; nunca bloqueia. */}
+        {dupStep && (
+          <DuplicateWarningStep
+            candidates={dupCandidates}
+            isCreating={createTask.isPending}
+            onCreateAnyway={doCreate}
+            onCancel={() => setDupStep(false)}
+            onOpenExisting={handleOpenExisting}
+          />
+        )}
       </div>
     </div>
   );

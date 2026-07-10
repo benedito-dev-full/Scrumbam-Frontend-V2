@@ -47,6 +47,15 @@ export const qk = {
      * @param blockId - ID do Block (DTask idClasse=-200).
      */
     blockTasks: (blockId: string) => ["tasks", "block-tasks", blockId] as const,
+    /**
+     * Possíveis duplicatas de uma task na mesma Lista (task #799 / DEV-128).
+     * `GET /tasks/check-duplicates` — passo intermediário do modal de criação.
+     *
+     * @param projectId - ID da List-alvo (escopo da checagem).
+     * @param nome      - Título proposto já normalizado (trim/lowercase pelo caller).
+     */
+    duplicates: (projectId: string, nome: string) =>
+      ["tasks", "duplicates", projectId, nome] as const,
   },
   teams: {
     all: ["teams"] as const,

@@ -567,6 +567,32 @@ export interface UpdateTaskDto {
   assigneeTeamId?: string | null;
 }
 
+/**
+ * Possível duplicata de task retornada por `GET /tasks/check-duplicates`
+ * (task #799 / DEV-128). Espelha o `TaskDuplicateDto` do backend.
+ *
+ * Sempre informativo — a detecção nunca bloqueia a criação. `matchType='exact'`
+ * (título idêntico) vem antes de `'similar'` (tokens do título batem).
+ */
+export interface TaskDuplicateResult {
+  /** Chave da DTask candidata (BigInt serializado como string). */
+  chave: string;
+  /** Identifier legível (ex: DEV-87) ou null. */
+  identifier: string | null;
+  /** Título da task candidata. */
+  nome: string;
+  /** ID do projeto (List) da candidata — usado para navegação. */
+  idProject: string | null;
+  /** Nome do projeto (List), para exibição. */
+  projectNome: string | null;
+  /** ID do status atual (DTabela -44X) ou null. */
+  idStatus: string | null;
+  /** Tipo de correspondência: exatos vêm primeiro. */
+  matchType: "exact" | "similar";
+  /** Data de criação da candidata (ISO 8601). */
+  criadoEm: string;
+}
+
 export interface TaskFilters {
   projectId?: string;
   status?: V3Intention;
