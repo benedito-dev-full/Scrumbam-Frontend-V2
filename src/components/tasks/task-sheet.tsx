@@ -6,6 +6,7 @@ import { Trash2 } from "lucide-react";
 import { CommentsPanel } from "@/components/comments/CommentsPanel";
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
 import { TaskTimerPanel } from "@/components/tasks/task-timer-panel";
+import { WorkSessionBadge } from "@/components/tasks/work-session-badge";
 import {
   INTENTION_TO_VISUAL,
   IcArrowLeft,
@@ -347,6 +348,12 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
                 {nome}
               </h2>
             )}
+
+            {/* Task #794: badge "em trabalho por Fulano · há X" — só aparece em
+                EXECUTING com workSession ativa (o componente decide). */}
+            <div style={{ marginTop: 10 }}>
+              <WorkSessionBadge task={task} variant="full" />
+            </div>
           </div>
 
           {/* Seção de Propriedades */}

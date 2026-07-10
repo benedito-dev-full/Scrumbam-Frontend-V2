@@ -18,6 +18,7 @@ import {
   useSubtasks,
 } from "@/hooks/use-tasks";
 import { AI_ASSIGNEE_ID, useTaskExecution } from "@/hooks/use-task-execution";
+import { WorkSessionBadge } from "@/components/tasks/work-session-badge";
 import { useTeams } from "@/hooks/use-teams";
 import { isOverdue } from "@/lib/mappers/task-status.mapper";
 import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
@@ -335,6 +336,9 @@ export function TaskRowBackend({
                   : "executando"}
               </span>
             )}
+            {/* Task #794: "em trabalho por Fulano" — renderiza apenas em
+                EXECUTING com workSession ativa (o componente decide). */}
+            <WorkSessionBadge task={task} />
             {/* Botão Executar — só em tasks atribuídas ao Claude, sem lock
                 ativo e fora de estado terminal (concluído/falhou é histórico) */}
             {isAiAssignee && !isLocked && !isTerminalStatus && (

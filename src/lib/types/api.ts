@@ -420,6 +420,28 @@ export interface TaskTimerSessionDto {
 }
 
 /**
+ * Sessão de trabalho ATIVA de uma task (workSession aberta em EXECUTING).
+ *
+ * Espelha `ActiveWorkSessionDto` do backend (task #794 / DEV-123). Presente em
+ * `TaskResponseDto.activeWorkSession` somente quando a task está `EXECUTING`
+ * com uma workSession aberta e fresca (TTL 2h — sessão órfã expira). É a fonte
+ * do badge "em trabalho por Fulano desde X" (card, linha de lista, tela de
+ * abertura). Deriva de `dados.telemetry.workSessions[]` (fluxo de IA) —
+ * distinto de `timer` (fluxo humano). O frontend só EXIBE.
+ */
+export interface ActiveWorkSession {
+  /** DEntidade.chave (string) de quem abriu a sessão, ou null se não identificável. */
+  agentId: string | null;
+  /**
+   * Nome (DEntidade.nome) do dono, hidratado server-side em batch nas leituras
+   * (GET /tasks, GET /tasks/:id). null em respostas de mutação ou agentId nulo.
+   */
+  agentName: string | null;
+  /** ISO 8601 de início da sessão de trabalho (entrada em EXECUTING). */
+  startedAt: string;
+}
+
+/**
  * Representação canônica de uma DTask V2.
  *
  * Campo `status` contém a V3 Intention (ex: 'INBOX', 'EXECUTING').
@@ -460,6 +482,12 @@ export interface TaskResponseDto {
    * em andamento. Quando presente, a UI deve travar a task (read-only).
    */
   activeExecution?: ActiveExecutionDto | null;
+  /**
+   * Sessão de trabalho ATIVA (IA) associada à task — fonte do badge "em
+   * trabalho por Fulano desde X" (task #794 / DEV-123). `null`/undefined quando
+   * a task não está EXECUTING com sessão aberta e fresca. Distinto de `timer`.
+   */
+  activeWorkSession?: ActiveWorkSession | null;
   /**
    * Estado agregado do timer manual de tempo de trabalho (ADR-V2-057).
    * `null` quando a task nunca teve timer; caso contrário traz o estado
@@ -571,10 +599,7 @@ export interface TeamMemberDto {
 }
 
 export type TeamFeedAction =
-  | "TASK_CREATED"
-  | "TASK_ASSIGNED"
-  | "TASK_STATUS_CHANGED"
-  | "TASK_COMPLETED";
+  "TASK_CREATED" | "TASK_ASSIGNED" | "TASK_STATUS_CHANGED" | "TASK_COMPLETED";
 
 export interface TeamFeedItemDto {
   id: string;
@@ -731,10 +756,7 @@ export interface ApiErrorResponse {
 // ─── Agents ──────────────────────────────────────────────────────────────────
 
 export type AgentStatus =
-  | "pending_install"
-  | "never_connected"
-  | "online"
-  | "offline";
+  "pending_install" | "never_connected" | "online" | "offline";
 
 export type ExecutionRisk = "LOW" | "MEDIUM" | "HIGH";
 

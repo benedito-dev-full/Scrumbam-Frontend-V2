@@ -28,6 +28,7 @@ import { qk } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { TaskDetailDrawer } from "@/components/tasks/task-detail-drawer";
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
+import { WorkSessionBadge } from "@/components/tasks/work-session-badge";
 import { useTaskExecution, AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
 import { useTeams } from "@/hooks/use-teams";
 
@@ -326,7 +327,7 @@ function TaskCard({
         <span className="font-mono text-[11px] text-muted-foreground">
           {task.identifier}
         </span>
-        <div className="flex min-h-5 items-center gap-1.5">
+        <div className="flex min-h-5 min-w-0 items-center gap-1.5">
           {isLocked && (
             <span
               title="Em execução pela IA"
@@ -339,6 +340,9 @@ function TaskCard({
                 : "executando"}
             </span>
           )}
+          {/* Task #794: "em trabalho por Fulano" — só renderiza em EXECUTING
+              com workSession ativa (o componente decide). */}
+          <WorkSessionBadge task={task} />
           {task.priority && (
             <span
               className="size-1.5 rounded-full"
