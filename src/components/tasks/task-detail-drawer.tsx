@@ -7,6 +7,8 @@ import { X, Calendar, Lock, Trash2 } from "lucide-react";
 // --- Internos -------------------------------------------------------------
 import { useTask, useUpdateTask, useUpdateTaskStatus } from "@/hooks/use-tasks";
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
+import { TakeoverConfirmDialog } from "@/components/tasks/takeover-confirm-dialog";
+import { useWorkCollisionGuard } from "@/hooks/use-work-collision-guard";
 import { TaskTimerPanel } from "@/components/tasks/task-timer-panel";
 import { AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
 import { isOverdue } from "@/lib/mappers/task-status.mapper";
@@ -56,6 +58,7 @@ export function TaskDetailDrawer({
   const { data: task, isLoading } = useTask(taskId);
   const { mutate: updateTask, isPending: isUpdating } = useUpdateTask();
   const { mutate: updateStatus } = useUpdateTaskStatus();
+  const { run, dialogProps } = useWorkCollisionGuard();
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   if (isLoading) {
@@ -91,6 +94,8 @@ export function TaskDetailDrawer({
         onOpenChange={setDeleteOpen}
         onSuccess={onClose}
       />
+      {/* Task #795: guard de colisão (mover→EXECUTING / reatribuir). */}
+      <TakeoverConfirmDialog {...dialogProps} />
       {/* Header */}
       <div className="flex items-start justify-between gap-3 border-b border-border p-4">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
@@ -135,9 +140,13 @@ export function TaskDetailDrawer({
           <StatusPicker
             current={task.status}
             disabled={isLocked}
-            onChange={(status) =>
-              updateStatus({ id: taskId, status, projectId })
-            }
+            onChange={(status) => {
+              const doIt = () =>
+                updateStatus({ id: taskId, status, projectId });
+              // Guarda só ao ENTRAR em EXECUTING; demais status não perguntam.
+              if (status === "EXECUTING") run(task, doIt);
+              else doIt();
+            }}
           />
         </Field>
 
@@ -202,14 +211,18 @@ export function TaskDetailDrawer({
             currentTeamId={task.assigneeTeamId ?? null}
             disabled={isLocked}
             onChange={(id) =>
-              updateTask({ id: taskId, projectId, dto: { assigneeId: id } })
+              run(task, () =>
+                updateTask({ id: taskId, projectId, dto: { assigneeId: id } }),
+              )
             }
             onTeamChange={(teamId) =>
-              updateTask({
-                id: taskId,
-                projectId,
-                dto: { assigneeTeamId: teamId },
-              })
+              run(task, () =>
+                updateTask({
+                  id: taskId,
+                  projectId,
+                  dto: { assigneeTeamId: teamId },
+                }),
+              )
             }
           />
         </Field>

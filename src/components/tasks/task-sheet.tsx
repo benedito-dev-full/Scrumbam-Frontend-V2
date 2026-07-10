@@ -5,8 +5,10 @@ import { Trash2 } from "lucide-react";
 
 import { CommentsPanel } from "@/components/comments/CommentsPanel";
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
+import { TakeoverConfirmDialog } from "@/components/tasks/takeover-confirm-dialog";
 import { TaskTimerPanel } from "@/components/tasks/task-timer-panel";
 import { WorkSessionBadge } from "@/components/tasks/work-session-badge";
+import { useWorkCollisionGuard } from "@/hooks/use-work-collision-guard";
 import {
   INTENTION_TO_VISUAL,
   IcArrowLeft,
@@ -41,6 +43,7 @@ interface SubtarefaItem {
 export function TaskSheet({ task, onClose }: TaskSheetProps) {
   const updateTask = useUpdateTask();
   const updateStatus = useUpdateTaskStatus();
+  const { run, dialogProps } = useWorkCollisionGuard();
 
   const [nome, setNome] = useState("");
   const [editandoNome, setEditandoNome] = useState(false);
@@ -120,15 +123,21 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
   const handleStatusChange = useCallback(
     (v: StatusVisual) => {
       if (!task) return;
-      setStatusVisual(v);
       const intention = VISUAL_TO_INTENTION[v];
-      updateStatus.mutate({
-        id: task.id,
-        status: intention,
-        projectId: task.projectId,
-      });
+      // Otimista + mutação dentro do proceed: em Cancelar nada muda (nem o
+      // visual). Guarda só ao ENTRAR em EXECUTING.
+      const doIt = () => {
+        setStatusVisual(v);
+        updateStatus.mutate({
+          id: task.id,
+          status: intention,
+          projectId: task.projectId,
+        });
+      };
+      if (intention === "EXECUTING") run(task, doIt);
+      else doIt();
     },
-    [task, updateStatus],
+    [task, updateStatus, run],
   );
 
   const handlePrioridadeChange = useCallback(
@@ -160,14 +169,17 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
   const handleAssigneeTeamChange = useCallback(
     (teamId: string | null) => {
       if (!task) return;
-      setAssigneeTeamId(teamId);
-      updateTask.mutate({
-        id: task.id,
-        projectId: task.projectId,
-        dto: { assigneeTeamId: teamId },
+      // Otimista + mutação dentro do proceed: em Cancelar nada muda.
+      run(task, () => {
+        setAssigneeTeamId(teamId);
+        updateTask.mutate({
+          id: task.id,
+          projectId: task.projectId,
+          dto: { assigneeTeamId: teamId },
+        });
       });
     },
-    [task, updateTask],
+    [task, updateTask, run],
   );
 
   const adicionarSubtarefa = useCallback(() => {
@@ -766,6 +778,8 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
         task={task}
         onSuccess={onClose}
       />
+      {/* Task #795: guard de colisão (mover→EXECUTING / reatribuir time). */}
+      <TakeoverConfirmDialog {...dialogProps} />
     </>
   );
 }

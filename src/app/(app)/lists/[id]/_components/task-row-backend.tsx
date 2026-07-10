@@ -19,6 +19,8 @@ import {
 } from "@/hooks/use-tasks";
 import { AI_ASSIGNEE_ID, useTaskExecution } from "@/hooks/use-task-execution";
 import { WorkSessionBadge } from "@/components/tasks/work-session-badge";
+import { TakeoverConfirmDialog } from "@/components/tasks/takeover-confirm-dialog";
+import { useWorkCollisionGuard } from "@/hooks/use-work-collision-guard";
 import { useTeams } from "@/hooks/use-teams";
 import { isOverdue } from "@/lib/mappers/task-status.mapper";
 import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
@@ -52,6 +54,7 @@ export function TaskRowBackend({
   const updateStatus = useUpdateTaskStatus();
   const createTask = useCreateTask();
   const { data: teams = [] } = useTeams();
+  const { run, dialogProps } = useWorkCollisionGuard();
 
   const [hovered, setHovered] = useState(false);
   const [openCell, setOpenCell] = useState<
@@ -119,11 +122,16 @@ export function TaskRowBackend({
   function handleStatusChange(sv: StatusVisualKey) {
     closeDropdown();
     if (isLocked) return;
-    updateStatus.mutate({
-      id: task.id,
-      status: VISUAL_TO_INTENTION_ROW[sv],
-      projectId: task.projectId,
-    });
+    const intention = VISUAL_TO_INTENTION_ROW[sv];
+    const doIt = () =>
+      updateStatus.mutate({
+        id: task.id,
+        status: intention,
+        projectId: task.projectId,
+      });
+    // Guarda só ao ENTRAR em EXECUTING; sair (DONE/FAILED) não pergunta.
+    if (intention === "EXECUTING") run(task, doIt);
+    else doIt();
   }
 
   function handlePrioChange(p: PriorityVisualKey | null) {
@@ -149,21 +157,25 @@ export function TaskRowBackend({
   function handleAssigneeChange(memberId: string | null) {
     closeDropdown();
     if (isLocked) return;
-    updateTask.mutate({
-      id: task.id,
-      projectId: task.projectId,
-      dto: { assigneeId: memberId, assigneeTeamId: null },
-    });
+    run(task, () =>
+      updateTask.mutate({
+        id: task.id,
+        projectId: task.projectId,
+        dto: { assigneeId: memberId, assigneeTeamId: null },
+      }),
+    );
   }
 
   function handleTeamChange(teamId: string | null) {
     closeDropdown();
     if (isLocked) return;
-    updateTask.mutate({
-      id: task.id,
-      projectId: task.projectId,
-      dto: { assigneeTeamId: teamId, assigneeId: null },
-    });
+    run(task, () =>
+      updateTask.mutate({
+        id: task.id,
+        projectId: task.projectId,
+        dto: { assigneeTeamId: teamId, assigneeId: null },
+      }),
+    );
   }
 
   const indent = 8 + depth * 30;
@@ -207,6 +219,10 @@ export function TaskRowBackend({
 
   return (
     <>
+      {/* Task #795: guard de colisão de trabalho humano (mover→EXECUTING /
+          reatribuir responsável). Portaliza para body — seguro dentro da
+          <tbody>. */}
+      <TakeoverConfirmDialog {...dialogProps} />
       <tr
         ref={isDraggable ? setDragRef : undefined}
         onMouseEnter={() => setHovered(true)}

@@ -28,7 +28,9 @@ import { qk } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { TaskDetailDrawer } from "@/components/tasks/task-detail-drawer";
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
+import { TakeoverConfirmDialog } from "@/components/tasks/takeover-confirm-dialog";
 import { WorkSessionBadge } from "@/components/tasks/work-session-badge";
+import { useWorkCollisionGuard } from "@/hooks/use-work-collision-guard";
 import { useTaskExecution, AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
 import { useTeams } from "@/hooks/use-teams";
 
@@ -63,6 +65,7 @@ export function KanbanBoard({
 
   const updateStatus = useUpdateTaskStatus();
   const queryClient = useQueryClient();
+  const { run, dialogProps } = useWorkCollisionGuard();
   const [activeTask, setActiveTask] = useState<TaskResponseDto | null>(null);
   const [internalSelectedTaskId, setInternalSelectedTaskId] = useState<
     string | null
@@ -103,33 +106,42 @@ export function KanbanBoard({
     // Já está na coluna certa — não fazer nada
     if (intentionToColumn(task.status as V3Intention) === targetCol) return;
 
-    // Atualização otimista — move o card imediatamente na UI
-    queryClient.setQueryData<TaskResponseDto[]>(
-      qk.tasks.byProject(projectId),
-      (prev) =>
-        prev?.map((t) =>
-          t.id === taskId ? { ...t, status: newIntention } : t,
-        ) ?? [],
-    );
+    // Aplica o otimista + persiste. Tudo dentro do proceed para que, em
+    // "Cancelar" no diálogo de colisão, o card volte sozinho à origem
+    // (nunca chegamos a mover na UI).
+    const proceed = () => {
+      // Atualização otimista — move o card imediatamente na UI
+      queryClient.setQueryData<TaskResponseDto[]>(
+        qk.tasks.byProject(projectId),
+        (prev) =>
+          prev?.map((t) =>
+            t.id === taskId ? { ...t, status: newIntention } : t,
+          ) ?? [],
+      );
 
-    // Persiste no backend
-    updateStatus.mutate(
-      { id: taskId, status: newIntention, projectId },
-      {
-        onSuccess: () => {
-          // Revalida para garantir sincronia com a lista
-          void queryClient.invalidateQueries({
-            queryKey: qk.tasks.byProject(projectId),
-          });
+      // Persiste no backend
+      updateStatus.mutate(
+        { id: taskId, status: newIntention, projectId },
+        {
+          onSuccess: () => {
+            // Revalida para garantir sincronia com a lista
+            void queryClient.invalidateQueries({
+              queryKey: qk.tasks.byProject(projectId),
+            });
+          },
+          onError: () => {
+            // Rollback
+            void queryClient.invalidateQueries({
+              queryKey: qk.tasks.byProject(projectId),
+            });
+          },
         },
-        onError: () => {
-          // Rollback
-          void queryClient.invalidateQueries({
-            queryKey: qk.tasks.byProject(projectId),
-          });
-        },
-      },
-    );
+      );
+    };
+
+    // Task #795: guarda só ao ENTRAR em EXECUTING; demais colunas não perguntam.
+    if (newIntention === "EXECUTING") run(task, proceed);
+    else proceed();
   }
 
   if (isLoading) return <KanbanSkeleton />;
@@ -175,6 +187,9 @@ export function KanbanBoard({
           onClose={() => setInternalSelectedTaskId(null)}
         />
       )}
+
+      {/* Task #795: guard de colisão ao arrastar para EXECUTING. */}
+      <TakeoverConfirmDialog {...dialogProps} actionLabel="mover" />
     </>
   );
 }

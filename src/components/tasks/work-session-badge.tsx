@@ -1,27 +1,8 @@
 import { UserRound } from "lucide-react";
 
+import { formatSince } from "@/lib/format-since";
 import { cn } from "@/lib/utils";
 import type { TaskResponseDto } from "@/lib/types/api";
-
-/**
- * Formata "desde X" de forma compacta em pt-BR ("há 5 min", "há 2 h", "há 1 d").
- *
- * Puramente visual — o backend é a fonte de verdade do `startedAt`. Usa
- * `Intl.RelativeTimeFormat` (sem dependência externa, compatível com o CSP).
- */
-function formatSince(startedAt: string): string {
-  const startedMs = new Date(startedAt).getTime();
-  if (!Number.isFinite(startedMs)) return "";
-  const diffMs = Date.now() - startedMs;
-  const rtf = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
-  const minutes = Math.round(diffMs / 60000);
-  if (minutes < 1) return "agora mesmo";
-  if (minutes < 60) return rtf.format(-minutes, "minute");
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return rtf.format(-hours, "hour");
-  const days = Math.round(hours / 24);
-  return rtf.format(-days, "day");
-}
 
 interface WorkSessionBadgeProps {
   task: Pick<TaskResponseDto, "status" | "activeWorkSession">;
