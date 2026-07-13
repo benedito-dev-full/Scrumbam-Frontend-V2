@@ -19,7 +19,7 @@ import { ScrumbanLogo } from "@/components/shell/scrumban-logo";
 import { NotificationsPopover } from "@/components/shell/notifications-popover";
 import { useCommandPaletteStore } from "@/lib/stores/command-palette";
 import { useContentLoadingStore } from "@/lib/stores/content-loading";
-import { useLogout } from "@/hooks/use-auth";
+import { useLogout, useMe } from "@/hooks/use-auth";
 import { useAuthStore } from "@/lib/stores/auth";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -215,7 +215,10 @@ function orgRoleBadge(
     case "MEMBER":
       return { label: "Membro", className: "bg-blue-500/15 text-blue-400" };
     case "VIEWER":
-      return { label: "Visualizador", className: "bg-zinc-500/15 text-zinc-400" };
+      return {
+        label: "Visualizador",
+        className: "bg-zinc-500/15 text-zinc-400",
+      };
     default:
       return null;
   }
@@ -224,11 +227,21 @@ function orgRoleBadge(
 function UserMenu() {
   const router = useRouter();
   const logout = useLogout();
-  const user = useAuthStore((s) => s.user);
 
-  const name = user?.name ?? "?";
+  // FONTE ÚNICA (F2 — item 2.6): `useMe()` é quem busca o usuário e quem
+  // ESCREVE no store (ver hooks/use-auth.ts). O store entra aqui apenas como
+  // cache reidratado — o que dá conteúdo imediato no boot, sem flash. Antes,
+  // este componente lia SÓ o store, que numa aba nova estava vazio: daí o
+  // avatar `?` do estado zumbi.
+  const { data: me, isLoading } = useMe();
+  const cached = useAuthStore((s) => s.user);
+  const user = me ?? cached ?? null;
+
+  // Enquanto carrega e ainda não há nada em cache, o avatar fica VAZIO —
+  // nunca `?`. O `?` só aparece se, de fato, não houver usuário algum.
+  const name = user?.name ?? (isLoading ? "" : "?");
   const email = user?.email ?? "";
-  const initials = getInitials(name);
+  const initials = name ? getInitials(name) : "";
   const roleBadge = orgRoleBadge(user?.orgRole);
 
   return (

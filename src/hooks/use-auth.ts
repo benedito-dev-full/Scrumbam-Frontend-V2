@@ -1,19 +1,25 @@
-'use client';
+"use client";
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
+import { useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
-import { api, getApiErrorMessage } from '@/lib/api';
-import { mockLogin, mockRegister, mockMe, mockSwitchOrg } from '@/lib/mock/auth';
-import { useAuthStore } from '@/lib/stores/auth';
-import { disconnectSocket } from '@/lib/realtime/socket';
-import { qk } from '@/lib/query-keys';
+import { api, getApiErrorMessage } from "@/lib/api";
+import {
+  mockLogin,
+  mockRegister,
+  mockMe,
+  mockSwitchOrg,
+} from "@/lib/mock/auth";
+import { useAuthStore } from "@/lib/stores/auth";
+import { disconnectSocket } from "@/lib/realtime/socket";
+import { qk } from "@/lib/query-keys";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-import type { UserDto, AuthResponseDto } from '@/lib/types/api';
+import type { UserDto, AuthResponseDto } from "@/lib/types/api";
 
 // ─── Tipos locais ─────────────────────────────────────────────────────────────
 
@@ -39,7 +45,7 @@ interface RegisterDto {
  * Quando true, todas as chamadas de auth são resolvidas localmente
  * sem tocar no backend.
  */
-const USE_MOCK = process.env.NEXT_PUBLIC_MOCK_AUTH === 'true';
+const USE_MOCK = process.env.NEXT_PUBLIC_MOCK_AUTH === "true";
 
 // ─── Hooks ────────────────────────────────────────────────────────────────────
 
@@ -60,15 +66,30 @@ const USE_MOCK = process.env.NEXT_PUBLIC_MOCK_AUTH === 'true';
 export function useMe() {
   const accessToken = useAuthStore((s) => s.accessToken);
 
-  return useQuery<UserDto>({
+  const query = useQuery<UserDto>({
     queryKey: qk.auth.me,
     queryFn: () => {
-      if (USE_MOCK) return mockMe(accessToken ?? '');
-      return api.get<UserDto>('/auth/me').then((r) => r.data);
+      if (USE_MOCK) return mockMe(accessToken ?? "");
+      return api.get<UserDto>("/auth/me").then((r) => r.data);
     },
     enabled: !!accessToken,
     staleTime: 5 * 60_000,
   });
+
+  // FONTE ÚNICA DE VERDADE (F2 — item 2.6).
+  //
+  // Antes existiam DUAS: o `user` do store (escrito só no login/register/
+  // switch-org) e o `data` do `useMe()` (que NUNCA alimentava o store). Numa
+  // aba nova — ou após qualquer boot em que o store reidratasse sem `user` —
+  // o topbar lia o store vazio e renderizava o avatar como `?`, mesmo com o
+  // `/auth/me` respondendo 200. Aqui a query passa a ser a fonte que ESCREVE
+  // no store; o store vira apenas o cache reidratável dela.
+  const user = query.data;
+  useEffect(() => {
+    if (user) useAuthStore.getState().setUser(user);
+  }, [user]);
+
+  return query;
 }
 
 /**
@@ -93,12 +114,12 @@ export function useLogin() {
   return useMutation<AuthResponseDto, unknown, LoginDto>({
     mutationFn: (data) => {
       if (USE_MOCK) return mockLogin(data.email, data.password);
-      return api.post<AuthResponseDto>('/auth/login', data).then((r) => r.data);
+      return api.post<AuthResponseDto>("/auth/login", data).then((r) => r.data);
     },
     onSuccess: (data) => {
       useAuthStore.getState().setTokens(data.accessToken, data.refreshToken);
       useAuthStore.getState().setUser(data.user);
-      router.push('/');
+      router.push("/");
     },
     onError: (error) => {
       toast.error(getApiErrorMessage(error));
@@ -136,13 +157,13 @@ export function useRegister() {
         );
       }
       return api
-        .post<AuthResponseDto>('/auth/register', data)
+        .post<AuthResponseDto>("/auth/register", data)
         .then((r) => r.data);
     },
     onSuccess: (data) => {
       useAuthStore.getState().setTokens(data.accessToken, data.refreshToken);
       useAuthStore.getState().setUser(data.user);
-      router.push('/');
+      router.push("/");
     },
     onError: (error) => {
       toast.error(getApiErrorMessage(error));
@@ -173,7 +194,7 @@ export function useSwitchOrg() {
     mutationFn: (organizationId: string) => {
       if (USE_MOCK) return mockSwitchOrg(organizationId);
       return api
-        .post<AuthResponseDto>('/auth/switch-org', { organizationId })
+        .post<AuthResponseDto>("/auth/switch-org", { organizationId })
         .then((r) => r.data);
     },
     onSuccess: (data) => {
@@ -220,13 +241,13 @@ export function useLogout() {
   return useMutation<unknown, unknown, void>({
     mutationFn: () => {
       if (USE_MOCK) return Promise.resolve();
-      return api.post('/auth/logout').then((r) => r.data);
+      return api.post("/auth/logout").then((r) => r.data);
     },
     onSettled: () => {
       disconnectSocket();
       useAuthStore.getState().clearSession();
       queryClient.clear();
-      router.push('/login');
+      router.push("/login");
     },
   });
 }

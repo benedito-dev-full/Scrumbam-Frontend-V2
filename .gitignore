@@ -52,3 +52,7 @@ workspace/reviews/*.md
 
 # settings.local.json e local de cada dev
 .claude/settings.local.json
+
+# playwright
+/test-results/
+/playwright-report/

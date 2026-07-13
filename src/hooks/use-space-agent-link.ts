@@ -1,18 +1,19 @@
-'use client';
+"use client";
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
-import { api } from '@/lib/api';
+import { api } from "@/lib/api";
+import { useAuthStore } from "@/lib/stores/auth";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-import type { DProjectDto, DeployKeyResponseDto } from '@/lib/types/api';
+import type { DProjectDto, DeployKeyResponseDto } from "@/lib/types/api";
 
 // ─── Query Keys ───────────────────────────────────────────────────────────────
 
 export const linkKeys = {
-  bySpace: (spaceId: string) => ['space-agent-link', spaceId] as const,
+  bySpace: (spaceId: string) => ["space-agent-link", spaceId] as const,
 } as const;
 
 // ─── Tipos internos ───────────────────────────────────────────────────────────
@@ -20,7 +21,7 @@ export const linkKeys = {
 interface AgentStatusItem {
   linkId: string;
   agentId: string;
-  tipo: 'primary' | 'secondary';
+  tipo: "primary" | "secondary";
   name: string;
   statusCode: string | null;
   lastSeen?: string | null;
@@ -50,7 +51,7 @@ export interface LinkedAgent {
   id: string;
   nome: string;
   hostname: string | null;
-  status: 'online' | 'offline' | 'never_connected' | 'pending_install';
+  status: "online" | "offline" | "never_connected" | "pending_install";
   tunnelOk: boolean;
 }
 
@@ -62,6 +63,12 @@ export interface SpaceAgentLinkData {
 // ─── Hooks ───────────────────────────────────────────────────────────────────
 
 export function useSpaceAgentLink(spaceId: string) {
+  // Gate de hidratação (F2 — item 2.7). O store usa `skipHydration`: no
+  // primeiro render o `accessToken` ainda é null. Sem este gate a query sai
+  // sem Authorization e toma 401 espúrio — que o interceptor tentava resolver
+  // com refresh e, sem sessão, terminava em logout.
+  const accessToken = useAuthStore((s) => s.accessToken);
+
   return useQuery({
     queryKey: linkKeys.bySpace(spaceId),
     queryFn: async (): Promise<SpaceAgentLinkData> => {
@@ -71,7 +78,10 @@ export function useSpaceAgentLink(spaceId: string) {
         .then((r) => r.data)
         .catch(() => null);
 
-      const primary = status?.agents?.find((a) => a.tipo === 'primary') ?? status?.agents?.[0] ?? null;
+      const primary =
+        status?.agents?.find((a) => a.tipo === "primary") ??
+        status?.agents?.[0] ??
+        null;
       if (!primary) return { link: null, agent: null };
 
       // Busca repoUrl do projeto
@@ -80,13 +90,13 @@ export function useSpaceAgentLink(spaceId: string) {
         .then((r) => r.data)
         .catch(() => null);
 
-      const online = primary.tunnelOk || primary.statusCode === '-510';
+      const online = primary.tunnelOk || primary.statusCode === "-510";
 
       const link: SpaceAgentLink = {
         spaceId,
         agentId: primary.agentId,
         linkId: primary.linkId,
-        repoUrl: project?.repoUrl ?? '',
+        repoUrl: project?.repoUrl ?? "",
         projectSlug: primary.projectSlug ?? null,
         linkedAt: new Date().toISOString(),
       };
@@ -95,14 +105,14 @@ export function useSpaceAgentLink(spaceId: string) {
         id: primary.agentId,
         nome: primary.name,
         hostname: null,
-        status: online ? 'online' : 'offline',
+        status: online ? "online" : "offline",
         tunnelOk: primary.tunnelOk,
       };
 
       return { link, agent };
     },
     staleTime: 10_000,
-    enabled: !!spaceId,
+    enabled: !!spaceId && !!accessToken,
   });
 }
 
@@ -116,9 +126,14 @@ export function useLinkSpaceAgent(spaceId: string) {
   return useMutation({
     mutationFn: async (dto: LinkSpaceAgentDto) => {
       // 1. Salva URL do repo no projeto
-      await api.patch<DProjectDto>(`/projects/${spaceId}`, { repoUrl: dto.repoUrl });
+      await api.patch<DProjectDto>(`/projects/${spaceId}`, {
+        repoUrl: dto.repoUrl,
+      });
       // 2. Cria/atualiza vínculo agente↔projeto (DVincula -185)
-      await api.post(`/projects/${spaceId}/agent`, { agentId: dto.agentId, tipo: 'primary' });
+      await api.post(`/projects/${spaceId}/agent`, {
+        agentId: dto.agentId,
+        tipo: "primary",
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: linkKeys.bySpace(spaceId) });
@@ -135,7 +150,9 @@ export function useUnlinkSpaceAgent(spaceId: string) {
         .get<AgentStatusResponse>(`/projects/${spaceId}/agent/status`)
         .then((r) => r.data)
         .catch(() => null);
-      const primary = status?.agents?.find((a) => a.tipo === 'primary') ?? status?.agents?.[0];
+      const primary =
+        status?.agents?.find((a) => a.tipo === "primary") ??
+        status?.agents?.[0];
       if (primary) {
         await api.delete(`/projects/${spaceId}/agent/${primary.agentId}`);
       }
@@ -150,18 +167,34 @@ export function useUnlinkSpaceAgent(spaceId: string) {
 
 export function useGenerateDeployKey() {
   return useMutation({
-    mutationFn: ({ projectId, agentId }: { projectId: string; agentId: string }) =>
+    mutationFn: ({
+      projectId,
+      agentId,
+    }: {
+      projectId: string;
+      agentId: string;
+    }) =>
       api
-        .post<DeployKeyResponseDto>(`/projects/${projectId}/agent/${agentId}/deploy-key`)
+        .post<DeployKeyResponseDto>(
+          `/projects/${projectId}/agent/${agentId}/deploy-key`,
+        )
         .then((r) => r.data),
   });
 }
 
 export function useProvisionProject() {
   return useMutation({
-    mutationFn: ({ projectId, agentId }: { projectId: string; agentId: string }) =>
+    mutationFn: ({
+      projectId,
+      agentId,
+    }: {
+      projectId: string;
+      agentId: string;
+    }) =>
       api
-        .post<{ dispatched: boolean }>(`/projects/${projectId}/agent/${agentId}/provision`)
+        .post<{ dispatched: boolean }>(
+          `/projects/${projectId}/agent/${agentId}/provision`,
+        )
         .then((r) => r.data),
   });
 }
