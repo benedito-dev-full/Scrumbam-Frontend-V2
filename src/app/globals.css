@@ -71,6 +71,11 @@
   --border: #e2e8f0;
   --input: #e2e8f0;
   --ring: oklch(0.51 0.2 264 / 0.4);
+  /* Poço de terminal: um degrau ABAIXO do background (o card é um degrau
+     acima). Blocos de código recuam em vez de flutuar. */
+  --well: #eef1f5;
+  --well-border: #dbe1ea;
+  --code-string: #b45309;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -108,6 +113,9 @@
   --border: rgba(255,255,255,0.07);
   --input: rgba(255,255,255,0.10);
   --ring: oklch(0.66 0.19 264 / 0.45);
+  --well: #0b0b0c;
+  --well-border: rgba(255,255,255,0.06);
+  --code-string: #e0a45c;
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
