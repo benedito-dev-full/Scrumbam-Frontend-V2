@@ -28,6 +28,7 @@ import {
   useUpdateTaskStatus,
 } from "@/hooks/use-tasks";
 import { qk } from "@/lib/query-keys";
+import { delayInDays, toCivilDay, todayCivilDay } from "@/lib/dates/civil-day";
 import {
   Popover,
   OptionList,
@@ -138,18 +139,21 @@ function saudacao() {
   return "Boa noite";
 }
 
-/** Retorna 'overdue' | 'today' | 'future' | null a partir do dueDate. */
+/**
+ * Retorna 'overdue' | 'today' | 'future' | null a partir do dueDate.
+ *
+ * Compara **dia civil**, não instante: `dueDate` chega como meia-noite UTC, que
+ * em Brasília é a noite do dia anterior — comparar timestamps colocaria a task
+ * que vence hoje no balde 'overdue'. Ver `@/lib/dates/civil-day`.
+ */
 function dueBucket(
   dueDate?: string | null,
 ): "overdue" | "today" | "future" | null {
-  if (!dueDate) return null;
-  const d = new Date(dueDate);
-  if (Number.isNaN(d.getTime())) return null;
-  const now = new Date();
-  const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const startDue = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  if (startDue < startToday) return "overdue";
-  if (startDue.getTime() === startToday.getTime()) return "today";
+  const day = toCivilDay(dueDate);
+  if (!day) return null;
+  const today = todayCivilDay();
+  if (day < today) return "overdue";
+  if (day === today) return "today";
   return "future";
 }
 
@@ -502,15 +506,17 @@ export default function MinhasTarefasPage() {
       if (!t.dueDate) continue;
       const completed = parseCompletedAt(t.completedAt);
       if (!completed) continue;
-      const due = new Date(t.dueDate);
-      if (Number.isNaN(due.getTime())) continue;
-      const diffDays = (completed.getTime() - due.getTime()) / 86_400_000;
-      somaDias += diffDays;
-      amostras++;
       // Classificação por DIA de calendário: concluir no mesmo dia do prazo
       // conta como "no dia"; antes = adiantada; depois = atrasada.
       const dueDay = t.dueDate.slice(0, 10);
       const compDay = format(completed, "yyyy-MM-dd");
+      // Atraso em DIAS INTEIROS — não em frações. Concluir às 10h do dia do
+      // prazo é 0 dia de atraso, não +0,42; do contrário a média contradiz a
+      // própria classificação logo abaixo (que já conta isso como "no dia").
+      const diffDays = delayInDays(dueDay, compDay);
+      if (diffDays === null) continue;
+      somaDias += diffDays;
+      amostras++;
       if (compDay < dueDay) adiantadas++;
       else if (compDay > dueDay) atrasadas++;
       else noDia++;
@@ -555,16 +561,15 @@ export default function MinhasTarefasPage() {
       if (!t.dueDate) continue;
       const completed = parseCompletedAt(t.completedAt);
       if (!completed) continue;
-      const due = new Date(t.dueDate);
-      if (Number.isNaN(due.getTime())) continue;
       totalComPrazo++;
       // Atraso por DIA de calendário (consistente com a aba Pontualidade):
-      // só conta quem concluiu DEPOIS do dia do prazo. Mesmo-dia à tarde
-      // (diffDays > 0 mas mesmo compDay) NÃO é atraso.
+      // só conta quem concluiu DEPOIS do dia do prazo. Concluir no próprio dia
+      // do prazo, mesmo à noite, NÃO é atraso.
       const dueDay = t.dueDate.slice(0, 10);
       const compDay = format(completed, "yyyy-MM-dd");
       if (compDay <= dueDay) continue;
-      const diffDays = (completed.getTime() - due.getTime()) / 86_400_000;
+      const diffDays = delayInDays(dueDay, compDay);
+      if (diffDays === null) continue;
       somaDias += diffDays;
       amostras++;
       const dias = Math.max(1, Math.round(diffDays));

@@ -32,6 +32,7 @@ import {
 import { ptBR } from "date-fns/locale";
 
 import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
+import { isPastDue } from "@/lib/dates/civil-day";
 
 const STATUS_COLOR: Partial<Record<V3Intention, string>> = {
   EXECUTING: "#f59e0b",
@@ -432,9 +433,11 @@ export function GanttView({
                 STATUS_COLOR[task.status as V3Intention] ?? "#6b7280";
               const label =
                 STATUS_LABEL[task.status as V3Intention] ?? task.status;
+              // Atrasada = o DIA do prazo já passou. Vencer hoje não é atraso —
+              // comparar contra `new Date()` marcava a task de hoje como
+              // atrasada a partir do meio-dia.
               const isLate =
-                task.dueDate &&
-                new Date(task.dueDate.slice(0, 10) + "T12:00:00") < new Date() &&
+                isPastDue(task.dueDate) &&
                 !["DONE", "VALIDATED", "CANCELLED"].includes(task.status);
               const isDone = ["DONE", "VALIDATED"].includes(task.status);
 
@@ -602,9 +605,7 @@ export function GanttView({
             );
           })}
           {undated.length > 8 && (
-            <span
-              style={{ fontSize: 11, color: "var(--muted-foreground)" }}
-            >
+            <span style={{ fontSize: 11, color: "var(--muted-foreground)" }}>
               +{undated.length - 8} mais
             </span>
           )}

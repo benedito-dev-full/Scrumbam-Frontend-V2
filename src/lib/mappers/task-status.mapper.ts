@@ -7,16 +7,13 @@
  * @see docs/plano/00-PLANO-MESTRE.md — §V3 Intentions
  */
 
-import type { TaskResponseDto, V3Intention } from '@/lib/types/api';
+import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
+import { isDueOnToday, isPastDue } from "@/lib/dates/civil-day";
 
 // ─── Colunas Kanban (agrupamentos visuais do frontend) ────────────────────────
 
 export type KanbanColumn =
-  | 'backlog'
-  | 'ready'
-  | 'em-progresso'
-  | 'concluido'
-  | 'falhou';
+  "backlog" | "ready" | "em-progresso" | "concluido" | "falhou";
 
 export interface KanbanColumnConfig {
   id: KanbanColumn;
@@ -44,34 +41,34 @@ export interface KanbanColumnConfig {
  */
 export const KANBAN_COLUMNS: KanbanColumnConfig[] = [
   {
-    id: 'backlog',
-    label: 'Backlog',
-    color: '#6b7280',
-    intentions: ['INBOX'],
+    id: "backlog",
+    label: "Backlog",
+    color: "#6b7280",
+    intentions: ["INBOX"],
   },
   {
-    id: 'ready',
-    label: 'Pronto',
-    color: '#3b82f6',
-    intentions: ['READY'],
+    id: "ready",
+    label: "Pronto",
+    color: "#3b82f6",
+    intentions: ["READY"],
   },
   {
-    id: 'em-progresso',
-    label: 'Em Progresso',
-    color: '#8b5cf6',
-    intentions: ['EXECUTING', 'VALIDATING'],
+    id: "em-progresso",
+    label: "Em Progresso",
+    color: "#8b5cf6",
+    intentions: ["EXECUTING", "VALIDATING"],
   },
   {
-    id: 'concluido',
-    label: 'Concluído',
-    color: '#10b981',
-    intentions: ['DONE', 'VALIDATED', 'CANCELLED', 'DISCARDED'],
+    id: "concluido",
+    label: "Concluído",
+    color: "#10b981",
+    intentions: ["DONE", "VALIDATED", "CANCELLED", "DISCARDED"],
   },
   {
-    id: 'falhou',
-    label: 'Falhou',
-    color: '#ef4444',
-    intentions: ['FAILED'],
+    id: "falhou",
+    label: "Falhou",
+    color: "#ef4444",
+    intentions: ["FAILED"],
   },
 ];
 
@@ -96,7 +93,7 @@ export function intentionToColumn(intention: V3Intention): KanbanColumn {
   for (const col of KANBAN_COLUMNS) {
     if (col.intentions.includes(intention)) return col.id;
   }
-  return 'backlog';
+  return "backlog";
 }
 
 /**
@@ -105,7 +102,9 @@ export function intentionToColumn(intention: V3Intention): KanbanColumn {
  * @param columnId - ID da coluna Kanban.
  * @returns `KanbanColumnConfig` ou `undefined` se não encontrada.
  */
-export function getColumnConfig(columnId: KanbanColumn): KanbanColumnConfig | undefined {
+export function getColumnConfig(
+  columnId: KanbanColumn,
+): KanbanColumnConfig | undefined {
   return KANBAN_COLUMNS.find((col) => col.id === columnId);
 }
 
@@ -116,11 +115,11 @@ export function getColumnConfig(columnId: KanbanColumn): KanbanColumnConfig | un
  * mesmo que `dueDate` já tenha passado.
  */
 export const TERMINAL_INTENTIONS: V3Intention[] = [
-  'DONE',
-  'VALIDATED',
-  'CANCELLED',
-  'DISCARDED',
-  'FAILED',
+  "DONE",
+  "VALIDATED",
+  "CANCELLED",
+  "DISCARDED",
+  "FAILED",
 ];
 
 /**
@@ -141,19 +140,27 @@ export function isTerminalIntention(intention: V3Intention): boolean {
 /**
  * Verifica se uma task está atrasada em relação ao `dueDate`.
  *
+ * Atrasada = o dia do prazo **já passou**. Uma task que vence hoje NÃO está
+ * atrasada — ela tem o dia inteiro para ser concluída (use {@link isDueToday}).
+ *
  * Calculado em runtime no frontend — NÃO vem do backend como campo.
  * Tasks em estado terminal nunca são consideradas atrasadas.
- * "atrasado" é exibido como badge na task, não como coluna separada.
+ *
+ * A comparação é de **dia civil**, nunca de instante: `dueDate` chega da API
+ * como `2026-07-13T00:00:00.000Z` (meia-noite UTC = 21h do dia 12 em Brasília),
+ * então comparar timestamps marcaria a task de hoje como atrasada desde a
+ * noite anterior. Ver {@link isPastDue}.
  *
  * @param dueDate - Data de vencimento ISO 8601 (ou null/undefined se não definida).
  * @param intention - V3 Intention atual da task.
- * @returns `true` se a task está atrasada (dueDate no passado e intention não-terminal).
+ * @returns `true` se o prazo já passou e a intention não é terminal.
  *
  * @example
  * ```typescript
- * isOverdue('2024-01-01', 'EXECUTING') // true  (data passada, não-terminal)
- * isOverdue('2030-12-31', 'EXECUTING') // false (data futura)
- * isOverdue('2024-01-01', 'DONE')      // false (terminal, nunca atrasada)
+ * // supondo hoje = 2026-07-13
+ * isOverdue('2026-07-12', 'EXECUTING') // true  (ontem — prazo passou)
+ * isOverdue('2026-07-13', 'EXECUTING') // false (vence HOJE)
+ * isOverdue('2026-07-12', 'DONE')      // false (terminal, nunca atrasada)
  * isOverdue(null, 'INBOX')             // false (sem dueDate)
  * ```
  */
@@ -161,13 +168,12 @@ export function isOverdue(
   dueDate: string | null | undefined,
   intention: V3Intention,
 ): boolean {
-  if (!dueDate) return false;
   if (TERMINAL_INTENTIONS.includes(intention)) return false;
-  return new Date(dueDate) < new Date();
+  return isPastDue(dueDate);
 }
 
 /**
- * Verifica se uma task vence hoje (timezone local).
+ * Verifica se uma task vence hoje.
  *
  * Tasks em estado terminal nunca sao consideradas "para hoje" — a regra
  * espelha `isOverdue` para que as duas listas (Atrasadas / Hoje) sejam
@@ -178,39 +184,33 @@ export function isOverdue(
  * @returns `true` se a task vence hoje e nao esta em estado terminal.
  *
  * @example
- * isDueToday(new Date().toISOString(), 'EXECUTING')  // true
- * isDueToday('2030-12-31', 'EXECUTING')              // false (futuro)
- * isDueToday(new Date().toISOString(), 'DONE')       // false (terminal)
+ * // supondo hoje = 2026-07-13
+ * isDueToday('2026-07-13', 'EXECUTING')  // true
+ * isDueToday('2026-07-14', 'EXECUTING')  // false (futuro)
+ * isDueToday('2026-07-13', 'DONE')       // false (terminal)
  */
 export function isDueToday(
   dueDate: string | null | undefined,
   intention: V3Intention,
 ): boolean {
-  if (!dueDate) return false;
   if (TERMINAL_INTENTIONS.includes(intention)) return false;
-  const due = new Date(dueDate);
-  const now = new Date();
-  return (
-    due.getFullYear() === now.getFullYear() &&
-    due.getMonth() === now.getMonth() &&
-    due.getDate() === now.getDate()
-  );
+  return isDueOnToday(dueDate);
 }
 
 // ─── Mapeamento de prioridade ─────────────────────────────────────────────────
 
 const PRIORITY_LABEL_MAP: Record<string, string> = {
-  LOW: 'Baixa',
-  MEDIUM: 'Média',
-  HIGH: 'Alta',
-  URGENT: 'Urgente',
+  LOW: "Baixa",
+  MEDIUM: "Média",
+  HIGH: "Alta",
+  URGENT: "Urgente",
 };
 
 const PRIORITY_COLOR_MAP: Record<string, string> = {
-  LOW: '#6b7280',
-  MEDIUM: '#f59e0b',
-  HIGH: '#f97316',
-  URGENT: '#ef4444',
+  LOW: "#6b7280",
+  MEDIUM: "#f59e0b",
+  HIGH: "#f97316",
+  URGENT: "#ef4444",
 };
 
 /**
@@ -227,7 +227,7 @@ const PRIORITY_COLOR_MAP: Record<string, string> = {
  * ```
  */
 export function priorityToLabel(priority?: string): string {
-  if (!priority) return '—';
+  if (!priority) return "—";
   return PRIORITY_LABEL_MAP[priority] ?? priority;
 }
 
@@ -245,8 +245,8 @@ export function priorityToLabel(priority?: string): string {
  * ```
  */
 export function priorityToColor(priority?: string): string {
-  if (!priority) return '#6b7280';
-  return PRIORITY_COLOR_MAP[priority] ?? '#6b7280';
+  if (!priority) return "#6b7280";
+  return PRIORITY_COLOR_MAP[priority] ?? "#6b7280";
 }
 
 // ─── Progresso de bloco (idClasse=-200) ──────────────────────────────────────
@@ -258,8 +258,8 @@ export interface BlockProgress {
   percent: number;
 }
 
-const BLOCK_DONE_INTENTIONS: V3Intention[] = ['DONE', 'VALIDATED', 'CANCELLED'];
-const BLOCK_FAILED_INTENTIONS: V3Intention[] = ['FAILED', 'DISCARDED'];
+const BLOCK_DONE_INTENTIONS: V3Intention[] = ["DONE", "VALIDATED", "CANCELLED"];
+const BLOCK_FAILED_INTENTIONS: V3Intention[] = ["FAILED", "DISCARDED"];
 
 /**
  * Calcula o progresso de um bloco (idClasse=-200) a partir das tasks filhas.
