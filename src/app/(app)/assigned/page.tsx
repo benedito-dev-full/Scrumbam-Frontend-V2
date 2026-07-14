@@ -2395,51 +2395,15 @@ function PanelTabela({
         </h2>
         <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
           {/* Filtro por STATUS exato — ortogonal às abas. As abas são baldes
-           * ("o que está em jogo"); isto é o status do workflow V3. Um select
-           * nativo em vez de mais 9 pílulas: são 10 opções e a barra já tem 4. */}
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              marginRight: 4,
-            }}
-          >
-            <span
-              style={{
-                fontSize: 10,
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-                color: "var(--muted-foreground)",
-                fontWeight: 600,
-              }}
-            >
-              Status
-            </span>
-            <select
-              value={statusFilter}
-              onChange={(e) =>
-                onStatusFilter(e.target.value as V3Intention | "all")
-              }
-              style={{
-                fontSize: 12,
-                fontWeight: 500,
-                color: "var(--foreground)",
-                background:
-                  statusFilter === "all" ? "transparent" : "var(--accent)",
-                border: "1px solid var(--border)",
-                borderRadius: 6,
-                padding: "4px 8px",
-                cursor: "pointer",
-              }}
-            >
-              {statusOptions.map((s) => (
-                <option key={s} value={s}>
-                  {s === "all" ? "Todos" : STATUS_LABEL[s]}
-                </option>
-              ))}
-            </select>
-          </label>
+           * ("o que está em jogo"); isto é o status do workflow V3. Dropdown
+           * customizado (mesmo padrão do ScopePicker) em vez do <select>
+           * nativo — o menu nativo destoa do dark theme e não mostra as cores
+           * de status. São 10 opções e a barra já tem 4 abas. */}
+          <StatusFilterDropdown
+            value={statusFilter}
+            options={statusOptions}
+            onChange={onStatusFilter}
+          />
 
           <span
             aria-hidden
@@ -2896,6 +2860,140 @@ function EditableDueCell({
  * Grid do mês navegável, com atalhos "Hoje" e "Limpar". Substitui o <input
  * type="date"> nativo (feio e inconsistente entre browsers) por um popover
  * alinhado ao design system. */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Filtro de status (dropdown custom)
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Dropdown de filtro por status V3 — substitui o `<select>` nativo (que
+ * renderiza com o chrome do SO, ignora o dark theme e não mostra as cores de
+ * status). Segue o MESMO padrão dos outros menus da tela (`ScopePicker`):
+ * trigger + overlay `position:fixed` que fecha ao clicar fora + menu flutuante
+ * (`scopeMenuStyle`/`scopeItemStyle`). Cada opção reusa a `StatusBadge` da
+ * tabela, então a pílula do menu é idêntica à da coluna "Status" — o olho
+ * casa filtro e resultado. "Todos" ganha um dot neutro no lugar da pílula.
+ */
+function StatusFilterDropdown({
+  value,
+  options,
+  onChange,
+}: {
+  value: V3Intention | "all";
+  options: (V3Intention | "all")[];
+  onChange: (s: V3Intention | "all") => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const active = value !== "all";
+
+  return (
+    <div style={{ position: "relative", marginRight: 4 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 7,
+          background: active ? "var(--accent)" : "var(--card)",
+          border: `1px solid ${active ? "rgba(139,123,247,0.35)" : "var(--border)"}`,
+          borderRadius: 8,
+          padding: "4px 8px 4px 9px",
+          cursor: "pointer",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 10,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            color: "var(--muted-foreground)",
+            fontWeight: 600,
+          }}
+        >
+          Status
+        </span>
+        {value === "all" ? (
+          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--foreground)" }}>
+            Todos
+          </span>
+        ) : (
+          <StatusBadge status={value} />
+        )}
+        <ChevronDown
+          size={13}
+          style={{
+            color: "var(--muted-foreground)",
+            transition: "transform .15s",
+            transform: open ? "rotate(180deg)" : "none",
+          }}
+        />
+      </button>
+      {open && (
+        <>
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 30 }}
+            onClick={() => setOpen(false)}
+          />
+          <div
+            role="listbox"
+            style={{ ...scopeMenuStyle, minWidth: 190, maxHeight: 320, overflowY: "auto" }}
+          >
+            {options.map((s) => {
+              const isActive = s === value;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  role="option"
+                  aria-selected={isActive}
+                  onClick={() => {
+                    onChange(s);
+                    setOpen(false);
+                  }}
+                  style={scopeItemStyle(isActive)}
+                >
+                  {s === "all" ? (
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        flex: 1,
+                        fontSize: 13,
+                        color: "var(--foreground)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          flex: "none",
+                          background: "var(--muted-foreground)",
+                        }}
+                      />
+                      Todos
+                    </span>
+                  ) : (
+                    <span style={{ flex: 1, display: "inline-flex" }}>
+                      <StatusBadge status={s} />
+                    </span>
+                  )}
+                  {isActive && (
+                    <Check size={13} style={{ color: "#a9a0e0", flex: "none" }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
  * Controles: escopo (admin) + período
@@ -3425,7 +3523,14 @@ function StatusBadge({ status }: { status: V3Intention }) {
       fg: "#34b87a",
       bd: "rgba(52,184,122,0.2)",
     },
+    FAILED: {
+      bg: "rgba(239,95,95,0.14)",
+      fg: "#ef5f5f",
+      bd: "rgba(239,95,95,0.26)",
+    },
   };
+  // INBOX/CANCELLED/DISCARDED caem de propósito no neutro abaixo — são estados
+  // "sem energia" (parado / encerrado sem entrega) e não devem competir por cor.
   const s = map[status] ?? {
     bg: "rgba(255,255,255,0.05)",
     fg: "var(--muted-foreground)",
