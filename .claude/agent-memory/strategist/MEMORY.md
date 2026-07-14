@@ -11,6 +11,7 @@ Hierarquia: Workspace → Space (-350) → Folder (-351) → List (-352) → Tas
 ## Decisoes Arquiteturais
 
 - [ADR Templates Storage](adr-templates-storage.md) — Templates como DProject idClasse=-528, dados.isTemplate=true, dados.templateCategory string. Zero tabela nova. Templates com idEstab=null (globais). (2026-05-29)
+- [Anexar Link Externo a Task](adr-vinculo-doc-task.md) — REVISADO: URL+title em metaDados de DVincula -189 TASK_LINK, dono=task; espelha bookmarks -187; SEM doc-stub/DTabela -353/Parte 2. (2026-06-10)
 
 ## Patterns que Funcionaram
 

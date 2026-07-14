@@ -1,5 +1,8 @@
 # Implementer Agent - Memoria
 
+## Projetos
+- [Backend: links externos a task (DVincula -189)](backend_task_links_dvincula_189.md) — feature no Scrumban-Backend-V2; módulo src/docs/, reuso CommentTargetResolver
+
 ## Stack e Build
 
 - Build: `npm run build` (Next.js 16, Turbopack) — deve sempre passar antes de concluir task
