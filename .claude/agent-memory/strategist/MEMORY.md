@@ -18,7 +18,7 @@ Hierarquia: Workspace → Space (-350) → Folder (-351) → List (-352) → Tas
 
 ## Riscos Materializados
 
-(Nenhum ainda — sera preenchido conforme tasks forem implementadas)
+- [Incidente sessao/auth (jul/2026)](incidente-sessao-auth-2026-07.md) — 3 causas-raiz em producao: sessionStorage vs cookie de rota, refresh slot-unico com rotacao estrita (falso positivo de reuse), catch{} que vira 401. Decisoes + plano de correcao.
 
 ## Frontend
 

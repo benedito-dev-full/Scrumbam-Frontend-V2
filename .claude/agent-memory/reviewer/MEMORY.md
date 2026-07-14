@@ -5,6 +5,7 @@
 | Task | Modulo | Score | Decisao | Data |
 |------|--------|-------|---------|------|
 | Task 4 — subtarefas aba Blocos (estilo Monday) | lists/groups-view | 8/10 | APROVADO | 2026-05-30 |
+| FASE 0 — Observabilidade (incidente sessão/auth, cross-repo backend+frontend) | auth/observability | 9/10 | APROVADO | 2026-07-13 |
 
 ## Patterns de Qualidade
 
@@ -34,6 +35,14 @@
 | Modulo | Media de Score | Tasks avaliadas |
 |--------|---------------|-----------------|
 | lists | 8.0 | 1 |
+
+### auth/observability (Scrumban-Backend-V2, cross-repo com Frontend-V2)
+
+- **Bom pattern — instrumentação "zero-behavior-change" verificável**: para reviews de deploys de observabilidade pura (sem migration, "risco zero" no plano), a técnica mais confiável foi `git stash` + rodar a mesma suite de testes/tsc antes e depois do diff, comparando a contagem exata de falhas. Provou que 2 suites falhando (`projects.service.spec.ts` 8/94, `tasks.service.spec.ts` state machine V3) eram pré-existentes e não regressões — sem isso, teria sido fácil confundir ruído com regressão.
+- **Bom pattern — `@Optional() metrics?: MetricsService` em TODO call-site**: nenhuma classe (guard/service/controller) quebra se `MetricsService` não for injetado; toda chamada é `this.metrics?.increment(...)`. Padrão a exigir sempre que observabilidade for injetada em código de caminho crítico (auth, guards).
+- **Bom pattern — telemetria síncrona, nunca `await`ada no caminho principal**: `MetricsService.increment()` não é `async`, tem `try/catch` interno que nunca propaga. Isso elimina a classe inteira de bug "telemetria travou o request".
+- **Bom pattern — contador condicional só no caminho frio**: `ProjectsService.observeOrgContext()` faz 1 query extra (`dVincula.findFirst`) mas SÓ quando a lista já ia retornar vazia — não é N+1 porque não roda no caminho quente com resultados. Vale reconhecer esse padrão em vez de marcar automaticamente "query extra = N+1".
+- **Checklist específico p/ reviews de "beacon público" (endpoint `@Public()` de telemetria)**: sempre verificar (1) payload whitelist (`forbidNonWhitelisted`), (2) rate limit por IP com teto de memória (proteção contra tracking-map unbounded), (3) resposta não vaza oráculo (sempre 204 mesmo quando descartado), (4) `X-Forwarded-For` sem `trust proxy` é spoofável mas aceitável se não há dado sensível em jogo — não bloqueia por si só.
 
 ## Tech Debt Conhecido
 
