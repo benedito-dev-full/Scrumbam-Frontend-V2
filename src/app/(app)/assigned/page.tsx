@@ -28,6 +28,7 @@ import {
   useUpdateTaskStatus,
 } from "@/hooks/use-tasks";
 import { qk } from "@/lib/query-keys";
+import { TaskSheet } from "@/components/tasks/task-sheet";
 import { delayInDays, toCivilDay, todayCivilDay } from "@/lib/dates/civil-day";
 import {
   Popover,
@@ -299,6 +300,14 @@ export default function MinhasTarefasPage() {
   const [filter, setFilter] = useState<"all" | "active" | "due" | "done">(
     "all",
   );
+  /* Filtro por status V3 — ORTOGONAL às abas (Todas/Ativas/Vencendo/Concluídas).
+   * As abas são baldes de conveniência ("o que está em jogo"); este é o status
+   * exato. Compõem: "Ativas" + "Executando" = as ativas que estão em execução. */
+  const [statusFilter, setStatusFilter] = useState<V3Intention | "all">("all");
+
+  /* Tarefa aberta na TaskSheet — o MESMO componente de /lists/[id], para o
+   * usuário ver e editar a tarefa inteira sem sair do painel. */
+  const [sheetTask, setSheetTask] = useState<TaskResponseDto | null>(null);
   // Escopos ativos (mutuamente exclusivos): null/null = minhas tarefas (default);
   // um deles setado = tasks de um time OU de um usuário.
   const [scopeTeamId, setScopeTeamId] = useState<string | null>(null);
@@ -633,18 +642,27 @@ export default function MinhasTarefasPage() {
       };
       return rank(a) - rank(b);
     });
+    // Filtro por status V3 — ortogonal às abas: primeiro o balde da aba, depois
+    // o status exato. "Ativas" + "Executando" = as ativas em execução.
+    const porStatus = (rs: TaskResponseDto[]) =>
+      statusFilter === "all" ? rs : rs.filter((t) => t.status === statusFilter);
+
     if (filter === "active")
-      return rows.filter((t) => !TERMINAL_STATUSES.includes(t.status));
+      return porStatus(
+        rows.filter((t) => !TERMINAL_STATUSES.includes(t.status)),
+      );
     if (filter === "due")
-      return rows.filter((t) => {
-        if (TERMINAL_STATUSES.includes(t.status)) return false;
-        const b = dueBucket(t.dueDate);
-        return b === "overdue" || b === "today";
-      });
+      return porStatus(
+        rows.filter((t) => {
+          if (TERMINAL_STATUSES.includes(t.status)) return false;
+          const b = dueBucket(t.dueDate);
+          return b === "overdue" || b === "today";
+        }),
+      );
     if (filter === "done")
-      return rows.filter((t) => DONE_STATUSES.includes(t.status));
-    return rows;
-  }, [tasks, filter]);
+      return porStatus(rows.filter((t) => DONE_STATUSES.includes(t.status)));
+    return porStatus(rows);
+  }, [tasks, filter, statusFilter]);
 
   return (
     <div
@@ -822,11 +840,21 @@ export default function MinhasTarefasPage() {
           totalOpen={metrics.openCount}
           filter={filter}
           onFilter={setFilter}
+          statusFilter={statusFilter}
+          onStatusFilter={setStatusFilter}
+          onOpenTask={setSheetTask}
           loading={isLoading}
           projectMap={projectMap}
           members={members}
         />
       </div>
+
+      {/* TaskSheet — o MESMO painel de /lists/[id]. O usuário vê e edita a
+       * tarefa inteira (descrição, subtarefas, timer, comentários) sem sair do
+       * painel. Reusa o componente em vez de duplicar: a memória do projeto
+       * registra que existem DOIS componentes de detalhe divergentes
+       * (task-sheet vs task-detail-drawer) — este é o de /lists/[id]. */}
+      <TaskSheet task={sheetTask} onClose={() => setSheetTask(null)} />
     </div>
   );
 }
@@ -2273,6 +2301,9 @@ function PanelTabela({
   totalOpen,
   filter,
   onFilter,
+  statusFilter,
+  onStatusFilter,
+  onOpenTask,
   loading,
   projectMap,
   members,
@@ -2281,6 +2312,11 @@ function PanelTabela({
   totalOpen: number;
   filter: "all" | "active" | "due" | "done";
   onFilter: (f: "all" | "active" | "due" | "done") => void;
+  /** Status V3 exato. Ortogonal às abas — compõe com elas, não as substitui. */
+  statusFilter: V3Intention | "all";
+  onStatusFilter: (s: V3Intention | "all") => void;
+  /** Abre a TaskSheet (mesmo painel de /lists/[id]) para a tarefa clicada. */
+  onOpenTask: (t: TaskResponseDto) => void;
   loading: boolean;
   projectMap: Map<string, { nome: string; spaceName: string }>;
   members: OrgMemberDto[];
@@ -2290,6 +2326,21 @@ function PanelTabela({
     { id: "active", label: "Ativas" },
     { id: "due", label: "Vencendo" },
     { id: "done", label: "Concluídas" },
+  ];
+
+  /* Ordem intencional: o fluxo feliz do V3 primeiro (Inbox → … → Validada), e
+   * os desfechos negativos no fim. É a ordem em que o trabalho anda. */
+  const statusOptions: (V3Intention | "all")[] = [
+    "all",
+    "INBOX",
+    "READY",
+    "EXECUTING",
+    "VALIDATING",
+    "VALIDATED",
+    "DONE",
+    "FAILED",
+    "CANCELLED",
+    "DISCARDED",
   ];
 
   // Edição inline (reaproveita mutations e controles dos Blocos). As mutations
@@ -2342,7 +2393,64 @@ function PanelTabela({
             {totalOpen} abertas
           </span>
         </h2>
-        <div style={{ display: "flex", gap: 5 }}>
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+          {/* Filtro por STATUS exato — ortogonal às abas. As abas são baldes
+           * ("o que está em jogo"); isto é o status do workflow V3. Um select
+           * nativo em vez de mais 9 pílulas: são 10 opções e a barra já tem 4. */}
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              marginRight: 4,
+            }}
+          >
+            <span
+              style={{
+                fontSize: 10,
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+                color: "var(--muted-foreground)",
+                fontWeight: 600,
+              }}
+            >
+              Status
+            </span>
+            <select
+              value={statusFilter}
+              onChange={(e) =>
+                onStatusFilter(e.target.value as V3Intention | "all")
+              }
+              style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: "var(--foreground)",
+                background:
+                  statusFilter === "all" ? "transparent" : "var(--accent)",
+                border: "1px solid var(--border)",
+                borderRadius: 6,
+                padding: "4px 8px",
+                cursor: "pointer",
+              }}
+            >
+              {statusOptions.map((s) => (
+                <option key={s} value={s}>
+                  {s === "all" ? "Todos" : STATUS_LABEL[s]}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <span
+            aria-hidden
+            style={{
+              width: 1,
+              height: 18,
+              background: "var(--border)",
+              margin: "0 3px",
+            }}
+          />
+
           {filters.map((f) => {
             const active = filter === f.id;
             return (
@@ -2415,14 +2523,26 @@ function PanelTabela({
                 return (
                   <tr key={t.id}>
                     <td style={tdStyle}>
-                      <Link
-                        href={`/lists/${t.projectId}`}
+                      {/* Antes: <Link href="/lists/:projectId"> — clicar na
+                       * tarefa TIRAVA o usuário do painel e o largava na lista,
+                       * sem nem abrir a tarefa que ele clicou. Agora abre a
+                       * TaskSheet aqui mesmo (mesmo painel de /lists/[id]). */}
+                      <button
+                        type="button"
+                        onClick={() => onOpenTask(t)}
+                        title="Abrir tarefa"
                         style={{
                           display: "flex",
                           gap: 9,
                           alignItems: "center",
                           color: "var(--foreground)",
-                          textDecoration: "none",
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          font: "inherit",
+                          textAlign: "left",
+                          cursor: "pointer",
+                          width: "100%",
                         }}
                       >
                         <span
@@ -2445,7 +2565,7 @@ function PanelTabela({
                         >
                           {t.nome}
                         </span>
-                      </Link>
+                      </button>
                     </td>
                     <td
                       style={{ ...tdStyle, color: "var(--muted-foreground)" }}
