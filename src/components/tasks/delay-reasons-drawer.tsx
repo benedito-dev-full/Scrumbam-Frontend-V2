@@ -288,12 +288,22 @@ function Diagnosis({
 
 // ─── KPIs ────────────────────────────────────────────────────────────────────────
 
+/** "#8b7bf7" + alpha → "rgba(139,123,247,α)" para glows/tints. */
+function withAlpha(hex: string, alpha: number): string {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 function KpiTile({
   icon,
   label,
   value,
   unit,
   valueColor,
+  accent,
   sub,
   loading,
 }: {
@@ -302,34 +312,58 @@ function KpiTile({
   value: string;
   unit?: string;
   valueColor?: string;
+  /** Cor semântica do tile: tinge ícone (chip), número, glow e borda. */
+  accent?: string;
   sub: React.ReactNode;
   loading?: boolean;
 }) {
+  const numColor = loading
+    ? "var(--muted-foreground)"
+    : (valueColor ?? accent ?? "var(--foreground)");
   return (
     <div
       style={{
         flex: 1,
         minWidth: 150,
-        background: "var(--card)",
-        border: "1px solid var(--border)",
         borderRadius: 12,
         padding: "13px 15px",
+        background: accent
+          ? `radial-gradient(160px 100px at 15% -10%, ${withAlpha(accent, 0.16)}, transparent 72%), var(--card)`
+          : "var(--card)",
+        border: `1px solid ${accent ? withAlpha(accent, 0.24) : "var(--border)"}`,
       }}
     >
       <div
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 6,
+          gap: 8,
           fontSize: 10.5,
           fontWeight: 650,
           textTransform: "uppercase",
           letterSpacing: "0.06em",
           color: "var(--muted-foreground)",
-          marginBottom: 9,
+          marginBottom: 10,
         }}
       >
-        {icon}
+        {accent ? (
+          <span
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 7,
+              flexShrink: 0,
+              display: "grid",
+              placeItems: "center",
+              background: withAlpha(accent, 0.16),
+              color: accent,
+            }}
+          >
+            {icon}
+          </span>
+        ) : (
+          icon
+        )}
         {label}
       </div>
       <div
@@ -339,9 +373,7 @@ function KpiTile({
           lineHeight: 1,
           letterSpacing: "-0.02em",
           fontVariantNumeric: "tabular-nums",
-          color: loading
-            ? "var(--muted-foreground)"
-            : (valueColor ?? "var(--foreground)"),
+          color: numColor,
           display: "flex",
           alignItems: "baseline",
           gap: 3,
@@ -467,6 +499,7 @@ function KpiRow({
       <KpiTile
         icon={<Clock className="size-3" />}
         label="Atraso acumulado"
+        accent="#8b7bf7"
         value={loading ? "…" : String(Math.round(m.accumulated))}
         unit="dias"
         sub={
@@ -492,6 +525,7 @@ function KpiRow({
       <KpiTile
         icon={<Layers className="size-3" />}
         label="Tarefas atrasadas"
+        accent="#ef5f5f"
         value={
           loading ? "…" : overdueTotal != null ? String(overdueTotal) : "—"
         }
@@ -513,6 +547,7 @@ function KpiRow({
         label="Com justificativa"
         value={justPct != null ? `${justPct}%` : "—"}
         valueColor={justColor}
+        accent={justColor ?? "#37b981"}
         sub={
           loading || overdueTotal == null ? (
             "—"
