@@ -416,26 +416,6 @@ function KpiRow({
   const m = rank(report);
   const loading = report.isLoading;
 
-  // Tendência: o mesmo corte na janela IMEDIATAMENTE anterior (frontend-only,
-  // sem endpoint novo). "Tudo" não tem janela anterior → sem tendência.
-  const prev = previousRange(period);
-  const prevFilters: DelayReasonsFilters = prev
-    ? { ...filters, from: prev.from, to: prev.to }
-    : filters;
-  const reportPrev = useDelayReasonsReport(
-    "motivo",
-    prevFilters,
-    open && !!prev,
-  );
-  const p = rank(reportPrev);
-  const hasTrend = !!prev && !reportPrev.isLoading;
-  const accPct =
-    hasTrend && p.accumulated > 0
-      ? ((m.accumulated - p.accumulated) / p.accumulated) * 100
-      : null;
-  const totalDelta = hasTrend ? m.total - p.total : null;
-  const label = PREV_LABEL[period];
-
   // % com justificativa = justificadas ÷ total de atrasadas (backend includeOverdue).
   const overdueTotal = report.data?.overdueTotal ?? null;
   const overduePending = report.data?.overduePending ?? null;
@@ -456,6 +436,31 @@ function KpiRow({
         : justPct >= 50
           ? "#e6a94e"
           : "#ef5f5f";
+
+  // Tendência: o mesmo corte na janela IMEDIATAMENTE anterior (frontend-only,
+  // sem endpoint novo; inclui overdue p/ comparar "tarefas atrasadas").
+  // "Tudo" não tem janela anterior → sem tendência.
+  const prev = previousRange(period);
+  const prevFilters: DelayReasonsFilters = prev
+    ? { ...filters, from: prev.from, to: prev.to }
+    : filters;
+  const reportPrev = useDelayReasonsReport(
+    "motivo",
+    prevFilters,
+    open && !!prev,
+    undefined,
+    true,
+  );
+  const pAcc = rank(reportPrev).accumulated;
+  const prevOverdue = reportPrev.data?.overdueTotal ?? null;
+  const hasTrend = !!prev && !reportPrev.isLoading;
+  const accPct =
+    hasTrend && pAcc > 0 ? ((m.accumulated - pAcc) / pAcc) * 100 : null;
+  const overdueDelta =
+    hasTrend && overdueTotal != null && prevOverdue != null
+      ? overdueTotal - prevOverdue
+      : null;
+  const label = PREV_LABEL[period];
 
   return (
     <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -486,17 +491,19 @@ function KpiRow({
       />
       <KpiTile
         icon={<Layers className="size-3" />}
-        label="Atrasos justificados"
-        value={loading ? "…" : String(m.total)}
+        label="Tarefas atrasadas"
+        value={
+          loading ? "…" : overdueTotal != null ? String(overdueTotal) : "—"
+        }
         sub={
-          totalDelta != null && totalDelta !== 0 ? (
+          overdueDelta != null && overdueDelta !== 0 ? (
             <TrendSub
-              worse={totalDelta}
-              display={String(Math.abs(totalDelta))}
+              worse={overdueDelta}
+              display={String(Math.abs(overdueDelta))}
               label={label}
             />
           ) : (
-            "no filtro atual"
+            "no escopo do filtro"
           )
         }
         loading={loading}
