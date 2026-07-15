@@ -148,8 +148,15 @@ export const qk = {
      *
      * @param groupBy - Dimensão (motivo | usuario | projeto).
      * @param filters - Filtros aplicados (userId/projectId/motivoClasse/from/to).
+     * @param subGroupBy - Sub-dimensão do cruzamento (ex: motivo), ou null.
      */
-    report: (groupBy: string, filters: object) =>
-      ["delay-justifications", "report", groupBy, filters] as const,
+    report: (groupBy: string, filters: object, subGroupBy?: string | null) =>
+      [
+        "delay-justifications",
+        "report",
+        groupBy,
+        subGroupBy ?? null,
+        filters,
+      ] as const,
   },
 } as const;

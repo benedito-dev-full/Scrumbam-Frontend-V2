@@ -167,11 +167,18 @@ export interface DelayReasonGroup {
   label: string | null;
   count: number;
   avgDelayDays: number | null;
+  /**
+   * Quebra do grupo pela sub-dimensão (só presente quando `subGroupBy` é
+   * pedido). Ex: por usuário → cada usuário com seus motivos. Ordenado por
+   * count desc.
+   */
+  sub?: DelayReasonGroup[];
 }
 
 /** Resposta de `GET /reports/delay-reasons`. */
 export interface DelayReasonsReport {
   groupBy: DelayReasonsGroupBy;
+  subGroupBy: DelayReasonsGroupBy | null;
   orgId: string;
   total: number;
   groups: DelayReasonGroup[];
@@ -194,18 +201,22 @@ export interface DelayReasonsReport {
  * @param groupBy - Dimensão do ranking.
  * @param filters - Filtros compartilhados.
  * @param enabled - Liga a query (ex: só quando a gaveta abre e é admin).
+ * @param subGroupBy - Sub-dimensão opcional do cruzamento (ex: "motivo" para
+ *   quebrar cada usuário/projeto por motivo). Deve diferir de `groupBy`.
  * @returns Resultado do useQuery com `data: DelayReasonsReport`
  */
 export function useDelayReasonsReport(
   groupBy: DelayReasonsGroupBy,
   filters: DelayReasonsFilters,
   enabled = true,
+  subGroupBy?: DelayReasonsGroupBy,
 ) {
   const accessToken = useAuthStore((s) => s.accessToken);
   return useQuery<DelayReasonsReport>({
-    queryKey: qk.delayJustifications.report(groupBy, filters),
+    queryKey: qk.delayJustifications.report(groupBy, filters, subGroupBy),
     queryFn: async () => {
       const params: Record<string, string> = { groupBy };
+      if (subGroupBy) params.subGroupBy = subGroupBy;
       if (filters.userId) params.userId = filters.userId;
       if (filters.projectId) params.projectId = filters.projectId;
       if (filters.motivoClasse) params.motivoClasse = filters.motivoClasse;
