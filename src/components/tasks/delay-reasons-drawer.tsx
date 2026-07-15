@@ -3,7 +3,7 @@
 // ─── Externos ─────────────────────────────────────────────────────────────────
 import React, { useMemo, useState } from "react";
 import { AlertTriangle, Clock, Layers, Gauge } from "lucide-react";
-import { subDays, startOfMonth, format } from "date-fns";
+import { subDays, startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import {
@@ -107,6 +107,33 @@ function periodRange(key: PeriodKey): {
     return { from: format(startOfMonth(today), "yyyy-MM-dd"), to: null };
   return { from: null, to: null };
 }
+
+/**
+ * Janela IMEDIATAMENTE anterior à do preset — para calcular a tendência
+ * (▲▼ vs período anterior) no frontend, sem depender de endpoint novo.
+ * "Tudo" não tem período anterior → null (tendência escondida).
+ */
+function previousRange(key: PeriodKey): { from: string; to: string } | null {
+  const today = new Date();
+  const fmt = (d: Date) => format(d, "yyyy-MM-dd");
+  if (key === "7d")
+    return { from: fmt(subDays(today, 13)), to: fmt(subDays(today, 7)) };
+  if (key === "30d")
+    return { from: fmt(subDays(today, 59)), to: fmt(subDays(today, 30)) };
+  if (key === "month") {
+    const prev = subMonths(today, 1);
+    return { from: fmt(startOfMonth(prev)), to: fmt(endOfMonth(prev)) };
+  }
+  return null;
+}
+
+/** Rótulo curto do período anterior, para a legenda da tendência. */
+const PREV_LABEL: Record<PeriodKey, string> = {
+  all: "",
+  "7d": "vs 7 dias anteriores",
+  "30d": "vs 30 dias anteriores",
+  month: "vs mês anterior",
+};
 
 // ─── Enriquecimento: impacto = contagem × atraso médio (dias acumulados) ─────────
 
@@ -346,10 +373,70 @@ function KpiTile({
   );
 }
 
-function KpiRow({ report }: { report: Report }) {
+/**
+ * Linha de comparação vs período anterior. `worse` positivo = piorou (mais
+ * atraso/tarefas) → vermelho; negativo = melhorou → verde.
+ */
+function TrendSub({
+  worse,
+  display,
+  label,
+}: {
+  worse: number;
+  display: string;
+  label: string;
+}) {
+  const flat = worse === 0;
+  const up = worse > 0;
+  const color = flat ? "var(--muted-foreground)" : up ? "#ef5f5f" : "#37b981";
+  const arrow = flat ? "•" : up ? "▲" : "▼";
+  return (
+    <span style={{ display: "inline-flex", alignItems: "baseline", gap: 5 }}>
+      <span
+        style={{ color, fontWeight: 650, fontVariantNumeric: "tabular-nums" }}
+      >
+        {arrow} {display}
+      </span>
+      <span style={{ color: "var(--muted-foreground)" }}>{label}</span>
+    </span>
+  );
+}
+
+function KpiRow({
+  report,
+  filters,
+  period,
+  open,
+}: {
+  report: Report;
+  filters: DelayReasonsFilters;
+  period: PeriodKey;
+  open: boolean;
+}) {
   const m = rank(report);
   const loading = report.isLoading;
   const sev = severity(m.weightedAvg);
+
+  // Tendência: o mesmo corte na janela IMEDIATAMENTE anterior (frontend-only,
+  // sem endpoint novo). "Tudo" não tem janela anterior → sem tendência.
+  const prev = previousRange(period);
+  const prevFilters: DelayReasonsFilters = prev
+    ? { ...filters, from: prev.from, to: prev.to }
+    : filters;
+  const reportPrev = useDelayReasonsReport(
+    "motivo",
+    prevFilters,
+    open && !!prev,
+  );
+  const p = rank(reportPrev);
+  const hasTrend = !!prev && !reportPrev.isLoading;
+  const accPct =
+    hasTrend && p.accumulated > 0
+      ? ((m.accumulated - p.accumulated) / p.accumulated) * 100
+      : null;
+  const totalDelta = hasTrend ? m.total - p.total : null;
+  const label = PREV_LABEL[period];
+
   return (
     <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
       <KpiTile
@@ -358,10 +445,22 @@ function KpiRow({ report }: { report: Report }) {
         value={loading ? "…" : String(Math.round(m.accumulated))}
         unit="dias"
         sub={
-          <>
-            Σ dos atrasos em {m.total}{" "}
-            {plural(m.total, "registro", "registros")}
-          </>
+          accPct != null ? (
+            <TrendSub
+              worse={accPct}
+              display={
+                accPct === 0
+                  ? "0%"
+                  : `${accPct > 0 ? "+" : "−"}${Math.round(Math.abs(accPct))}%`
+              }
+              label={label}
+            />
+          ) : (
+            <>
+              Σ dos atrasos em {m.total}{" "}
+              {plural(m.total, "registro", "registros")}
+            </>
+          )
         }
         loading={loading}
       />
@@ -369,7 +468,17 @@ function KpiRow({ report }: { report: Report }) {
         icon={<Layers className="size-3" />}
         label="Atrasos justificados"
         value={loading ? "…" : String(m.total)}
-        sub="no filtro atual"
+        sub={
+          totalDelta != null && totalDelta !== 0 ? (
+            <TrendSub
+              worse={totalDelta}
+              display={String(Math.abs(totalDelta))}
+              label={label}
+            />
+          ) : (
+            "no filtro atual"
+          )
+        }
         loading={loading}
       />
       <KpiTile
@@ -718,10 +827,12 @@ function LeaderCard({
   title,
   report,
   avatar,
+  avatarColor = "linear-gradient(135deg,#8b7bf7,#6d5de0)",
 }: {
   title: string;
   report: Report;
   avatar?: boolean;
+  avatarColor?: string;
 }) {
   const m = rank(report);
   const leader = m.rows[0];
@@ -795,7 +906,7 @@ function LeaderCard({
                 fontSize: 12,
                 fontWeight: 700,
                 color: "#fff",
-                background: "linear-gradient(135deg,#8b7bf7,#6d5de0)",
+                background: avatarColor,
               }}
             >
               {(leader.label.trim()[0] ?? "?").toUpperCase()}
@@ -895,7 +1006,12 @@ function ConcentrationPanel({
         </span>
       </div>
       <LeaderCard title="Pessoa mais impactada" report={rUsuario} avatar />
-      <LeaderCard title="Projeto mais impactado" report={rProjeto} />
+      <LeaderCard
+        title="Projeto mais impactado"
+        report={rProjeto}
+        avatar
+        avatarColor="linear-gradient(135deg,#37b981,#2a9668)"
+      />
     </div>
   );
 }
@@ -968,7 +1084,12 @@ export function DelayReasonsDrawer({
         <Diagnosis rMotivo={rMotivo} rUsuario={rUsuario} rProjeto={rProjeto} />
 
         {/* KPIs (impacto acumulado, volume, atraso médio ponderado) */}
-        <KpiRow report={rMotivo} />
+        <KpiRow
+          report={rMotivo}
+          filters={filters}
+          period={period}
+          open={open}
+        />
 
         {/* Filtros compartilhados */}
         <div
