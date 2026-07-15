@@ -2,7 +2,7 @@
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, Clock, Layers, Gauge } from "lucide-react";
+import { AlertTriangle, Clock, Layers, ShieldCheck } from "lucide-react";
 import { subDays, startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
@@ -415,7 +415,6 @@ function KpiRow({
 }) {
   const m = rank(report);
   const loading = report.isLoading;
-  const sev = severity(m.weightedAvg);
 
   // Tendência: o mesmo corte na janela IMEDIATAMENTE anterior (frontend-only,
   // sem endpoint novo). "Tudo" não tem janela anterior → sem tendência.
@@ -436,6 +435,27 @@ function KpiRow({
       : null;
   const totalDelta = hasTrend ? m.total - p.total : null;
   const label = PREV_LABEL[period];
+
+  // % com justificativa = justificadas ÷ total de atrasadas (backend includeOverdue).
+  const overdueTotal = report.data?.overdueTotal ?? null;
+  const overduePending = report.data?.overduePending ?? null;
+  const justified =
+    overdueTotal != null && overduePending != null
+      ? overdueTotal - overduePending
+      : null;
+  const justPct =
+    overdueTotal != null && overdueTotal > 0 && justified != null
+      ? Math.round((justified / overdueTotal) * 100)
+      : null;
+  // Taxa de cobertura: mais alta = melhor (verde); baixa = pior (vermelho).
+  const justColor =
+    justPct == null
+      ? undefined
+      : justPct >= 80
+        ? "#37b981"
+        : justPct >= 50
+          ? "#e6a94e"
+          : "#ef5f5f";
 
   return (
     <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -482,11 +502,31 @@ function KpiRow({
         loading={loading}
       />
       <KpiTile
-        icon={<Gauge className="size-3" />}
-        label="Atraso médio"
-        value={fmtAvg(m.weightedAvg)}
-        valueColor={m.weightedAvg != null ? sev.fg : undefined}
-        sub="ponderado por tarefa"
+        icon={<ShieldCheck className="size-3" />}
+        label="Com justificativa"
+        value={justPct != null ? `${justPct}%` : "—"}
+        valueColor={justColor}
+        sub={
+          loading || overdueTotal == null ? (
+            "—"
+          ) : overdueTotal === 0 ? (
+            "sem atrasadas no escopo"
+          ) : (
+            <>
+              {justified} de {overdueTotal} ·{" "}
+              <span
+                style={{
+                  color:
+                    overduePending && overduePending > 0
+                      ? "#e6a94e"
+                      : "var(--muted-foreground)",
+                }}
+              >
+                {overduePending} sem justificar
+              </span>
+            </>
+          )
+        }
         loading={loading}
       />
     </div>
@@ -1060,7 +1100,14 @@ export function DelayReasonsDrawer({
     };
   }, [motivoClasse, projectId, userId, period]);
 
-  const rMotivo = useDelayReasonsReport("motivo", filters, open);
+  // includeOverdue só aqui: alimenta o KPI "% com justificativa" (2 queries extras).
+  const rMotivo = useDelayReasonsReport(
+    "motivo",
+    filters,
+    open,
+    undefined,
+    true,
+  );
   // Cruzamento: cada pessoa/projeto quebrado por motivo (alimenta "Onde concentra").
   const rUsuario = useDelayReasonsReport("usuario", filters, open, "motivo");
   const rProjeto = useDelayReasonsReport("projeto", filters, open, "motivo");

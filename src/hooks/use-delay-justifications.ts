@@ -189,6 +189,13 @@ export interface DelayReasonsReport {
     from: string | null;
     to: string | null;
   };
+  /**
+   * Total de tarefas atrasadas no escopo (só quando `includeOverdue`). `null`
+   * caso contrário. Denominador do "% com justificativa".
+   */
+  overdueTotal: number | null;
+  /** Atrasadas SEM justificativa vigente (só quando `includeOverdue`). */
+  overduePending: number | null;
 }
 
 /**
@@ -203,6 +210,9 @@ export interface DelayReasonsReport {
  * @param enabled - Liga a query (ex: só quando a gaveta abre e é admin).
  * @param subGroupBy - Sub-dimensão opcional do cruzamento (ex: "motivo" para
  *   quebrar cada usuário/projeto por motivo). Deve diferir de `groupBy`.
+ * @param includeOverdue - Quando true, o backend também conta as tarefas
+ *   atrasadas do escopo (`overdueTotal`/`overduePending`). Custa 2 queries a
+ *   mais — pedir só na chamada que alimenta os KPIs.
  * @returns Resultado do useQuery com `data: DelayReasonsReport`
  */
 export function useDelayReasonsReport(
@@ -210,13 +220,18 @@ export function useDelayReasonsReport(
   filters: DelayReasonsFilters,
   enabled = true,
   subGroupBy?: DelayReasonsGroupBy,
+  includeOverdue?: boolean,
 ) {
   const accessToken = useAuthStore((s) => s.accessToken);
   return useQuery<DelayReasonsReport>({
-    queryKey: qk.delayJustifications.report(groupBy, filters, subGroupBy),
+    queryKey: [
+      ...qk.delayJustifications.report(groupBy, filters, subGroupBy),
+      includeOverdue ?? false,
+    ],
     queryFn: async () => {
       const params: Record<string, string> = { groupBy };
       if (subGroupBy) params.subGroupBy = subGroupBy;
+      if (includeOverdue) params.includeOverdue = "true";
       if (filters.userId) params.userId = filters.userId;
       if (filters.projectId) params.projectId = filters.projectId;
       if (filters.motivoClasse) params.motivoClasse = filters.motivoClasse;
