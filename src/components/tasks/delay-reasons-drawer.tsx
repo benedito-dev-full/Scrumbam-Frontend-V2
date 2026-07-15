@@ -2,7 +2,14 @@
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
 import React, { useMemo, useState } from "react";
-import { AlertTriangle, Clock, Layers, ShieldCheck } from "lucide-react";
+import {
+  AlertTriangle,
+  Clock,
+  Layers,
+  ShieldCheck,
+  ChevronDown,
+  Check,
+} from "lucide-react";
 import { subDays, startOfMonth, endOfMonth, subMonths, format } from "date-fns";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
@@ -24,18 +31,153 @@ import { useOrgMembers } from "@/hooks/use-org-members";
 
 const BAR_FILL = "linear-gradient(90deg, #7a68f0, #9b8cf9)";
 
-const selectStyle: React.CSSProperties = {
+// ─── Dropdown de filtro (custom, no tema — substitui o <select> nativo) ──────────
+
+const filterMenuStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "calc(100% + 6px)",
+  left: 0,
+  minWidth: 200,
+  maxHeight: 300,
+  overflowY: "auto",
   background: "var(--card)",
   border: "1px solid var(--border)",
-  borderRadius: 8,
-  color: "var(--foreground)",
-  fontSize: 12,
-  padding: "6px 10px",
-  outline: "none",
-  colorScheme: "dark",
-  cursor: "pointer",
-  maxWidth: 200,
+  borderRadius: 10,
+  padding: 5,
+  zIndex: 50,
+  boxShadow: "0 12px 32px -8px rgba(0,0,0,0.6)",
 };
+
+function filterItemStyle(active: boolean): React.CSSProperties {
+  return {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    width: "100%",
+    padding: "7px 9px",
+    fontSize: 13,
+    textAlign: "left",
+    color: "var(--foreground)",
+    background: active ? "var(--accent)" : "transparent",
+    border: 0,
+    borderRadius: 7,
+    cursor: "pointer",
+  };
+}
+
+/**
+ * Dropdown de filtro no tema escuro. O `<select>` nativo tem a lista aberta
+ * renderizada pelo SO (azul berrante, fundo claro) — impossível de estilizar.
+ * Este renderiza o próprio popup, com overlay para fechar ao clicar fora.
+ *
+ * @param value - Valor atual (`""` = "todos").
+ * @param options - Opções `{ value, label }` (o "todos" é injetado do placeholder).
+ */
+function FilterSelect({
+  value,
+  onChange,
+  placeholder,
+  options,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  options: { value: string; label: string }[];
+  ariaLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const current = options.find((o) => o.value === value);
+  const active = value !== "";
+  const all = [{ value: "", label: placeholder }, ...options];
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={ariaLabel}
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 8,
+          maxWidth: 220,
+          background: active ? "var(--accent)" : "var(--card)",
+          border: `1px solid ${active ? "rgba(139,123,247,0.35)" : "var(--border)"}`,
+          borderRadius: 8,
+          padding: "6px 9px",
+          cursor: "pointer",
+          fontSize: 12,
+        }}
+      >
+        <span
+          style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            color: active ? "var(--foreground)" : "var(--muted-foreground)",
+          }}
+        >
+          {current?.label ?? placeholder}
+        </span>
+        <ChevronDown
+          size={13}
+          style={{
+            flexShrink: 0,
+            color: "var(--muted-foreground)",
+            transition: "transform .15s",
+            transform: open ? "rotate(180deg)" : "none",
+          }}
+        />
+      </button>
+      {open && (
+        <>
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 40 }}
+            onClick={() => setOpen(false)}
+          />
+          <div role="listbox" style={filterMenuStyle}>
+            {all.map((o) => {
+              const isActive = o.value === value;
+              return (
+                <button
+                  key={o.value || "__all"}
+                  type="button"
+                  role="option"
+                  aria-selected={isActive}
+                  onClick={() => {
+                    onChange(o.value);
+                    setOpen(false);
+                  }}
+                  style={filterItemStyle(isActive)}
+                >
+                  <span
+                    style={{
+                      flex: 1,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {o.label}
+                  </span>
+                  {isActive && (
+                    <Check
+                      size={14}
+                      style={{ flexShrink: 0, color: "#a99bfb" }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // ─── Formatação (pt-BR) ─────────────────────────────────────────────────────────
 
@@ -1189,45 +1331,27 @@ export function DelayReasonsDrawer({
             alignItems: "center",
           }}
         >
-          <select
-            style={selectStyle}
+          <FilterSelect
+            ariaLabel="Filtrar por motivo"
+            placeholder="Todos os motivos"
             value={motivoClasse}
-            onChange={(e) => setMotivoClasse(e.target.value)}
-            aria-label="Filtrar por motivo"
-          >
-            <option value="">Todos os motivos</option>
-            {reasons.map((r) => (
-              <option key={r.chave} value={r.chave}>
-                {r.nome}
-              </option>
-            ))}
-          </select>
-          <select
-            style={selectStyle}
+            onChange={setMotivoClasse}
+            options={reasons.map((r) => ({ value: r.chave, label: r.nome }))}
+          />
+          <FilterSelect
+            ariaLabel="Filtrar por projeto"
+            placeholder="Todos os projetos"
             value={projectId}
-            onChange={(e) => setProjectId(e.target.value)}
-            aria-label="Filtrar por projeto"
-          >
-            <option value="">Todos os projetos</option>
-            {lists.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.nome}
-              </option>
-            ))}
-          </select>
-          <select
-            style={selectStyle}
+            onChange={setProjectId}
+            options={lists.map((l) => ({ value: l.id, label: l.nome }))}
+          />
+          <FilterSelect
+            ariaLabel="Filtrar por usuário"
+            placeholder="Todos os usuários"
             value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            aria-label="Filtrar por usuário"
-          >
-            <option value="">Todos os usuários</option>
-            {members.map((m) => (
-              <option key={m.userId} value={m.userId}>
-                {m.nome}
-              </option>
-            ))}
-          </select>
+            onChange={setUserId}
+            options={members.map((m) => ({ value: m.userId, label: m.nome }))}
+          />
           <div style={{ display: "flex", gap: 4, marginLeft: "auto" }}>
             {PERIODS.map((p) => {
               const active = period === p.key;
