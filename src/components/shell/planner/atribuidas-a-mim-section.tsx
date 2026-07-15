@@ -18,14 +18,12 @@ import type { TaskResponseDto } from "@/lib/types/api";
  * Secao "Atribuidas a mim" do PlannerPanel.
  *
  * Consome `useMyTasks()` (que ja filtra `assigneeId = usuario logado` no
- * backend), descarta tasks em estado terminal (DONE/VALIDATED/CANCELLED/
- * DISCARDED/FAILED) e agrupa o resto pelas colunas Kanban canonicas:
+ * backend), descarta tasks fechadas (DONE/FAILED) e agrupa o resto pelas
+ * colunas canonicas do board (poda V3 9 -> 5):
  *
  *  - Backlog       (INBOX)
- *  - Pronto        (READY)
- *  - Em Progresso  (EXECUTING, VALIDATING)
- *  - Falhou        (FAILED — incluido por nao ser terminal logico, embora
- *                  esteja em TERMINAL_INTENTIONS; filtramos antes)
+ *  - A fazer       (READY)
+ *  - Em progresso  (EXECUTING)
  *
  * Tasks atrasadas ganham um asterisco visual (badge "⚠") — quem quiser
  * agir nelas usa a secao "Hoje e atrasadas" logo abaixo.
@@ -40,7 +38,6 @@ export function AtribuidasAMimSection() {
       ready: [],
       "em-progresso": [],
       concluido: [],
-      falhou: [],
     };
     for (const t of tasks) {
       if (isTerminalIntention(t.status)) continue;
@@ -60,8 +57,7 @@ export function AtribuidasAMimSection() {
   const total =
     grouped.backlog.length +
     grouped.ready.length +
-    grouped["em-progresso"].length +
-    grouped.falhou.length;
+    grouped["em-progresso"].length;
 
   return (
     <div>

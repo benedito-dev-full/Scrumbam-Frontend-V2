@@ -127,12 +127,8 @@ export const INTENTION_TO_VISUAL_ROW: Record<V3Intention, StatusVisualKey> = {
   INBOX: "backlog",
   READY: "pronto",
   EXECUTING: "em-progresso",
-  VALIDATING: "em-progresso",
   DONE: "concluido",
-  VALIDATED: "concluido",
   FAILED: "falhou",
-  CANCELLED: "concluido",
-  DISCARDED: "concluido",
 };
 
 export const VISUAL_TO_INTENTION_ROW: Record<StatusVisualKey, V3Intention> = {

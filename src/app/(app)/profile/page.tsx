@@ -84,7 +84,7 @@ const tipoLabel: Record<AtividadeTipo, string> = {
 
 /* ─── V3 Intentions terminais (filtro de stats) ─── */
 
-const TERMINAL_STATUSES = new Set(["DONE", "FAILED", "CANCELLED", "DISCARDED"]);
+const TERMINAL_STATUSES = new Set(["DONE", "FAILED"]);
 
 /* ─── Helpers ─── */
 

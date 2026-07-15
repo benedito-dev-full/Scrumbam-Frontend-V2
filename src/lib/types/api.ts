@@ -198,7 +198,7 @@ export interface DProjectDto {
   orgId: string | null;
   memberCount: number;
   /**
-   * Progresso da Lista — tarefas concluídas (DONE+VALIDATED). Presente apenas
+   * Progresso da Lista — tarefas concluídas (DONE). Presente apenas
    * na listagem (`GET /projects`); ausente em respostas de item único.
    */
   doneCount?: number;
@@ -329,11 +329,7 @@ export type V3Intention =
   | "READY"
   | "EXECUTING"
   | "DONE"
-  | "FAILED"
-  | "CANCELLED"
-  | "DISCARDED"
-  | "VALIDATING"
-  | "VALIDATED";
+  | "FAILED";
 
 /**
  * @deprecated Usar `V3Intention` — este tipo reflete estados legados incompatíveis com V3.

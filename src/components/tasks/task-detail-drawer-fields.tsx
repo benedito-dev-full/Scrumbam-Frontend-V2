@@ -11,12 +11,13 @@ import { cn } from "@/lib/utils";
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH", "URGENT"] as const;
 
 /** Mapeia coluna Kanban -> V3 Intention primaria para o PATCH de status. */
+// Poda 9 -> 5: 4 colunas de board. FAILED NAO esta aqui de proposito — e badge,
+// nao coluna, e so a automacao escreve (o usuario nao pode escolher "Falhou").
 const COLUMN_TO_INTENTION: Record<string, string> = {
   backlog: "INBOX",
   ready: "READY",
   "em-progresso": "EXECUTING",
   concluido: "DONE",
-  falhou: "FAILED",
 };
 
 // â”€â”€â”€ Sub-componentes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -166,12 +167,8 @@ export function StatusPicker({
     >
       {KANBAN_COLUMNS.map((col) => {
         const intention = COLUMN_TO_INTENTION[col.id];
-        const isActive =
-          current === intention ||
-          (col.id === "em-progresso" &&
-            (current === "EXECUTING" || current === "VALIDATING")) ||
-          (col.id === "concluido" &&
-            ["DONE", "VALIDATED", "CANCELLED", "DISCARDED"].includes(current));
+        // Mapeamento 1:1 apos a poda — nao ha mais estados finos para achatar.
+        const isActive = current === intention;
 
         return (
           <button

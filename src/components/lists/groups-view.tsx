@@ -500,7 +500,7 @@ function BackendGroupsView({
     value: FieldValue,
   ) {
     // Status vai por outro endpoint (PUT /tasks/:id/status) e por isso e
-    // tratado a parte. A celula ja garante: nao chama se VALIDATED (terminal)
+    // tratado a parte.
     // nem se a pilula escolhida e a mesma (preserva estado V3 fino). Aqui so
     // traduzimos a pilula visual → estado V3 canonico e disparamos.
     if (columnKey === "status") {

@@ -50,18 +50,14 @@ import { ptBR } from "date-fns/locale";
 import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
 
 const STATUS_COLOR: Partial<Record<V3Intention, string>> = {
-  EXECUTING: "#f59e0b",
-  VALIDATING: "#a78bfa",
+  EXECUTING: "#a78bfa",
   READY: "#60a5fa",
   INBOX: "#6b7280",
   FAILED: "#ef4444",
-  DISCARDED: "#ef4444",
   DONE: "#22c55e",
-  VALIDATED: "#22c55e",
-  CANCELLED: "#6b7280",
 };
 
-const DONE_STATUSES = ["DONE", "VALIDATED", "CANCELLED", "DISCARDED"];
+const DONE_STATUSES = ["DONE"];
 const OVERDUE_COLOR = "#ef4444";
 const WEEKDAYS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 const MAX_VISIBLE = 3;

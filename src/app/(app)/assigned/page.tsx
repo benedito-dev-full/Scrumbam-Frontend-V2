@@ -43,10 +43,9 @@ import {
   STATUS_OPTIONS,
   PRIORITY_OPTIONS,
   PILL_TO_V3,
-  V3_TERMINAL_VALIDATED,
   type MemberLike,
 } from "@/lib/mappers/groups-from-tasks";
-import { intentionToColumn } from "@/lib/mappers/task-status.mapper";
+import { intentionToPill } from "@/lib/mappers/task-status.mapper";
 import { usePendingDelayCount } from "@/hooks/use-delay-justifications";
 import { DelayJustificationModal } from "@/components/tasks/delay-justification-modal";
 import { useAllLists } from "@/hooks/use-projects";
@@ -64,38 +63,25 @@ import type {
 /* ─── Constantes de domínio ──────────────────────────────────────────────── */
 
 /** Estados que contam como "concluído" para o % de conclusão. */
-const DONE_STATUSES: V3Intention[] = ["DONE", "VALIDATED"];
-/** Estados terminais (não entram em "abertas"/"em atraso"). */
-const TERMINAL_STATUSES: V3Intention[] = [
-  "DONE",
-  "VALIDATED",
-  "CANCELLED",
-  "DISCARDED",
-  "FAILED",
-];
+const DONE_STATUSES: V3Intention[] = ["DONE"];
+/** Estados "fechados" (não entram em "abertas"/"em atraso"). */
+const TERMINAL_STATUSES: V3Intention[] = ["DONE", "FAILED"];
 
 const STATUS_DOT: Record<string, string> = {
   INBOX: "var(--muted-foreground)",
   READY: "#3b82f6",
-  EXECUTING: "#f59e0b",
-  VALIDATING: "#8b5cf6",
-  VALIDATED: "#10b981",
+  EXECUTING: "#8b5cf6",
   DONE: "#10b981",
   FAILED: "#ef4444",
-  CANCELLED: "var(--muted-foreground)",
-  DISCARDED: "var(--muted-foreground)",
 };
 
+/** Rotulos PT-BR dos 5 status V3 (poda 9 -> 5). */
 const STATUS_LABEL: Record<V3Intention, string> = {
-  INBOX: "Inbox",
-  READY: "Pronta",
-  EXECUTING: "Executando",
+  INBOX: "Backlog",
+  READY: "A fazer",
+  EXECUTING: "Em progresso",
   DONE: "Concluída",
   FAILED: "Falhou",
-  CANCELLED: "Cancelada",
-  DISCARDED: "Descartada",
-  VALIDATING: "Validando",
-  VALIDATED: "Validada",
 };
 
 /* ─── Paleta semântica dos KPIs (alinhada ao design system) ──────────────── */
@@ -385,7 +371,7 @@ export default function MinhasTarefasPage() {
 
   /* ── Métricas de PERÍODO (afetam SÓ "Concluídas" e "Ritmo") ──
    * Concluídas: fórmula período÷período.
-   *   doneNoPeriodo  = tasks DONE/VALIDATED com completedAt dentro de [start,end].
+   *   doneNoPeriodo  = tasks DONE com completedAt dentro de [start,end].
    *   emJogoNoPeriodo = doneNoPeriodo + abertas com dueDate <= end (era pra estar
    *                     feita até o fim do período e ainda não está).
    * Ritmo: série de conclusões por dia dentro da janela (via completedAt). */
@@ -492,11 +478,11 @@ export default function MinhasTarefasPage() {
 
   /* ── Pontualidade / Margem de atraso (recorte "por usuário logado") ──
    * Média (em dias corridos) de `completedAt - dueDate` das tarefas concluídas
-   * (DONE/VALIDATED) do escopo ativo (`tasks`) que possuem AMBOS os campos.
+   * (DONE) do escopo ativo (`tasks`) que possuem AMBOS os campos.
    * Convenção de sinal: positivo = atrasou (concluiu depois do prazo); negativo
    * = adiantou. Regras de negócio (fechadas): valores negativos contam
    * normalmente (não são clampados); tarefas sem `dueDate` são EXCLUÍDAS (nem
-   * como 0); só status terminal DONE/VALIDATED entra. `mediaDias` é null quando
+   * como 0); só o status de conclusão DONE entra. `mediaDias` é null quando
    * não há amostras (distinto de 0 = "pontual em média"). Client-side, mesma
    * fonte de dados de `periodMetrics`/`ritmoMetrics` (mesmo teto de 100 tasks;
    * risco residual idêntico ao do Ritmo, aceito como não-bloqueante).
@@ -548,7 +534,7 @@ export default function MinhasTarefasPage() {
 
   /* ── Margem de atraso (recorte "por usuário logado") — irmã da Pontualidade ──
    * Mesma base de `pontualidadeMetrics` (`completedAt - dueDate` das tarefas
-   * concluídas DONE/VALIDATED com `dueDate`), mas agrega SÓ o subconjunto que
+   * concluídas DONE com `dueDate`), mas agrega SÓ o subconjunto que
    * atrasou de fato (`diffDays > 0`, atraso ESTRITO). Tarefas entregues
    * exatamente no prazo (`diffDays === 0`) e tarefas adiantadas (`diffDays < 0`)
    * são EXCLUÍDAS — não entram nem como 0. Responde "quando atraso, de quanto
@@ -2328,19 +2314,15 @@ function PanelTabela({
     { id: "done", label: "Concluídas" },
   ];
 
-  /* Ordem intencional: o fluxo feliz do V3 primeiro (Inbox → … → Validada), e
-   * os desfechos negativos no fim. É a ordem em que o trabalho anda. */
+  /* Ordem intencional: o fluxo feliz do V3 primeiro (Backlog → … → Concluída),
+   * e o desfecho negativo (Falhou) no fim. É a ordem em que o trabalho anda. */
   const statusOptions: (V3Intention | "all")[] = [
     "all",
     "INBOX",
     "READY",
     "EXECUTING",
-    "VALIDATING",
-    "VALIDATED",
     "DONE",
     "FAILED",
-    "CANCELLED",
-    "DISCARDED",
   ];
 
   // Edição inline (reaproveita mutations e controles dos Blocos). As mutations
@@ -2654,12 +2636,11 @@ function EditableStatusCell({
   updateStatus: UpdateStatusMutation;
   refresh: () => void;
 }) {
-  // VALIDATED é terminal: o backend recusa mudar → travamos a pílula (igual Blocos).
-  const locked = task.status === V3_TERMINAL_VALIDATED;
-  const currentPill = intentionToColumn(task.status);
+  // Poda 9 -> 5: nenhum status é terminal (DONE pode reabrir), então a pílula
+  // nunca trava — a antiga regra "VALIDATED = estado final" morreu com o status.
+  const currentPill = intentionToPill(task.status);
   return (
     <EditTrigger
-      disabled={locked}
       render={(close) => (
         <OptionList
           options={STATUS_OPTIONS}
@@ -2916,7 +2897,13 @@ function StatusFilterDropdown({
           Status
         </span>
         {value === "all" ? (
-          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--foreground)" }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 500,
+              color: "var(--foreground)",
+            }}
+          >
             Todos
           </span>
         ) : (
@@ -2939,7 +2926,12 @@ function StatusFilterDropdown({
           />
           <div
             role="listbox"
-            style={{ ...scopeMenuStyle, minWidth: 190, maxHeight: 320, overflowY: "auto" }}
+            style={{
+              ...scopeMenuStyle,
+              minWidth: 190,
+              maxHeight: 320,
+              overflowY: "auto",
+            }}
           >
             {options.map((s) => {
               const isActive = s === value;
@@ -2983,7 +2975,10 @@ function StatusFilterDropdown({
                     </span>
                   )}
                   {isActive && (
-                    <Check size={13} style={{ color: "#a9a0e0", flex: "none" }} />
+                    <Check
+                      size={13}
+                      style={{ color: "#a9a0e0", flex: "none" }}
+                    />
                   )}
                 </button>
               );
@@ -3508,17 +3503,7 @@ function StatusBadge({ status }: { status: V3Intention }) {
       fg: "#9fb8d4",
       bd: "rgba(120,160,200,0.2)",
     },
-    VALIDATING: {
-      bg: "rgba(139,123,247,0.16)",
-      fg: "#a9a0e0",
-      bd: "rgba(139,123,247,0.2)",
-    },
     DONE: {
-      bg: "rgba(52,184,122,0.12)",
-      fg: "#34b87a",
-      bd: "rgba(52,184,122,0.2)",
-    },
-    VALIDATED: {
       bg: "rgba(52,184,122,0.12)",
       fg: "#34b87a",
       bd: "rgba(52,184,122,0.2)",
@@ -3529,8 +3514,8 @@ function StatusBadge({ status }: { status: V3Intention }) {
       bd: "rgba(239,95,95,0.26)",
     },
   };
-  // INBOX/CANCELLED/DISCARDED caem de propósito no neutro abaixo — são estados
-  // "sem energia" (parado / encerrado sem entrega) e não devem competir por cor.
+  // INBOX cai de propósito no neutro abaixo — estado "sem energia" (parado,
+  // ainda não priorizado) e não deve competir por cor.
   const s = map[status] ?? {
     bg: "rgba(255,255,255,0.05)",
     fg: "var(--muted-foreground)",

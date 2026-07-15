@@ -16,13 +16,8 @@ import { isOverdue } from "@/lib/mappers/task-status.mapper";
 /** Sentinela para "sem responsável" no filtro de responsável. */
 export const UNASSIGNED = "__unassigned__";
 
-/** Status terminais — escondidos quando o toggle "Fechado" está ativo. */
-export const CLOSED_STATUSES: readonly V3Intention[] = [
-  "DONE",
-  "VALIDATED",
-  "CANCELLED",
-  "DISCARDED",
-];
+/** Status "fechados" — escondidos quando o toggle "Fechado" está ativo. */
+export const CLOSED_STATUSES: readonly V3Intention[] = ["DONE"];
 
 /** Buckets de vencimento do painel de filtro. */
 export type DueFilter = "overdue" | "today" | "week" | "none";

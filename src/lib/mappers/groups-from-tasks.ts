@@ -15,8 +15,8 @@
  */
 
 import {
-  intentionToColumn,
-  getColumnConfig,
+  intentionToPill,
+  STATUS_PILL_OPTIONS,
   priorityToLabel,
   priorityToColor,
 } from "@/lib/mappers/task-status.mapper";
@@ -59,18 +59,18 @@ export const SEM_BLOCO_ID = "__sem_bloco";
 /* ─── Colunas fixas da v1 (sem colunas custom) ───────────────────────────── */
 
 /**
- * Opcoes de status para a pill colorida — espelham as 5 colunas Kanban
- * canonicas (task-status.mapper). O `id` da opcao e o id da coluna Kanban
- * (ex: "em-progresso"), e e isso que cada task guarda em `fields.status`.
+ * Opcoes de status da pill colorida na GRADE — as 4 colunas do board MAIS
+ * `falhou` (ver `STATUS_PILL_OPTIONS`). FAILED nao e coluna do board, mas
+ * PRECISA de pilula propria na grade: sem ela, uma task que falhou apareceria
+ * como "Backlog", apagando o sinal de falha.
  *
  * Exportada para reutilizacao na sub-tabela de subtarefas (`SubtaskTable`).
  */
-export const STATUS_OPTIONS: ColumnOption[] = (
-  ["backlog", "ready", "em-progresso", "concluido", "falhou"] as const
-).map((id) => {
-  const cfg = getColumnConfig(id);
-  return { id, label: cfg?.label ?? id, color: cfg?.color ?? SEM_BLOCO_COR };
-});
+export const STATUS_OPTIONS: ColumnOption[] = STATUS_PILL_OPTIONS.map((o) => ({
+  id: o.id,
+  label: o.label,
+  color: o.color ?? SEM_BLOCO_COR,
+}));
 
 /**
  * Opcoes de prioridade para a pill colorida.
@@ -87,10 +87,8 @@ export const PRIORITY_OPTIONS: ColumnOption[] = (
 
 /**
  * Estado V3 canonico enviado ao backend ao escolher cada pilula visual.
- * Decisao de produto (passo 2): as 5 pilulas mapeiam 1:1 para um estado
- * canonico. "Concluido" achata DONE/VALIDATED/CANCELLED/DISCARDED em DONE,
- * por isso a edicao so dispara quando o usuario TROCA de pilula (ver
- * `groups-view`), preservando a distincao fina quando ele nao mexe.
+ * Apos a poda 9 -> 5 o mapeamento e 1:1 — nao ha mais "estado fino" escondido
+ * atras de uma pilula (nao existe VALIDATED/CANCELLED/DISCARDED para achatar).
  */
 export const PILL_TO_V3: Record<string, V3Intention> = {
   backlog: "INBOX",
@@ -99,9 +97,6 @@ export const PILL_TO_V3: Record<string, V3Intention> = {
   concluido: "DONE",
   falhou: "FAILED",
 };
-
-/** Estado V3 terminal — nao pode mudar (backend recusa). UI trava a pilula. */
-export const V3_TERMINAL_VALIDATED: V3Intention = "VALIDATED";
 
 /** Chave interna que carrega o estado V3 cru da task (para regras de status). */
 export const STATUS_V3_KEY = "__statusV3";
@@ -157,7 +152,7 @@ function taskToRow(
   task: TaskResponseDto,
   childCountMap: Map<string, number>,
 ): TaskModel {
-  const statusColId = intentionToColumn(task.status as V3Intention);
+  const statusColId = intentionToPill(task.status as V3Intention);
 
   // Valores das colunas customizaveis vivem em `task.dados.fields` chaveados
   // por `column.key`. Espalhados PRIMEIRO para que os 6 builtin abaixo sempre
@@ -190,8 +185,8 @@ function taskToRow(
     fields: {
       ...customFields,
       status: statusColId,
-      // Estado V3 cru — usado pela celula de status para detectar VALIDATED
-      // (terminal) e aplicar a regra "nao mexer se mesma pilula".
+      // Estado V3 cru — usado pela regra "nao mexer se mesma pilula" e pelo
+      // badge de FAILED (que nao tem coluna propria).
       [STATUS_V3_KEY]: task.status ?? null,
       identifier: task.identifier ?? null,
       // `person` guarda o userId canonico (string). A celula resolve

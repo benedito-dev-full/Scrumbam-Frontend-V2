@@ -9,7 +9,6 @@ import type {
   FieldValue,
 } from "@/lib/types/table-fields";
 import type { MemberLike } from "@/lib/mappers/groups-from-tasks";
-import { V3_TERMINAL_VALIDATED } from "@/lib/mappers/groups-from-tasks";
 import { AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
 import { ClaudeAvatar } from "@/app/(app)/lists/[id]/_components/claude-avatar";
 import { MiniCalendar } from "@/components/ui/mini-calendar";
@@ -186,8 +185,8 @@ export function EditableText({
 /* ─── Primitivos visuais ─────────────────────────────────────────────────── */
 
 /**
- * Pill solida que preenche a celula (Status). Quando `locked`, exibe um
- * cadeado indicando estado terminal (VALIDATED) — nao editavel.
+ * Pill solida que preenche a celula (Status). `locked` exibe um cadeado
+ * (celula nao editavel).
  */
 export function Pill({
   bg,
@@ -567,7 +566,6 @@ export function FieldCell({
   readOnly,
   members,
   saving,
-  statusV3,
 }: {
   column: ColumnDef;
   value: FieldValue;
@@ -576,21 +574,16 @@ export function FieldCell({
   readOnly: boolean;
   members?: MemberLike[];
   saving?: boolean;
-  /** Estado V3 cru da task (so usado pela coluna `status`). */
-  statusV3?: string | null;
 }) {
   const ref = useRef<HTMLTableCellElement>(null);
   const [open, setOpen] = useState(false);
   // Hover da celula — usado pela coluna `link` para revelar o botao de editar.
   const [hovered, setHovered] = useState(false);
 
-  // Status em VALIDATED e terminal: backend recusa mudar → travamos a pilula.
-  const statusLocked =
-    column.type === "status" && statusV3 === V3_TERMINAL_VALIDATED;
-
-  // No modo read-only (ou enquanto salva, ou status terminal) a celula nao
-  // abre editor nem responde a clique. `saving` segura ate o backend confirmar.
-  const locked = readOnly || !!saving || statusLocked;
+  // Poda 9 -> 5: NENHUM status V3 e terminal (DONE pode voltar para EXECUTING
+  // — reabertura). A trava de pilula "VALIDATED = estado final" morreu junto
+  // com o status. Restam as travas legitimas: read-only e "salvando".
+  const locked = readOnly || !!saving;
   const openCell = locked ? undefined : () => setOpen(true);
   const editCursor = locked ? "default" : "pointer";
   // Estilo aplicado quando esta salvando — atenua a celula para feedback.
@@ -609,13 +602,10 @@ export function FieldCell({
         ref={ref}
         style={{ ...tdStyle, ...savingStyle, padding: 2, cursor: editCursor }}
         onClick={openCell}
-        title={statusLocked ? "Validado — estado final" : undefined}
       >
         {selected ? (
           isStatus ? (
-            <Pill bg={selected.color ?? "#6b7280"} locked={statusLocked}>
-              {selected.label}
-            </Pill>
+            <Pill bg={selected.color ?? "#6b7280"}>{selected.label}</Pill>
           ) : (
             <ChipDropdown option={selected} />
           )
@@ -629,8 +619,7 @@ export function FieldCell({
               currentId={typeof value === "string" ? value : null}
               onPick={(id) => {
                 // Regra "nao mexer se mesma pilula": so dispara quando o
-                // usuario TROCA de pilula. Escolher a mesma preserva o estado
-                // V3 fino (ex: VALIDATING/CANCELLED nao viram EXECUTING/DONE).
+                // usuario TROCA de pilula (evita PUT inutil no backend).
                 if (id !== value) onChange(id);
                 setOpen(false);
               }}

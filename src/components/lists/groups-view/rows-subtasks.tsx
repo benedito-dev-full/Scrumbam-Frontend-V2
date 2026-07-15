@@ -10,7 +10,7 @@ import {
   useUpdateTaskStatus,
   useCreateTask,
 } from "@/hooks/use-tasks";
-import { intentionToColumn } from "@/lib/mappers/task-status.mapper";
+import { intentionToPill } from "@/lib/mappers/task-status.mapper";
 import { qk } from "@/lib/query-keys";
 import { PILL_TO_V3, type MemberLike } from "@/lib/mappers/groups-from-tasks";
 import type { FieldValue } from "@/lib/types/table-fields";
@@ -304,7 +304,7 @@ export function SubtaskHeadRow() {
  * **Edição inline:**
  * - Nome: `EditableText` com `useUpdateTask` (DTO.titulo)
  * - Responsável: `FieldCell` com menu de membros
- * - Status: `FieldCell` com pills coloridas; VALIDATED trava a edição
+ * - Status: `FieldCell` com pills coloridas
  * - Data: `FieldCell` com date picker
  * - Prioridade: `FieldCell` dropdown (LOW/MEDIUM/HIGH/URGENT)
  * - Tempo: `TimeSpentCell` com timer inline (start/stop) próprio da subtarefa
@@ -348,11 +348,9 @@ export function SubtaskTaskRow({
 
   const saving = savingId === subtask.id;
 
-  /** Estado V3 cru da subtarefa — passado para `FieldCell` travar pilula VALIDATED. */
-  const statusV3 = subtask.status ?? null;
   /** Coluna visual de status baseada no V3 Intention atual. */
   const statusColId = subtask.status
-    ? intentionToColumn(subtask.status as V3Intention)
+    ? intentionToPill(subtask.status as V3Intention)
     : null;
 
   function handleSubtaskFieldError(error: unknown) {
@@ -513,7 +511,6 @@ export function SubtaskTaskRow({
         readOnly={false}
         members={members}
         saving={saving}
-        statusV3={statusV3}
       />
 
       {/* Data */}

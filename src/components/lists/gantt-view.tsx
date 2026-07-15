@@ -35,27 +35,19 @@ import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
 import { isPastDue } from "@/lib/dates/civil-day";
 
 const STATUS_COLOR: Partial<Record<V3Intention, string>> = {
-  EXECUTING: "#f59e0b",
-  VALIDATING: "#a78bfa",
+  EXECUTING: "#a78bfa",
   READY: "#60a5fa",
   INBOX: "#6b7280",
   FAILED: "#ef4444",
-  DISCARDED: "#ef4444",
   DONE: "#22c55e",
-  VALIDATED: "#22c55e",
-  CANCELLED: "#6b7280",
 };
 
 const STATUS_LABEL: Partial<Record<V3Intention, string>> = {
   EXECUTING: "Em progresso",
-  VALIDATING: "Validando",
-  READY: "Pronto",
+  READY: "A fazer",
   INBOX: "Backlog",
   FAILED: "Falhou",
-  DISCARDED: "Descartado",
-  DONE: "Concluído",
-  VALIDATED: "Validado",
-  CANCELLED: "Cancelado",
+  DONE: "Concluída",
 };
 
 type Zoom = "day" | "week";
@@ -438,8 +430,8 @@ export function GanttView({
               // atrasada a partir do meio-dia.
               const isLate =
                 isPastDue(task.dueDate) &&
-                !["DONE", "VALIDATED", "CANCELLED"].includes(task.status);
-              const isDone = ["DONE", "VALIDATED"].includes(task.status);
+                task.status !== "DONE";
+              const isDone = task.status === "DONE";
 
               return (
                 <div

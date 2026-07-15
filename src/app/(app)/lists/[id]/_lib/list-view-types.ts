@@ -40,11 +40,7 @@ export const INTENTION_TO_STATUS: Record<string, StatusVisual> = {
   INBOX: "backlog",
   READY: "pronto",
   EXECUTING: "em-progresso",
-  VALIDATING: "em-progresso",
   DONE: "concluido",
-  VALIDATED: "concluido",
-  CANCELLED: "concluido",
-  DISCARDED: "concluido",
   FAILED: "falhou",
 };
 

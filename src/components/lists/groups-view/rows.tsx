@@ -14,10 +14,7 @@ import {
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { type ColumnDef, type FieldValue } from "@/lib/types/table-fields";
-import {
-  STATUS_V3_KEY,
-  type MemberLike,
-} from "@/lib/mappers/groups-from-tasks";
+import { type MemberLike } from "@/lib/mappers/groups-from-tasks";
 import type { TaskModel } from "@/lib/types/table-fields";
 import { AI_ASSIGNEE_ID, useTaskExecution } from "@/hooks/use-task-execution";
 import { Checkbox, EditableText, FieldCell, SegmentBar } from "./cells";
@@ -568,11 +565,6 @@ export function TaskRow({
             ? (v: FieldValue) => onEditField!(task.id, c.key, v)
             : noopFieldChange;
 
-          const statusV3 =
-            typeof task.fields[STATUS_V3_KEY] === "string"
-              ? (task.fields[STATUS_V3_KEY] as string)
-              : null;
-
           return (
             <FieldCell
               key={c.key}
@@ -583,7 +575,6 @@ export function TaskRow({
               readOnly={cellReadOnly}
               members={members}
               saving={saving}
-              statusV3={statusV3}
             />
           );
         })}

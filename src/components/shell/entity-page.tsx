@@ -215,7 +215,7 @@ export function ListRow({
 }: {
   id: string;
   nome: string;
-  /** Tarefas concluídas (DONE+VALIDATED) — para a barra de progresso. */
+  /** Tarefas concluídas (DONE) — para a barra de progresso. */
   doneCount?: number;
   /** Total de tarefas da lista. */
   totalCount?: number;
