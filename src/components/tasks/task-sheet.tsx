@@ -1,7 +1,8 @@
 ﻿"use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Trash2, ArrowUpRight } from "lucide-react";
 
 import { CommentsPanel } from "@/components/comments/CommentsPanel";
 import { DeleteTaskDialog } from "@/components/tasks/delete-task-dialog";
@@ -41,6 +42,7 @@ interface SubtarefaItem {
 }
 
 export function TaskSheet({ task, onClose }: TaskSheetProps) {
+  const router = useRouter();
   const updateTask = useUpdateTask();
   const updateStatus = useUpdateTaskStatus();
   const { run, dialogProps } = useWorkCollisionGuard();
@@ -312,14 +314,45 @@ export function TaskSheet({ task, onClose }: TaskSheetProps) {
             {task.identifier.toUpperCase()}
           </span>
 
-          <div
-            aria-hidden="true"
-            style={{
-              width: 30,
-              height: 30,
-              flexShrink: 0,
-            }}
-          />
+          {task.projectId ? (
+            <button
+              type="button"
+              aria-label="Ver o projeto desta tarefa"
+              onClick={() => {
+                onClose();
+                router.push(`/lists/${task.projectId}`);
+              }}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                background: "none",
+                border: 0,
+                color: "var(--muted-foreground)",
+                fontSize: 12,
+                cursor: "pointer",
+                padding: "4px 8px",
+                borderRadius: 5,
+                whiteSpace: "nowrap",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = "var(--foreground)";
+                e.currentTarget.style.background = "var(--accent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = "var(--muted-foreground)";
+                e.currentTarget.style.background = "none";
+              }}
+            >
+              Ver o projeto
+              <ArrowUpRight size={15} />
+            </button>
+          ) : (
+            <div
+              aria-hidden="true"
+              style={{ width: 30, height: 30, flexShrink: 0 }}
+            />
+          )}
         </div>
 
         {/* ── Body scrollável ──────────────────────────────────────────── */}
