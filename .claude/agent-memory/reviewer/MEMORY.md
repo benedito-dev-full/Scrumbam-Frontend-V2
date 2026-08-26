@@ -8,6 +8,7 @@
 | Task 1 (Fase 1) — seed DClasse -189 TASK_LINK (Backend-V2) | seeds | 9.5/10 | APPROVED | 2026-06-10 |
 | Task 1 (Fase 2) — DTOs + @IsSafeHttpUrl, links externos em tasks (Backend-V2) | docs/dto | 9.5/10 | APPROVED | 2026-06-10 |
 | Task 1 (Fase 3) — TaskLinksService (attach/list/detach, DVincula -189) (Backend-V2) | docs/service | 9.2/10 | APPROVED | 2026-06-10 |
+| subGroupBy (cruzamento) — GET /reports/delay-reasons (Backend-V2) | delay-justifications | 8.8/10 | APPROVED | 2026-07-15 |
 
 ## Patterns de Qualidade
 
@@ -38,6 +39,10 @@
 |--------|---------------|-----------------|
 | lists | 8.0 | 1 |
 | seeds (Backend-V2) | 9.5 | 1 |
+
+## Backend-V2 — Agregação $queryRaw com cruzamento (cross-tab)
+
+- [Padrões de review para $queryRaw GROUP BY + cruzamento pai/sub](backend-v2-raw-sql-aggregation-crosstab.md) — whitelist de coluna, N+1 em 2 dimensões, invariantes do fold (soma exata, média ponderada crua, nulls), retrocompat, gap comum de @ApiQuery.
 
 ## Tech Debt Conhecido
 
