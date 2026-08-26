@@ -1,7 +1,7 @@
 "use client";
 
 // ─── Externos ─────────────────────────────────────────────────────────────────
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -14,7 +14,20 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { Play, Bot, Loader2, User, Lock, Trash2 } from "lucide-react";
+import {
+  Play,
+  Bot,
+  Loader2,
+  Lock,
+  Trash2,
+  ListTree,
+  CalendarDays,
+  SignalHigh,
+  SignalMedium,
+  SignalLow,
+  TriangleAlert,
+  Clock3,
+} from "lucide-react";
 
 // ─── Internos ─────────────────────────────────────────────────────────────────
 import { useTasksByProject, useUpdateTaskStatus } from "@/hooks/use-tasks";
@@ -22,7 +35,9 @@ import {
   KANBAN_COLUMNS,
   intentionToColumn,
   isOverdue,
+  isFailed,
   priorityToColor,
+  priorityToLabel,
 } from "@/lib/mappers/task-status.mapper";
 import { qk } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
@@ -33,6 +48,7 @@ import { WorkSessionBadge } from "@/components/tasks/work-session-badge";
 import { useWorkCollisionGuard } from "@/hooks/use-work-collision-guard";
 import { useTaskExecution, AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
 import { useTeams } from "@/hooks/use-teams";
+import { useProjectMembers } from "@/hooks/use-members";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { KanbanColumnConfig } from "@/lib/mappers/task-status.mapper";
@@ -46,6 +62,77 @@ const COLUMN_TO_INTENTION: Record<string, V3Intention> = {
   concluido: "DONE",
   falhou: "FAILED",
 };
+
+/**
+ * Iniciais do nome para o avatar do card (no máximo 2 letras).
+ *
+ * @param nome - Nome completo do responsável.
+ * @returns Iniciais em maiúsculas (ex: 'Rizar Bastos' -> 'RB').
+ */
+function buildInitials(nome: string): string {
+  return nome
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0] ?? "")
+    .join("")
+    .toUpperCase();
+}
+
+// ─── Prioridade: forma + texto, nunca so cor ──────────────────────────────────
+
+/**
+ * Glifo e cor de cada prioridade.
+ *
+ * Antes a prioridade era uma bolinha de 6px colorida. Cor sozinha nao e
+ * decodificavel: laranja e ambar sao indistinguiveis num ponto desse tamanho,
+ * ninguem sabe o que significam sem legenda, e daltonicos nao veem diferenca
+ * nenhuma. Jira usa chevrons, Linear usa barras de sinal — a informacao esta
+ * na FORMA, e a cor so reforca. Aqui: glifo colorido + texto em cinza, para o
+ * badge nao virar uma parede de cor quando quase toda task e "Alta".
+ *
+ * @see priorityToLabel — fonte unica dos rotulos PT-BR.
+ */
+const PRIORITY_GLYPH: Record<
+  string,
+  { Icon: React.ComponentType<{ className?: string }>; color: string }
+> = {
+  URGENT: { Icon: TriangleAlert, color: "#ef4444" },
+  HIGH: { Icon: SignalHigh, color: "#f97316" },
+  MEDIUM: { Icon: SignalMedium, color: "#f59e0b" },
+  LOW: { Icon: SignalLow, color: "#8b8b8b" },
+};
+
+// ─── Avatar do responsavel ────────────────────────────────────────────────────
+
+/** Paleta dos avatares — indice derivado do nome, entao a cor e estavel. */
+const AVATAR_COLORS = [
+  "#e0567a",
+  "#d97706",
+  "#0d9488",
+  "#2563eb",
+  "#7c3aed",
+  "#c026d3",
+  "#0891b2",
+  "#65a30d",
+];
+
+/**
+ * Cor estavel do avatar a partir do nome.
+ *
+ * Iniciais cinzas em circulo cinza sao indistinguiveis entre si — "EF", "CR" e
+ * "RC" viram a mesma mancha. Com cor deterministica, cada pessoa ganha uma
+ * identidade visual que se aprende em poucos minutos de uso.
+ *
+ * @param nome - Nome completo do responsável.
+ * @returns Cor hexadecimal da paleta.
+ */
+function avatarColor(nome: string): string {
+  let hash = 0;
+  for (let i = 0; i < nome.length; i++)
+    hash = (hash * 31 + nome.charCodeAt(i)) | 0;
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+}
 
 // ─── KanbanBoard ──────────────────────────────────────────────────────────────
 
@@ -62,6 +149,14 @@ export function KanbanBoard({
     tasksProp === undefined ? projectId : null,
   );
   const tasks = tasksProp ?? fetchedTasks;
+
+  // UMA query por board (cacheada 5min) resolve `assigneeId` -> nome de todos
+  // os cards. Nunca por card — isso seria N+1 de rede.
+  const { data: members = [] } = useProjectMembers(projectId);
+  const memberNames = useMemo(
+    () => new Map(members.map((m) => [m.userId, m.nome])),
+    [members],
+  );
 
   const updateStatus = useUpdateTaskStatus();
   const queryClient = useQueryClient();
@@ -153,7 +248,7 @@ export function KanbanBoard({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex h-full gap-[calc(var(--row-gap)+4px)] overflow-x-auto p-4">
+        <div className="flex h-full min-h-0 gap-[calc(var(--row-gap)+4px)] overflow-x-auto p-4">
           {KANBAN_COLUMNS.map((col) => {
             const colTasks = tasks.filter(
               (t) =>
@@ -167,6 +262,7 @@ export function KanbanBoard({
                 tasks={colTasks}
                 onSelectTask={handleSelectTask}
                 isDragging={activeTask !== null}
+                memberNames={memberNames}
               />
             );
           })}
@@ -175,7 +271,12 @@ export function KanbanBoard({
         {/* Card "fantasma" seguindo o cursor durante o drag */}
         <DragOverlay dropAnimation={{ duration: 150, easing: "ease" }}>
           {activeTask && (
-            <TaskCard task={activeTask} onClick={() => {}} isDragOverlay />
+            <TaskCard
+              task={activeTask}
+              onClick={() => {}}
+              isDragOverlay
+              memberNames={memberNames}
+            />
           )}
         </DragOverlay>
       </DndContext>
@@ -201,61 +302,69 @@ function KanbanColumn({
   tasks,
   onSelectTask,
   isDragging,
+  memberNames,
 }: {
   config: KanbanColumnConfig;
   tasks: TaskResponseDto[];
   onSelectTask: (id: string) => void;
   isDragging: boolean;
+  memberNames: Map<string, string>;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: config.id });
 
   return (
-    <div className="flex w-[280px] shrink-0 flex-col gap-2">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-1">
+    /* Coluna = superficie AFUNDADA (sunken), o "poco" onde os cards ficam.
+       Antes a coluna nao tinha fundo nenhum: os cards boiavam direto sobre a
+       pagina e o quadro nao lia como quadro. Padrao Jira/Trello/GitHub
+       Projects — ver `elevation.surface.sunken` do Atlassian Design. */
+    <div
+      className={cn(
+        "flex h-full min-h-0 min-w-[248px] flex-1 flex-col rounded-xl transition-colors",
+        "bg-muted/40 dark:bg-black/25",
+        isOver && "ring-1 ring-violet-500/40",
+      )}
+    >
+      {/* Header dentro do poco, nao solto acima dele. */}
+      <div className="flex shrink-0 items-center gap-2 px-3 pb-2 pt-3">
         <span
-          className="size-2.5 rounded-full"
+          className="size-2 rounded-full"
           style={{ background: config.color }}
         />
-        <span className="text-[13px] font-semibold text-foreground">
+        <span className="text-[12px] font-semibold uppercase tracking-wide text-foreground">
           {config.label}
         </span>
-        <span className="ml-auto text-[12px] text-muted-foreground">
+        <span className="ml-auto rounded-full bg-black/10 px-1.5 text-[11px] font-medium text-muted-foreground dark:bg-white/10">
           {tasks.length}
         </span>
       </div>
 
-      {/* Drop zone */}
+      {/* Area rolavel dos cards */}
       <div
         ref={setNodeRef}
-        className={cn(
-          "flex min-h-[80px] flex-col gap-[var(--row-gap)] rounded-xl p-1 transition-colors",
-          isOver && "bg-muted/40 ring-1 ring-border",
-          isDragging && !isOver && "bg-muted/10",
-        )}
+        className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-2 pb-2"
       >
         {tasks.map((task) => (
           <TaskCard
             key={task.id}
             task={task}
             onClick={() => onSelectTask(task.id)}
+            memberNames={memberNames}
           />
         ))}
-        {tasks.length === 0 && !isDragging && (
-          <div className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-[12px] text-muted-foreground">
-            Nenhuma task
-          </div>
-        )}
-        {tasks.length === 0 && isDragging && (
+        {tasks.length === 0 && (
           <div
             className={cn(
-              "rounded-lg border border-dashed px-3 py-6 text-center text-[12px] transition-colors",
+              "shrink-0 rounded-lg border border-dashed px-3 py-6 text-center text-[12px] transition-colors",
               isOver
                 ? "border-violet-500/60 bg-violet-500/10 text-violet-400"
                 : "border-border text-muted-foreground",
             )}
           >
-            {isOver ? "Soltar aqui" : "Arraste para cá"}
+            {isDragging
+              ? isOver
+                ? "Soltar aqui"
+                : "Arraste para cá"
+              : "Nenhuma task"}
           </div>
         )}
       </div>
@@ -269,10 +378,12 @@ function TaskCard({
   task,
   onClick,
   isDragOverlay = false,
+  memberNames,
 }: {
   task: TaskResponseDto;
   onClick: () => void;
   isDragOverlay?: boolean;
+  memberNames: Map<string, string>;
 }) {
   // Estado terminal (DONE/FAILED) = histórico: sem botão Executar, sem badge
   // de execução, sem bloqueio — mesmo que haja DPedido pendente no banco
@@ -289,6 +400,11 @@ function TaskCard({
   });
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
   const prioColor = priorityToColor(task.priority);
+  const PriorityIcon =
+    (task.priority && PRIORITY_GLYPH[task.priority]?.Icon) || SignalLow;
+  // FAILED nao tem coluna (decisao do CEO): a task cai em `backlog`
+  // carregando este badge. Sem ele, uma falha some do quadro.
+  const failed = isFailed(task.status as V3Intention);
   const isAiAssigned = task.assigneeId === AI_ASSIGNEE_ID;
   const { execution, startExecution } = useTaskExecution(
     task.id,
@@ -299,6 +415,20 @@ function TaskCard({
   const isRunning = isLocked || execution?.status === "running";
   const isDone = execution?.status === "done";
   const [deleteOpen, setDeleteOpen] = useState(false);
+
+  // Nome real do responsável humano. Sem match no mapa (membro removido do
+  // projeto, ou lista ainda carregando) cai em "Atribuído" — o card nunca
+  // mente dizendo que não há responsável.
+  const assigneeName =
+    task.assigneeId && !isAiAssigned
+      ? (memberNames.get(task.assigneeId) ?? "Atribuído")
+      : null;
+
+  // Tempo gasto: o backend manda "—" quando é zero; não ocupar a linha com isso.
+  const timeSpent =
+    task.timeSpentLabel && task.timeSpentLabel !== "—"
+      ? task.timeSpentLabel
+      : null;
 
   return (
     <div
@@ -316,7 +446,12 @@ function TaskCard({
           : undefined
       }
       className={cn(
-        "group relative rounded-lg border border-border bg-card p-[calc(var(--row-py)+2px)] shadow-sm transition-all",
+        // Card = superficie ELEVADA (raised) sobre o poco da coluna. No dark,
+        // sombra quase nao se ve — o Atlassian recomenda diferenciar por COR
+        // de superficie, entao o contraste vem do par coluna(#0d) / card(#1e).
+        "group relative shrink-0 rounded-lg border px-2.5 py-2 transition-all",
+        "border-black/[0.06] bg-card shadow-sm",
+        "dark:border-white/[0.06] dark:bg-[#1e1e1e] dark:shadow-none",
         isLocked
           ? "cursor-not-allowed opacity-60"
           : "cursor-grab active:cursor-grabbing",
@@ -325,157 +460,267 @@ function TaskCard({
         !isDragging &&
           !isDragOverlay &&
           !isLocked &&
-          "hover:border-border/80 hover:bg-muted/30",
+          "hover:border-black/[0.12] dark:hover:border-white/[0.14] dark:hover:bg-[#242424]",
         isAiAssigned && isRunning && "border-violet-500/30 bg-violet-500/5",
         isAiAssigned && isDone && !isLocked && "border-green-500/20",
       )}
     >
-      {/* Dialog de confirmação — controlado por `deleteOpen` */}
-      <DeleteTaskDialog
-        task={task}
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-      />
+      {/* Dialog de confirmação — controlado por `deleteOpen`.
+          O <span> NAO e decorativo: o dialog renderiza num portal, e eventos
+          de portal sobem pela arvore REACT, nao pela DOM. Como o dialog e
+          filho React do card (que tem onClick para abrir o drawer), clicar
+          "Excluir" dentro do dialog disparava o onClick do card e abria o
+          drawer da task recem-excluida. O stopPropagation aqui e a fronteira
+          que faltava — o da lixeira so cobria o botao que ABRE o dialog. */}
+      <span
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
+        <DeleteTaskDialog
+          task={task}
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+        />
+      </span>
 
-      {/* Identifier + prioridade + cadeado */}
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="font-mono text-[11px] text-muted-foreground">
-          {task.identifier}
-        </span>
-        <div className="flex min-h-5 min-w-0 items-center gap-1.5">
-          {isLocked && (
-            <span
-              title="Em execução pela IA"
-              aria-label="Em execução pela IA"
-              className="flex items-center gap-1 rounded-sm bg-violet-500/15 px-1 py-px text-[9px] font-semibold uppercase tracking-wide text-violet-300"
+      {/* Lixeira — fora do fluxo, só no hover. Antes ocupava uma linha
+          permanente no topo junto do identifier; agora o topo é só o título. */}
+      {!isLocked && !isDragOverlay && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setDeleteOpen(true);
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          title="Excluir task"
+          aria-label="Excluir task"
+          className="pointer-events-none absolute right-1 top-1 inline-flex size-5 items-center justify-center rounded bg-card text-muted-foreground opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:pointer-events-auto group-hover:opacity-100"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      )}
+
+      {/* ── Titulo ─────────────────────────────────────────────────────────
+          3 linhas, nao 2: com ~230px de largura util e 13px, duas linhas dao
+          ~60 caracteres e praticamente TODO titulo real terminava em "…".
+          Trello e Jira nao truncam o titulo — e o dado principal do card.
+          Peso normal (nao medium): no dark, 13px medium fica pesado; o
+          contraste com o rodape ja vem da cor (#e4e4e4 vs #888). */}
+      <p
+        title={task.nome}
+        className="line-clamp-3 pr-5 text-[13px] leading-[1.45] text-foreground"
+      >
+        {task.nome?.trim() ? (
+          task.nome
+        ) : (
+          <span className="italic text-muted-foreground">(sem título)</span>
+        )}
+      </p>
+
+      {/* ── Rodape em DUAS linhas ──────────────────────────────────────────
+          Uma linha so obrigava tudo a caber em ~230px, e o que sobrava eram
+          glifos mudos. Separado em "o que e" (badges) e "quem/qual" (identidade),
+          cada dado ganha espaco para se expressar por extenso.
+          E o arranjo de GitHub Projects (labels em cima, meta embaixo). */}
+
+      {/* Linha 1: badges. `flex-wrap` para nunca cortar um badge pela metade. */}
+      {(task.priority ||
+        task.dueDate ||
+        timeSpent ||
+        task.hasChildren ||
+        isAiAssigned ||
+        isLocked ||
+        failed) && (
+        <div className="mt-2 flex flex-wrap items-center gap-1">
+          {task.priority && PRIORITY_GLYPH[task.priority] && (
+            <Badge
+              tone="neutral"
+              title={`Prioridade: ${priorityToLabel(task.priority)}`}
+              icon={
+                <PriorityIcon className="size-3" style={{ color: prioColor }} />
+              }
             >
-              <Lock className="size-2.5" />
+              {priorityToLabel(task.priority)}
+            </Badge>
+          )}
+
+          {failed && (
+            <Badge tone="danger" title="A automação falhou nesta task">
+              Falhou
+            </Badge>
+          )}
+
+          {isLocked && (
+            <Badge
+              tone="violet"
+              title="Em execução pela IA"
+              icon={<Lock className="size-2.5" />}
+            >
               {task.activeExecution?.status === "awaiting_approval"
                 ? "aprovar"
                 : "executando"}
-            </span>
+            </Badge>
           )}
+
           {/* Task #794: "em trabalho por Fulano" — só renderiza em EXECUTING
               com workSession ativa (o componente decide). */}
           <WorkSessionBadge task={task} />
-          {task.priority && (
-            <span
-              className="size-1.5 rounded-full"
-              style={{ background: prioColor }}
-              title={task.priority}
-            />
-          )}
-          {/* Lixeira no hover: fica no fluxo para nao cobrir a prioridade. */}
-          {!isLocked && !isDragOverlay && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setDeleteOpen(true);
-              }}
-              onPointerDown={(e) => e.stopPropagation()}
-              onKeyDown={(e) => e.stopPropagation()}
-              title="Excluir task"
-              aria-label="Excluir task"
-              className="pointer-events-none -mr-1 inline-flex size-5 items-center justify-center rounded text-muted-foreground opacity-0 transition-all hover:bg-red-500/10 hover:text-red-400 group-hover:pointer-events-auto group-hover:opacity-100"
+
+          {task.dueDate && (
+            <Badge
+              tone={overdue ? "danger" : "neutral"}
+              title={overdue ? "Prazo vencido" : "Prazo"}
+              icon={<CalendarDays className="size-2.5" />}
             >
-              <Trash2 className="size-3.5" />
-            </button>
+              {new Date(
+                task.dueDate.slice(0, 10) + "T12:00:00",
+              ).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+            </Badge>
           )}
-        </div>
-      </div>
 
-      {/* Título */}
-      <p className="text-[13px] leading-snug text-foreground">{task.nome}</p>
+          {timeSpent && (
+            <Badge
+              tone="neutral"
+              title={
+                task.timeSpentIsRollup
+                  ? "Tempo somado das subtarefas"
+                  : "Tempo gasto"
+              }
+              icon={<Clock3 className="size-2.5" />}
+            >
+              {timeSpent}
+            </Badge>
+          )}
 
-      {/* dueDate + badge atrasado */}
-      {task.dueDate && (
-        <div className="mt-2 flex items-center gap-1.5">
-          <span
-            className={cn(
-              "text-[11px]",
-              overdue ? "font-medium text-red-400" : "text-muted-foreground",
-            )}
-          >
-            {overdue && "⚠ "}
-            {new Date(
-              task.dueDate!.slice(0, 10) + "T12:00:00",
-            ).toLocaleDateString("pt-BR", {
-              day: "2-digit",
-              month: "short",
-            })}
-          </span>
-          {overdue && (
-            <span className="rounded-sm bg-red-500/15 px-1 py-px text-[10px] font-medium text-red-400">
-              atrasado
-            </span>
+          {task.hasChildren && (
+            <Badge
+              tone="neutral"
+              title="Tem subtarefas"
+              icon={<ListTree className="size-2.5" />}
+            >
+              subtarefas
+            </Badge>
+          )}
+
+          {isAiAssigned && (
+            <Badge
+              tone={isDone && !isTerminalStatus ? "success" : "violet"}
+              title="Atribuída à IA"
+              icon={<Bot className="size-2.5" />}
+            >
+              {isRunning && !isTerminalStatus
+                ? "executando"
+                : isDone && !isTerminalStatus
+                  ? "concluído"
+                  : "IA"}
+            </Badge>
           )}
         </div>
       )}
 
-      {/* Footer: IA assignee + botão executar — apenas em tasks não-terminais */}
-      {isAiAssigned && !isTerminalStatus && (
-        <div className="mt-2.5 flex items-center justify-between border-t border-border pt-2">
-          <div className="flex items-center gap-1.5">
-            <div className="flex size-4 items-center justify-center rounded-full bg-violet-500/15">
-              <Bot className="size-2.5 text-violet-400" />
-            </div>
-            <span className="text-[11px] text-violet-400">IA</span>
-            {(isRunning || isDone) && (
-              <span
-                className={cn(
-                  "rounded-full px-1.5 py-px text-[9px] font-bold",
-                  isRunning && "bg-violet-500/15 text-violet-400",
-                  isDone && "bg-green-500/15 text-green-400",
-                )}
+      {/* Linha 2: identidade — codigo a esquerda, pessoa a direita, por extenso. */}
+      <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+        <span className="shrink-0 font-mono text-[10px] tracking-wide">
+          {task.identifier}
+        </span>
+
+        <span className="ml-auto flex min-w-0 items-center gap-1.5">
+          {isAiAssigned &&
+            !isTerminalStatus &&
+            !execution &&
+            !isLocked &&
+            !isDragOverlay && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  startExecution();
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                title="Executar com IA"
+                className="flex shrink-0 items-center gap-1 rounded-md bg-violet-600/80 px-1.5 py-0.5 text-[10px] font-semibold text-white opacity-0 transition-all hover:bg-violet-500 group-hover:opacity-100"
               >
-                {isRunning ? "executando" : "concluído"}
-              </span>
+                <Play className="size-2.5" />
+                Executar
+              </button>
             )}
-          </div>
 
-          {!execution && !isLocked && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                startExecution();
-              }}
-              title="Executar com IA"
-              className="flex items-center gap-1 rounded-md bg-violet-600/80 px-2 py-1 text-[11px] font-semibold text-white opacity-0 transition-all hover:bg-violet-500 group-hover:opacity-100"
-            >
-              <Play className="size-2.5" />
-              Executar
-            </button>
+          {isAiAssigned && isRunning && (
+            <Loader2 className="size-3 shrink-0 animate-spin text-violet-400" />
           )}
 
-          {isRunning && (
-            <Loader2 className="size-3.5 animate-spin text-violet-400" />
+          {task.assigneeTeamId && <TeamBadge teamId={task.assigneeTeamId} />}
+
+          {assigneeName && (
+            <>
+              <span className="truncate">{assigneeName}</span>
+              <span
+                aria-hidden="true"
+                className="flex size-[18px] shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white"
+                style={{ background: avatarColor(assigneeName) }}
+              >
+                {buildInitials(assigneeName)}
+              </span>
+            </>
           )}
-        </div>
-      )}
-
-      {/* Footer: responsável humano */}
-      {task.assigneeId && !isAiAssigned && (
-        <div className="mt-2.5 flex items-center gap-1.5 border-t border-border pt-2">
-          <div className="flex size-4 items-center justify-center rounded-full bg-muted text-[9px] font-bold text-foreground">
-            <User className="size-2.5 text-muted-foreground" />
-          </div>
-          <span className="text-[11px] text-muted-foreground">Atribuído</span>
-        </div>
-      )}
-
-      {/* Footer: time responsável */}
-      {task.assigneeTeamId && <TeamBadge teamId={task.assigneeTeamId} />}
+        </span>
+      </div>
     </div>
+  );
+}
+
+// ─── Badge do rodapé ──────────────────────────────────────────────────────────
+
+/**
+ * Badge compacto do rodapé do card (prazo, tempo, subtarefas, IA).
+ *
+ * Cada metadado ganha fundo próprio em vez de virar texto solto separado por
+ * "·" — é o que agrupa a linha e cria ritmo, no padrão de badges do Trello.
+ *
+ * @param tone - Paleta do badge. `neutral` para informação, `danger` para
+ *   prazo vencido, `violet` para IA/execução, `success` para conclusão.
+ * @param icon - Ícone à esquerda (opcional, 10px).
+ * @param title - Tooltip nativo — obrigatório, já que vários badges são só ícone.
+ * @param children - Rótulo. Ausente quando o ícone basta (ex: subtarefas).
+ */
+function Badge({
+  tone,
+  icon,
+  title,
+  children,
+}: {
+  tone: "neutral" | "danger" | "violet" | "success";
+  icon?: React.ReactNode;
+  title: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <span
+      title={title}
+      className={cn(
+        "flex shrink-0 items-center gap-1 rounded px-1 py-0.5 text-[10px] leading-none",
+        tone === "neutral" &&
+          "bg-black/[0.05] text-muted-foreground dark:bg-white/[0.06]",
+        tone === "danger" && "bg-red-500/12 text-red-400",
+        tone === "violet" && "bg-violet-500/15 text-violet-300",
+        tone === "success" && "bg-green-500/15 text-green-400",
+      )}
+    >
+      {icon}
+      {children}
+    </span>
   );
 }
 
 // ─── TeamBadge ────────────────────────────────────────────────────────────────
 
 /**
- * Exibe badge do time responsável (assigneeTeamId) no footer do TaskCard.
- * Carrega dados do time via `useTeams()` e renderiza nome + cor.
+ * Exibe badge do time responsável (assigneeTeamId) na linha de meta do
+ * TaskCard. Carrega dados do time via `useTeams()` e renderiza cor + nome.
+ *
  * @param teamId - ID do time a exibir
  */
 function TeamBadge({ teamId }: { teamId: string }) {
@@ -483,13 +728,13 @@ function TeamBadge({ teamId }: { teamId: string }) {
   const team = teams.find((t) => t.id === teamId);
   if (!team) return null;
   return (
-    <div className="mt-1.5 flex items-center gap-1.5 border-t border-border pt-1.5">
+    <span className="flex min-w-0 shrink items-center gap-1" title={team.nome}>
       <span
-        className="size-2 rounded-full"
+        className="size-2 shrink-0 rounded-full"
         style={{ background: team.color ?? "var(--muted-foreground)" }}
       />
-      <span className="text-[11px] text-muted-foreground">{team.nome}</span>
-    </div>
+      <span className="truncate">{team.nome}</span>
+    </span>
   );
 }
 
@@ -497,12 +742,15 @@ function TeamBadge({ teamId }: { teamId: string }) {
 
 function KanbanSkeleton() {
   return (
-    <div className="flex h-full gap-[calc(var(--row-gap)+4px)] overflow-x-auto p-4">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <div key={i} className="flex w-[280px] shrink-0 flex-col gap-2">
+    <div className="flex h-full min-h-0 gap-[calc(var(--row-gap)+4px)] overflow-x-auto p-4">
+      {[1, 2, 3, 4].map((i) => (
+        <div key={i} className="flex min-w-[248px] flex-1 flex-col gap-2">
           <div className="h-5 w-24 animate-pulse rounded bg-muted" />
-          {[1, 2].map((j) => (
-            <div key={j} className="h-20 animate-pulse rounded-lg bg-muted" />
+          {[1, 2, 3, 4].map((j) => (
+            <div
+              key={j}
+              className="h-[68px] animate-pulse rounded-lg bg-muted"
+            />
           ))}
         </div>
       ))}
