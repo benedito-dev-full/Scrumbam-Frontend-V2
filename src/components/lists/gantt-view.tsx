@@ -59,14 +59,16 @@ export function GanttView({
   tasks: TaskResponseDto[];
   onOpenTask: (task: TaskResponseDto) => void;
 }) {
-  const [cursor, setCursor] = useState<Date>(new Date());
-  const [zoom, setZoom] = useState<Zoom>("day");
-
-  // largura de cada célula (dia ou semana)
-  const cellWidth = zoom === "day" ? 36 : 12;
-  // quantos dias mostrar a partir do cursor (para trás e para frente)
-  const daysBefore = zoom === "day" ? 7 : 30;
-  const daysAfter = zoom === "day" ? 30 : 90;
+  // `null` = janela AJUSTADA AOS DADOS (estado inicial). Vira uma Date assim
+  // que o usuario navega ou clica em "Hoje".
+  //
+  // Antes o cursor comecava em `new Date()` e a janela era hoje-7 .. hoje+30.
+  // Toda task cujo prazo caisse fora disso saia com `visible: false` — e como
+  // as tasks reais tinham prazo em julho, o grafico abria COMPLETAMENTE VAZIO.
+  // Gantt de verdade (MS Project, Jira Plans, Notion timeline) abre no range
+  // que contem o trabalho, nao num range fixo em volta de hoje.
+  const [cursor, setCursor] = useState<Date | null>(null);
+  const [zoomOverride, setZoomOverride] = useState<Zoom | null>(null);
 
   // Tasks com prazo definido (caso contrário não dá pra desenhar)
   const ganttTasks = useMemo(
@@ -83,15 +85,62 @@ export function GanttView({
 
   const undated = tasks.filter((t) => !t.dueDate);
 
+  /** Menor inicio e maior fim entre as tasks com prazo. `null` se nao ha nenhuma. */
+  const dataSpan = useMemo(() => {
+    if (ganttTasks.length === 0) return null;
+    let min = Number.POSITIVE_INFINITY;
+    let max = Number.NEGATIVE_INFINITY;
+    for (const t of ganttTasks) {
+      const st = startOfDay(new Date(t.criadoEm)).getTime();
+      const en = startOfDay(
+        new Date(t.dueDate!.slice(0, 10) + "T12:00:00"),
+      ).getTime();
+      if (st < min) min = st;
+      if (en > max) max = en;
+    }
+    return { start: new Date(min), end: new Date(max) };
+  }, [ganttTasks]);
+
+  const autoFit = cursor === null && dataSpan !== null;
+
+  // Quantos dias a janela auto-ajustada precisa cobrir (dados + hoje).
+  const autoSpanDays = useMemo(() => {
+    if (!dataSpan) return 0;
+    const today = startOfDay(new Date());
+    const from = dataSpan.start < today ? dataSpan.start : today;
+    const to = dataSpan.end > today ? dataSpan.end : today;
+    return differenceInDays(to, from) + 5;
+  }, [dataSpan]);
+
+  // Span longo em escala diaria viraria um scroll horizontal interminavel:
+  // cai para semanal sozinho, e o usuario ainda pode forcar pelo zoom.
+  const zoom: Zoom =
+    zoomOverride ?? (autoFit && autoSpanDays > 70 ? "week" : "day");
+
+  // largura de cada célula (dia ou semana)
+  const cellWidth = zoom === "day" ? 36 : 12;
+  // quantos dias mostrar a partir do cursor (para trás e para frente)
+  const daysBefore = zoom === "day" ? 7 : 30;
+  const daysAfter = zoom === "day" ? 30 : 90;
+
   // Range de datas visível
-  const rangeStart = useMemo(
-    () => startOfDay(subDays(cursor, daysBefore)),
-    [cursor, daysBefore],
-  );
-  const rangeEnd = useMemo(
-    () => startOfDay(addDays(cursor, daysAfter)),
-    [cursor, daysAfter],
-  );
+  const rangeStart = useMemo(() => {
+    if (autoFit && dataSpan) {
+      const today = startOfDay(new Date());
+      const from = dataSpan.start < today ? dataSpan.start : today;
+      return subDays(from, 2);
+    }
+    return startOfDay(subDays(cursor ?? new Date(), daysBefore));
+  }, [autoFit, dataSpan, cursor, daysBefore]);
+
+  const rangeEnd = useMemo(() => {
+    if (autoFit && dataSpan) {
+      const today = startOfDay(new Date());
+      const to = dataSpan.end > today ? dataSpan.end : today;
+      return addDays(to, 2);
+    }
+    return startOfDay(addDays(cursor ?? new Date(), daysAfter));
+  }, [autoFit, dataSpan, cursor, daysAfter]);
   const totalDays = differenceInDays(rangeEnd, rangeStart) + 1;
   const totalWidth = totalDays * cellWidth;
 
@@ -152,14 +201,14 @@ export function GanttView({
           alignItems: "center",
           justifyContent: "space-between",
           padding: "14px 28px 12px",
-          borderBottom: "1px solid #26262d",
+          borderBottom: "1px solid var(--border)",
           flexShrink: 0,
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             type="button"
-            onClick={() => setCursor((c) => subDays(c, 14))}
+            onClick={() => setCursor((c) => subDays(c ?? rangeStart, 14))}
             style={navBtnStyle}
             aria-label="Recuar"
           >
@@ -178,9 +227,30 @@ export function GanttView({
           >
             Hoje
           </button>
+          {/* Volta a janela que enquadra TODAS as tasks com prazo. */}
           <button
             type="button"
-            onClick={() => setCursor((c) => addDays(c, 14))}
+            onClick={() => {
+              setCursor(null);
+              setZoomOverride(null);
+            }}
+            disabled={autoFit}
+            title="Enquadrar todas as tarefas com prazo"
+            style={{
+              ...navBtnStyle,
+              width: "auto",
+              padding: "0 12px",
+              fontSize: 12,
+              fontWeight: 600,
+              opacity: autoFit ? 0.45 : 1,
+              cursor: autoFit ? "default" : "pointer",
+            }}
+          >
+            Tudo
+          </button>
+          <button
+            type="button"
+            onClick={() => setCursor((c) => addDays(c ?? rangeEnd, 14))}
             style={navBtnStyle}
             aria-label="Avançar"
           >
@@ -212,7 +282,7 @@ export function GanttView({
           </span>
           <button
             type="button"
-            onClick={() => setZoom("week")}
+            onClick={() => setZoomOverride("week")}
             style={{
               ...navBtnStyle,
               background: zoom === "week" ? "var(--accent)" : "var(--card)",
@@ -224,7 +294,7 @@ export function GanttView({
           </button>
           <button
             type="button"
-            onClick={() => setZoom("day")}
+            onClick={() => setZoomOverride("day")}
             style={{
               ...navBtnStyle,
               background: zoom === "day" ? "var(--accent)" : "var(--card)",
@@ -251,7 +321,7 @@ export function GanttView({
           style={{
             width: 240,
             flexShrink: 0,
-            borderRight: "1px solid #26262d",
+            borderRight: "1px solid var(--border)",
             background: "var(--background)",
             position: "sticky",
             left: 0,
@@ -262,7 +332,7 @@ export function GanttView({
           <div
             style={{
               height: 60,
-              borderBottom: "1px solid #26262d",
+              borderBottom: "1px solid var(--border)",
               padding: "0 14px",
               display: "flex",
               alignItems: "center",
@@ -292,7 +362,7 @@ export function GanttView({
                   height: 40,
                   padding: "0 14px",
                   border: "none",
-                  borderBottom: "1px solid #1f1f25",
+                  borderBottom: "1px solid var(--border)",
                   background: "transparent",
                   color: "var(--foreground)",
                   fontSize: 13,
@@ -340,7 +410,7 @@ export function GanttView({
           <div
             style={{
               height: 60,
-              borderBottom: "1px solid #26262d",
+              borderBottom: "1px solid var(--border)",
               position: "sticky",
               top: 0,
               background: "var(--background)",
@@ -358,7 +428,7 @@ export function GanttView({
                   style={{
                     width: cellWidth,
                     flexShrink: 0,
-                    borderRight: "1px solid #1f1f25",
+                    borderRight: "1px solid var(--border)",
                     display: "flex",
                     flexDirection: "column",
                     alignItems: "center",
@@ -428,9 +498,7 @@ export function GanttView({
               // Atrasada = o DIA do prazo já passou. Vencer hoje não é atraso —
               // comparar contra `new Date()` marcava a task de hoje como
               // atrasada a partir do meio-dia.
-              const isLate =
-                isPastDue(task.dueDate) &&
-                task.status !== "DONE";
+              const isLate = isPastDue(task.dueDate) && task.status !== "DONE";
               const isDone = task.status === "DONE";
 
               return (
@@ -438,7 +506,7 @@ export function GanttView({
                   key={task.id}
                   style={{
                     height: 40,
-                    borderBottom: "1px solid #1f1f25",
+                    borderBottom: "1px solid var(--border)",
                     position: "relative",
                     display: "flex",
                   }}
@@ -450,7 +518,7 @@ export function GanttView({
                       style={{
                         width: cellWidth,
                         flexShrink: 0,
-                        borderRight: "1px solid #1a1a20",
+                        borderRight: "1px solid var(--border)",
                         background: isWeekend(d)
                           ? "rgba(255,255,255,0.015)"
                           : "transparent",
@@ -544,13 +612,17 @@ export function GanttView({
         <div
           style={{
             padding: "10px 28px",
-            borderTop: "1px solid #26262d",
+            borderTop: "1px solid var(--border)",
             background: "var(--card)",
             display: "flex",
             alignItems: "center",
             gap: 10,
             flexWrap: "wrap",
             flexShrink: 0,
+            // Sem teto, as pills de titulo longo quebravam em 5 linhas e a
+            // faixa comia metade da tela — mais espaco que o proprio grafico.
+            maxHeight: 84,
+            overflowY: "auto",
           }}
         >
           <span
