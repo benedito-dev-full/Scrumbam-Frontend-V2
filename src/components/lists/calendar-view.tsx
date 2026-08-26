@@ -38,7 +38,6 @@ import {
   endOfMonth,
   endOfWeek,
   format,
-  isSameDay,
   isSameMonth,
   isToday,
   startOfMonth,
@@ -76,7 +75,10 @@ function taskColor(task: TaskResponseDto): { color: string; overdue: boolean } {
     new Date(dayKey(task.dueDate) + "T12:00:00") <
       new Date(format(new Date(), "yyyy-MM-dd") + "T12:00:00");
   if (overdue) return { color: OVERDUE_COLOR, overdue: true };
-  return { color: STATUS_COLOR[task.status as V3Intention] ?? "#6b7280", overdue: false };
+  return {
+    color: STATUS_COLOR[task.status as V3Intention] ?? "#6b7280",
+    overdue: false,
+  };
 }
 
 export function CalendarView({
@@ -212,20 +214,25 @@ export function CalendarView({
           </span>
         </div>
 
-        {/* Cabeçalho dos dias da semana */}
+        {/* Cabeçalho dos dias da semana — dentro do mesmo quadro da grade,
+            para as colunas lerem como continuacao uma da outra. */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
-            gap: 4,
-            marginBottom: 4,
+            gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+            border: "1px solid var(--border)",
+            borderBottom: "none",
+            borderRadius: "10px 10px 0 0",
+            overflow: "hidden",
+            background: "var(--muted)",
           }}
         >
           {WEEKDAYS.map((wd) => (
             <div
               key={wd}
               style={{
-                padding: "6px 8px",
+                padding: "7px 8px",
+                borderRight: "1px solid var(--border)",
                 fontSize: 11,
                 fontWeight: 600,
                 color: "var(--muted-foreground)",
@@ -238,12 +245,17 @@ export function CalendarView({
           ))}
         </div>
 
-        {/* Grid de células */}
+        {/* Grid de células — moldura unica com fios de 1px entre os dias.
+            Antes eram 42 caixas arredondadas soltas com 4px de respiro: lia
+            como 42 cartoes flutuando, nao como um calendario. Grade continua
+            e o que Google Calendar e Notion usam. */}
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
-            gap: 4,
+            gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+            border: "1px solid var(--border)",
+            borderRadius: "0 0 10px 10px",
+            overflow: "hidden",
           }}
         >
           {days.map((day) => {
@@ -275,7 +287,7 @@ export function CalendarView({
               marginTop: 24,
               padding: "14px 16px",
               borderRadius: 8,
-              border: "1px dashed #2a2a32",
+              border: "1px dashed var(--border)",
               background: "var(--card)",
             }}
           >
@@ -305,17 +317,17 @@ export function CalendarView({
                       gap: 6,
                       padding: "5px 10px",
                       borderRadius: 5,
-                      background: color + "18",
-                      border: `1px solid ${color}30`,
+                      background: "var(--card)",
+                      border: "1px solid var(--border)",
                       color: "var(--foreground)",
                       fontSize: 12,
                       cursor: "pointer",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.background = color + "30";
+                      e.currentTarget.style.background = "var(--accent)";
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.background = color + "18";
+                      e.currentTarget.style.background = "var(--card)";
                     }}
                   >
                     <span
@@ -340,14 +352,14 @@ export function CalendarView({
         {activeTask ? (
           <div
             style={{
-              ...taskBarStyle(taskColor(activeTask).color),
+              ...taskBarStyle(),
               background: "var(--card)",
               boxShadow: "0 8px 20px rgba(0,0,0,.45)",
               cursor: "grabbing",
             }}
           >
             <span style={dotStyle(taskColor(activeTask).color)} />
-            <span style={taskTextStyle(taskColor(activeTask).color)}>
+            <span style={taskTextStyle(taskColor(activeTask).overdue)}>
               {activeTask.nome}
             </span>
           </div>
@@ -393,26 +405,21 @@ function DayCell({
       onMouseLeave={() => setHover(false)}
       style={{
         position: "relative",
-        minHeight: 110,
-        borderRadius: 8,
-        border: isOver
-          ? "1px solid #7c5cff"
-          : today
-            ? "1px solid #7c5cff"
-            : "1px solid #26262d",
+        minWidth: 0,
+        minHeight: 104,
+        // Fios de 1px entre celulas em vez de borda por celula.
+        borderRight: "1px solid var(--border)",
+        borderBottom: "1px solid var(--border)",
         background: isOver
           ? "rgba(124,92,255,0.12)"
-          : today
-            ? "rgba(124,92,255,0.06)"
-            : inMonth
-              ? "var(--card)"
-              : "transparent",
+          : inMonth
+            ? "var(--card)"
+            : "var(--muted)",
         padding: "6px 6px 8px",
         display: "flex",
         flexDirection: "column",
         gap: 4,
-        opacity: inMonth ? 1 : 0.4,
-        transition: "background .12s, border-color .12s",
+        transition: "background .12s",
       }}
     >
       <div
@@ -423,12 +430,22 @@ function DayCell({
           paddingLeft: 2,
         }}
       >
+        {/* Hoje = circulo preenchido no NUMERO. Antes o dia de hoje tingia a
+            celula inteira de roxo, o que competia com as tasks dentro dela.
+            Google Calendar e Notion marcam so o numero. */}
         <span
           style={{
+            display: "grid",
+            placeItems: "center",
+            minWidth: 20,
+            height: 20,
+            padding: "0 5px",
+            borderRadius: 999,
             fontSize: 12,
             fontWeight: today ? 700 : 500,
+            background: today ? "#7c5cff" : "transparent",
             color: today
-              ? "#7c5cff"
+              ? "#fff"
               : inMonth
                 ? "var(--foreground)"
                 : "var(--muted-foreground)",
@@ -522,14 +539,14 @@ function DraggableTaskBar({
       onClick={() => onOpenTask(task)}
       title={task.nome}
       style={{
-        ...taskBarStyle(color),
+        ...taskBarStyle(),
         opacity: isDragging ? 0.35 : 1,
         boxShadow: overdue ? `0 0 0 1px ${color}66 inset` : undefined,
         cursor: "grab",
       }}
     >
       <span style={dotStyle(color)} />
-      <span style={taskTextStyle(color)}>{task.nome}</span>
+      <span style={taskTextStyle(overdue)}>{task.nome}</span>
     </button>
   );
 }
@@ -564,8 +581,8 @@ function DayPopover({
           maxHeight: 280,
           overflowY: "auto",
           borderRadius: 8,
-          border: "1px solid #2a2a32",
-          background: "var(--popover, #16161a)",
+          border: "1px solid var(--border)",
+          background: "var(--popover)",
           boxShadow: "0 12px 32px rgba(0,0,0,.5)",
           padding: 8,
         }}
@@ -583,7 +600,7 @@ function DayPopover({
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
           {tasks.map((t) => {
-            const { color } = taskColor(t);
+            const { color, overdue } = taskColor(t);
             return (
               <button
                 key={t.id}
@@ -593,10 +610,10 @@ function DayPopover({
                   onOpenTask(t);
                 }}
                 title={t.nome}
-                style={{ ...taskBarStyle(color), cursor: "pointer" }}
+                style={{ ...taskBarStyle(), cursor: "pointer" }}
               >
                 <span style={dotStyle(color)} />
-                <span style={taskTextStyle(color)}>{t.nome}</span>
+                <span style={taskTextStyle(overdue)}>{t.nome}</span>
               </button>
             );
           })}
@@ -613,15 +630,19 @@ function DayPopover({
  * e texto na cor. A cor vira acento de status, não um bloco chapado — fica
  * legível mesmo com títulos longos e não pesa visualmente na grade.
  */
-function taskBarStyle(color: string): React.CSSProperties {
+function taskBarStyle(): React.CSSProperties {
   return {
     display: "flex",
     alignItems: "center",
     gap: 6,
-    padding: "3px 8px",
-    borderRadius: 6,
-    background: color + "22",
-    border: `1px solid ${color}33`,
+    padding: "3px 6px",
+    borderRadius: 5,
+    // Fundo NEUTRO. Antes cada pill era um bloco na cor do status (vermelho
+    // para atrasada, verde para concluida) e o mes inteiro virava uma parede
+    // de cor. O sinal agora vive no dot — pequeno, mas e o unico ponto
+    // colorido da linha, entao le melhor do que quando tudo era colorido.
+    background: "var(--card)",
+    border: "1px solid var(--border)",
     fontSize: 11,
     fontWeight: 500,
     lineHeight: "16px",
@@ -643,13 +664,22 @@ function dotStyle(color: string): React.CSSProperties {
 }
 
 /** Texto truncado em 1 linha, na cor da task (clareada p/ legibilidade dark). */
-function taskTextStyle(color: string): React.CSSProperties {
+function taskTextStyle(overdue: boolean): React.CSSProperties {
   return {
+    // `minWidth: 0` e `flex: 1` sao o que fazem o ellipsis funcionar: um flex
+    // item tem `min-width: auto` por padrao e se recusa a encolher abaixo do
+    // proprio conteudo. Sem isso, o texto empurrava a pill, a pill empurrava a
+    // celula e a celula empurrava a COLUNA da grade — os outros dias da semana
+    // eram espremidos ate zero pixel e sumiam da tela.
+    flex: 1,
+    minWidth: 0,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
-    color,
-    filter: "brightness(1.35)",
+    // Texto neutro por padrao — a cor do status vive no dot. Vermelho SO em
+    // task atrasada, que e o unico caso que precisa gritar. Antes todo texto
+    // era colorido pelo status e o mes virava uma parede vermelha/verde.
+    color: overdue ? "#f87171" : "var(--foreground)",
   };
 }
 
@@ -659,7 +689,7 @@ const navBtnStyle: React.CSSProperties = {
   display: "grid",
   placeItems: "center",
   borderRadius: 6,
-  border: "1px solid #2a2a32",
+  border: "1px solid var(--border)",
   background: "var(--card)",
   color: "var(--foreground)",
   cursor: "pointer",
