@@ -24,11 +24,40 @@ import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
 import {
   INTENTION_TO_STATUS,
   INTENTION_TO_STATUS_REVERSE,
+  LIST_SHOW_STATUS_COLUMN,
+  LIST_COL_COUNT,
   type StatusVisual,
   type SubtarefasMode,
 } from "../_lib/list-view-types";
 import type { TaskFilters } from "@/lib/filters/task-filters";
 import { TaskRowBackend } from "./task-row-backend";
+
+// ─── Colunas ──────────────────────────────────────────────────────────────────
+
+/**
+ * Larguras das colunas da Lista.
+ *
+ * Compartilhado entre o cabecalho (renderizado UMA vez, sticky) e a tabela de
+ * cada grupo. Como todas usam `tableLayout: fixed` com este mesmo colgroup, as
+ * tabelas alinham entre si sem nenhum truque de medicao.
+ *
+ * Sem a coluna Status, os fixos caem de ~808px para ~546px — e o Nome, que era
+ * o que sobrava, mais que dobra.
+ */
+function ListColgroup() {
+  return (
+    <colgroup>
+      <col style={{ width: 24 }} />
+      <col style={{ width: "auto" }} />
+      <col style={{ width: 170 }} />
+      <col style={{ width: 150 }} />
+      <col style={{ width: 130 }} />
+      {LIST_SHOW_STATUS_COLUMN && <col style={{ width: 200 }} />}
+      <col style={{ width: 40 }} />
+      <col style={{ width: 32 }} />
+    </colgroup>
+  );
+}
 
 // ─── HeadRow ──────────────────────────────────────────────────────────────────
 export function HeadRow() {
@@ -38,18 +67,17 @@ export function HeadRow() {
     fontSize: 12,
     textAlign: "left",
     padding: "6px 10px",
-    borderTop: "1px solid #1f1f25",
-    borderBottom: "1px solid #1f1f25",
-    background: "transparent",
+    borderBottom: "1px solid var(--border)",
+    background: "var(--background)",
   };
   return (
     <tr>
       <th style={{ ...thStyle, width: 24, padding: 0 }} />
       <th style={{ ...thStyle, paddingLeft: 8 }}>Nome</th>
       <th style={thStyle}>Responsável</th>
-      <th style={thStyle}>Data de vencimento</th>
+      <th style={thStyle}>Vencimento</th>
       <th style={thStyle}>Prioridade</th>
-      <th style={thStyle}>Status</th>
+      {LIST_SHOW_STATUS_COLUMN && <th style={thStyle}>Status</th>}
       <th style={{ ...thStyle, textAlign: "center" }}>
         <IcChat size={13} />
       </th>
@@ -84,7 +112,7 @@ export function AddRow({ onAddTask }: { onAddTask: () => void }) {
       style={{ cursor: "pointer" }}
     >
       <td
-        colSpan={8}
+        colSpan={LIST_COL_COUNT}
         style={{
           height: "calc(var(--row-h) - 6px)",
           borderBottom: "1px solid #1f1f25",
@@ -297,19 +325,11 @@ export function GroupBlock({
               tableLayout: "fixed",
             }}
           >
-            <colgroup>
-              <col style={{ width: 24 }} />
-              <col style={{ width: "auto" }} />
-              <col style={{ width: 170 }} />
-              <col style={{ width: 200 }} />
-              <col style={{ width: 130 }} />
-              <col style={{ width: 200 }} />
-              <col style={{ width: 48 }} />
-              <col style={{ width: 36 }} />
-            </colgroup>
-            <thead>
-              <HeadRow />
-            </thead>
+            {/* Sem <thead>: o cabecalho e renderizado UMA vez no topo da
+                Lista (sticky). Antes cada grupo montava a propria <table> COM
+                <thead>, entao "Nome / Responsavel / Vencimento / Prioridade"
+                se repetia a cada grupo na tela. */}
+            <ListColgroup />
             <tbody>
               {tarefasVisiveis.map((t) => (
                 <TaskRowBackend
@@ -322,7 +342,7 @@ export function GroupBlock({
               ))}
               {isDragging && tarefasVisiveis.length === 0 && (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={LIST_COL_COUNT}>
                     <div
                       style={{
                         padding: "12px 16px",
@@ -454,6 +474,33 @@ export function ListContent({
         style={{ background: "var(--background)" }}
       >
         <div style={{ minWidth: 860, padding: "0 22px 60px" }}>
+          {/* Cabecalho de colunas — UMA vez, colado no topo ao rolar.
+              `tableLayout: fixed` + o mesmo <ListColgroup /> das tabelas de
+              grupo garantem o alinhamento sem medir nada em JS. */}
+          {!isLoading && grupos.length > 0 && (
+            <div
+              style={{
+                position: "sticky",
+                top: 0,
+                zIndex: 3,
+                background: "var(--background)",
+              }}
+            >
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  tableLayout: "fixed",
+                }}
+              >
+                <ListColgroup />
+                <thead>
+                  <HeadRow />
+                </thead>
+              </table>
+            </div>
+          )}
+
           {isLoading ? (
             <ListSkeleton />
           ) : grupos.length === 0 ? (

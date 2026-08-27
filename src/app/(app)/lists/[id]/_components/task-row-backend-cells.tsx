@@ -20,6 +20,7 @@ import type { StatusVisualKey } from "../_lib/list-view-types";
 import { ClaudeAvatar } from "./claude-avatar";
 import { Popover } from "@/components/lists/groups-view/cells";
 import { MiniCalendar } from "@/components/ui/mini-calendar";
+import { PriorityGlyph, avatarColor } from "@/components/tasks/task-visuals";
 
 export function IcCalendarInline({
   size = 13,
@@ -247,8 +248,10 @@ export function TaskAssigneeCell({
                 height: 22,
                 borderRadius: "50%",
                 flexShrink: 0,
-                background: "var(--accent)",
-                color: "#d8ccff",
+                // Cor por pessoa, igual ao Quadro. Antes era var(--accent) para
+                // todo mundo e "RC", "B" e "EF" viravam a mesma mancha cinza.
+                background: avatarColor(assignee.nome),
+                color: "#fff",
                 fontSize: 9,
                 fontWeight: 700,
                 display: "inline-flex",
@@ -278,16 +281,19 @@ export function TaskAssigneeCell({
             </span>
           </>
         ) : (
+          /* Vazio = travessao apagado, nao um rotulo com icone.
+             "Atribuir", "Definir data" e "Definir" ocupavam a MESMA presenca
+             visual de um valor real, entao uma lista majoritariamente sem esses
+             campos preenchidos lia como se estivesse cheia de dados. O botao
+             continua clicavel e o `title` carrega a acao. */
           <span
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 5,
+              fontSize: 12,
               color: "var(--muted-foreground)",
+              opacity: 0.5,
             }}
           >
-            <IcUserInline size={13} color="var(--muted-foreground)" />
-            <span style={{ fontSize: 12 }}>Atribuir</span>
+            —
           </span>
         )}
       </button>
@@ -503,20 +509,25 @@ export function TaskDueDateCell({
           <span
             style={{
               fontSize: 12,
-              color: overdue ? "#fbbf24" : "var(--muted-foreground)",
+              color: overdue ? "#f87171" : "var(--muted-foreground)",
             }}
           >
-            {overdue && "⚠ "}
             {dateLabel}
           </span>
         ) : (
+          /* Vazio = travessao apagado, nao um rotulo com icone.
+             "Atribuir", "Definir data" e "Definir" ocupavam a MESMA presenca
+             visual de um valor real, entao uma lista majoritariamente sem esses
+             campos preenchidos lia como se estivesse cheia de dados. O botao
+             continua clicavel e o `title` carrega a acao. */
           <span
-            style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+            style={{
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+              opacity: 0.5,
+            }}
           >
-            <IcCalendarInline size={13} color="var(--muted-foreground)" />
-            <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-              Definir data
-            </span>
+            —
           </span>
         )}
       </button>
@@ -578,17 +589,26 @@ export function TaskPriorityCell({
       >
         {priority ? (
           <>
-            <IcFlagInline size={12} color={prioColor} />
+            {/* Glifo compartilhado com o Quadro. Antes era IcFlagInline — a
+                MESMA bandeira nas quatro prioridades, distinguindo so pela cor:
+                indecifravel e inacessivel. Ver task-visuals.tsx. */}
+            <PriorityGlyph priority={priority} size={13} />
             <span style={{ fontSize: 12, color: prioColor }}>{prioLabel}</span>
           </>
         ) : (
+          /* Vazio = travessao apagado, nao um rotulo com icone.
+             "Atribuir", "Definir data" e "Definir" ocupavam a MESMA presenca
+             visual de um valor real, entao uma lista majoritariamente sem esses
+             campos preenchidos lia como se estivesse cheia de dados. O botao
+             continua clicavel e o `title` carrega a acao. */
           <span
-            style={{ display: "inline-flex", alignItems: "center", gap: 5 }}
+            style={{
+              fontSize: 12,
+              color: "var(--muted-foreground)",
+              opacity: 0.5,
+            }}
           >
-            <IcFlagInline size={12} color="var(--muted-foreground)" />
-            <span style={{ fontSize: 12, color: "var(--muted-foreground)" }}>
-              Definir
-            </span>
+            —
           </span>
         )}
       </button>

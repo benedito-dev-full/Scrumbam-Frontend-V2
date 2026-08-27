@@ -25,6 +25,10 @@ import { useTeams } from "@/hooks/use-teams";
 import { isOverdue } from "@/lib/mappers/task-status.mapper";
 import type { TaskResponseDto, V3Intention } from "@/lib/types/api";
 import type { ProjectMemberDto } from "@/hooks/use-members";
+import {
+  LIST_SHOW_STATUS_COLUMN,
+  LIST_COL_COUNT,
+} from "../_lib/list-view-types";
 import type { SubtarefasMode, StatusVisualKey } from "../_lib/list-view-types";
 import {
   INTENTION_TO_VISUAL_ROW,
@@ -483,20 +487,32 @@ export function TaskRowBackend({
           onClose={closeDropdown}
           onPriorityChange={handlePrioChange}
         />
-        <TaskStatusCell
-          statusVisual={statusVisual}
-          isOpen={openCell === "status"}
-          tdStyle={tdStyle}
-          onToggle={() => setOpenCell(openCell === "status" ? null : "status")}
-          onClose={closeDropdown}
-          onStatusChange={handleStatusChange}
-        />
-        {/* Comentários */}
+        {/* A Lista agrupa sempre por status, entao esta celula so repetia a
+            pilula do grupo em que a linha ja estava. Ver
+            LIST_SHOW_STATUS_COLUMN. */}
+        {LIST_SHOW_STATUS_COLUMN && (
+          <TaskStatusCell
+            statusVisual={statusVisual}
+            isOpen={openCell === "status"}
+            tdStyle={tdStyle}
+            onToggle={() =>
+              setOpenCell(openCell === "status" ? null : "status")
+            }
+            onClose={closeDropdown}
+            onStatusChange={handleStatusChange}
+          />
+        )}
+        {/* Comentários — só no hover da linha.
+            Antes o balao aparecia em TODA linha, e o TaskResponseDto nao traz
+            contagem de comentarios: nao havia como mostrar "3". Ou seja, uma
+            coluna inteira ocupada por um icone que nao informava nada. Como
+            afordancia de clique, o hover basta. */}
         <td
           style={{
             ...tdStyle,
             textAlign: "center",
-            color: "var(--muted-foreground)",
+            color: hovered ? "var(--muted-foreground)" : "transparent",
+            transition: "color .12s",
           }}
         >
           <IcChat size={13} />
@@ -512,7 +528,7 @@ export function TaskRowBackend({
           {loadingSubtasks && (
             <tr>
               <td
-                colSpan={7}
+                colSpan={LIST_COL_COUNT}
                 style={{
                   padding: "6px 0 6px",
                   paddingLeft: indent + 22,
@@ -539,7 +555,7 @@ export function TaskRowBackend({
           {addingSubtask ? (
             <tr>
               <td
-                colSpan={7}
+                colSpan={LIST_COL_COUNT}
                 style={{ borderBottom: "1px solid #1f1f25", padding: 0 }}
               >
                 <div
@@ -619,7 +635,10 @@ export function TaskRowBackend({
             </tr>
           ) : (
             <tr>
-              <td colSpan={7} style={{ borderBottom: "1px solid #1f1f25" }}>
+              <td
+                colSpan={LIST_COL_COUNT}
+                style={{ borderBottom: "1px solid #1f1f25" }}
+              >
                 <button
                   type="button"
                   onClick={() => setAddingSubtask(true)}

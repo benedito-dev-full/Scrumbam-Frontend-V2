@@ -7,21 +7,11 @@ export type ListViewId = "list" | "board" | "blocks" | "calendar" | "gantt";
 
 // ─── Status visual (espelha StatusTarefa da main) ────────────────────────────
 export type StatusVisual =
-  | "backlog"
-  | "pronto"
-  | "em-progresso"
-  | "concluido"
-  | "falhou"
-  | "atrasado";
+  "backlog" | "pronto" | "em-progresso" | "concluido" | "falhou" | "atrasado";
 
 // ─── Status visual key — subset sem "atrasado" para dropdowns de edição ──────
 export type StatusVisualKey =
-  | "backlog"
-  | "pronto"
-  | "em-progresso"
-  | "concluido"
-  | "falhou"
-  | "atrasado";
+  "backlog" | "pronto" | "em-progresso" | "concluido" | "falhou" | "atrasado";
 
 // ─── Modo de exibição de subtarefas ─────────────────────────────────────────
 export type SubtarefasMode = "recolhidas" | "expandidas" | "separar";
@@ -89,3 +79,26 @@ export function agruparTasks(
     tarefas: mapa[s],
   }));
 }
+
+// ─── Colunas da Lista ─────────────────────────────────────────────────────────
+
+/**
+ * Se a coluna "Status" deve ser renderizada nas linhas da Lista.
+ *
+ * A Lista agrupa SEMPRE por status (`agruparTasks` acima; o seletor da toolbar
+ * e um `TabBtn active` fixo em "Grupo: Status", sem alternativa). Com isso, a
+ * celula de status de cada linha so repetia a pilula do grupo em que a linha ja
+ * estava — 200px gastos para dizer o que o cabecalho do grupo ja diz, e uma
+ * coluna colorida a mais competindo com o nome da tarefa.
+ *
+ * Fica como constante, e nao hardcoded, para o dia em que o agrupamento virar
+ * configuravel: ai isto vira prop e a coluna volta quando o agrupamento nao for
+ * por status.
+ */
+export const LIST_SHOW_STATUS_COLUMN = false;
+
+/**
+ * Numero de colunas da tabela da Lista — usado nos `colSpan` das linhas de
+ * largura total (carregando, adicionar subtarefa, empty state).
+ */
+export const LIST_COL_COUNT = LIST_SHOW_STATUS_COLUMN ? 8 : 7;
