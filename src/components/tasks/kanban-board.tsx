@@ -22,10 +22,6 @@ import {
   Trash2,
   ListTree,
   CalendarDays,
-  SignalHigh,
-  SignalMedium,
-  SignalLow,
-  TriangleAlert,
   Clock3,
 } from "lucide-react";
 
@@ -36,7 +32,6 @@ import {
   intentionToColumn,
   isOverdue,
   isFailed,
-  priorityToColor,
   priorityToLabel,
 } from "@/lib/mappers/task-status.mapper";
 import { qk } from "@/lib/query-keys";
@@ -49,6 +44,11 @@ import { useWorkCollisionGuard } from "@/hooks/use-work-collision-guard";
 import { useTaskExecution, AI_ASSIGNEE_ID } from "@/hooks/use-task-execution";
 import { useTeams } from "@/hooks/use-teams";
 import { useProjectMembers } from "@/hooks/use-members";
+import {
+  PriorityGlyph,
+  avatarColor,
+  buildInitials,
+} from "@/components/tasks/task-visuals";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 import type { KanbanColumnConfig } from "@/lib/mappers/task-status.mapper";
@@ -62,77 +62,6 @@ const COLUMN_TO_INTENTION: Record<string, V3Intention> = {
   concluido: "DONE",
   falhou: "FAILED",
 };
-
-/**
- * Iniciais do nome para o avatar do card (no máximo 2 letras).
- *
- * @param nome - Nome completo do responsável.
- * @returns Iniciais em maiúsculas (ex: 'Rizar Bastos' -> 'RB').
- */
-function buildInitials(nome: string): string {
-  return nome
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0] ?? "")
-    .join("")
-    .toUpperCase();
-}
-
-// ─── Prioridade: forma + texto, nunca so cor ──────────────────────────────────
-
-/**
- * Glifo e cor de cada prioridade.
- *
- * Antes a prioridade era uma bolinha de 6px colorida. Cor sozinha nao e
- * decodificavel: laranja e ambar sao indistinguiveis num ponto desse tamanho,
- * ninguem sabe o que significam sem legenda, e daltonicos nao veem diferenca
- * nenhuma. Jira usa chevrons, Linear usa barras de sinal — a informacao esta
- * na FORMA, e a cor so reforca. Aqui: glifo colorido + texto em cinza, para o
- * badge nao virar uma parede de cor quando quase toda task e "Alta".
- *
- * @see priorityToLabel — fonte unica dos rotulos PT-BR.
- */
-const PRIORITY_GLYPH: Record<
-  string,
-  { Icon: React.ComponentType<{ className?: string }>; color: string }
-> = {
-  URGENT: { Icon: TriangleAlert, color: "#ef4444" },
-  HIGH: { Icon: SignalHigh, color: "#f97316" },
-  MEDIUM: { Icon: SignalMedium, color: "#f59e0b" },
-  LOW: { Icon: SignalLow, color: "#8b8b8b" },
-};
-
-// ─── Avatar do responsavel ────────────────────────────────────────────────────
-
-/** Paleta dos avatares — indice derivado do nome, entao a cor e estavel. */
-const AVATAR_COLORS = [
-  "#e0567a",
-  "#d97706",
-  "#0d9488",
-  "#2563eb",
-  "#7c3aed",
-  "#c026d3",
-  "#0891b2",
-  "#65a30d",
-];
-
-/**
- * Cor estavel do avatar a partir do nome.
- *
- * Iniciais cinzas em circulo cinza sao indistinguiveis entre si — "EF", "CR" e
- * "RC" viram a mesma mancha. Com cor deterministica, cada pessoa ganha uma
- * identidade visual que se aprende em poucos minutos de uso.
- *
- * @param nome - Nome completo do responsável.
- * @returns Cor hexadecimal da paleta.
- */
-function avatarColor(nome: string): string {
-  let hash = 0;
-  for (let i = 0; i < nome.length; i++)
-    hash = (hash * 31 + nome.charCodeAt(i)) | 0;
-  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
-}
 
 // ─── KanbanBoard ──────────────────────────────────────────────────────────────
 
@@ -399,9 +328,6 @@ function TaskCard({
     disabled: isLocked,
   });
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
-  const prioColor = priorityToColor(task.priority);
-  const PriorityIcon =
-    (task.priority && PRIORITY_GLYPH[task.priority]?.Icon) || SignalLow;
   // FAILED nao tem coluna (decisao do CEO): a task cai em `backlog`
   // carregando este badge. Sem ele, uma falha some do quadro.
   const failed = isFailed(task.status as V3Intention);
@@ -535,13 +461,11 @@ function TaskCard({
         isLocked ||
         failed) && (
         <div className="mt-2 flex flex-wrap items-center gap-1">
-          {task.priority && PRIORITY_GLYPH[task.priority] && (
+          {task.priority && (
             <Badge
               tone="neutral"
               title={`Prioridade: ${priorityToLabel(task.priority)}`}
-              icon={
-                <PriorityIcon className="size-3" style={{ color: prioColor }} />
-              }
+              icon={<PriorityGlyph priority={task.priority} size={12} />}
             >
               {priorityToLabel(task.priority)}
             </Badge>
