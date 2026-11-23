@@ -11,6 +11,9 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Fixed
 
+- **Execução presa: 409 `EXECUTION_IN_PROGRESS` agora retoma o acompanhamento** (Task 2, Score 9.2/10)
+  - Ao disparar uma execução com outra já em andamento na task, o front consulta a execução existente e volta a acompanhá-la, em vez de mostrar erro genérico.
+  - Requer deploy conjunto com o backend (ADR-V2-082).
 - **Sessão em aba nova vira "zumbi"** (Task #996, DEV-172, Score 8.0/10)
   - **Problema:** Tokens em `sessionStorage` (escopo aba) + gate de rota por cookie `scrumbam_auth` (escopo navegador) → aba nova não disparava queries → app permanecia vazio e nunca deslogava.
   - **Solução (F2 — hotfix):** Migração one-shot `sessionStorage` → `localStorage` (escopo navegador, escopo compartilhado entre abas) + bootstrap defensivo + sincronização entre abas via BroadcastChannel.
@@ -19,6 +22,10 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
   - **Pendências reais:** (1) E2E `e2e/auth-new-tab.spec.ts` nunca foi executado (sem `E2E_EMAIL`/`E2E_PASSWORD` — rodar antes do deploy). (2) 503 inconsistente durante bootstrap (não distingue infra de credencial inválida — follow-up em Fase 3).
 
 ### Added
+
+- **Motivo amigável da falha de execução** (Task 2, Score 9.2/10)
+  - Falhas marcadas pelo sistema mostram texto em PT-BR a partir de `outcome.reason` (8 motivos canônicos); ausente ou desconhecido cai em "Execução falhou".
+  - Tipos `ExecutionFailureReason` e `ExecutionOutcomeDto` em `lib/types/api.ts`. Requer deploy conjunto com o backend (ADR-V2-082).
 
 - **UI de Aprovar/Rejeitar execuções de IA** (Task 1, Score 9.0/10)
   - Card "Aguardando aprovação" no drawer da task: nível de risco (médio/alto), motivo amigável e prazo de expiração.

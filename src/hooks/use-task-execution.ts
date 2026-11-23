@@ -2,7 +2,13 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
+import { toast } from "sonner";
 import { api } from "@/lib/api";
+import type {
+  ExecutionFailureReason,
+  ExecutionOutcomeDto,
+} from "@/lib/types/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,6 +46,31 @@ export interface TaskExecution {
   approval: ExecutionApprovalInfo | null;
   /** Motivo do risco — ausente em registros antigos. */
   risk: ExecutionRisk | null;
+  /** `outcome.reason` (só quando a falha foi marcada pelo sistema). */
+  failureReason: ExecutionFailureReason | null;
+}
+
+/** Texto amigável por motivo canônico (mapa exaustivo: o TS acusa se o backend ganhar um novo). */
+const FAILURE_REASON_MESSAGES: Record<ExecutionFailureReason, string> = {
+  TIMEOUT_NO_CALLBACK: "A IA não respondeu a tempo.",
+  AGENT_RESTARTED: "O agente foi reiniciado durante a execução.",
+  QUEUE_STALE: "A execução não saiu da fila.",
+  TUNNEL_UNAVAILABLE: "O agente está indisponível no momento.",
+  DISPATCH_FAILED: "Não foi possível enviar a execução ao agente.",
+  PROJECT_BUSY_EXHAUSTED:
+    "O projeto ficou ocupado por muito tempo com outra execução.",
+  DUPLICATE_TASK_EXECUTION: "Já havia outra execução desta task em andamento.",
+  BACKFILL_STALE: "Execução antiga encerrada pelo sistema.",
+};
+
+/** Texto amigável (PT-BR) para o motivo da falha; `null` se ausente/desconhecido. */
+export function friendlyFailureReason(
+  reason: ExecutionFailureReason | null,
+): string | null {
+  if (!reason) return null;
+  return Object.hasOwn(FAILURE_REASON_MESSAGES, reason)
+    ? FAILURE_REASON_MESSAGES[reason]
+    : null;
 }
 
 export const AI_ASSIGNEE_ID = "ai";
@@ -94,8 +125,14 @@ export interface ExecutionResponseDto {
     rejectedBy?: string;
   };
   risk?: ExecutionRisk;
+  /** Ausente em backends antigos; `reason` só preenchido com `source='system'`. */
+  outcome?: ExecutionOutcomeDto;
   command: { text: string };
-  claude?: { exitCode?: number; stdout?: string; finishedAt?: string };
+  claude?: {
+    exitCode?: number;
+    stdout?: string;
+    finishedAt?: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -153,6 +190,7 @@ export function buildExecution(
       rejectedBy: data.approval.rejectedBy ?? null,
     },
     risk: data.risk ?? current?.risk ?? null,
+    failureReason: data.outcome?.reason ?? current?.failureReason ?? null,
   };
 }
 
@@ -199,6 +237,19 @@ async function pollExecution(
   }
 }
 
+/** Extrai `details.executionId` do 409 `EXECUTION_IN_PROGRESS` (distinto do 409 de Idempotency-Key). */
+function parseExecutionInProgress(err: unknown): { executionId: string } | null {
+  if (!axios.isAxiosError(err) || err.response?.status !== 409) return null;
+  const body = err.response.data as
+    | { code?: string; details?: { reason?: string; executionId?: string } }
+    | undefined;
+  const isInProgress =
+    body?.code === "EXECUTION_IN_PROGRESS" ||
+    body?.details?.reason === "execution_in_progress";
+  const id = body?.details?.executionId;
+  return isInProgress && id ? { executionId: String(id) } : null;
+}
+
 // ─── Hook principal ───────────────────────────────────────────────────────────
 
 export function useTaskExecution(taskId: string, projectId?: string) {
@@ -231,22 +282,46 @@ export function useTaskExecution(taskId: string, projectId?: string) {
       return data;
     },
     onSuccess: (data) => adoptExecution(data),
+    onError: (err) => {
+      const info = parseExecutionInProgress(err);
+      if (!info) return;
+      void adoptExisting(info.executionId);
+    },
   });
+
+  /** F-1: 409 EXECUTION_IN_PROGRESS — retoma o acompanhamento da execução existente. */
+  async function adoptExisting(executionId: string) {
+    try {
+      const { data } = await api.get<ExecutionResponseDto>(
+        `/executions/${executionId}`,
+      );
+      const exec = adoptExecution(data);
+      // Corrida: se já terminou, o painel mostra o desfecho; sem toast de "retomada".
+      if (!TERMINAL_STATUSES.has(exec.status)) {
+        toast.info("Já existe uma execução em andamento", {
+          description: "Retomamos o acompanhamento dela.",
+        });
+      }
+    } catch {
+      toast.error("Já existe uma execução em andamento para esta task.");
+    }
+  }
 
   /**
    * Registra uma execução (recém-criada ou decidida por aprovação) no store
    * em memória, invalida as tasks e (re)inicia o polling se não for terminal.
    */
-  function adoptExecution(data: ExecutionResponseDto) {
+  function adoptExecution(data: ExecutionResponseDto): TaskExecution {
     const exec = buildExecution(taskId, data, executionStore.get(taskId));
     setExecution(taskId, exec);
     void queryClient.invalidateQueries({ queryKey: ["tasks"] });
 
     abortRef.current?.abort();
-    if (TERMINAL_STATUSES.has(exec.status)) return;
+    if (TERMINAL_STATUSES.has(exec.status)) return exec;
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     void pollExecution(data.id, taskId, ctrl.signal, queryClient);
+    return exec;
   }
 
   function startExecution() {

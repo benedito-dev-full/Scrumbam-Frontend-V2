@@ -165,7 +165,12 @@ awaiting_approval
 
 **Tratamento de erro no front:**
 - 403: toast + botões escondidos.
-- 400 / 409: refaz o GET; se o status real já não é `awaiting_approval`, informa que a execução foi decidida ou expirou e adota o estado atual. 400 de validação (ainda aguardando) cai no toast com a mensagem do backend.
+- 400 / 409 (decisão de aprovação): refaz o GET; se o status real já não é `awaiting_approval`, informa que a execução foi decidida ou expirou e adota o estado atual. 400 de validação (ainda aguardando) cai no toast com a mensagem do backend.
+
+**Falhas e 409 de execução (implementado, ADR-V2-082):**
+- `POST` de disparo com 409 `code=EXECUTION_IN_PROGRESS` + `details.executionId`: o front faz `GET /executions/:id` e retoma o acompanhamento. Outro 409 (ex.: Idempotency-Key) segue o fluxo antigo.
+- Falha marcada pelo sistema traz `outcome: { reason, source }`; `reason` só vem com `source='system'`. O front traduz os 8 códigos canônicos e cai em "Execução falhou" se `outcome` estiver ausente (backend antigo).
+- Requer deploy conjunto: o campo `outcome` precisa estar no backend.
 - Polling de 5s só enquanto `awaiting_approval`.
 
 **Limitação conhecida:** o front não tem histórico persistido de execuções. Quem não disparou a execução deixa de ver o estado terminal quando `activeExecution` da task volta a `null`.

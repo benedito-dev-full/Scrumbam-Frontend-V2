@@ -13,6 +13,7 @@ import {
 import { useExecutionDetail } from "@/hooks/use-execution-approval";
 import {
   buildExecution,
+  friendlyFailureReason,
   useTaskExecution,
   detectTaskType,
   TASK_TYPE_LABELS,
@@ -77,6 +78,7 @@ export function AiExecutionPanel({
             output: null,
             approval: null,
             risk: null,
+            failureReason: null,
           }
         : null);
   const awaitingCurrent = detail.data
@@ -162,7 +164,10 @@ export function AiExecutionPanel({
         {isFailed && (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
             <AlertCircle className="size-3.5 shrink-0 text-red-400" />
-            <span className="text-[12px] text-red-300">Execução falhou</span>
+            <span className="text-[12px] text-red-300">
+              {friendlyFailureReason(view?.failureReason ?? null) ??
+                "Execução falhou"}
+            </span>
             <button
               type="button"
               onClick={clearExecution}

@@ -358,10 +358,12 @@ export interface ActiveExecutionDto {
   /** ID do DPedido (BigInt como string) — usado como chave do polling. */
   id: string;
   /**
-   * Estado simplificado derivado dos campos `aprovado`/`baixado` do DPedido.
-   * - `awaiting_approval`: aprovado=false (gate de risco MEDIUM/HIGH pendente)
-   * - `running`: aprovado=true, baixado=false (executando no agente VPS)
-   * - `queued`: reservado para variantes futuras
+   * Estado simplificado derivado de `approval.status` da execução (não vem
+   * mais de `aprovado`/`baixado`). Terminais (done/failed/rejected/expired)
+   * nunca aparecem aqui: `activeExecution` volta a `null`.
+   * - `awaiting_approval`: gate de risco MEDIUM/HIGH pendente
+   * - `queued`: aprovada/criada e aguardando despacho ao agente
+   * - `running`: executando no agente VPS
    */
   status: "queued" | "running" | "awaiting_approval";
   /** Risco derivado de idClasse: -301=LOW, -302=MEDIUM, -303=HIGH. */
@@ -903,4 +905,24 @@ export interface McpKeyListItemDto {
   disabled: boolean;
   createdAt: string;
   lastUsedAt: string | null;
+}
+
+/** Motivos canônicos de falha marcada pelo sistema (backend `EXECUTION_FAILURE_REASONS`). */
+export type ExecutionFailureReason =
+  | "TIMEOUT_NO_CALLBACK"
+  | "AGENT_RESTARTED"
+  | "QUEUE_STALE"
+  | "TUNNEL_UNAVAILABLE"
+  | "DISPATCH_FAILED"
+  | "PROJECT_BUSY_EXHAUSTED"
+  | "DUPLICATE_TASK_EXECUTION"
+  | "BACKFILL_STALE";
+
+/**
+ * Desfecho terminal da execução (`ExecutionOutcomeDto`). `reason` só vem
+ * preenchido quando `source === 'system'`; sem desfecho ambos são `null`.
+ */
+export interface ExecutionOutcomeDto {
+  reason: ExecutionFailureReason | null;
+  source: "agent" | "system" | null;
 }

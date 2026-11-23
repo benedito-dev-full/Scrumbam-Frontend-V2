@@ -1,13 +1,43 @@
 # Workflow Status - Scrumbam-Frontend-V2
 
 **Projeto:** Scrumbam-Frontend-V2 (Next.js 16 + React 19)
-**Ultima atualizacao:** 2026-11-23
+**Ultima atualizacao:** 2026-11-23 (Task 2)
 
 ---
 
 ## Tasks Concluidas
 
 (Conclusao dos agents sera registrada abaixo automaticamente pelos hooks)
+
+---
+
+## Task 2 - COMPLETE
+
+**Module:** executions (drawer de task / IA)
+**Task:** Execucao presa: adocao do 409 EXECUTION_IN_PROGRESS, motivo amigavel da falha e JSDoc
+**Status:** COMPLETA (deploy conjunto com o backend, ADR-V2-082)
+**Date:** 2026-11-23
+**Quality Score:** 9.2/10 (APPROVED pelo Reviewer; rodada 1: 7.5, NEEDS_CHANGES por motivos nao casarem)
+
+**Deliverables:**
+- [x] F-1: 409 `EXECUTION_IN_PROGRESS` faz GET da execucao existente e retoma o acompanhamento (sem toast de retomada se ja terminou)
+- [x] F-2: motivo amigavel da falha via `outcome.reason` (8 codigos canonicos, mapa exaustivo tipado); fallback "Execucao falhou"
+- [x] F-2: `outcome` opcional no DTO: backend antigo nao quebra
+- [x] F-3: JSDoc de `ActiveExecutionDto.status` corrigido (vem de `approval.status`)
+
+**Metrics:**
+- Build (`npm run build`): PASS
+- TypeScript: 0 errors
+- ESLint: 0 errors, 0 warnings nos arquivos tocados
+- Tests: N/A (projeto sem suite de testes)
+
+**Follow-ups (MINOR, nao bloqueiam):**
+- m1: `buildExecution` usa `outcome.reason ?? failureReason` anterior; se uma falha do sistema for superada por callback tardio, o motivo antigo pode aparecer. Ajuste sugerido: `data.outcome ? data.outcome.reason : current?.failureReason`.
+- m3: bloco de falha sem `role="alert"` (pre-existente).
+
+**Issues Pendentes:**
+- Deploy conjunto obrigatorio: sem o backend com o campo `outcome`, F-2 cai na mensagem generica.
+- 409 real de EXECUTION_IN_PROGRESS nao exercitado contra o backend.
 
 ---
 
