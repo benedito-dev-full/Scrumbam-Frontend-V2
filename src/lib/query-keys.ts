@@ -28,6 +28,10 @@ export const qk = {
      */
     lists: (folderId: string) => ["projects", "lists", folderId] as const,
   },
+  executions: {
+    /** Detalhe de uma execução de IA (risco + aprovação). */
+    byId: (id: string) => ["executions", id] as const,
+  },
   tasks: {
     all: ["tasks"] as const,
     byProject: (projectId: string) => ["tasks", "project", projectId] as const,

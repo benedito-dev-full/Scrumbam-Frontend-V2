@@ -12,7 +12,22 @@ export type ExecutionStatus =
   | "running"
   | "awaiting_approval"
   | "done"
-  | "failed";
+  | "failed"
+  | "rejected"
+  | "expired";
+
+/** Resumo do motivo da classificação de risco (espelha `RiskSummaryDto`). */
+export interface ExecutionRisk {
+  explanation: string;
+  matchedPatterns: { pattern: string; level: string; source?: string }[];
+}
+
+/** Dados de aprovação relevantes para a UI (expiração e rejeição). */
+export interface ExecutionApprovalInfo {
+  expiresAt: string | null;
+  rejectedReason: string | null;
+  rejectedBy: string | null;
+}
 
 export interface TaskExecution {
   taskId: string;
@@ -22,6 +37,9 @@ export interface TaskExecution {
   startedAt: string | null;
   finishedAt: string | null;
   output: string | null;
+  approval: ExecutionApprovalInfo | null;
+  /** Motivo do risco — ausente em registros antigos. */
+  risk: ExecutionRisk | null;
 }
 
 export const AI_ASSIGNEE_ID = "ai";
@@ -65,11 +83,17 @@ export const TASK_TYPE_COLORS: Record<TaskType, string> = {
 
 // ─── API types ────────────────────────────────────────────────────────────────
 
-interface ExecutionResponseDto {
+export interface ExecutionResponseDto {
   id: string;
   riskLevel: "LOW" | "MEDIUM" | "HIGH";
   projectId: string;
-  approval: { status: string };
+  approval: {
+    status: string;
+    expiresAt?: string;
+    rejectedReason?: string;
+    rejectedBy?: string;
+  };
+  risk?: ExecutionRisk;
   command: { text: string };
   claude?: { exitCode?: number; stdout?: string; finishedAt?: string };
   createdAt: string;
@@ -95,10 +119,52 @@ function deleteExecution(taskId: string) {
   notify();
 }
 
+// ─── Mapeamento DTO → estado da UI ────────────────────────────────────────────
+
+export function deriveStatus(data: ExecutionResponseDto): ExecutionStatus {
+  const approvalStatus = data.approval.status;
+  if (approvalStatus === "awaiting_approval") return "awaiting_approval";
+  if (approvalStatus === "rejected") return "rejected";
+  if (approvalStatus === "expired") return "expired";
+  if (data.claude?.finishedAt) {
+    // approved/queued com fim registrado: o exitCode decide o desfecho.
+    return (data.claude.exitCode ?? 0) === 0 ? "done" : "failed";
+  }
+  return "running";
+}
+
+/** Converte a resposta do backend no estado em memória da task. */
+export function buildExecution(
+  taskId: string,
+  data: ExecutionResponseDto,
+  current?: TaskExecution | null,
+): TaskExecution {
+  return {
+    taskId,
+    executionId: data.id,
+    status: deriveStatus(data),
+    riskLevel: data.riskLevel,
+    startedAt: current?.startedAt ?? data.createdAt,
+    finishedAt: data.claude?.finishedAt ?? current?.finishedAt ?? null,
+    output: data.claude?.stdout ?? current?.output ?? null,
+    approval: {
+      expiresAt: data.approval.expiresAt ?? null,
+      rejectedReason: data.approval.rejectedReason ?? null,
+      rejectedBy: data.approval.rejectedBy ?? null,
+    },
+    risk: data.risk ?? current?.risk ?? null,
+  };
+}
+
 // ─── Polling de status ────────────────────────────────────────────────────────
 
 const POLL_INTERVAL = 3000;
-const TERMINAL_STATUSES = new Set(["done", "failed"]);
+const TERMINAL_STATUSES = new Set<ExecutionStatus>([
+  "done",
+  "failed",
+  "rejected",
+  "expired",
+]);
 
 async function pollExecution(
   executionId: string,
@@ -114,31 +180,11 @@ async function pollExecution(
       const { data } = await api.get<ExecutionResponseDto>(
         `/executions/${executionId}`,
       );
-      const approvalStatus = data.approval.status;
-
-      let status: ExecutionStatus = "running";
-      if (approvalStatus === "awaiting_approval") status = "awaiting_approval";
-      else if (approvalStatus === "rejected") status = "failed";
-      else if (approvalStatus === "expired") status = "failed";
-      else if (approvalStatus === "approved" || approvalStatus === "queued") {
-        // ainda executando — quando o agente acabar, o status do DPedido muda via callback
-        // mas não temos um campo "finished" direto no approval — usamos claude.finishedAt
-        if (data.claude?.finishedAt) {
-          const exitCode = data.claude.exitCode ?? 0;
-          status = exitCode === 0 ? "done" : "failed";
-        }
-      }
-
       const current = executionStore.get(taskId);
       const previousStatus = current?.status;
-      if (current) {
-        setExecution(taskId, {
-          ...current,
-          status,
-          finishedAt: data.claude?.finishedAt ?? current.finishedAt,
-          output: data.claude?.stdout ?? current.output,
-        });
-      }
+      const next = buildExecution(taskId, data, current);
+      const status = next.status;
+      if (current) setExecution(taskId, next);
 
       // Quando o status muda para terminal, invalida a query de tasks
       // para que a UI da lista/kanban reflita o novo estado sem reload manual.
@@ -184,31 +230,24 @@ export function useTaskExecution(taskId: string, projectId?: string) {
       );
       return data;
     },
-    onSuccess: (data) => {
-      const exec: TaskExecution = {
-        taskId,
-        executionId: data.id,
-        status:
-          data.approval.status === "awaiting_approval"
-            ? "awaiting_approval"
-            : "running",
-        riskLevel: data.riskLevel,
-        startedAt: data.createdAt,
-        finishedAt: null,
-        output: null,
-      };
-      setExecution(taskId, exec);
-
-      // Invalida queries de tasks para atualizar status
-      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
-
-      // Inicia polling
-      abortRef.current?.abort();
-      const ctrl = new AbortController();
-      abortRef.current = ctrl;
-      void pollExecution(data.id, taskId, ctrl.signal, queryClient);
-    },
+    onSuccess: (data) => adoptExecution(data),
   });
+
+  /**
+   * Registra uma execução (recém-criada ou decidida por aprovação) no store
+   * em memória, invalida as tasks e (re)inicia o polling se não for terminal.
+   */
+  function adoptExecution(data: ExecutionResponseDto) {
+    const exec = buildExecution(taskId, data, executionStore.get(taskId));
+    setExecution(taskId, exec);
+    void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+
+    abortRef.current?.abort();
+    if (TERMINAL_STATUSES.has(exec.status)) return;
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    void pollExecution(data.id, taskId, ctrl.signal, queryClient);
+  }
 
   function startExecution() {
     if (!projectId) return;
@@ -224,6 +263,7 @@ export function useTaskExecution(taskId: string, projectId?: string) {
     execution,
     startExecution,
     clearExecution,
+    adoptExecution,
     isSubmitting: executeMutation.isPending,
     error: executeMutation.error,
   };

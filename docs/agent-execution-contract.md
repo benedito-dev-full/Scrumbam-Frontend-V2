@@ -133,6 +133,44 @@ DTask.dados = {
 
 ## 5. Endpoints necessários no backend
 
+### 5.0 Aprovação de execução (gate de risco) — implementado no front
+
+Execuções classificadas com risco acima do limite ficam em `awaiting_approval` até um gestor decidir. Ref.: backend ADR-V2-081.
+
+**Endpoints usados pelo front** (base `/api/v1`):
+
+```
+GET  /executions/:id            // detalhe: riskLevel, risk.explanation, approval.*
+POST /executions/:id/approve    // body: { notes?: string (<=500) }  -> ExecutionResponseDto
+POST /executions/:id/reject     // body: { reason: string (10..1000) } -> ExecutionResponseDto
+```
+
+**Estados de aprovação (`approval.status`):**
+
+```
+                ┌──[Aprovar]──► approved ──► (fluxo normal: queued/running ► DONE/FAILED)
+awaiting_approval
+                ├──[Rejeitar]─► rejected   (terminal; traz rejectedReason e rejectedBy)
+                └──(1h, sweeper)──► expired (terminal; "Aprovação expirada")
+```
+
+| Estado | Gestor (MANAGER) | Membro |
+|--------|------------------|--------|
+| `awaiting_approval` | card com Aprovar / Rejeitar | card com aviso "Aguardando aprovação do gestor do projeto" |
+| `approved` | segue o fluxo normal de execução | idem |
+| `rejected` | "Rejeitada pelo gestor" + motivo | idem |
+| `expired` | "Aprovação expirada" (sem botões) | idem |
+
+**Quem vê os botões:** somente com `project.myRole === 'MANAGER'` (fallback `canManage` se `myRole` ausente). O backend é a autoridade: 403 para não-gestor, e o front então esconde os botões.
+
+**Tratamento de erro no front:**
+- 403: toast + botões escondidos.
+- 400 / 409: refaz o GET; se o status real já não é `awaiting_approval`, informa que a execução foi decidida ou expirou e adota o estado atual. 400 de validação (ainda aguardando) cai no toast com a mensagem do backend.
+- Polling de 5s só enquanto `awaiting_approval`.
+
+**Limitação conhecida:** o front não tem histórico persistido de execuções. Quem não disparou a execução deixa de ver o estado terminal quando `activeExecution` da task volta a `null`.
+
+
 ### 5.1 Executar task com agente
 
 ```

@@ -1,13 +1,44 @@
-# Workflow Status - Personal Agents
+# Workflow Status - Scrumbam-Frontend-V2
 
-**Projeto:** [PREENCHER]
-**Ultima atualizacao:** Template inicial
+**Projeto:** Scrumbam-Frontend-V2 (Next.js 16 + React 19)
+**Ultima atualizacao:** 2026-11-23
 
 ---
 
 ## Tasks Concluidas
 
 (Conclusao dos agents sera registrada abaixo automaticamente pelos hooks)
+
+---
+
+## Task 1 - COMPLETE
+
+**Module:** tasks (drawer de task / execucoes de IA)
+**Task:** UI de Aprovar/Rejeitar execucoes de IA (gate de risco no backend)
+**Status:** COMPLETA
+**Date:** 2026-11-23
+**Quality Score:** 9.0/10 (APPROVED pelo Reviewer; ciclo 1: 8.0; gate 8.5)
+
+**Deliverables:**
+- [x] Card "Aguardando aprovacao" no drawer (nivel de risco, motivo amigavel, expiracao)
+- [x] Aprovar (gestor) -> POST /executions/:id/approve
+- [x] Rejeitar (gestor) com modal de motivo 10-1000 chars -> POST /executions/:id/reject
+- [x] Estados rejeitada / expirada / aprovada tratados (antes colapsavam em failed)
+- [x] Membro nao-gestor ve so o aviso; 403 esconde os botoes
+- [x] 400/409 de estado velho: refetch e adota o estado real
+- [x] Polling unico (5s) enquanto awaiting_approval
+
+**Metrics:**
+- Build (`npm run build`): PASS
+- TypeScript: 0 errors
+- ESLint: 0 errors nos arquivos tocados
+- Tests: N/A (projeto sem suite de testes)
+
+**Issues Pendentes:**
+- Verificacao manual contra backend real (Scrumban-Backend-V3, ADR-V2-081) ainda nao feita
+- Sem historico persistido no front: quem nao disparou perde o estado terminal quando activeExecution volta a null
+- Lista/contador de pendentes (GET /executions?status=awaiting_approval) nao implementado (opcional no plano)
+- Efeito colateral (invalidate) dentro da queryFn de useExecutionDetail: funciona, mas poderia virar reacao ao dado (MINOR)
 
 ---
 

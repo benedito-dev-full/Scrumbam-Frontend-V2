@@ -28,17 +28,17 @@ import {
 // --- Types ---------------------------------------------------------------
 import type { V3Intention } from "@/lib/types/api";
 
-// â”€â”€â”€ TaskDetailDrawer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── TaskDetailDrawer ─────────────────────────────────────────────────────────
 
 /**
- * Drawer lateral de detalhe e ediÃ§Ã£o inline de uma DTask V2.
+ * Drawer lateral de detalhe e edição inline de uma DTask V2.
  *
  * Abre via slide da direita ao clicar em um TaskCard no KanbanBoard.
- * Campos editÃ¡veis: tÃ­tulo (double-click), status, prioridade, dueDate, descriÃ§Ã£o.
- * Todas as ediÃ§Ãµes fazem PATCH imediato no backend via useUpdateTask/useUpdateTaskStatus.
+ * Campos editáveis: título (double-click), status, prioridade, dueDate, descrição.
+ * Todas as edições fazem PATCH imediato no backend via useUpdateTask/useUpdateTaskStatus.
  *
  * @param taskId    - ID da DTask a exibir.
- * @param projectId - ID do DProject (List) para invalidaÃ§Ã£o do cache.
+ * @param projectId - ID do DProject (List) para invalidação do cache.
  * @param onClose   - Callback para fechar o drawer.
  *
  * @example
@@ -72,18 +72,18 @@ export function TaskDetailDrawer({
   if (!task) return null;
 
   const overdue = isOverdue(task.dueDate, task.status as V3Intention);
-  // Estado terminal (DONE/FAILED) = histÃ³rico: nenhum lock, badge ou botÃ£o
-  // de execuÃ§Ã£o. Task acabada nÃ£o exige aÃ§Ã£o na UI mesmo que haja DPedido
+  // Estado terminal (DONE/FAILED) = histórico: nenhum lock, badge ou botão
+  // de execução. Task acabada não exige ação na UI mesmo que haja DPedido
   // pendente (zumbi).
   const isTerminalStatus = task.status === "DONE" || task.status === "FAILED";
-  // Lock UI â€” `activeExecution` Ã© a verdade canÃ´nica do backend.
+  // Lock UI — `activeExecution` é a verdade canônica do backend.
   // Suprimido em estado terminal.
   const isLocked = !isTerminalStatus && task.activeExecution != null;
   const lockTitle = isLocked
-    ? "Em execuÃ§Ã£o pela IA â€” aguarde a conclusÃ£o para editar"
+    ? "Em execução pela IA — aguarde a conclusão para editar"
     : undefined;
   const deleteDisabledTitle = isLocked
-    ? "NÃ£o Ã© possÃ­vel excluir enquanto hÃ¡ execuÃ§Ã£o ativa"
+    ? "Não é possível excluir enquanto há execução ativa"
     : undefined;
 
   return (
@@ -110,8 +110,8 @@ export function TaskDetailDrawer({
               >
                 <Lock className="size-2.5" />
                 {task.activeExecution?.status === "awaiting_approval"
-                  ? "aguardando aprovaÃ§Ã£o"
-                  : "em execuÃ§Ã£o pela IA"}
+                  ? "aguardando aprovação"
+                  : "em execução pela IA"}
               </span>
             )}
           </div>
@@ -191,11 +191,11 @@ export function TaskDetailDrawer({
           </div>
         </Field>
 
-        {/* DescriÃ§Ã£o */}
-        <Field label="DescriÃ§Ã£o">
+        {/* Descrição */}
+        <Field label="Descrição">
           <EditableTextarea
             value={task.descricao ?? ""}
-            placeholder="Adicionar descriÃ§Ã£o..."
+            placeholder="Adicionar descrição..."
             onSave={(descricao) =>
               updateTask({ id: taskId, projectId, dto: { descricao } })
             }
@@ -203,8 +203,8 @@ export function TaskDetailDrawer({
           />
         </Field>
 
-        {/* ResponsÃ¡vel + Time (picker unificado) */}
-        <Field label="ResponsÃ¡vel">
+        {/* Responsável + Time (picker unificado) */}
+        <Field label="Responsável">
           <AssigneePicker
             projectId={projectId}
             current={task.assigneeId ?? null}
@@ -227,7 +227,7 @@ export function TaskDetailDrawer({
           />
         </Field>
 
-        {/* Tempo de trabalho â€” timer manual por usuÃ¡rio (ADR-V2-057). */}
+        {/* Tempo de trabalho — timer manual por usuário (ADR-V2-057). */}
         <Field label="Tempo de trabalho">
           <TaskTimerPanel
             taskId={taskId}
@@ -236,18 +236,19 @@ export function TaskDetailDrawer({
           />
         </Field>
 
-        {/* ExecuÃ§Ã£o IA â€” sÃ³ em tasks com responsÃ¡vel IA e nÃ£o-terminais.
-            ConcluÃ­do/Falhou = histÃ³rico, sem aÃ§Ã£o de execuÃ§Ã£o. */}
+        {/* Execução IA — só em tasks com responsável IA e não-terminais.
+            Concluído/Falhou = histórico, sem ação de execução. */}
         {task.assigneeId === AI_ASSIGNEE_ID && !isTerminalStatus && (
           <AiExecutionPanel
             taskId={taskId}
             taskName={task.nome}
             projectId={projectId}
+            activeExecution={task.activeExecution}
           />
         )}
       </div>
 
-      {/* Footer â€” aÃ§Ã£o destrutiva */}
+      {/* Footer — ação destrutiva */}
       <div className="mt-auto border-t border-border p-4">
         <button
           type="button"

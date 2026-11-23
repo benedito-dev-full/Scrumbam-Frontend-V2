@@ -1,39 +1,93 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
-import { AlertCircle, Bot, CheckCircle2, Loader2, Play } from "lucide-react";
 import {
+  AlertCircle,
+  Ban,
+  Bot,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Play,
+} from "lucide-react";
+import { useExecutionDetail } from "@/hooks/use-execution-approval";
+import {
+  buildExecution,
   useTaskExecution,
   detectTaskType,
   TASK_TYPE_LABELS,
   TASK_TYPE_COLORS,
 } from "@/hooks/use-task-execution";
+import type { TaskExecution } from "@/hooks/use-task-execution";
+import type { ActiveExecutionDto } from "@/lib/types/api";
+import { ApprovalCard } from "./task-detail-drawer-ai-approval";
 
-// â”€â”€â”€ AiExecutionPanel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── AiExecutionPanel ─────────────────────────────────────────────────────────
 
 export function AiExecutionPanel({
   taskId,
   taskName,
   projectId,
+  activeExecution = null,
 }: {
   taskId: string;
   taskName: string;
   projectId: string;
+  /** Execução viva vinda da task — permite ao gestor aprovar sem ter disparado. */
+  activeExecution?: ActiveExecutionDto | null;
 }) {
-  const { execution, startExecution, clearExecution, isSubmitting } =
-    useTaskExecution(taskId, projectId);
+  const {
+    execution,
+    startExecution,
+    clearExecution,
+    adoptExecution,
+    isSubmitting,
+  } = useTaskExecution(taskId, projectId);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const taskType = detectTaskType(taskName);
   const typeColor = TASK_TYPE_COLORS[taskType];
   const typeLabel = TASK_TYPE_LABELS[taskType];
-  const isRunning =
-    execution?.status === "running" ||
-    execution?.status === "awaiting_approval" ||
-    isSubmitting;
-  const isDone = execution?.status === "done";
-  const isFailed = execution?.status === "failed";
-  const isAwaiting = execution?.status === "awaiting_approval";
+  // Fonte da verdade: store em memória (quem disparou, com polling próprio) ou
+  // activeExecution da task (qualquer usuário, ex.: o gestor que vai aprovar).
+  // Neste segundo caso o detalhe da execução (com polling) prevalece sobre o
+  // status da task, que não é repolled.
+  const live = execution ? null : activeExecution;
+  const awaitingId = execution?.executionId ?? live?.id ?? null;
+  // Store já faz polling para quem disparou; o detalhe só é buscado enquanto
+  // aguarda aprovação (risco/expiração) ou no caminho sem store.
+  const detailId =
+    execution && execution.status !== "awaiting_approval" ? null : awaitingId;
+  const detail = useExecutionDetail(detailId, !execution);
+  const view: TaskExecution | null =
+    execution ??
+    (live && detail.data
+      ? buildExecution(taskId, detail.data)
+      : live
+        ? {
+            taskId,
+            executionId: live.id,
+            status:
+              live.status === "awaiting_approval"
+                ? "awaiting_approval"
+                : "running",
+            riskLevel: live.riskLevel,
+            startedAt: live.startedAt,
+            finishedAt: null,
+            output: null,
+            approval: null,
+            risk: null,
+          }
+        : null);
+  const awaitingCurrent = detail.data
+    ? buildExecution(taskId, detail.data, execution)
+    : view;
+  const isAwaiting = view?.status === "awaiting_approval";
+  const isRunning = view?.status === "running" || isSubmitting;
+  const isDone = view?.status === "done";
+  const isFailed = view?.status === "failed";
+  const isRejected = view?.status === "rejected";
+  const isExpired = view?.status === "expired";
 
   return (
     <>
@@ -42,7 +96,7 @@ export function AiExecutionPanel({
         <div className="flex items-center gap-2">
           <Bot className="size-3.5 text-violet-400" />
           <span className="text-[12px] font-semibold text-violet-300">
-            ExecuÃ§Ã£o IA
+            Execução IA
           </span>
           <span
             className="rounded-full px-1.5 py-px text-[10px] font-semibold"
@@ -53,38 +107,46 @@ export function AiExecutionPanel({
         </div>
 
         {/* Estado */}
+        {isAwaiting && awaitingId && !isSubmitting && (
+          <ApprovalCard
+            executionId={awaitingId}
+            projectId={projectId}
+            riskLevel={view?.riskLevel ?? null}
+            current={awaitingCurrent}
+            onDecided={adoptExecution}
+          />
+        )}
+
         {isRunning && (
           <div className="flex items-center gap-2 rounded-lg bg-violet-500/10 px-3 py-2.5">
             <Loader2 className="size-3.5 shrink-0 animate-spin text-violet-400" />
             <span className="text-[12px] text-violet-300">
               {isSubmitting
                 ? "Enviando para o agente..."
-                : isAwaiting
-                  ? "Aguardando aprovaÃ§Ã£o (risco ALTO)..."
-                  : "Agente processando a task..."}
+                : "Agente processando a task..."}
             </span>
           </div>
         )}
 
-        {isDone && (
+        {isDone && view && (
           <div className="flex flex-col gap-2 rounded-lg border border-green-500/20 bg-green-500/5 p-3">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="size-3.5 shrink-0 text-green-400" />
               <span className="text-[12px] font-semibold text-green-300">
-                ConcluÃ­do
+                Concluído
               </span>
-              {execution.finishedAt && (
+              {view.finishedAt && (
                 <span className="ml-auto text-[11px] text-muted-foreground">
-                  {new Date(execution.finishedAt).toLocaleTimeString("pt-BR", {
+                  {new Date(view.finishedAt).toLocaleTimeString("pt-BR", {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
                 </span>
               )}
             </div>
-            {execution.output && (
+            {view.output && (
               <p className="text-[12px] leading-relaxed text-muted-foreground">
-                {execution.output}
+                {view.output}
               </p>
             )}
             <button
@@ -100,7 +162,7 @@ export function AiExecutionPanel({
         {isFailed && (
           <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
             <AlertCircle className="size-3.5 shrink-0 text-red-400" />
-            <span className="text-[12px] text-red-300">ExecuÃ§Ã£o falhou</span>
+            <span className="text-[12px] text-red-300">Execução falhou</span>
             <button
               type="button"
               onClick={clearExecution}
@@ -111,8 +173,50 @@ export function AiExecutionPanel({
           </div>
         )}
 
-        {/* BotÃ£o executar */}
-        {!execution && (
+        {isRejected && (
+          <div className="flex flex-col gap-1.5 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <Ban className="size-3.5 shrink-0 text-red-400" />
+              <span className="text-[12px] font-semibold text-red-300">
+                Execução rejeitada pelo gestor
+              </span>
+              <button
+                type="button"
+                onClick={clearExecution}
+                className="ml-auto text-[11px] text-muted-foreground underline hover:text-foreground"
+              >
+                Limpar
+              </button>
+            </div>
+            {view.approval?.rejectedReason && (
+              <p className="text-[12px] leading-relaxed text-muted-foreground">
+                Motivo: {view.approval?.rejectedReason}
+              </p>
+            )}
+          </div>
+        )}
+
+        {isExpired && (
+          <div className="flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2.5">
+            <Clock className="size-3.5 shrink-0 text-amber-400" />
+            <span className="text-[12px] text-amber-300">
+              Aprovação expirou
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                clearExecution();
+                setConfirmOpen(true);
+              }}
+              className="ml-auto text-[11px] text-muted-foreground underline hover:text-foreground"
+            >
+              Executar novamente
+            </button>
+          </div>
+        )}
+
+        {/* Botão executar */}
+        {!view && !activeExecution && (
           <button
             type="button"
             disabled={isSubmitting}
@@ -158,7 +262,7 @@ export function AiExecutionPanel({
   );
 }
 
-// â”€â”€â”€ AiConfirmModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ─── AiConfirmModal ───────────────────────────────────────────────────────────
 
 function AiConfirmModal({
   taskName,
@@ -192,7 +296,7 @@ function AiConfirmModal({
               <Bot className="size-5 text-violet-400" />
             </div>
             <h2 className="text-[16px] font-bold text-foreground">
-              Confirmar execuÃ§Ã£o
+              Confirmar execução
             </h2>
             <p className="mt-1 text-[13px] text-muted-foreground">
               O agente do projeto vai executar esta task automaticamente.

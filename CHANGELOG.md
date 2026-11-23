@@ -20,6 +20,14 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Added
 
+- **UI de Aprovar/Rejeitar execuções de IA** (Task 1, Score 9.0/10)
+  - Card "Aguardando aprovação" no drawer da task: nível de risco (médio/alto), motivo amigável e prazo de expiração.
+  - Gestor do projeto (`myRole === 'MANAGER'`) vê Aprovar e Rejeitar; demais membros veem só o aviso.
+  - Rejeição exige motivo (10–1000 caracteres) em modal com validação zod.
+  - Endpoints: `POST /executions/:id/approve` e `POST /executions/:id/reject`, com `GET /executions/:id` para o detalhe.
+  - Estados `rejected` (motivo e autor exibidos) e `expired` (aviso de expiração) tratados na UI.
+  - Erros: 403 esconde os botões; 400/409 fazem refetch e mostram o estado real.
+
 - **localStorage com migração one-shot:** Substitui sessionStorage; copia automaticamente no boot se houver sessão legada.
 - **Bootstrap defensivo:** Se cookie de rota existe mas token está nulo, tenta refresh silencioso; se falhar, redirect `/login` (nunca mais estado zumbi).
 - **Sincronização entre abas:** BroadcastChannel (principal) + fallback storage event (Safari antigo/WebViews).
@@ -31,6 +39,9 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Changed
 
+- `use-task-execution.ts`: `rejected` e `expired` deixam de colapsar em `failed`; mapeamento de status unificado em `buildExecution`/`deriveStatus`.
+- `task-detail-drawer.tsx` e `task-detail-drawer-ai.tsx`: painel recebe `activeExecution` da task (gestor vê a aprovação mesmo sem ter disparado a execução); texto fixo de risco removido.
+- `query-keys.ts`: chave `qk.executions.byId` centralizada.
 - `src/lib/stores/auth.ts`: `setTokens()` agora propaga novo par via BroadcastChannel (sincronização entre abas).
 - `src/lib/api.ts`: Interceptor reescrito — `code`-aware (distingue `TOKEN_EXPIRED` de `SESSION_REVOKED` de `AUTH_BACKEND_UNAVAILABLE`), 503 com retry/backoff, guard `refreshToken` nulo.
 - `src/app/providers.tsx`: Boot com migração + bootstrap defensivo + `initSessionSync()`.
