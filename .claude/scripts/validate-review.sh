@@ -75,8 +75,8 @@ if (( $(echo "$SCORE_VALUE < 0" | bc -l) )) || (( $(echo "$SCORE_VALUE > 10" | b
   exit 2
 fi
 
-if (( $(echo "$SCORE_VALUE < 7.0" | bc -l) )); then
-  echo -e "${YELLOW}AVISO: Score abaixo do minimo: $SCORE_VALUE (minimo: 7.0)${NC}" >&2
+if (( $(echo "$SCORE_VALUE < 8.5" | bc -l) )); then
+  echo -e "${YELLOW}AVISO: Score abaixo do minimo: $SCORE_VALUE (minimo: 8.5)${NC}" >&2
 fi
 
 # ==============================================================================
@@ -111,13 +111,13 @@ echo -e "${GREEN}OK${NC} Decisao: $DECISION"
 # VALIDACAO 5: Score vs Decisao consistente
 # ==============================================================================
 
-if [ "$DECISION" = "REJECTED" ] && (( $(echo "$SCORE_VALUE >= 7.0" | bc -l) )); then
-  echo -e "${YELLOW}AVISO: Inconsistencia: REJECTED com score $SCORE_VALUE >= 7.0${NC}" >&2
+if [ "$DECISION" = "REJECTED" ] && (( $(echo "$SCORE_VALUE >= 8.5" | bc -l) )); then
+  echo -e "${YELLOW}AVISO: Inconsistencia: REJECTED com score $SCORE_VALUE >= 8.5${NC}" >&2
 fi
 
-if [ "$DECISION" = "APPROVED" ] && (( $(echo "$SCORE_VALUE < 7.0" | bc -l) )); then
-  echo -e "${RED}ERRO: Inconsistencia: APPROVED com score $SCORE_VALUE < 7.0${NC}" >&2
-  echo -e "${RED}Nao pode aprovar com score abaixo de 7.0!${NC}" >&2
+if [ "$DECISION" = "APPROVED" ] && (( $(echo "$SCORE_VALUE < 8.5" | bc -l) )); then
+  echo -e "${RED}ERRO: Inconsistencia: APPROVED com score $SCORE_VALUE < 8.5${NC}" >&2
+  echo -e "${RED}Nao pode aprovar com score abaixo de 8.5!${NC}" >&2
   exit 2
 fi
 
