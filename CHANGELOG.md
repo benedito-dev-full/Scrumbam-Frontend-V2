@@ -23,6 +23,14 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Added
 
+- **Resultado da esteira na execução de IA** (Task 3, Score 9.0/10)
+  - Link "Ver PR #N" (somente https), badge "Rascunho" quando o PR não foi aprovado pelo Reviewer.
+  - Decisão e nota do Reviewer, branch, commits e summary (texto puro, recolhível).
+  - Resultado aparece também em falha (PR em rascunho).
+  - 5 novos motivos de falha da esteira com texto PT-BR.
+  - Aviso "pode levar algumas horas" enquanto a esteira roda.
+  - Requer deploy conjunto: backend 08d1446 e agente VPS 0.2.0 (ADR-V2-083).
+
 - **Motivo amigável da falha de execução** (Task 2, Score 9.2/10)
   - Falhas marcadas pelo sistema mostram texto em PT-BR a partir de `outcome.reason` (8 motivos canônicos); ausente ou desconhecido cai em "Execução falhou".
   - Tipos `ExecutionFailureReason` e `ExecutionOutcomeDto` em `lib/types/api.ts`. Requer deploy conjunto com o backend (ADR-V2-082).
@@ -46,6 +54,8 @@ e este projeto adere a [Semantic Versioning](https://semver.org/spec/v2.0.0.html
 
 ### Changed
 
+- Polling da execução: 3s no início, 15s após 10 min desde a criação (esteira pode levar horas).
+- Motivos de falha da esteira (`source='agent'`) marcam a execução como `failed`, mesmo com exit code 0.
 - `use-task-execution.ts`: `rejected` e `expired` deixam de colapsar em `failed`; mapeamento de status unificado em `buildExecution`/`deriveStatus`.
 - `task-detail-drawer.tsx` e `task-detail-drawer-ai.tsx`: painel recebe `activeExecution` da task (gestor vê a aprovação mesmo sem ter disparado a execução); texto fixo de risco removido.
 - `query-keys.ts`: chave `qk.executions.byId` centralizada.

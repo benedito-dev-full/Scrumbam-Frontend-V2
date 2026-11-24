@@ -916,13 +916,73 @@ export type ExecutionFailureReason =
   | "DISPATCH_FAILED"
   | "PROJECT_BUSY_EXHAUSTED"
   | "DUPLICATE_TASK_EXECUTION"
-  | "BACKFILL_STALE";
+  | "BACKFILL_STALE"
+  // Esteira de agentes (ADR-V2-083) — podem vir com source='agent'.
+  | "PIPELINE_NOT_INSTALLED"
+  | "PIPELINE_PRECONDITION_FAILED"
+  | "PIPELINE_CONTRACT_MISSING"
+  | "PIPELINE_NOT_APPROVED"
+  | "PR_NOT_CREATED";
 
 /**
- * Desfecho terminal da execução (`ExecutionOutcomeDto`). `reason` só vem
- * preenchido quando `source === 'system'`; sem desfecho ambos são `null`.
+ * Desfecho terminal da execução (`ExecutionOutcomeDto`). `reason` vem com
+ * `source === 'system'` ou, para os motivos da esteira, com `source === 'agent'`;
+ * sem desfecho ambos são `null`.
  */
 export interface ExecutionOutcomeDto {
   reason: ExecutionFailureReason | null;
   source: "agent" | "system" | null;
+}
+
+/** Pull Request verificado pelo agente (`PullRequestDto`) — todos opcionais. */
+export interface ExecutionPullRequestDto {
+  url?: string;
+  number?: number;
+  state?: "OPEN" | "CLOSED" | "MERGED";
+  /** `true` quando a esteira não aprovou (PR fica em rascunho). */
+  isDraft?: boolean;
+  openedBy?: "pipeline" | "agent-fallback";
+  baseRefName?: string;
+  openedAt?: string;
+}
+
+/** Resultado git da execução (`GitResultDto`) — todos opcionais. */
+export interface ExecutionGitDto {
+  branch?: string;
+  /** `null` = default do repositório. */
+  baseBranch?: string | null;
+  headAfter?: string;
+  commitsAhead?: number;
+  pushed?: boolean;
+  pushedAt?: string;
+}
+
+export type ExecutionPipelineDecision =
+  | "APPROVED"
+  | "NEEDS_CHANGES"
+  | "REJECTED"
+  | "NO_CHANGES"
+  | "ABORTED";
+
+/** Etapa da esteira (`PipelineStageSummaryDto`). */
+export interface ExecutionPipelineStageDto {
+  name: string;
+  status: "done" | "skipped" | "failed";
+}
+
+/** Resultado da esteira de agentes (`ExecutionPipelineDto`). Ausente em execuções legadas. */
+export interface ExecutionPipelineDto {
+  required: boolean;
+  prRequired: boolean;
+  taskType?: "code" | "docs" | "research" | "validation" | "other";
+  mode?: "pipeline" | "simple" | null;
+  decision?: ExecutionPipelineDecision | null;
+  reviewScore?: number | null;
+  stages?: ExecutionPipelineStageDto[];
+  /** Texto puro (até 2000 caracteres) — nunca renderizar como HTML. */
+  summary?: string | null;
+  subagents?: Record<string, number> | null;
+  contractValid?: boolean | null;
+  prOpenedBy?: "pipeline" | "agent-fallback" | null;
+  reason?: ExecutionFailureReason | null;
 }

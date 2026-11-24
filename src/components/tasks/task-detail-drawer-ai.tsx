@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertCircle,
   Ban,
   Bot,
   CheckCircle2,
   Clock,
+  ExternalLink,
+  GitBranch,
   Loader2,
   Play,
 } from "lucide-react";
@@ -20,7 +22,10 @@ import {
   TASK_TYPE_COLORS,
 } from "@/hooks/use-task-execution";
 import type { TaskExecution } from "@/hooks/use-task-execution";
-import type { ActiveExecutionDto } from "@/lib/types/api";
+import type {
+  ActiveExecutionDto,
+  ExecutionPipelineDecision,
+} from "@/lib/types/api";
 import { ApprovalCard } from "./task-detail-drawer-ai-approval";
 
 // ─── AiExecutionPanel ─────────────────────────────────────────────────────────
@@ -79,6 +84,9 @@ export function AiExecutionPanel({
             approval: null,
             risk: null,
             failureReason: null,
+            pullRequest: null,
+            git: null,
+            pipeline: null,
           }
         : null);
   const awaitingCurrent = detail.data
@@ -127,7 +135,16 @@ export function AiExecutionPanel({
                 ? "Enviando para o agente..."
                 : "Agente processando a task..."}
             </span>
+            {!isSubmitting && view?.startedAt && (
+              <ElapsedLabel startedAt={view.startedAt} />
+            )}
           </div>
+        )}
+        {isRunning && !isSubmitting && view?.pipeline?.required && (
+          <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
+            A esteira de agentes pode levar algumas horas. Você pode fechar
+            este painel — o acompanhamento continua ao reabri-lo.
+          </p>
         )}
 
         {isDone && view && (
@@ -146,6 +163,7 @@ export function AiExecutionPanel({
                 </span>
               )}
             </div>
+            <PipelineResult view={view} />
             {view.output && (
               <p className="text-[12px] leading-relaxed text-muted-foreground">
                 {view.output}
@@ -162,19 +180,25 @@ export function AiExecutionPanel({
         )}
 
         {isFailed && (
-          <div className="flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5">
-            <AlertCircle className="size-3.5 shrink-0 text-red-400" />
-            <span className="text-[12px] text-red-300">
-              {friendlyFailureReason(view?.failureReason ?? null) ??
-                "Execução falhou"}
-            </span>
-            <button
-              type="button"
-              onClick={clearExecution}
-              className="ml-auto text-[11px] text-muted-foreground underline hover:text-foreground"
-            >
-              Limpar
-            </button>
+          <div
+            role="alert"
+            className="flex flex-col gap-2 rounded-lg border border-red-500/20 bg-red-500/5 px-3 py-2.5"
+          >
+            <div className="flex items-center gap-2">
+              <AlertCircle className="size-3.5 shrink-0 text-red-400" />
+              <span className="text-[12px] text-red-300">
+                {friendlyFailureReason(view?.failureReason ?? null) ??
+                  "Execução falhou"}
+              </span>
+              <button
+                type="button"
+                onClick={clearExecution}
+                className="ml-auto text-[11px] text-muted-foreground underline hover:text-foreground"
+              >
+                Limpar
+              </button>
+            </div>
+            {view && <PipelineResult view={view} />}
           </div>
         )}
 
@@ -264,6 +288,131 @@ export function AiExecutionPanel({
         />
       )}
     </>
+  );
+}
+
+// ─── Resultado da esteira ─────────────────────────────────────────────────────
+
+const DECISION_LABELS: Record<ExecutionPipelineDecision, string> = {
+  APPROVED: "Aprovado",
+  NEEDS_CHANGES: "Requer ajustes",
+  REJECTED: "Rejeitado",
+  NO_CHANGES: "Sem alterações",
+  ABORTED: "Abortado",
+};
+
+/** Só devolve a URL se for https:// válida (evita javascript:/http: vindos do payload). */
+function safeHttpsUrl(url: string | undefined): string | null {
+  if (!url || !url.startsWith("https://")) return null;
+  try {
+    return new URL(url).protocol === "https:" ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+/** "há 12 min" / "há 2h05" desde `startedAt`; atualiza a cada 30s. */
+function ElapsedLabel({ startedAt }: { startedAt: string }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  const started = Date.parse(startedAt);
+  if (Number.isNaN(started)) return null;
+  const min = Math.max(0, Math.floor((now - started) / 60_000));
+  const label =
+    min < 60
+      ? `${min} min`
+      : `${Math.floor(min / 60)}h${String(min % 60).padStart(2, "0")}`;
+  return (
+    <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+      em execução há {label}
+    </span>
+  );
+}
+
+/** Summary da esteira como texto puro; recolhível quando longo. */
+function PipelineSummary({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = text.length > 280 || text.split("\n").length > 4;
+  return (
+    <div className="flex flex-col gap-1">
+      <p
+        className={`whitespace-pre-wrap break-words text-[12px] leading-relaxed text-muted-foreground ${
+          isLong && !expanded ? "line-clamp-4" : ""
+        }`}
+      >
+        {text}
+      </p>
+      {isLong && (
+        <button
+          type="button"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((v) => !v)}
+          className="self-start text-[11px] text-muted-foreground underline hover:text-foreground"
+        >
+          {expanded ? "Mostrar menos" : "Mostrar mais"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** PR, rascunho, decisão/nota do Reviewer, branch e resumo (tudo opcional). */
+function PipelineResult({ view }: { view: TaskExecution }) {
+  const { pullRequest, pipeline, git } = view;
+  const prUrl = safeHttpsUrl(pullRequest?.url);
+  const decision = pipeline?.decision
+    ? (DECISION_LABELS[pipeline.decision] ?? null)
+    : null;
+  const score =
+    typeof pipeline?.reviewScore === "number" ? pipeline.reviewScore : null;
+  const summary = pipeline?.summary?.trim() || null;
+  if (!prUrl && !decision && score === null && !git?.branch && !summary)
+    return null;
+
+  return (
+    <div className="flex flex-col gap-2">
+      {(prUrl || decision || score !== null) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {prUrl && (
+            <a
+              href={prUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md bg-violet-600 px-2.5 py-1 text-[12px] font-semibold text-white transition-colors hover:bg-violet-500"
+            >
+              <ExternalLink className="size-3" />
+              {pullRequest?.number ? `Ver PR #${pullRequest.number}` : "Ver PR"}
+            </a>
+          )}
+          {prUrl && pullRequest?.isDraft && (
+            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+              Rascunho
+            </span>
+          )}
+          {decision && (
+            <span className="text-[11px] text-muted-foreground">
+              Reviewer: <strong className="font-semibold">{decision}</strong>
+            </span>
+          )}
+          {score !== null && (
+            <span className="text-[11px] text-muted-foreground">
+              Nota{" "}
+              <strong className="font-semibold">{score.toFixed(1)}/10</strong>
+            </span>
+          )}
+        </div>
+      )}
+      {git?.branch && (
+        <span className="inline-flex items-center gap-1 break-all text-[11px] text-muted-foreground">
+          <GitBranch className="size-3 shrink-0" />
+          {git.branch}
+        </span>
+      )}
+      {summary && <PipelineSummary text={summary} />}
+    </div>
   );
 }
 

@@ -176,6 +176,21 @@ awaiting_approval
 **Limitação conhecida:** o front não tem histórico persistido de execuções. Quem não disparou a execução deixa de ver o estado terminal quando `activeExecution` da task volta a `null`.
 
 
+### 5.0b Resultado da esteira — implementado no front (ADR-V2-083)
+
+Campos aditivos e opcionais no `ExecutionResponseDto` (GET e POST). Ausentes em execuções legadas.
+
+```
+pullRequest?: { url, number, state, isDraft, openedBy, baseRefName, openedAt }
+git?:         { branch, baseBranch, headAfter, commitsAhead, pushed, pushedAt }
+pipeline?:    { required, prRequired, mode, decision, reviewScore, stages[],
+                summary (texto puro, <=2000), contractValid, prOpenedBy, reason }
+```
+
+- `pullRequest.isDraft = true`: PR em rascunho (esteira não aprovou). O link só é exibido com `https://`.
+- `pipeline.required` já vem durante RUNNING, para o aviso de tempo de execução.
+- Os motivos da esteira (`PIPELINE_*`, `PR_NOT_CREATED`) chegam em `outcome.reason` com `source='agent'`.
+
 ### 5.1 Executar task com agente
 
 ```

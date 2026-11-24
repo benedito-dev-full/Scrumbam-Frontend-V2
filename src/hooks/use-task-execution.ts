@@ -7,7 +7,10 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import type {
   ExecutionFailureReason,
+  ExecutionGitDto,
   ExecutionOutcomeDto,
+  ExecutionPipelineDto,
+  ExecutionPullRequestDto,
 } from "@/lib/types/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -46,8 +49,14 @@ export interface TaskExecution {
   approval: ExecutionApprovalInfo | null;
   /** Motivo do risco — ausente em registros antigos. */
   risk: ExecutionRisk | null;
-  /** `outcome.reason` (só quando a falha foi marcada pelo sistema). */
+  /** `outcome.reason` (falha marcada pelo sistema ou rebaixada pela esteira). */
   failureReason: ExecutionFailureReason | null;
+  /** PR verificado pelo agente (modo esteira) — ausente em execuções legadas. */
+  pullRequest: ExecutionPullRequestDto | null;
+  /** Branch/commits/push verificados — ausente em execuções legadas. */
+  git: ExecutionGitDto | null;
+  /** Resultado da esteira de agentes — ausente em execuções legadas/COMMAND. */
+  pipeline: ExecutionPipelineDto | null;
 }
 
 /** Texto amigável por motivo canônico (mapa exaustivo: o TS acusa se o backend ganhar um novo). */
@@ -61,6 +70,15 @@ const FAILURE_REASON_MESSAGES: Record<ExecutionFailureReason, string> = {
     "O projeto ficou ocupado por muito tempo com outra execução.",
   DUPLICATE_TASK_EXECUTION: "Já havia outra execução desta task em andamento.",
   BACKFILL_STALE: "Execução antiga encerrada pelo sistema.",
+  PIPELINE_NOT_INSTALLED:
+    "Este projeto ainda não tem a esteira de agentes instalada (comando /scrumban-executar).",
+  PIPELINE_PRECONDITION_FAILED:
+    "O ambiente do agente não está pronto (GitHub CLI/token, branch base ou git).",
+  PIPELINE_CONTRACT_MISSING:
+    "A esteira terminou sem o resultado esperado (ou sem passar pelo Reviewer).",
+  PIPELINE_NOT_APPROVED:
+    "A esteira não aprovou o resultado — o PR ficou em rascunho.",
+  PR_NOT_CREATED: "Nenhum PR foi aberto pela esteira.",
 };
 
 /** Texto amigável (PT-BR) para o motivo da falha; `null` se ausente/desconhecido. */
@@ -125,8 +143,12 @@ export interface ExecutionResponseDto {
     rejectedBy?: string;
   };
   risk?: ExecutionRisk;
-  /** Ausente em backends antigos; `reason` só preenchido com `source='system'`. */
+  /** Ausente em backends antigos; `reason` vem com `source='system'` ou motivo da esteira (`'agent'`). */
   outcome?: ExecutionOutcomeDto;
+  /** Campos aditivos da esteira (ADR-V2-083) — todos opcionais. */
+  pullRequest?: ExecutionPullRequestDto;
+  git?: ExecutionGitDto;
+  pipeline?: ExecutionPipelineDto;
   command: { text: string };
   claude?: {
     exitCode?: number;
@@ -164,6 +186,8 @@ export function deriveStatus(data: ExecutionResponseDto): ExecutionStatus {
   if (approvalStatus === "rejected") return "rejected";
   if (approvalStatus === "expired") return "expired";
   if (data.claude?.finishedAt) {
+    // Motivo canônico de falha (sistema ou esteira) prevalece sobre o exitCode.
+    if (data.outcome?.reason) return "failed";
     // approved/queued com fim registrado: o exitCode decide o desfecho.
     return (data.claude.exitCode ?? 0) === 0 ? "done" : "failed";
   }
@@ -190,13 +214,31 @@ export function buildExecution(
       rejectedBy: data.approval.rejectedBy ?? null,
     },
     risk: data.risk ?? current?.risk ?? null,
-    failureReason: data.outcome?.reason ?? current?.failureReason ?? null,
+    // Com `outcome` presente o backend é a fonte: reason null limpa um motivo antigo.
+    failureReason: data.outcome
+      ? data.outcome.reason
+      : (current?.failureReason ?? null),
+    pullRequest: data.pullRequest ?? current?.pullRequest ?? null,
+    git: data.git ?? current?.git ?? null,
+    pipeline: data.pipeline ?? current?.pipeline ?? null,
   };
 }
 
 // ─── Polling de status ────────────────────────────────────────────────────────
 
 const POLL_INTERVAL = 3000;
+/** Após este tempo de execução o polling recua (esteira pode levar horas). */
+const SLOW_POLL_AFTER_MS = 10 * 60 * 1000;
+const SLOW_POLL_INTERVAL = 15000;
+
+/** Intervalo de polling: 3s no início; 15s após 10 min desde a criação da execução. */
+export function pollIntervalFor(startedAt: string | null, now: number): number {
+  const started = startedAt ? Date.parse(startedAt) : NaN;
+  if (Number.isNaN(started)) return POLL_INTERVAL;
+  return now - started > SLOW_POLL_AFTER_MS
+    ? SLOW_POLL_INTERVAL
+    : POLL_INTERVAL;
+}
 const TERMINAL_STATUSES = new Set<ExecutionStatus>([
   "done",
   "failed",
@@ -211,7 +253,11 @@ async function pollExecution(
   queryClient: ReturnType<typeof useQueryClient>,
 ) {
   while (!signal.aborted) {
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL));
+    const wait = pollIntervalFor(
+      executionStore.get(taskId)?.startedAt ?? null,
+      Date.now(),
+    );
+    await new Promise((r) => setTimeout(r, wait));
     if (signal.aborted) break;
 
     try {

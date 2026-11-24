@@ -1,13 +1,53 @@
 # Workflow Status - Scrumbam-Frontend-V2
 
 **Projeto:** Scrumbam-Frontend-V2 (Next.js 16 + React 19)
-**Ultima atualizacao:** 2026-11-23 (Task 2)
+**Ultima atualizacao:** 2026-11-24 (Task 3)
 
 ---
 
 ## Tasks Concluidas
 
 (Conclusao dos agents sera registrada abaixo automaticamente pelos hooks)
+
+---
+
+## Task 3 - COMPLETE
+
+**Module:** executions (drawer de task / IA)
+**Task:** Resultado da esteira na execucao de IA: link do PR, rascunho, decisao/nota do Reviewer, branch, summary, 5 novos motivos e polling 3s -> 15s
+**Status:** COMPLETA (deploy conjunto: backend 08d1446, agente VPS 0.2.0; ADR-V2-083)
+**Date:** 2026-11-24
+**Quality Score:** 9.0/10 (APPROVED pelo Reviewer)
+
+**Deliverables:**
+- [x] Link "Ver PR #N" (so https, `target=_blank`, `rel="noopener noreferrer"`)
+- [x] Badge "Rascunho" quando `pullRequest.isDraft`
+- [x] Decisao e nota do Reviewer (`pipeline.decision`, `pipeline.reviewScore`)
+- [x] Branch, commits e summary (texto puro, recolhivel)
+- [x] Resultado tambem aparece em falha (PR rascunho)
+- [x] 5 novos motivos canonicos com mapa exaustivo: PIPELINE_NOT_INSTALLED, PIPELINE_PRECONDITION_FAILED, PIPELINE_CONTRACT_MISSING, PIPELINE_NOT_APPROVED, PR_NOT_CREATED
+- [x] Polling 3s, recuando para 15s apos 10 min desde `startedAt`
+- [x] Aviso "pode levar algumas horas" quando `pipeline.required`
+- [x] Task 2 m1 aplicado: `outcome` presente e a fonte do motivo (`reason` null limpa o antigo)
+- [x] Task 2 m3 aplicado: `role="alert"` no bloco de falha
+- [x] `deriveStatus`: `finishedAt` + `outcome.reason` vira `failed` mesmo com exitCode 0 (rebaixamento da esteira)
+
+**Metrics:**
+- Build (`npm run build`): PASS
+- TypeScript: 0 errors
+- ESLint: 0 warnings nos arquivos tocados
+- Tests: N/A (projeto sem suite de testes)
+
+**Follow-ups (MINOR, nao bloqueiam):**
+- m1: o rotulo "em execucao ha Xh" conta desde `createdAt`, mesmo com a execucao em QUEUED. Trocar para "iniciada ha".
+- m2: apos aprovacao tardia (>10 min), o polling nasce em 15s e atrasa ate 15s a transicao. Opcional: resetar o referencial na aprovacao.
+- m3: extrair `PipelineResult`, `PipelineSummary` e `ElapsedLabel` para arquivo proprio (`task-detail-drawer-ai.tsx` ficou com ~430 linhas).
+- m4: restringir o host do link a `github.com`. Rotulo "Reviewer:" tambem aparece em NO_CHANGES/ABORTED (texto pouco preciso).
+- m5: erros 422 do `POST /execute` (agente offline, tunel, preflight) ainda sem feedback visual. Pre-existente.
+
+**Issues Pendentes:**
+- Validar visualmente com payload real (PR rascunho, summary longo) quando a esteira estiver na VPS.
+- Premissa `pipeline.required` durante RUNNING: confirmada no backend (review), validar em producao.
 
 ---
 
